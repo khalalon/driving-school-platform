@@ -1,0 +1,79 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: driving_school
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  auth-service:
+    build: ./services/auth-service
+    ports:
+      - "3001:3001"
+    environment:
+      - DATABASE_URL=postgresql://admin:password@postgres:5432/driving_school
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=your-secret-key-change-in-production
+    depends_on:
+      - postgres
+      - redis
+
+  school-service:
+    build: ./services/school-service
+    ports:
+      - "3002:3002"
+    environment:
+      - DATABASE_URL=postgresql://admin:password@postgres:5432/driving_school
+    depends_on:
+      - postgres
+
+  lesson-service:
+    build: ./services/lesson-service
+    ports:
+      - "3003:3003"
+    environment:
+      - DATABASE_URL=postgresql://admin:password@postgres:5432/driving_school
+    depends_on:
+      - postgres
+
+  exam-service:
+    build: ./services/exam-service
+    ports:
+      - "3004:3004"
+    environment:
+      - DATABASE_URL=postgresql://admin:password@postgres:5432/driving_school
+    depends_on:
+      - postgres
+
+  payment-service:
+    build: ./services/payment-service
+    ports:
+      - "3005:3005"
+    environment:
+      - DATABASE_URL=postgresql://admin:password@postgres:5432/driving_school
+    depends_on:
+      - postgres
+
+  notification-service:
+    build: ./services/notification-service
+    ports:
+      - "3006:3006"
+    environment:
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+
+volumes:
+  postgres_data:

@@ -1,0 +1,15 @@
+node_modules/
+npm-debug.log*
+dist/
+build/
+*.js
+*.js.map
+*.d.ts
+!jest.config.js
+.env
+.env.local
+.vscode/
+.idea/
+.DS_Store
+coverage/
+*.log
