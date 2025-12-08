@@ -17,7 +17,7 @@ export class UserRepository implements IUserRepository {
       VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       RETURNING id, email, password_hash as "passwordHash", role, created_at as "createdAt", updated_at as "updatedAt"
     `;
-    
+
     const result = await this.db.query(query, [email, passwordHash, role]);
     return result.rows[0] as User;
   }
@@ -28,7 +28,7 @@ export class UserRepository implements IUserRepository {
       FROM users
       WHERE id = $1
     `;
-    
+
     const result = await this.db.query(query, [id]);
     return result.rows[0] || null;
   }
@@ -39,7 +39,7 @@ export class UserRepository implements IUserRepository {
       FROM users
       WHERE email = $1
     `;
-    
+
     const result = await this.db.query(query, [email]);
     return result.rows[0] || null;
   }
@@ -50,7 +50,7 @@ export class UserRepository implements IUserRepository {
       SET password_hash = $1, updated_at = CURRENT_TIMESTAMP
       WHERE id = $2
     `;
-    
+
     await this.db.query(query, [passwordHash, id]);
   }
 }

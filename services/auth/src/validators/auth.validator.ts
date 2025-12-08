@@ -4,7 +4,9 @@ import { UserRole } from '../types';
 export const registerSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().min(8).required(),
-  role: Joi.string().valid(...Object.values(UserRole)).required(),
+  role: Joi.string()
+    .valid(...Object.values(UserRole))
+    .required(),
 });
 
 export const loginSchema = Joi.object({

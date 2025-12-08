@@ -23,7 +23,7 @@ export class AuthMiddleware {
 
       const token = authHeader.substring(7);
       const payload = this.tokenService.verifyAccessToken(token);
-      
+
       req.user = payload;
       next();
     } catch (error) {

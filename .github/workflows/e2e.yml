@@ -1,0 +1,46 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main, develop]
+  schedule:
+    - cron: '0 4 * * *' # Daily at 4 AM
+  workflow_dispatch:
+
+jobs:
+  e2e-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Start all services
+        run: |
+          docker-compose up -d
+          sleep 30
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: Install test dependencies
+        run: |
+          npm install -g newman
+      
+      - name: Run E2E tests
+        run: |
+          newman run tests/e2e/driving-school.postman_collection.json \
+            --environment tests/e2e/test.postman_environment.json \
+            --reporters cli,json \
+            --reporter-json-export results.json
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: e2e-results
+          path: results.json
+      
+      - name: Shutdown services
+        if: always()
+        run: docker-compose down

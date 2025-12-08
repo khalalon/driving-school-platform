@@ -1,0 +1,41 @@
+{
+  "extends": ["@commitlint/config-conventional"],
+  "rules": {
+    "type-enum": [
+      2,
+      "always",
+      [
+        "feat",
+        "fix",
+        "docs",
+        "style",
+        "refactor",
+        "perf",
+        "test",
+        "chore",
+        "ci",
+        "build",
+        "revert"
+      ]
+    ],
+    "scope-enum": [
+      2,
+      "always",
+      [
+        "auth",
+        "school",
+        "lesson",
+        "exam",
+        "payment",
+        "notification",
+        "docker",
+        "ci",
+        "deps"
+      ]
+    ],
+    "subject-case": [2, "never", ["upper-case"]],
+    "subject-empty": [2, "never"],
+    "subject-full-stop": [2, "never", "."],
+    "header-max-length": [2, "always", 100]
+  }
+}

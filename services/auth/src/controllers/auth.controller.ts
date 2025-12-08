@@ -77,7 +77,7 @@ export class AuthController {
       }
 
       const user = await this.authService.getCurrentUser(req.user.userId);
-      
+
       const { passwordHash, ...userWithoutPassword } = user;
       res.status(200).json(userWithoutPassword);
     } catch (err) {

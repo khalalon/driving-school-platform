@@ -1,0 +1,70 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [main, develop]
+  schedule:
+    - cron: '0 0 * * *' # Daily at midnight
+  workflow_dispatch:
+
+jobs:
+  dependency-scan:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [auth, school, lesson, exam, payment, notification]
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run npm audit
+        working-directory: services/${{ matrix.service }}
+        run: |
+          npm audit --audit-level=moderate
+        continue-on-error: true
+      
+      - name: Run Snyk security scan
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+          command: test
+        continue-on-error: true
+
+  docker-scan:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [auth, school, lesson, exam, payment, notification]
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Build image
+        run: docker build -t ${{ matrix.service }}-service:test ./services/${{ matrix.service }}
+      
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ matrix.service }}-service:test
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+      
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  code-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: javascript
+      
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2

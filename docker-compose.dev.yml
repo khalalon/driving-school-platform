@@ -1,0 +1,114 @@
+version: '3.8'
+
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: driving_school
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  auth-service:
+    build:
+      context: ./services/auth
+      target: builder
+    volumes:
+      - ./services/auth/src:/app/src
+    command: npm run dev
+    environment:
+      NODE_ENV: development
+
+  school-service:
+    build:
+      context: ./services/school
+      target: builder
+    volumes:
+      - ./services/school/src:/app/src
+    command: npm run dev
+    environment:
+      NODE_ENV: development
+
+  lesson-service:
+    build:
+      context: ./services/lesson
+      target: builder
+    volumes:
+      - ./services/lesson/src:/app/src
+    command: npm run dev
+    environment:
+      NODE_ENV: development
+
+  exam-service:
+    build:
+      context: ./services/exam
+      target: builder
+    volumes:
+      - ./services/exam/src:/app/src
+    command: npm run dev
+    environment:
+      NODE_ENV: development
+
+  payment-service:
+    build:
+      context: ./services/payment
+      target: builder
+    volumes:
+      - ./services/payment/src:/app/src
+    command: npm run dev
+    environment:
+      NODE_ENV: development
+
+  notification-service:
+    build:
+      context: ./services/notification
+      target: builder
+    volumes:
+      - ./services/notification/src:/app/src
+    command: npm run dev
+    environment:
+      NODE_ENV: development
+
+  analytics-service:
+    build:
+      context: ./services/analytics
+      target: builder
+    volumes:
+      - ./services/analytics/src:/app/src
+    command: npm run dev
+    environment:
+      NODE_ENV: development
+
+  # ============================================
+  # DEVELOPMENT TOOLS
+  # ============================================
+  
+  # pgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@drivingschool.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_LISTEN_PORT: 5050
+    ports:
+      - "5050:5050"
+    networks:
+      - driving-school-network
+
+  # Redis Commander for Redis management
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: redis-commander
+    restart: unless-stopped
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    networks:
+      - driving-school-network

@@ -1,0 +1,69 @@
+name: PR Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  pr-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Check PR title
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            chore
+            ci
+            build
+      
+      - name: Check for merge conflicts
+        run: |
+          git fetch origin ${{ github.base_ref }}
+          if git merge-base --is-ancestor origin/${{ github.base_ref }} HEAD; then
+            echo "No merge conflicts"
+          else
+            echo "Merge conflicts detected"
+            exit 1
+          fi
+      
+      - name: Lint commit messages
+        uses: wagoid/commitlint-github-action@v5
+
+  code-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: Check for large files
+        run: |
+          large_files=$(find . -type f -size +5M -not -path "./node_modules/*" -not -path "./.git/*")
+          if [ -n "$large_files" ]; then
+            echo "Large files detected:"
+            echo "$large_files"
+            exit 1
+          fi
+      
+      - name: Check for secrets
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD

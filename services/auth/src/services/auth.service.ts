@@ -40,7 +40,7 @@ export class AuthService {
 
   async refreshToken(refreshToken: string): Promise<AuthTokens> {
     const payload = this.tokenService.verifyRefreshToken(refreshToken);
-    
+
     const user = await this.userRepository.findById(payload.userId);
     if (!user) {
       throw new Error('User not found');

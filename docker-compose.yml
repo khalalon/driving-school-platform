@@ -1,79 +1,318 @@
-# docker-compose.yml
 version: '3.8'
 
-services:
-  postgres:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: driving_school
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-
-  auth-service:
-    build: ./services/auth-service
-    ports:
-      - "3001:3001"
-    environment:
-      - DATABASE_URL=postgresql://admin:password@postgres:5432/driving_school
-      - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=your-secret-key-change-in-production
-    depends_on:
-      - postgres
-      - redis
-
-  school-service:
-    build: ./services/school-service
-    ports:
-      - "3002:3002"
-    environment:
-      - DATABASE_URL=postgresql://admin:password@postgres:5432/driving_school
-    depends_on:
-      - postgres
-
-  lesson-service:
-    build: ./services/lesson-service
-    ports:
-      - "3003:3003"
-    environment:
-      - DATABASE_URL=postgresql://admin:password@postgres:5432/driving_school
-    depends_on:
-      - postgres
-
-  exam-service:
-    build: ./services/exam-service
-    ports:
-      - "3004:3004"
-    environment:
-      - DATABASE_URL=postgresql://admin:password@postgres:5432/driving_school
-    depends_on:
-      - postgres
-
-  payment-service:
-    build: ./services/payment-service
-    ports:
-      - "3005:3005"
-    environment:
-      - DATABASE_URL=postgresql://admin:password@postgres:5432/driving_school
-    depends_on:
-      - postgres
-
-  notification-service:
-    build: ./services/notification-service
-    ports:
-      - "3006:3006"
-    environment:
-      - REDIS_URL=redis://redis:6379
-    depends_on:
-      - redis
+networks:
+  driving-school-network:
+    driver: bridge
 
 volumes:
   postgres_data:
+  redis_data:
+
+services:
+  # ============================================
+  # DATABASE - PostgreSQL
+  # ============================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: driving-school-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-driving_school}
+      POSTGRES_INITDB_ARGS: "-E UTF8"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    networks:
+      - driving-school-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # CACHE - Redis
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: driving-school-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - driving-school-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # AUTH SERVICE
+  # ============================================
+  auth-service:
+    build:
+      context: ./services/auth
+      dockerfile: Dockerfile
+    container_name: auth-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-driving_school}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379
+      JWT_SECRET: ${JWT_SECRET:-change-this-secret-in-production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - driving-school-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ============================================
+  # SCHOOL SERVICE
+  # ============================================
+  school-service:
+    build:
+      context: ./services/school
+      dockerfile: Dockerfile
+    container_name: school-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3002
+      DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-driving_school}
+      AUTH_SERVICE_URL: http://auth-service:3001
+    ports:
+      - "3002:3002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    networks:
+      - driving-school-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ============================================
+  # LESSON SERVICE
+  # ============================================
+  lesson-service:
+    build:
+      context: ./services/lesson
+      dockerfile: Dockerfile
+    container_name: lesson-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3003
+      DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-driving_school}
+      AUTH_SERVICE_URL: http://auth-service:3001
+      SCHOOL_SERVICE_URL: http://school-service:3002
+    ports:
+      - "3003:3003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      school-service:
+        condition: service_healthy
+    networks:
+      - driving-school-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ============================================
+  # EXAM SERVICE
+  # ============================================
+  exam-service:
+    build:
+      context: ./services/exam
+      dockerfile: Dockerfile
+    container_name: exam-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3004
+      DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-driving_school}
+      AUTH_SERVICE_URL: http://auth-service:3001
+      SCHOOL_SERVICE_URL: http://school-service:3002
+    ports:
+      - "3004:3004"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      school-service:
+        condition: service_healthy
+    networks:
+      - driving-school-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ============================================
+  # PAYMENT SERVICE
+  # ============================================
+  payment-service:
+    build:
+      context: ./services/payment
+      dockerfile: Dockerfile
+    container_name: payment-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3005
+      DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-driving_school}
+      AUTH_SERVICE_URL: http://auth-service:3001
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+    ports:
+      - "3005:3005"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    networks:
+      - driving-school-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ============================================
+  # NOTIFICATION SERVICE
+  # ============================================
+  notification-service:
+    build:
+      context: ./services/notification
+      dockerfile: Dockerfile
+    container_name: notification-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3006
+      DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-driving_school}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379
+      AUTH_SERVICE_URL: http://auth-service:3001
+      EXPO_ACCESS_TOKEN: ${EXPO_ACCESS_TOKEN:-}
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_PHONE_NUMBER: ${TWILIO_PHONE_NUMBER:-}
+    ports:
+      - "3006:3006"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    networks:
+      - driving-school-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3006/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ============================================
+  # ANALYTICS SERVICE
+  # ============================================
+  analytics-service:
+    build:
+      context: ./services/analytics
+      dockerfile: Dockerfile
+    container_name: analytics-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3007
+      DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-driving_school}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379
+      AUTH_SERVICE_URL: http://auth-service:3001
+      CACHE_TTL: ${CACHE_TTL:-3600}
+    ports:
+      - "3007:3007"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    networks:
+      - driving-school-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3007/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ============================================
+  # NGINX API GATEWAY
+  # ============================================
+  nginx:
+    image: nginx:alpine
+    container_name: driving-school-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - auth-service
+      - school-service
+      - lesson-service
+      - exam-service
+      - payment-service
+      - notification-service
+      - analytics-service
+    networks:
+      - driving-school-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

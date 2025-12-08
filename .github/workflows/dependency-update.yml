@@ -1,0 +1,47 @@
+name: Dependency Update
+
+on:
+  schedule:
+    - cron: '0 0 * * 1' # Every Monday at midnight
+  workflow_dispatch:
+
+jobs:
+  update-dependencies:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [auth, school, lesson, exam, payment, notification]
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: Update dependencies
+        working-directory: services/${{ matrix.service }}
+        run: |
+          npm update
+          npm audit fix
+      
+      - name: Run tests
+        working-directory: services/${{ matrix.service }}
+        run: npm test
+        continue-on-error: true
+      
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore(deps): update ${{ matrix.service }} dependencies'
+          title: 'chore(deps): Update ${{ matrix.service }} service dependencies'
+          body: |
+            Automated dependency update for ${{ matrix.service }} service
+            
+            - Updated npm packages
+            - Ran security audit
+            - Tests status: check logs
+          branch: deps/update-${{ matrix.service }}
+          labels: dependencies, automated
