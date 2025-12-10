@@ -1,6 +1,6 @@
 /**
- * Book For Student Screen (Instructor)
- * Single Responsibility: Allow instructors to book lessons directly for students
+ * Book For Student Screen - Minimal & Elegant
+ * Single Responsibility: Instructor books lesson for student
  */
 
 import React, { useState } from 'react';
@@ -10,226 +10,246 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Alert,
-  ActivityIndicator,
   TextInput,
+  ActivityIndicator,
+  Alert,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Picker } from '@react-native-picker/picker';
 import { lessonService } from '../../services/api/LessonService';
-import { LessonType } from '../../models/Lesson';
+import { colors, typography, spacing, shadows } from '../../theme';
 
 export const BookForStudentScreen = ({ navigation }: any) => {
-  const [booking, setBooking] = useState(false);
-  const [studentId, setStudentId] = useState('');
-  const [selectedType, setSelectedType] = useState<LessonType>(LessonType.PRACTICAL);
-  const [scheduleDate, setScheduleDate] = useState('');
-  const [scheduleStartTime, setScheduleStartTime] = useState('');
-  const [scheduleEndTime, setScheduleEndTime] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [studentEmail, setStudentEmail] = useState('');
+  const [lessonType, setLessonType] = useState<'theory' | 'practical'>('practical');
+  const [date, setDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [startTime, setStartTime] = useState(new Date());
+  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
+  const [endTime, setEndTime] = useState(new Date(Date.now() + 60 * 60 * 1000)); // +1 hour
+  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
   const [notes, setNotes] = useState('');
 
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      setDate(selectedDate);
+    }
+  };
+
+  const handleStartTimeChange = (event: any, selectedTime?: Date) => {
+    setShowStartTimePicker(false);
+    if (selectedTime) {
+      setStartTime(selectedTime);
+      // Automatically set end time to 1 hour later
+      setEndTime(new Date(selectedTime.getTime() + 60 * 60 * 1000));
+    }
+  };
+
+  const handleEndTimeChange = (event: any, selectedTime?: Date) => {
+    setShowEndTimePicker(false);
+    if (selectedTime) {
+      setEndTime(selectedTime);
+    }
+  };
+
   const handleBookLesson = async () => {
-    if (!studentId || !scheduleDate || !scheduleStartTime || !scheduleEndTime) {
-      Alert.alert('Error', 'Please fill in all required fields');
+    if (!studentEmail.trim()) {
+      Alert.alert('Required', 'Please enter student email');
+      return;
+    }
+
+    // Validate that end time is after start time
+    if (endTime <= startTime) {
+      Alert.alert('Invalid Time', 'End time must be after start time');
       return;
     }
 
     try {
-      setBooking(true);
+      setLoading(true);
 
-      // Combine date and time
-      const startDateTime = `${scheduleDate}T${scheduleStartTime}:00.000Z`;
-      const endDateTime = `${scheduleDate}T${scheduleEndTime}:00.000Z`;
+      // Combine date with start and end times
+      const startDateTime = new Date(date);
+      startDateTime.setHours(startTime.getHours());
+      startDateTime.setMinutes(startTime.getMinutes());
 
+      const endDateTime = new Date(date);
+      endDateTime.setHours(endTime.getHours());
+      endDateTime.setMinutes(endTime.getMinutes());
+
+      // Call the correct method with proper data structure
       await lessonService.bookLessonForStudent({
-        studentId,
-        type: selectedType,
-        startTime: startDateTime,
-        endTime: endDateTime,
+        studentId: studentEmail, // Note: Backend should handle email-to-ID lookup
+        type: lessonType,
+        startTime: startDateTime.toISOString(),
+        endTime: endDateTime.toISOString(),
         notes,
       });
 
-      Alert.alert(
-        'Success',
-        'Lesson booked successfully for student!',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+      Alert.alert('Success', 'Lesson booked successfully!', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
     } catch (error: any) {
       Alert.alert('Error', error.response?.data?.message || 'Failed to book lesson');
-      console.error('Book lesson error:', error);
     } finally {
-      setBooking(false);
+      setLoading(false);
     }
   };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
+          <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Book for Student</Text>
-        <View style={styles.placeholder} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Info Card */}
-        <View style={styles.infoCard}>
-          <View style={styles.infoIcon}>
-            <Ionicons name="information-circle" size={24} color="#4CAF50" />
+      <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.infoBox}>
+          <Ionicons name="information-circle-outline" size={24} color={colors.primary[600]} />
+          <Text style={styles.infoText}>
+            Book a lesson directly for a student (walk-in or phone booking)
+          </Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.label}>Student Email</Text>
+          <View style={styles.inputContainer}>
+            <Ionicons
+              name="mail-outline"
+              size={20}
+              color={colors.neutral[400]}
+              style={styles.inputIcon}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="student@email.com"
+              placeholderTextColor={colors.neutral[400]}
+              value={studentEmail}
+              onChangeText={setStudentEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
           </View>
-          <View style={styles.infoContent}>
-            <Text style={styles.infoTitle}>Direct Booking</Text>
-            <Text style={styles.infoText}>
-              Book a lesson directly for a student without requiring a request. The lesson will be immediately scheduled.
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.label}>Lesson Type</Text>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={lessonType}
+              onValueChange={(value) => setLessonType(value)}
+              style={styles.picker}
+            >
+              <Picker.Item label="Practical Driving" value="practical" />
+              <Picker.Item label="Theory" value="theory" />
+            </Picker>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.label}>Date</Text>
+          <TouchableOpacity
+            style={styles.dateButton}
+            onPress={() => setShowDatePicker(true)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="calendar-outline" size={20} color={colors.text.secondary} />
+            <Text style={styles.dateText}>{date.toLocaleDateString()}</Text>
+          </TouchableOpacity>
+          {showDatePicker && (
+            <DateTimePicker
+              value={date}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={handleDateChange}
+              minimumDate={new Date()}
+            />
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.label}>Start Time</Text>
+          <TouchableOpacity
+            style={styles.dateButton}
+            onPress={() => setShowStartTimePicker(true)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="time-outline" size={20} color={colors.text.secondary} />
+            <Text style={styles.dateText}>
+              {startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </Text>
-          </View>
+          </TouchableOpacity>
+          {showStartTimePicker && (
+            <DateTimePicker
+              value={startTime}
+              mode="time"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={handleStartTimeChange}
+            />
+          )}
         </View>
 
-        {/* Student ID */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Student Information</Text>
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Student ID</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter student ID..."
-              value={studentId}
-              onChangeText={setStudentId}
-              placeholderTextColor="#999"
+          <Text style={styles.label}>End Time</Text>
+          <TouchableOpacity
+            style={styles.dateButton}
+            onPress={() => setShowEndTimePicker(true)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="time-outline" size={20} color={colors.text.secondary} />
+            <Text style={styles.dateText}>
+              {endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </Text>
+          </TouchableOpacity>
+          {showEndTimePicker && (
+            <DateTimePicker
+              value={endTime}
+              mode="time"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={handleEndTimeChange}
             />
-          </View>
+          )}
         </View>
 
-        {/* Lesson Type */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Lesson Type</Text>
-          <View style={styles.typeContainer}>
-            <TouchableOpacity
-              style={[
-                styles.typeButton,
-                selectedType === LessonType.PRACTICAL && styles.typeButtonActive,
-              ]}
-              onPress={() => setSelectedType(LessonType.PRACTICAL)}
-            >
-              <Ionicons
-                name="car-sport-outline"
-                size={24}
-                color={selectedType === LessonType.PRACTICAL ? '#ffffff' : '#666'}
-              />
-              <Text
-                style={[
-                  styles.typeButtonText,
-                  selectedType === LessonType.PRACTICAL && styles.typeButtonTextActive,
-                ]}
-              >
-                Practical
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.typeButton,
-                selectedType === LessonType.THEORY && styles.typeButtonActive,
-              ]}
-              onPress={() => setSelectedType(LessonType.THEORY)}
-            >
-              <Ionicons
-                name="book-outline"
-                size={24}
-                color={selectedType === LessonType.THEORY ? '#ffffff' : '#666'}
-              />
-              <Text
-                style={[
-                  styles.typeButtonText,
-                  selectedType === LessonType.THEORY && styles.typeButtonTextActive,
-                ]}
-              >
-                Theory
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Schedule */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Schedule</Text>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Date (YYYY-MM-DD)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="2024-12-25"
-              value={scheduleDate}
-              onChangeText={setScheduleDate}
-              placeholderTextColor="#999"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Start Time (HH:MM)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="10:00"
-              value={scheduleStartTime}
-              onChangeText={setScheduleStartTime}
-              placeholderTextColor="#999"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>End Time (HH:MM)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="11:00"
-              value={scheduleEndTime}
-              onChangeText={setScheduleEndTime}
-              placeholderTextColor="#999"
-            />
-          </View>
-        </View>
-
-        {/* Notes */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Notes (Optional)</Text>
+          <Text style={styles.label}>Notes (Optional)</Text>
           <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="Add any notes..."
+            style={styles.notesInput}
+            placeholder="Add any notes about this lesson..."
+            placeholderTextColor={colors.neutral[400]}
             value={notes}
             onChangeText={setNotes}
             multiline
             numberOfLines={4}
             textAlignVertical="top"
-            placeholderTextColor="#999"
           />
         </View>
-      </ScrollView>
 
-      {/* Book Button */}
-      <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.bookButton, booking && styles.bookButtonDisabled]}
+          style={[styles.bookButton, loading && styles.disabledButton]}
           onPress={handleBookLesson}
-          disabled={booking}
+          disabled={loading}
+          activeOpacity={0.8}
         >
-          {booking ? (
-            <ActivityIndicator color="#ffffff" />
+          {loading ? (
+            <ActivityIndicator size="small" color={colors.text.inverse} />
           ) : (
             <>
               <Text style={styles.bookButtonText}>Book Lesson</Text>
-              <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
+              <Ionicons name="checkmark" size={20} color={colors.text.inverse} />
             </>
           )}
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </View>
   );
 };
@@ -237,146 +257,125 @@ export const BookForStudentScreen = ({ navigation }: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.background.secondary,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 20,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing['4xl'],
+    paddingBottom: spacing.lg,
+    backgroundColor: colors.background.primary,
+    gap: spacing.md,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#f5f5f5',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.background.tertiary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1a1a1a',
-  },
-  placeholder: {
-    width: 40,
+    fontSize: typography.size.xl,
+    fontWeight: typography.weight.bold,
+    color: colors.text.primary,
   },
   content: {
-    flex: 1,
+    padding: spacing.xl,
   },
-  infoCard: {
+  infoBox: {
     flexDirection: 'row',
-    backgroundColor: '#E8F5E9',
-    marginHorizontal: 24,
-    marginBottom: 24,
-    padding: 16,
+    backgroundColor: colors.primary[50],
+    padding: spacing.base,
     borderRadius: 12,
-    gap: 12,
-  },
-  infoIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  infoContent: {
-    flex: 1,
-  },
-  infoTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#4CAF50',
-    marginBottom: 4,
+    gap: spacing.md,
+    marginBottom: spacing.xl,
   },
   infoText: {
-    fontSize: 13,
-    color: '#4CAF50',
-    lineHeight: 18,
+    flex: 1,
+    fontSize: typography.size.sm,
+    color: colors.text.secondary,
+    lineHeight: typography.size.sm * typography.lineHeight.normal,
   },
   section: {
-    paddingHorizontal: 24,
-    marginBottom: 24,
+    marginBottom: spacing.xl,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1a1a1a',
-    marginBottom: 16,
+  label: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.medium,
+    color: colors.text.primary,
+    marginBottom: spacing.sm,
   },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1a1a1a',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#f8f8f8',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 15,
-    color: '#1a1a1a',
-    borderWidth: 1,
-    borderColor: '#f0f0f0',
-  },
-  textArea: {
-    minHeight: 100,
-  },
-  typeContainer: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  typeButton: {
-    flex: 1,
+  inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: colors.background.primary,
     borderRadius: 12,
-    padding: 16,
-    borderWidth: 2,
-    borderColor: '#f0f0f0',
+    borderWidth: 1,
+    borderColor: colors.border.default,
+    paddingHorizontal: spacing.base,
+    height: 52,
   },
-  typeButtonActive: {
-    backgroundColor: '#4CAF50',
-    borderColor: '#4CAF50',
+  inputIcon: {
+    marginRight: spacing.md,
   },
-  typeButtonText: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#666',
+  input: {
+    flex: 1,
+    fontSize: typography.size.base,
+    color: colors.text.primary,
   },
-  typeButtonTextActive: {
-    color: '#ffffff',
+  pickerContainer: {
+    backgroundColor: colors.background.primary,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border.default,
   },
-  footer: {
-    padding: 24,
-    backgroundColor: '#ffffff',
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+  picker: {
+    height: 52,
+  },
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background.primary,
+    padding: spacing.base,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+    gap: spacing.md,
+    height: 52,
+  },
+  dateText: {
+    fontSize: typography.size.base,
+    color: colors.text.primary,
+  },
+  notesInput: {
+    backgroundColor: colors.background.primary,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+    padding: spacing.base,
+    fontSize: typography.size.base,
+    color: colors.text.primary,
+    minHeight: 100,
   },
   bookButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#4CAF50',
-    borderRadius: 16,
-    padding: 18,
-  },
-  bookButtonDisabled: {
-    backgroundColor: '#A5D6A7',
+    backgroundColor: colors.primary[600],
+    paddingVertical: spacing.base,
+    borderRadius: 12,
+    gap: spacing.sm,
+    marginTop: spacing.base,
+    ...shadows.sm,
   },
   bookButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: typography.size.base,
+    fontWeight: typography.weight.semibold,
+    color: colors.text.inverse,
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
 });

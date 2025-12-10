@@ -1,6 +1,6 @@
 /**
  * Book Lesson Screen - Minimal & Elegant
- * Single Responsibility: Handle lesson booking with enrollment check
+ * Single Responsibility: Student requests lesson booking with enrollment check
  */
 
 import React, { useState, useEffect } from 'react';
@@ -12,10 +12,9 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
-  Platform,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import { lessonService } from '../../services/api/LessonService';
 import { enrollmentService } from '../../services/api/EnrollmentService';
@@ -30,10 +29,7 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
   const [canBook, setCanBook] = useState(false);
   
   const [lessonType, setLessonType] = useState<LessonType>(LessonType.PRACTICAL);
-  const [date, setDate] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [time, setTime] = useState(new Date());
-  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [notes, setNotes] = useState('');
 
   useEffect(() => {
     checkEnrollmentStatus();
@@ -47,7 +43,7 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
       if (!status.canBook) {
         Alert.alert(
           'Enrollment Required',
-          'You must be enrolled in this school to book lessons.',
+          'You must be enrolled in this school to request lessons.',
           [{ text: 'OK', onPress: () => navigation.goBack() }]
         );
       }
@@ -61,40 +57,24 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
     }
   };
 
-  const handleDateChange = (event: any, selectedDate?: Date) => {
-    setShowDatePicker(false);
-    if (selectedDate) {
-      setDate(selectedDate);
-    }
-  };
-
-  const handleTimeChange = (event: any, selectedTime?: Date) => {
-    setShowTimePicker(false);
-    if (selectedTime) {
-      setTime(selectedTime);
-    }
-  };
-
-  const handleBookLesson = async () => {
+  const handleRequestLesson = async () => {
     try {
       setLoading(true);
 
-      const dateTime = new Date(date);
-      dateTime.setHours(time.getHours());
-      dateTime.setMinutes(time.getMinutes());
-
-      await lessonService.bookLesson({
-        schoolId,
+      // Student requests a lesson - instructor will approve and schedule later
+      await lessonService.requestLesson({
         instructorId,
-        lessonType,
-        dateTime: dateTime.toISOString(),
+        type: lessonType,
+        notes: notes.trim() || undefined,
       });
 
-      Alert.alert('Success', 'Lesson booked successfully!', [
-        { text: 'OK', onPress: () => navigation.navigate('MyLessons') },
-      ]);
+      Alert.alert(
+        'Request Sent!',
+        'Your lesson request has been submitted. The instructor will review and schedule it soon.',
+        [{ text: 'OK', onPress: () => navigation.navigate('MyLessons') }]
+      );
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'Failed to book lesson');
+      Alert.alert('Error', error.response?.data?.message || 'Failed to request lesson');
     } finally {
       setLoading(false);
     }
@@ -123,17 +103,35 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
         >
           <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Book Lesson</Text>
+        <Text style={styles.headerTitle}>Request Lesson</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
+        {/* Info Card */}
+        <View style={styles.infoCard}>
+          <Ionicons name="information-circle-outline" size={24} color={colors.primary[600]} />
+          <View style={styles.infoContent}>
+            <Text style={styles.infoTitle}>How it works</Text>
+            <Text style={styles.infoText}>
+              Submit your lesson request. The instructor will review, approve, and schedule a specific date and time for you.
+            </Text>
+          </View>
+        </View>
+
+        {/* Instructor Info */}
         {instructorName && (
-          <View style={styles.infoCard}>
-            <Ionicons name="person-outline" size={24} color={colors.primary[600]} />
-            <Text style={styles.infoText}>Instructor: {instructorName}</Text>
+          <View style={styles.instructorCard}>
+            <View style={styles.instructorIconContainer}>
+              <Ionicons name="person-outline" size={28} color={colors.primary[600]} />
+            </View>
+            <View>
+              <Text style={styles.instructorLabel}>Instructor</Text>
+              <Text style={styles.instructorName}>{instructorName}</Text>
+            </View>
           </View>
         )}
 
+        {/* Lesson Type */}
         <View style={styles.section}>
           <Text style={styles.label}>Lesson Type</Text>
           <View style={styles.pickerContainer}>
@@ -148,52 +146,28 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
           </View>
         </View>
 
+        {/* Notes */}
         <View style={styles.section}>
-          <Text style={styles.label}>Date</Text>
-          <TouchableOpacity
-            style={styles.dateButton}
-            onPress={() => setShowDatePicker(true)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="calendar-outline" size={20} color={colors.text.secondary} />
-            <Text style={styles.dateText}>{date.toLocaleDateString()}</Text>
-          </TouchableOpacity>
-          {showDatePicker && (
-            <DateTimePicker
-              value={date}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={handleDateChange}
-              minimumDate={new Date()}
-            />
-          )}
+          <Text style={styles.label}>Additional Notes (Optional)</Text>
+          <TextInput
+            style={styles.notesInput}
+            placeholder="Preferred times, special requests, etc..."
+            placeholderTextColor={colors.neutral[400]}
+            value={notes}
+            onChangeText={setNotes}
+            multiline
+            numberOfLines={4}
+            textAlignVertical="top"
+          />
+          <Text style={styles.helperText}>
+            The instructor will contact you to confirm the date and time
+          </Text>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.label}>Time</Text>
-          <TouchableOpacity
-            style={styles.dateButton}
-            onPress={() => setShowTimePicker(true)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="time-outline" size={20} color={colors.text.secondary} />
-            <Text style={styles.dateText}>
-              {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </Text>
-          </TouchableOpacity>
-          {showTimePicker && (
-            <DateTimePicker
-              value={time}
-              mode="time"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={handleTimeChange}
-            />
-          )}
-        </View>
-
+        {/* Submit Button */}
         <TouchableOpacity
-          style={[styles.bookButton, loading && styles.disabledButton]}
-          onPress={handleBookLesson}
+          style={[styles.submitButton, loading && styles.disabledButton]}
+          onPress={handleRequestLesson}
           disabled={loading}
           activeOpacity={0.8}
         >
@@ -201,8 +175,8 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
             <ActivityIndicator size="small" color={colors.text.inverse} />
           ) : (
             <>
-              <Text style={styles.bookButtonText}>Confirm Booking</Text>
-              <Ionicons name="arrow-forward" size={20} color={colors.text.inverse} />
+              <Text style={styles.submitButtonText}>Send Request</Text>
+              <Ionicons name="send-outline" size={20} color={colors.text.inverse} />
             </>
           )}
         </TouchableOpacity>
@@ -254,17 +228,54 @@ const styles = StyleSheet.create({
   },
   infoCard: {
     flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: colors.primary[50],
     padding: spacing.base,
     borderRadius: 12,
-    marginBottom: spacing.xl,
     gap: spacing.md,
+    marginBottom: spacing.xl,
   },
-  infoText: {
-    fontSize: typography.size.base,
+  infoContent: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  infoTitle: {
+    fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold,
     color: colors.primary[600],
+  },
+  infoText: {
+    fontSize: typography.size.sm,
+    color: colors.text.secondary,
+    lineHeight: typography.size.sm * typography.lineHeight.normal,
+  },
+  instructorCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background.primary,
+    padding: spacing.lg,
+    borderRadius: 12,
+    gap: spacing.md,
+    marginBottom: spacing.xl,
+    ...shadows.sm,
+  },
+  instructorIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.primary[50],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  instructorLabel: {
+    fontSize: typography.size.xs,
+    color: colors.text.tertiary,
+    textTransform: 'uppercase',
+    marginBottom: spacing.xs,
+  },
+  instructorName: {
+    fontSize: typography.size.base,
+    fontWeight: typography.weight.semibold,
+    color: colors.text.primary,
   },
   section: {
     marginBottom: spacing.xl,
@@ -284,22 +295,23 @@ const styles = StyleSheet.create({
   picker: {
     height: 52,
   },
-  dateButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  notesInput: {
     backgroundColor: colors.background.primary,
-    padding: spacing.base,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border.default,
-    gap: spacing.md,
-    height: 52,
-  },
-  dateText: {
+    padding: spacing.base,
     fontSize: typography.size.base,
     color: colors.text.primary,
+    minHeight: 100,
+    marginBottom: spacing.sm,
   },
-  bookButton: {
+  helperText: {
+    fontSize: typography.size.xs,
+    color: colors.text.tertiary,
+    fontStyle: 'italic',
+  },
+  submitButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -310,7 +322,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.base,
     ...shadows.sm,
   },
-  bookButtonText: {
+  submitButtonText: {
     fontSize: typography.size.base,
     fontWeight: typography.weight.semibold,
     color: colors.text.inverse,

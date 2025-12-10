@@ -35,6 +35,25 @@ CREATE TABLE IF NOT EXISTS enrollment_requests (
     UNIQUE(student_id, school_id) -- One request per student per school
 );
 
+-- Student lesson statistics table (for exam eligibility)
+CREATE TABLE IF NOT EXISTS student_lesson_stats (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    school_id UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+    completed_lessons INTEGER DEFAULT 0,
+    completed_theory_lessons INTEGER DEFAULT 0,
+    completed_practical_lessons INTEGER DEFAULT 0,
+    last_lesson_date TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(student_id, school_id)
+);
+
+CREATE INDEX idx_stats_student ON student_lesson_stats(student_id);
+CREATE INDEX idx_stats_school ON student_lesson_stats(school_id);
+
+CREATE TRIGGER update_stats_updated_at BEFORE UPDATE ON student_lesson_stats
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 CREATE INDEX idx_enrollment_requests_student ON enrollment_requests(student_id);
 CREATE INDEX idx_enrollment_requests_school ON enrollment_requests(school_id);
 CREATE INDEX idx_enrollment_requests_status ON enrollment_requests(status);

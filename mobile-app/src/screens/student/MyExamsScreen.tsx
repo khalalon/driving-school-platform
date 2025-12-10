@@ -19,13 +19,13 @@ import { examService } from '../../services/api/ExamService';
 import { Exam, ExamStatus } from '../../models/Exam';
 import { colors, typography, spacing, shadows } from '../../theme';
 
-type FilterType = 'upcoming' | 'completed';
+type FilterType = 'pending' | 'scheduled' | 'completed';
 
 export const MyExamsScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [exams, setExams] = useState<Exam[]>([]);
-  const [filter, setFilter] = useState<FilterType>('upcoming');
+  const [filter, setFilter] = useState<FilterType>('pending');
 
   useEffect(() => {
     loadExams();
@@ -53,7 +53,9 @@ export const MyExamsScreen = ({ navigation }: any) => {
   const getFilteredExams = () => {
     return exams.filter((exam) => {
       switch (filter) {
-        case 'upcoming':
+        case 'pending':
+          return exam.status === ExamStatus.PENDING;
+        case 'scheduled':
           return exam.status === ExamStatus.SCHEDULED;
         case 'completed':
           return exam.status === ExamStatus.COMPLETED;
@@ -61,6 +63,39 @@ export const MyExamsScreen = ({ navigation }: any) => {
           return true;
       }
     });
+  };
+
+  const getStatusConfig = (status: ExamStatus) => {
+    switch (status) {
+      case ExamStatus.PENDING:
+        return {
+          icon: 'time-outline',
+          color: colors.warning[500],
+          bg: colors.warning[50],
+          text: 'Pending Review',
+        };
+      case ExamStatus.SCHEDULED:
+        return {
+          icon: 'calendar-outline',
+          color: colors.primary[600],
+          bg: colors.primary[50],
+          text: 'Scheduled',
+        };
+      case ExamStatus.COMPLETED:
+        return {
+          icon: 'checkmark-circle',
+          color: colors.success[500],
+          bg: colors.success[50],
+          text: 'Completed',
+        };
+      case ExamStatus.CANCELLED:
+        return {
+          icon: 'close-circle',
+          color: colors.error[500],
+          bg: colors.error[50],
+          text: 'Cancelled',
+        };
+    }
   };
 
   const getResultConfig = (result?: string) => {
@@ -81,8 +116,27 @@ export const MyExamsScreen = ({ navigation }: any) => {
     };
   };
 
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'Date TBD';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  const formatTime = (dateString?: string) => {
+    if (!dateString) return 'Time TBD';
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
   const renderExamCard = ({ item }: { item: Exam }) => {
-    const examDate = new Date(item.dateTime);
+    const statusConfig = getStatusConfig(item.status);
     const resultConfig = getResultConfig(item.result);
 
     return (
@@ -100,23 +154,12 @@ export const MyExamsScreen = ({ navigation }: any) => {
 
           <View style={styles.examInfo}>
             <Text style={styles.examType}>{item.type} Exam</Text>
-            <View style={styles.dateRow}>
-              <Ionicons name="calendar-outline" size={16} color={colors.text.tertiary} />
-              <Text style={styles.dateText}>
-                {examDate.toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
-                })}
-              </Text>
-            </View>
-            <View style={styles.timeRow}>
-              <Ionicons name="time-outline" size={16} color={colors.text.tertiary} />
-              <Text style={styles.timeText}>
-                {examDate.toLocaleTimeString('en-US', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
+            
+            {/* Status Badge */}
+            <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
+              <Ionicons name={statusConfig.icon as any} size={14} color={statusConfig.color} />
+              <Text style={[styles.statusText, { color: statusConfig.color }]}>
+                {statusConfig.text}
               </Text>
             </View>
           </View>
@@ -131,25 +174,80 @@ export const MyExamsScreen = ({ navigation }: any) => {
           )}
         </View>
 
-        {item.location && (
-          <View style={styles.locationRow}>
-            <Ionicons name="location-outline" size={16} color={colors.text.secondary} />
-            <Text style={styles.locationText}>{item.location}</Text>
+        {/* Pending State - Show Request Info */}
+        {item.status === ExamStatus.PENDING && (
+          <View style={styles.requestInfo}>
+            <View style={styles.infoRow}>
+              <Ionicons name="calendar-outline" size={16} color={colors.text.tertiary} />
+              <Text style={styles.infoLabel}>Preferred Date:</Text>
+              <Text style={styles.infoText}>{formatDate(item.preferredDate)}</Text>
+            </View>
+            {item.message && (
+              <View style={styles.messageBox}>
+                <Text style={styles.messageLabel}>Your Message:</Text>
+                <Text style={styles.messageText}>{item.message}</Text>
+              </View>
+            )}
+            <Text style={styles.helperText}>
+              Waiting for instructor to review and schedule
+            </Text>
           </View>
         )}
 
-        {item.status === ExamStatus.COMPLETED && item.score !== undefined && (
-          <View style={styles.scoreBox}>
-            <View style={styles.scoreHeader}>
-              <Text style={styles.scoreLabel}>Score</Text>
-              <Text style={styles.scoreValue}>{item.score}/100</Text>
+        {/* Scheduled State - Show Schedule Info */}
+        {item.status === ExamStatus.SCHEDULED && (
+          <View style={styles.scheduleInfo}>
+            <View style={styles.dateRow}>
+              <Ionicons name="calendar-outline" size={16} color={colors.text.tertiary} />
+              <Text style={styles.dateText}>{formatDate(item.dateTime)}</Text>
             </View>
+            <View style={styles.timeRow}>
+              <Ionicons name="time-outline" size={16} color={colors.text.tertiary} />
+              <Text style={styles.timeText}>{formatTime(item.dateTime)}</Text>
+            </View>
+            {item.location && (
+              <View style={styles.locationRow}>
+                <Ionicons name="location-outline" size={16} color={colors.text.secondary} />
+                <Text style={styles.locationText}>{item.location}</Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Completed State - Show Results */}
+        {item.status === ExamStatus.COMPLETED && (
+          <View style={styles.resultInfo}>
+            <View style={styles.dateRow}>
+              <Ionicons name="calendar-outline" size={16} color={colors.text.tertiary} />
+              <Text style={styles.dateText}>{formatDate(item.dateTime)}</Text>
+            </View>
+            
+            {item.score !== undefined && (
+              <View style={styles.scoreBox}>
+                <View style={styles.scoreHeader}>
+                  <Text style={styles.scoreLabel}>Score</Text>
+                  <Text style={styles.scoreValue}>{item.score}/100</Text>
+                </View>
+              </View>
+            )}
+
             {item.notes && (
               <View style={styles.notesBox}>
-                <Text style={styles.notesLabel}>Notes:</Text>
+                <Text style={styles.notesLabel}>Instructor Notes:</Text>
                 <Text style={styles.notesText}>{item.notes}</Text>
               </View>
             )}
+          </View>
+        )}
+
+        {/* Cancelled State - Show Reason */}
+        {item.status === ExamStatus.CANCELLED && item.rejectionReason && (
+          <View style={styles.rejectionBox}>
+            <Ionicons name="information-circle-outline" size={20} color={colors.error[600]} />
+            <View style={styles.rejectionContent}>
+              <Text style={styles.rejectionLabel}>Reason:</Text>
+              <Text style={styles.rejectionText}>{item.rejectionReason}</Text>
+            </View>
           </View>
         )}
       </View>
@@ -163,11 +261,13 @@ export const MyExamsScreen = ({ navigation }: any) => {
       </View>
       <Text style={styles.emptyTitle}>No {filter} exams</Text>
       <Text style={styles.emptyText}>
-        {filter === 'upcoming'
+        {filter === 'pending'
           ? 'Request your first exam to get started'
+          : filter === 'scheduled'
+          ? 'No upcoming exams scheduled yet'
           : 'Your completed exams will appear here'}
       </Text>
-      {filter === 'upcoming' && (
+      {filter === 'pending' && (
         <TouchableOpacity
           style={styles.requestButton}
           onPress={() => navigation.navigate('RequestExam')}
@@ -206,7 +306,7 @@ export const MyExamsScreen = ({ navigation }: any) => {
 
       {/* Filter Tabs */}
       <View style={styles.filterContainer}>
-        {(['upcoming', 'completed'] as FilterType[]).map((tab) => (
+        {(['pending', 'scheduled', 'completed'] as FilterType[]).map((tab) => (
           <TouchableOpacity
             key={tab}
             style={[styles.filterTab, filter === tab && styles.filterTabActive]}
@@ -334,6 +434,73 @@ const styles = StyleSheet.create({
     fontWeight: typography.weight.semibold,
     color: colors.text.primary,
   },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: 6,
+    gap: spacing.xs,
+  },
+  statusText: {
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.semibold,
+  },
+  resultBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 8,
+    gap: spacing.xs,
+  },
+  resultText: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
+  },
+  requestInfo: {
+    gap: spacing.sm,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  infoLabel: {
+    fontSize: typography.size.sm,
+    color: colors.text.tertiary,
+  },
+  infoText: {
+    fontSize: typography.size.sm,
+    color: colors.text.secondary,
+    fontWeight: typography.weight.medium,
+  },
+  messageBox: {
+    backgroundColor: colors.neutral[50],
+    padding: spacing.md,
+    borderRadius: 8,
+    gap: spacing.xs,
+  },
+  messageLabel: {
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.semibold,
+    color: colors.text.secondary,
+    textTransform: 'uppercase',
+  },
+  messageText: {
+    fontSize: typography.size.sm,
+    color: colors.text.primary,
+    lineHeight: typography.size.sm * typography.lineHeight.normal,
+  },
+  helperText: {
+    fontSize: typography.size.xs,
+    color: colors.text.tertiary,
+    fontStyle: 'italic',
+  },
+  scheduleInfo: {
+    gap: spacing.sm,
+  },
   dateRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -352,18 +519,6 @@ const styles = StyleSheet.create({
     fontSize: typography.size.sm,
     color: colors.text.secondary,
   },
-  resultBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 8,
-    gap: spacing.xs,
-  },
-  resultText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-  },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -373,11 +528,13 @@ const styles = StyleSheet.create({
     fontSize: typography.size.sm,
     color: colors.text.secondary,
   },
+  resultInfo: {
+    gap: spacing.md,
+  },
   scoreBox: {
     backgroundColor: colors.neutral[50],
     padding: spacing.md,
     borderRadius: 8,
-    gap: spacing.md,
   },
   scoreHeader: {
     flexDirection: 'row',
@@ -406,6 +563,28 @@ const styles = StyleSheet.create({
   notesText: {
     fontSize: typography.size.sm,
     color: colors.text.primary,
+    lineHeight: typography.size.sm * typography.lineHeight.normal,
+  },
+  rejectionBox: {
+    flexDirection: 'row',
+    backgroundColor: colors.error[50],
+    padding: spacing.md,
+    borderRadius: 8,
+    gap: spacing.md,
+  },
+  rejectionContent: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  rejectionLabel: {
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.semibold,
+    color: colors.error[600],
+    textTransform: 'uppercase',
+  },
+  rejectionText: {
+    fontSize: typography.size.sm,
+    color: colors.error[600],
     lineHeight: typography.size.sm * typography.lineHeight.normal,
   },
   emptyContainer: {

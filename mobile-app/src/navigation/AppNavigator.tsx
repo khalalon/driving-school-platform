@@ -23,6 +23,9 @@ import { MyLessonsScreen } from '../screens/student/MyLessonsScreen';
 import { RequestExamScreen } from '../screens/student/RequestExamScreen';
 import { MyExamsScreen } from '../screens/student/MyExamsScreen';
 import { MyEnrollmentRequestsScreen } from '../screens/student/MyEnrollmentRequestsScreen';
+import { MyProfileScreen } from '../screens/student/my-profile/MyProfileScreen';
+
+
 
 // Instructor Screens
 import { InstructorDashboard } from '../screens/instructor/InstructorDashboard';
@@ -32,6 +35,7 @@ import { BookForStudentScreen } from '../screens/instructor/BookForStudentScreen
 import { TodayExamsScreen } from '../screens/instructor/TodayExamsScreen';
 import { ExamRequestsScreen } from '../screens/instructor/ExamRequestsScreen';
 import { EnrollmentRequestsScreen } from '../screens/instructor/EnrollmentRequestsScreen';
+import { StudentProfileScreen } from '../screens/instructor/student-profile/StudentProfileScreen';
 
 const Stack = createStackNavigator();
 
@@ -69,6 +73,7 @@ export const AppNavigator = () => {
                 <Stack.Screen name="MyLessons" component={MyLessonsScreen} />
                 <Stack.Screen name="RequestExam" component={RequestExamScreen} />
                 <Stack.Screen name="MyExams" component={MyExamsScreen} />
+                <Stack.Screen name="MyProfile" component={MyProfileScreen} />
                 <Stack.Screen 
                   name="MyEnrollmentRequests" 
                   component={MyEnrollmentRequestsScreen} 
@@ -85,6 +90,10 @@ export const AppNavigator = () => {
                 <Stack.Screen 
                   name="EnrollmentRequests" 
                   component={EnrollmentRequestsScreen} 
+                />
+                <Stack.Screen 
+                  name="StudentProfile" 
+                  component={StudentProfileScreen} 
                 />
               </>
             ) : null}

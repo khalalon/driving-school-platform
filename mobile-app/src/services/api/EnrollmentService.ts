@@ -1,74 +1,79 @@
 /**
- * Enrollment Service
- * Single Responsibility: Handle enrollment-related API operations
- * Interface Segregation: Only enrollment methods
+ * Enrollment Service - API calls for enrollment management
+ * Single Responsibility: Handle enrollment-related API requests
  */
 
 import { apiClient } from './ApiClient';
-import { API_CONFIG } from '../../config/api.config';
-import { EnrollmentRequest, EnrollmentStatusInfo, CreateEnrollmentRequestDto } from '../../models/Enrollment';
+import { API_CONFIG, replaceUrlParams } from '../../config/api.config';
+
+export interface EnrollmentRequest {
+  id: string;
+  studentId: string;
+  schoolId: string;
+  status: 'pending' | 'approved' | 'rejected';
+  message?: string;
+  rejectionReason?: string;
+  processedBy?: string;
+  processedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  studentEmail?: string;
+  schoolName?: string;
+}
+
+export interface EnrollmentStatusInfo {
+  isEnrolled: boolean;
+  requestStatus?: 'pending' | 'approved' | 'rejected';
+  enrollmentDate?: Date;
+  canBook: boolean;
+}
+
+export interface CreateEnrollmentRequestDTO {
+  schoolId: string;
+  message?: string;
+}
 
 class EnrollmentService {
-  /**
-   * Request enrollment in a school
-   */
-  async requestEnrollment(data: CreateEnrollmentRequestDto): Promise<EnrollmentRequest> {
-    const response = await apiClient.post(
-      `${API_CONFIG.SCHOOL_SERVICE}/schools/${data.schoolId}/enrollment/request`,
-      { message: data.message }
-    );
+  // Student: Request enrollment in a school
+  async requestEnrollment(data: CreateEnrollmentRequestDTO): Promise<EnrollmentRequest> {
+    const url = replaceUrlParams(API_CONFIG.ENDPOINTS.ENROLLMENT.REQUEST_ENROLLMENT, {
+      schoolId: data.schoolId,
+    });
+    const response = await apiClient.post(url, { message: data.message });
     return response.data;
   }
 
-  /**
-   * Get student's enrollment requests
-   */
+  // Student: Get my enrollment requests
   async getMyRequests(): Promise<EnrollmentRequest[]> {
-    const response = await apiClient.get(
-      `${API_CONFIG.SCHOOL_SERVICE}/enrollment/my-requests`
-    );
+    const response = await apiClient.get(API_CONFIG.ENDPOINTS.ENROLLMENT.MY_REQUESTS);
     return response.data;
   }
 
-  /**
-   * Check enrollment status for a school
-   */
+  // Student: Check enrollment status in a school
   async checkEnrollmentStatus(schoolId: string): Promise<EnrollmentStatusInfo> {
-    const response = await apiClient.get(
-      `${API_CONFIG.SCHOOL_SERVICE}/schools/${schoolId}/enrollment/status`
-    );
+    const url = replaceUrlParams(API_CONFIG.ENDPOINTS.ENROLLMENT.CHECK_STATUS, { schoolId });
+    const response = await apiClient.get(url);
     return response.data;
   }
 
-  /**
-   * Get pending enrollment requests for a school (Instructor/Admin)
-   */
+  // Instructor/Admin: Get school's enrollment requests
   async getSchoolRequests(schoolId: string, status?: string): Promise<EnrollmentRequest[]> {
-    const params = status ? `?status=${status}` : '';
-    const response = await apiClient.get(
-      `${API_CONFIG.SCHOOL_SERVICE}/schools/${schoolId}/enrollment/requests${params}`
-    );
+    const url = replaceUrlParams(API_CONFIG.ENDPOINTS.ENROLLMENT.SCHOOL_REQUESTS, { schoolId });
+    const response = await apiClient.get(url, { params: { status } });
     return response.data;
   }
 
-  /**
-   * Approve enrollment request (Instructor/Admin)
-   */
+  // Instructor/Admin: Approve enrollment request
   async approveRequest(requestId: string): Promise<EnrollmentRequest> {
-    const response = await apiClient.put(
-      `${API_CONFIG.SCHOOL_SERVICE}/enrollment/${requestId}/approve`
-    );
+    const url = replaceUrlParams(API_CONFIG.ENDPOINTS.ENROLLMENT.APPROVE, { requestId });
+    const response = await apiClient.put(url);
     return response.data;
   }
 
-  /**
-   * Reject enrollment request (Instructor/Admin)
-   */
+  // Instructor/Admin: Reject enrollment request
   async rejectRequest(requestId: string, reason: string): Promise<EnrollmentRequest> {
-    const response = await apiClient.put(
-      `${API_CONFIG.SCHOOL_SERVICE}/enrollment/${requestId}/reject`,
-      { reason }
-    );
+    const url = replaceUrlParams(API_CONFIG.ENDPOINTS.ENROLLMENT.REJECT, { requestId });
+    const response = await apiClient.put(url, { reason });
     return response.data;
   }
 }

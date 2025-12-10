@@ -17,13 +17,16 @@ import {
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { enrollmentService } from '../../services/api/EnrollmentService';
-import { EnrollmentRequest, EnrollmentStatus } from '../../models/Enrollment';
+import { enrollmentService, EnrollmentRequest } from '../../services/api/EnrollmentService';
 import { colors, typography, spacing, shadows } from '../../theme';
+import { useAuth } from '../../context/AuthContext';
 
 type FilterType = 'pending' | 'all';
 
-export const EnrollmentRequestsScreen = ({ navigation }: any) => {
+export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
+  const { user } = useAuth();
+  const { schoolId } = route.params || {};
+  
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [requests, setRequests] = useState<EnrollmentRequest[]>([]);
@@ -36,13 +39,17 @@ export const EnrollmentRequestsScreen = ({ navigation }: any) => {
   const [rejectionReason, setRejectionReason] = useState('');
 
   useEffect(() => {
-    loadRequests();
-  }, [filter]);
+    if (schoolId) {
+      loadRequests();
+    } else {
+      Alert.alert('Error', 'School ID not provided');
+      navigation.goBack();
+    }
+  }, [filter, schoolId]);
 
   const loadRequests = async () => {
     try {
       setLoading(true);
-      const schoolId = 'default-school-id'; // Get from user context
       const statusFilter = filter === 'pending' ? 'pending' : undefined;
       const data = await enrollmentService.getSchoolRequests(schoolId, statusFilter);
       setRequests(data);
@@ -51,184 +58,132 @@ export const EnrollmentRequestsScreen = ({ navigation }: any) => {
       console.error('Load requests error:', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  const onRefresh = useCallback(async () => {
+  const onRefresh = useCallback(() => {
     setRefreshing(true);
-    await loadRequests();
-    setRefreshing(false);
-  }, [filter]);
+    loadRequests();
+  }, [filter, schoolId]);
 
-  const handleApprove = (request: EnrollmentRequest) => {
+  const handleApprove = async (request: EnrollmentRequest) => {
     Alert.alert(
       'Approve Enrollment',
-      `Approve ${request.studentEmail}?`,
+      `Approve enrollment for ${request.studentEmail}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Approve',
-          onPress: () => confirmApprove(request.id),
+          onPress: async () => {
+            try {
+              setProcessing(true);
+              await enrollmentService.approveRequest(request.id);
+              Alert.alert('Success', 'Student enrollment has been approved');
+              loadRequests();
+            } catch (error: any) {
+              Alert.alert('Error', error.response?.data?.error || 'Failed to approve request');
+            } finally {
+              setProcessing(false);
+            }
+          },
         },
       ]
     );
   };
 
-  const confirmApprove = async (requestId: string) => {
-    try {
-      setProcessing(true);
-      await enrollmentService.approveRequest(requestId);
-      Alert.alert('Success', 'Enrollment approved successfully');
-      loadRequests();
-    } catch (error: any) {
-      Alert.alert('Error', 'Failed to approve request');
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const handleReject = (request: EnrollmentRequest) => {
+  const handleRejectClick = (request: EnrollmentRequest) => {
     setSelectedRequest(request);
     setShowRejectModal(true);
   };
 
-  const confirmReject = async () => {
-    if (!rejectionReason.trim()) {
-      Alert.alert('Required', 'Please provide a reason');
+  const handleReject = async () => {
+    if (!selectedRequest || !rejectionReason.trim()) {
+      Alert.alert('Required', 'Please provide a rejection reason');
       return;
     }
-
-    if (!selectedRequest) return;
 
     try {
       setProcessing(true);
       await enrollmentService.rejectRequest(selectedRequest.id, rejectionReason);
-      Alert.alert('Success', 'Request rejected');
+      Alert.alert('Success', 'Enrollment request has been rejected');
       setShowRejectModal(false);
-      setRejectionReason('');
       setSelectedRequest(null);
+      setRejectionReason('');
       loadRequests();
     } catch (error: any) {
-      Alert.alert('Error', 'Failed to reject request');
+      Alert.alert('Error', error.response?.data?.error || 'Failed to reject request');
     } finally {
       setProcessing(false);
     }
   };
 
-  const getStatusConfig = (status: EnrollmentStatus) => {
-    switch (status) {
-      case EnrollmentStatus.PENDING:
-        return { color: colors.warning[500], bg: colors.warning[50], text: 'Pending' };
-      case EnrollmentStatus.APPROVED:
-        return { color: colors.success[500], bg: colors.success[50], text: 'Approved' };
-      case EnrollmentStatus.REJECTED:
-        return { color: colors.error[500], bg: colors.error[50], text: 'Rejected' };
-    }
-  };
-
-  const renderRequestCard = ({ item }: { item: EnrollmentRequest }) => {
-    const statusConfig = getStatusConfig(item.status);
-
-    return (
-      <View style={styles.requestCard}>
-        <View style={styles.cardHeader}>
-          <View style={styles.studentIconContainer}>
-            <Ionicons name="person-outline" size={28} color={colors.primary[600]} />
-          </View>
-
-          <View style={styles.studentInfo}>
+  const renderRequest = ({ item }: { item: EnrollmentRequest }) => (
+    <View style={styles.requestCard}>
+      <View style={styles.requestHeader}>
+        <View style={styles.studentInfo}>
+          <Ionicons name="person-circle-outline" size={40} color={colors.primary[600]} />
+          <View style={styles.studentDetails}>
             <Text style={styles.studentEmail}>{item.studentEmail}</Text>
-            <View style={styles.dateRow}>
-              <Ionicons name="calendar-outline" size={14} color={colors.text.tertiary} />
-              <Text style={styles.dateText}>
-                {new Date(item.createdAt).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                })}
-              </Text>
-            </View>
-          </View>
-
-          <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
-            <Text style={[styles.statusText, { color: statusConfig.color }]}>
-              {statusConfig.text}
+            <Text style={styles.requestDate}>
+              {new Date(item.createdAt).toLocaleDateString()}
             </Text>
           </View>
         </View>
-
-        {item.message && (
-          <View style={styles.messageBox}>
-            <Text style={styles.messageLabel}>Student's message:</Text>
-            <Text style={styles.messageText}>{item.message}</Text>
-          </View>
-        )}
-
-        {item.status === EnrollmentStatus.REJECTED && item.rejectionReason && (
-          <View style={styles.rejectionBox}>
-            <Text style={styles.rejectionLabel}>Your reason:</Text>
-            <Text style={styles.rejectionText}>{item.rejectionReason}</Text>
-          </View>
-        )}
-
-        {item.status === EnrollmentStatus.PENDING && (
-          <View style={styles.actionRow}>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.rejectButton]}
-              onPress={() => handleReject(item)}
-              activeOpacity={0.7}
-              disabled={processing}
-            >
-              <Ionicons name="close-outline" size={20} color={colors.error[600]} />
-              <Text style={styles.rejectButtonText}>Reject</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.approveButton]}
-              onPress={() => handleApprove(item)}
-              activeOpacity={0.7}
-              disabled={processing}
-            >
-              <Ionicons name="checkmark-outline" size={20} color={colors.text.inverse} />
-              <Text style={styles.approveButtonText}>Approve</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {item.status === EnrollmentStatus.APPROVED && item.processedAt && (
-          <Text style={styles.processedText}>
-            Approved on{' '}
-            {new Date(item.processedAt).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-            })}
-          </Text>
-        )}
+        <View style={[styles.statusBadge, styles[`status_${item.status}`]]}>
+          <Text style={styles.statusText}>{item.status}</Text>
+        </View>
       </View>
-    );
-  };
 
-  const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
-      <View style={styles.emptyIconContainer}>
-        <Ionicons name="people-outline" size={64} color={colors.neutral[300]} />
-      </View>
-      <Text style={styles.emptyTitle}>
-        {filter === 'pending' ? 'No Pending Requests' : 'No Requests'}
-      </Text>
-      <Text style={styles.emptyText}>
-        {filter === 'pending'
-          ? 'New enrollment requests will appear here'
-          : 'No students have requested enrollment yet'}
-      </Text>
+      {item.message && (
+        <View style={styles.messageContainer}>
+          <Text style={styles.messageLabel}>Message:</Text>
+          <Text style={styles.messageText}>{item.message}</Text>
+        </View>
+      )}
+
+      {item.status === 'rejected' && item.rejectionReason && (
+        <View style={styles.rejectionContainer}>
+          <Text style={styles.rejectionLabel}>Rejection Reason:</Text>
+          <Text style={styles.rejectionText}>{item.rejectionReason}</Text>
+        </View>
+      )}
+
+      {item.status === 'pending' && (
+        <View style={styles.actionsContainer}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.approveButton]}
+            onPress={() => handleApprove(item)}
+            disabled={processing}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="checkmark-circle-outline" size={20} color={colors.text.inverse} />
+            <Text style={styles.actionButtonText}>Approve</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionButton, styles.rejectButton]}
+            onPress={() => handleRejectClick(item)}
+            disabled={processing}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="close-circle-outline" size={20} color={colors.text.inverse} />
+            <Text style={styles.actionButtonText}>Reject</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary[600]} />
-      </View>
-    );
-  }
+  const renderEmptyState = () => (
+    <View style={styles.emptyContainer}>
+      <Ionicons name="documents-outline" size={64} color={colors.neutral[400]} />
+      <Text style={styles.emptyTitle}>No Requests</Text>
+      <Text style={styles.emptySubtitle}>
+        {filter === 'pending' ? 'No pending enrollment requests' : 'No enrollment requests found'}
+      </Text>
+    </View>
+  );
 
   return (
     <View style={styles.container}>
@@ -246,66 +201,69 @@ export const EnrollmentRequestsScreen = ({ navigation }: any) => {
 
       {/* Filter Tabs */}
       <View style={styles.filterContainer}>
-        {(['pending', 'all'] as FilterType[]).map((tab) => (
-          <TouchableOpacity
-            key={tab}
-            style={[styles.filterTab, filter === tab && styles.filterTabActive]}
-            onPress={() => setFilter(tab)}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.filterTabText, filter === tab && styles.filterTabTextActive]}>
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </Text>
-          </TouchableOpacity>
-        ))}
+        <TouchableOpacity
+          style={[styles.filterTab, filter === 'pending' && styles.activeFilterTab]}
+          onPress={() => setFilter('pending')}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.filterText, filter === 'pending' && styles.activeFilterText]}>
+            Pending
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterTab, filter === 'all' && styles.activeFilterTab]}
+          onPress={() => setFilter('all')}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.filterText, filter === 'all' && styles.activeFilterText]}>
+            All
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Requests List */}
-      <FlatList
-        data={requests}
-        renderItem={renderRequestCard}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={requests.length === 0 ? styles.emptyList : styles.listContent}
-        ListEmptyComponent={renderEmptyState}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary[600]}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-      />
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary[600]} />
+        </View>
+      ) : (
+        <FlatList
+          data={requests}
+          renderItem={renderRequest}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={renderEmptyState}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
 
       {/* Reject Modal */}
       <Modal
         visible={showRejectModal}
         transparent
-        animationType="fade"
+        animationType="slide"
         onRequestClose={() => setShowRejectModal(false)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Reject Request</Text>
+              <Text style={styles.modalTitle}>Reject Enrollment</Text>
               <TouchableOpacity
                 onPress={() => {
                   setShowRejectModal(false);
                   setRejectionReason('');
-                  setSelectedRequest(null);
                 }}
+                activeOpacity={0.7}
               >
                 <Ionicons name="close" size={24} color={colors.text.secondary} />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.modalSubtitle}>
-              Provide a reason for rejecting {selectedRequest?.studentEmail}
-            </Text>
-
+            <Text style={styles.modalLabel}>Rejection Reason</Text>
             <TextInput
-              style={styles.reasonInput}
-              placeholder="e.g., Currently at full capacity..."
+              style={styles.modalInput}
+              placeholder="Please provide a reason for rejection..."
               placeholderTextColor={colors.neutral[400]}
               value={rejectionReason}
               onChangeText={setRejectionReason}
@@ -320,20 +278,16 @@ export const EnrollmentRequestsScreen = ({ navigation }: any) => {
                 onPress={() => {
                   setShowRejectModal(false);
                   setRejectionReason('');
-                  setSelectedRequest(null);
                 }}
                 activeOpacity={0.7}
               >
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
+
               <TouchableOpacity
-                style={[
-                  styles.modalButton,
-                  styles.modalRejectButton,
-                  processing && styles.disabledButton,
-                ]}
-                onPress={confirmReject}
-                disabled={processing}
+                style={[styles.modalButton, styles.modalRejectButton]}
+                onPress={handleReject}
+                disabled={processing || !rejectionReason.trim()}
                 activeOpacity={0.7}
               >
                 {processing ? (
@@ -353,253 +307,230 @@ export const EnrollmentRequestsScreen = ({ navigation }: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background.secondary,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.background.secondary,
+    backgroundColor: colors.background.primary,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing['4xl'],
-    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.md,
     backgroundColor: colors.background.primary,
-    gap: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.neutral[200],
   },
   backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.background.tertiary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: spacing.xs,
+    marginRight: spacing.sm,
   },
   headerTitle: {
     fontSize: typography.size.xl,
-    fontWeight: typography.weight.bold,
+    fontWeight: typography.weight.semibold,
     color: colors.text.primary,
   },
   filterContainer: {
     flexDirection: 'row',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.background.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     gap: spacing.sm,
   },
   filterTab: {
     flex: 1,
     paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
     borderRadius: 8,
+    backgroundColor: colors.background.secondary,
     alignItems: 'center',
-    backgroundColor: colors.background.tertiary,
   },
-  filterTabActive: {
+  activeFilterTab: {
     backgroundColor: colors.primary[600],
   },
-  filterTabText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.medium,
+  filterText: {
+    fontSize: typography.size.base,
     color: colors.text.secondary,
+    fontWeight: typography.weight.medium,
   },
-  filterTabTextActive: {
+  activeFilterText: {
     color: colors.text.inverse,
   },
-  listContent: {
-    padding: spacing.xl,
-    gap: spacing.md,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  emptyList: {
+  listContent: {
+    padding: spacing.md,
     flexGrow: 1,
   },
   requestCard: {
     backgroundColor: colors.background.primary,
-    borderRadius: 16,
-    padding: spacing.lg,
-    gap: spacing.md,
+    borderRadius: 12,
+    padding: spacing.md,
+    marginBottom: spacing.md,
     ...shadows.sm,
   },
-  cardHeader: {
+  requestHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'flex-start',
-    gap: spacing.md,
-  },
-  studentIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary[50],
-    alignItems: 'center',
-    justifyContent: 'center',
+    marginBottom: spacing.sm,
   },
   studentInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
-    gap: spacing.xs,
+  },
+  studentDetails: {
+    marginLeft: spacing.sm,
+    flex: 1,
   },
   studentEmail: {
     fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
     color: colors.text.primary,
+    fontWeight: typography.weight.semibold,
   },
-  dateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  dateText: {
+  requestDate: {
     fontSize: typography.size.sm,
-    color: colors.text.tertiary,
+    color: colors.text.secondary,
+    marginTop: 2,
   },
   statusBadge: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: 8,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  status_pending: {
+    backgroundColor: colors.warning[50],
+  },
+  status_approved: {
+    backgroundColor: colors.success[50],
+  },
+  status_rejected: {
+    backgroundColor: colors.error[50],
   },
   statusText: {
-    fontSize: typography.size.xs,
+    fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold,
+    textTransform: 'capitalize',
   },
-  messageBox: {
-    backgroundColor: colors.neutral[50],
-    padding: spacing.md,
+  messageContainer: {
+    marginTop: spacing.sm,
+    padding: spacing.sm,
+    backgroundColor: colors.background.secondary,
     borderRadius: 8,
-    gap: spacing.xs,
   },
   messageLabel: {
-    fontSize: typography.size.xs,
-    fontWeight: typography.weight.semibold,
+    fontSize: typography.size.sm,
     color: colors.text.secondary,
-    textTransform: 'uppercase',
+    fontWeight: typography.weight.semibold,
+    marginBottom: 4,
   },
   messageText: {
-    fontSize: typography.size.sm,
+    fontSize: typography.size.base,
     color: colors.text.primary,
-    lineHeight: typography.size.sm * typography.lineHeight.normal,
   },
-  rejectionBox: {
+  rejectionContainer: {
+    marginTop: spacing.sm,
+    padding: spacing.sm,
     backgroundColor: colors.error[50],
-    padding: spacing.md,
     borderRadius: 8,
-    gap: spacing.xs,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.error[600],
   },
   rejectionLabel: {
-    fontSize: typography.size.xs,
-    fontWeight: typography.weight.semibold,
-    color: colors.error[600],
-    textTransform: 'uppercase',
-  },
-  rejectionText: {
     fontSize: typography.size.sm,
     color: colors.error[600],
-    lineHeight: typography.size.sm * typography.lineHeight.normal,
+    fontWeight: typography.weight.semibold,
+    marginBottom: 4,
   },
-  actionRow: {
+  rejectionText: {
+    fontSize: typography.size.base,
+    color: colors.error[600],
+  },
+  actionsContainer: {
     flexDirection: 'row',
-    gap: spacing.md,
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
+    gap: spacing.sm,
   },
   actionButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm,
     borderRadius: 8,
     gap: spacing.xs,
   },
-  rejectButton: {
-    backgroundColor: colors.error[50],
-  },
-  rejectButtonText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-    color: colors.error[600],
-  },
   approveButton: {
-    backgroundColor: colors.primary[600],
-    ...shadows.sm,
+    backgroundColor: colors.success[600],
   },
-  approveButtonText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
+  rejectButton: {
+    backgroundColor: colors.error[600],
+  },
+  actionButtonText: {
+    fontSize: typography.size.base,
     color: colors.text.inverse,
-  },
-  processedText: {
-    fontSize: typography.size.sm,
-    color: colors.text.tertiary,
-    fontStyle: 'italic',
+    fontWeight: typography.weight.semibold,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing['4xl'],
-  },
-  emptyIconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: colors.neutral[100],
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xl,
+    paddingVertical: spacing.xl * 2,
   },
   emptyTitle: {
-    fontSize: typography.size.xl,
+    fontSize: typography.size.lg,
     fontWeight: typography.weight.semibold,
     color: colors.text.primary,
-    marginBottom: spacing.sm,
+    marginTop: spacing.md,
   },
-  emptyText: {
+  emptySubtitle: {
     fontSize: typography.size.base,
     color: colors.text.secondary,
+    marginTop: spacing.xs,
     textAlign: 'center',
   },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.xl,
+    justifyContent: 'flex-end',
   },
   modalContent: {
-    width: '100%',
     backgroundColor: colors.background.primary,
-    borderRadius: 16,
-    padding: spacing.xl,
-    ...shadows.lg,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: spacing.lg,
+    maxHeight: '80%',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
   modalTitle: {
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.bold,
+    fontSize: typography.size.lg,
+    fontWeight: typography.weight.semibold,
     color: colors.text.primary,
   },
-  modalSubtitle: {
-    fontSize: typography.size.base,
-    color: colors.text.secondary,
-    marginBottom: spacing.lg,
-  },
-  reasonInput: {
-    backgroundColor: colors.background.tertiary,
-    borderRadius: 12,
-    padding: spacing.base,
+  modalLabel: {
     fontSize: typography.size.base,
     color: colors.text.primary,
+    fontWeight: typography.weight.semibold,
+    marginBottom: spacing.xs,
+  },
+  modalInput: {
+    fontSize: typography.size.base,
+    backgroundColor: colors.background.secondary,
+    borderRadius: 8,
+    padding: spacing.md,
     minHeight: 100,
-    marginBottom: spacing.lg,
+    color: colors.text.primary,
+    marginBottom: spacing.md,
   },
   modalActions: {
     flexDirection: 'row',
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   modalButton: {
     flex: 1,
@@ -608,22 +539,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalCancelButton: {
-    backgroundColor: colors.background.tertiary,
-  },
-  modalCancelText: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.secondary,
+    backgroundColor: colors.background.secondary,
   },
   modalRejectButton: {
     backgroundColor: colors.error[600],
   },
+  modalCancelText: {
+    fontSize: typography.size.base,
+    color: colors.text.primary,
+    fontWeight: typography.weight.semibold,
+  },
   modalRejectText: {
     fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
     color: colors.text.inverse,
-  },
-  disabledButton: {
-    opacity: 0.5,
+    fontWeight: typography.weight.semibold,
   },
 });

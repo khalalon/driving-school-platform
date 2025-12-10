@@ -1,1150 +1,596 @@
+# ============================================
+# FIX REMAINING TAB COMPONENTS
+# ============================================
+
 cd mobile-app
 
-# 1. Fix AuthContext - role should be UserRole type
-cat > src/context/AuthContext.tsx << 'EOF'
+# Update MyLessonsPaymentTab - Remove FC<Props>
+cat > src/screens/student/my-profile/tabs/MyLessonsPaymentTab.tsx << 'EOF'
 /**
- * Auth Context
- * Single Responsibility: Manage authentication state globally
- * Provides: user, login, logout, register functions
+ * My Lessons & Payment Tab
+ * Single Responsibility: Display lesson history with payment status
  */
 
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { authService } from '../services/api/AuthService';
-import { User, UserRole } from '../models/User';
-
-interface AuthContextType {
-  user: User | null;
-  isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
-}
-
-interface RegisterData {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-  role: UserRole; // Changed from string to UserRole
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-const TOKEN_KEY = '@auth_token';
-const USER_KEY = '@auth_user';
-
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Load user from storage on app start
-  useEffect(() => {
-    loadUserFromStorage();
-  }, []);
-
-  const loadUserFromStorage = async () => {
-    try {
-      const [token, userJson] = await Promise.all([
-        AsyncStorage.getItem(TOKEN_KEY),
-        AsyncStorage.getItem(USER_KEY),
-      ]);
-
-      if (token && userJson) {
-        const userData = JSON.parse(userJson);
-        setUser(userData);
-      }
-    } catch (error) {
-      console.error('Failed to load user from storage:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const login = async (email: string, password: string) => {
-    try {
-      const response = await authService.login({ email, password });
-      
-      // Save token and user data
-      await Promise.all([
-        AsyncStorage.setItem(TOKEN_KEY, response.token),
-        AsyncStorage.setItem(USER_KEY, JSON.stringify(response.user)),
-      ]);
-
-      setUser(response.user);
-    } catch (error) {
-      throw error;
-    }
-  };
-
-  const register = async (data: RegisterData) => {
-    try {
-      const response = await authService.register(data);
-      
-      // Save token and user data
-      await Promise.all([
-        AsyncStorage.setItem(TOKEN_KEY, response.token),
-        AsyncStorage.setItem(USER_KEY, JSON.stringify(response.user)),
-      ]);
-
-      setUser(response.user);
-    } catch (error) {
-      throw error;
-    }
-  };
-
-  const logout = async () => {
-    try {
-      // Clear storage
-      await Promise.all([
-        AsyncStorage.removeItem(TOKEN_KEY),
-        AsyncStorage.removeItem(USER_KEY),
-      ]);
-
-      setUser(null);
-    } catch (error) {
-      console.error('Logout failed:', error);
-      throw error;
-    }
-  };
-
-  return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout, register }}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
-
-export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
-EOF
-
-# 2. Fix SchoolDetailScreen - Remove FC type, use regular function
-cat > src/screens/student/SchoolDetailScreen.tsx << 'EOF'
-/**
- * School Detail Screen - Minimal & Elegant
- * Single Responsibility: Display detailed school information
- */
-
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Alert,
+  FlatList,
   ActivityIndicator,
-  Linking,
-  TextInput,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import {
-  schoolService,
-  School,
-  SchoolInstructor,
-  SchoolPricing,
-} from '../../services/api/SchoolService';
-import { enrollmentService } from '../../services/api/EnrollmentService';
-import { EnrollmentStatusInfo, EnrollmentStatus } from '../../models/Enrollment';
-import { colors, typography, spacing, shadows } from '../../theme';
+import { studentSelfProfileService, MyLessonHistory } from '../../../../services/api/StudentSelfProfileService';
+import { colors, typography, spacing } from '../../../../theme';
 
-export const SchoolDetailScreen = ({ navigation, route }: any) => {
+export const MyLessonsPaymentTab = ({ route }: any) => {
   const { schoolId } = route.params;
   const [loading, setLoading] = useState(true);
-  const [school, setSchool] = useState<School | null>(null);
-  const [instructors, setInstructors] = useState<SchoolInstructor[]>([]);
-  const [pricing, setPricing] = useState<SchoolPricing[]>([]);
-  const [enrollmentStatus, setEnrollmentStatus] = useState<EnrollmentStatusInfo | null>(null);
-  const [activeTab, setActiveTab] = useState<'about' | 'instructors' | 'pricing'>('about');
-  const [showEnrollModal, setShowEnrollModal] = useState(false);
-  const [enrollMessage, setEnrollMessage] = useState('');
-  const [enrolling, setEnrolling] = useState(false);
+  const [lessons, setLessons] = useState<MyLessonHistory[]>([]);
 
   useEffect(() => {
-    loadSchoolDetails();
+    loadLessons();
   }, [schoolId]);
 
-  const loadSchoolDetails = async () => {
+  const loadLessons = async () => {
     try {
       setLoading(true);
-      const [schoolData, instructorsData, pricingData, statusData] = await Promise.all([
-        schoolService.getSchoolById(schoolId),
-        schoolService.getSchoolInstructors(schoolId),
-        schoolService.getSchoolPricing(schoolId),
-        enrollmentService.checkEnrollmentStatus(schoolId),
-      ]);
-
-      setSchool(schoolData);
-      setInstructors(instructorsData);
-      setPricing(pricingData);
-      setEnrollmentStatus(statusData);
+      const data = await studentSelfProfileService.getMyLessons(schoolId);
+      setLessons(data);
     } catch (error: any) {
-      Alert.alert('Error', 'Failed to load school details');
-      console.error('Load school details error:', error);
+      Alert.alert('Error', error.message || 'Failed to load lessons');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEnrollRequest = async () => {
-    if (!enrollMessage.trim()) {
-      Alert.alert('Message Required', 'Please add a message with your enrollment request');
-      return;
-    }
-
-    try {
-      setEnrolling(true);
-      await enrollmentService.requestEnrollment({
-        schoolId,
-        message: enrollMessage,
-      });
-
-      Alert.alert(
-        'Request Sent!',
-        'Your enrollment request has been sent to the school.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              setShowEnrollModal(false);
-              setEnrollMessage('');
-              loadSchoolDetails();
-            },
-          },
-        ]
-      );
-    } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'Failed to send enrollment request');
-    } finally {
-      setEnrolling(false);
-    }
-  };
-
-  const handleCallSchool = () => {
-    if (school?.phone) {
-      Linking.openURL(`tel:${school.phone}`);
-    }
-  };
-
-  const handleEmailSchool = () => {
-    if (school?.email) {
-      Linking.openURL(`mailto:${school.email}`);
-    }
-  };
-
-  const handleBookWithInstructor = (instructor: SchoolInstructor) => {
-    if (!enrollmentStatus?.canBook) {
-      Alert.alert(
-        'Enrollment Required',
-        'You must be enrolled in this school before booking lessons.'
-      );
-      return;
-    }
-
-    navigation.navigate('BookLesson', {
-      schoolId,
-      instructorId: instructor.id,
-      instructorName: instructor.name,
-    });
-  };
-
-  const renderEnrollmentBanner = () => {
-    if (!enrollmentStatus) return null;
-
-    if (enrollmentStatus.isEnrolled) {
-      return (
-        <View style={[styles.banner, styles.enrolledBanner]}>
-          <Ionicons name="checkmark-circle" size={20} color={colors.success[600]} />
-          <Text style={styles.bannerText}>You are enrolled</Text>
+  const renderLesson = ({ item }: { item: MyLessonHistory }) => (
+    <View style={styles.lessonCard}>
+      {/* Header */}
+      <View style={styles.lessonHeader}>
+        <View style={styles.lessonInfo}>
+          <Text style={styles.lessonType}>{item.lessonType}</Text>
+          <Text style={styles.lessonDate}>
+            {new Date(item.dateTime).toLocaleDateString()} at{' '}
+            {new Date(item.dateTime).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
+          </Text>
         </View>
-      );
-    }
-
-    if (enrollmentStatus.requestStatus === EnrollmentStatus.PENDING) {
-      return (
-        <View style={[styles.banner, styles.pendingBanner]}>
-          <Ionicons name="time-outline" size={20} color={colors.warning[600]} />
-          <Text style={styles.bannerText}>Request pending</Text>
-        </View>
-      );
-    }
-
-    if (enrollmentStatus.requestStatus === EnrollmentStatus.REJECTED) {
-      return (
-        <View style={[styles.banner, styles.rejectedBanner]}>
-          <Ionicons name="close-circle" size={20} color={colors.error[600]} />
-          <Text style={styles.bannerText}>Request rejected</Text>
-          <TouchableOpacity
-            style={styles.retryButton}
-            onPress={() => setShowEnrollModal(true)}
-            activeOpacity={0.7}
+        {item.attended !== undefined && (
+          <View
+            style={[
+              styles.statusBadge,
+              item.attended ? styles.statusAttended : styles.statusMissed,
+            ]}
           >
-            <Text style={styles.retryButtonText}>Try Again</Text>
-          </TouchableOpacity>
-        </View>
-      );
-    }
+            <Text style={styles.statusText}>
+              {item.attended ? 'Attended' : 'Missed'}
+            </Text>
+          </View>
+        )}
+      </View>
 
-    return (
-      <TouchableOpacity
-        style={styles.enrollButton}
-        onPress={() => setShowEnrollModal(true)}
-        activeOpacity={0.8}
-      >
-        <Ionicons name="school-outline" size={20} color={colors.text.inverse} />
-        <Text style={styles.enrollButtonText}>Request Enrollment</Text>
-      </TouchableOpacity>
-    );
-  };
+      {/* Details */}
+      <View style={styles.lessonDetails}>
+        <View style={styles.detailRow}>
+          <Ionicons name="person-outline" size={16} color={colors.text.secondary} />
+          <Text style={styles.detailText}>{item.instructorName}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Ionicons name="time-outline" size={16} color={colors.text.secondary} />
+          <Text style={styles.detailText}>{item.duration} minutes</Text>
+        </View>
+      </View>
+
+      {/* Feedback & Rating */}
+      {item.feedback && (
+        <View style={styles.feedbackContainer}>
+          <Text style={styles.feedbackLabel}>Feedback:</Text>
+          <Text style={styles.feedbackText}>{item.feedback}</Text>
+        </View>
+      )}
+      {item.rating && (
+        <View style={styles.ratingContainer}>
+          {[1, 2, 3, 4, 5].map((star) => (
+            <Ionicons
+              key={star}
+              name={star <= item.rating! ? 'star' : 'star-outline'}
+              size={16}
+              color={colors.warning[500]}
+            />
+          ))}
+        </View>
+      )}
+
+      {/* Payment Status */}
+      <View style={styles.paymentSection}>
+        <View style={styles.paymentRow}>
+          <View style={styles.paymentLabel}>
+            <Ionicons
+              name={item.paid ? 'checkmark-circle' : 'alert-circle-outline'}
+              size={20}
+              color={item.paid ? colors.success[500] : colors.warning[500]}
+            />
+            <Text style={styles.paymentLabelText}>
+              {item.paid ? 'Paid' : 'Pending Payment'}
+            </Text>
+          </View>
+          {item.amount && (
+            <Text
+              style={[
+                styles.paymentAmount,
+                { color: item.paid ? colors.success[500] : colors.warning[500] },
+              ]}
+            >
+              ${item.amount.toFixed(2)}
+            </Text>
+          )}
+        </View>
+        {item.paid && item.paymentDate && (
+          <Text style={styles.paymentDate}>
+            Paid on {new Date(item.paymentDate).toLocaleDateString()}
+          </Text>
+        )}
+      </View>
+    </View>
+  );
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color={colors.primary[600]} />
       </View>
     );
   }
 
-  if (!school) {
+  if (lessons.length === 0) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>School not found</Text>
+      <View style={styles.centerContainer}>
+        <Ionicons name="calendar-outline" size={48} color={colors.text.tertiary} />
+        <Text style={styles.emptyText}>No lessons recorded yet</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            {school.name}
-          </Text>
-        </View>
-
-        {/* Enrollment Banner */}
-        {renderEnrollmentBanner()}
-
-        {/* Tabs */}
-        <View style={styles.tabs}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'about' && styles.activeTab]}
-            onPress={() => setActiveTab('about')}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.tabText, activeTab === 'about' && styles.activeTabText]}>
-              About
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'instructors' && styles.activeTab]}
-            onPress={() => setActiveTab('instructors')}
-            activeOpacity={0.7}
-          >
-            <Text
-              style={[styles.tabText, activeTab === 'instructors' && styles.activeTabText]}
-            >
-              Instructors
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'pricing' && styles.activeTab]}
-            onPress={() => setActiveTab('pricing')}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.tabText, activeTab === 'pricing' && styles.activeTabText]}>
-              Pricing
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Tab Content */}
-        <View style={styles.content}>
-          {activeTab === 'about' && (
-            <View style={styles.tabContent}>
-              <View style={styles.infoRow}>
-                <Ionicons name="location-outline" size={20} color={colors.text.secondary} />
-                <Text style={styles.infoText}>{school.address}</Text>
-              </View>
-
-              <TouchableOpacity style={styles.infoRow} onPress={handleCallSchool}>
-                <Ionicons name="call-outline" size={20} color={colors.text.secondary} />
-                <Text style={[styles.infoText, styles.linkText]}>{school.phone}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.infoRow} onPress={handleEmailSchool}>
-                <Ionicons name="mail-outline" size={20} color={colors.text.secondary} />
-                <Text style={[styles.infoText, styles.linkText]}>{school.email}</Text>
-              </TouchableOpacity>
-
-              {school.description && (
-                <View style={styles.descriptionBox}>
-                  <Text style={styles.sectionLabel}>About</Text>
-                  <Text style={styles.description}>{school.description}</Text>
-                </View>
-              )}
-            </View>
-          )}
-
-          {activeTab === 'instructors' && (
-            <View style={styles.tabContent}>
-              {instructors.length === 0 ? (
-                <Text style={styles.emptyText}>No instructors available</Text>
-              ) : (
-                instructors.map((instructor) => (
-                  <View key={instructor.id} style={styles.instructorCard}>
-                    <View style={styles.instructorInfo}>
-                      <Text style={styles.instructorName}>{instructor.name}</Text>
-                      {instructor.rating && (
-                        <View style={styles.ratingRow}>
-                          <Ionicons name="star" size={16} color={colors.warning[500]} />
-                          <Text style={styles.ratingText}>{instructor.rating.toFixed(1)}</Text>
-                        </View>
-                      )}
-                    </View>
-                    <TouchableOpacity
-                      style={[
-                        styles.bookButton,
-                        !enrollmentStatus?.canBook && styles.disabledButton,
-                      ]}
-                      onPress={() => handleBookWithInstructor(instructor)}
-                      disabled={!enrollmentStatus?.canBook}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.bookButtonText}>Book</Text>
-                    </TouchableOpacity>
-                  </View>
-                ))
-              )}
-            </View>
-          )}
-
-          {activeTab === 'pricing' && (
-            <View style={styles.tabContent}>
-              {pricing.length === 0 ? (
-                <Text style={styles.emptyText}>No pricing information available</Text>
-              ) : (
-                pricing.map((price) => (
-                  <View key={price.id} style={styles.pricingCard}>
-                    <View>
-                      <Text style={styles.lessonType}>{price.lessonType}</Text>
-                      <Text style={styles.duration}>{price.duration} min</Text>
-                    </View>
-                    <Text style={styles.price}>{price.price} €</Text>
-                  </View>
-                ))
-              )}
-            </View>
-          )}
-        </View>
-      </ScrollView>
-
-      {/* Enroll Modal */}
-      {showEnrollModal && (
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Request Enrollment</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setShowEnrollModal(false);
-                  setEnrollMessage('');
-                }}
-              >
-                <Ionicons name="close" size={24} color={colors.text.secondary} />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.modalSubtitle}>
-              Tell the school why you'd like to enroll
-            </Text>
-
-            <TextInput
-              style={styles.messageInput}
-              placeholder="I am interested in enrolling because..."
-              placeholderTextColor={colors.neutral[400]}
-              value={enrollMessage}
-              onChangeText={setEnrollMessage}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-            />
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalCancelButton]}
-                onPress={() => {
-                  setShowEnrollModal(false);
-                  setEnrollMessage('');
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.modalButton,
-                  styles.modalSubmitButton,
-                  enrolling && styles.disabledButton,
-                ]}
-                onPress={handleEnrollRequest}
-                disabled={enrolling}
-                activeOpacity={0.7}
-              >
-                {enrolling ? (
-                  <ActivityIndicator size="small" color={colors.text.inverse} />
-                ) : (
-                  <Text style={styles.modalSubmitText}>Send Request</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      )}
-    </View>
+    <FlatList
+      data={lessons}
+      renderItem={renderLesson}
+      keyExtractor={(item) => item.id}
+      contentContainerStyle={styles.listContainer}
+      showsVerticalScrollIndicator={false}
+    />
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.secondary,
-  },
-  loadingContainer: {
+  centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: colors.background.secondary,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.background.secondary,
-  },
-  errorText: {
-    fontSize: typography.size.base,
-    color: colors.text.secondary,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing['4xl'],
-    paddingBottom: spacing.lg,
-    backgroundColor: colors.background.primary,
-    gap: spacing.md,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.background.tertiary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.bold,
-    color: colors.text.primary,
-  },
-  banner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.base,
-    gap: spacing.md,
-  },
-  enrolledBanner: {
-    backgroundColor: colors.success[50],
-  },
-  pendingBanner: {
-    backgroundColor: colors.warning[50],
-  },
-  rejectedBanner: {
-    backgroundColor: colors.error[50],
-  },
-  bannerText: {
-    flex: 1,
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.primary,
-  },
-  retryButton: {
-    paddingHorizontal: spacing.base,
-    paddingVertical: spacing.xs,
-    borderRadius: 6,
-    backgroundColor: colors.background.primary,
-  },
-  retryButtonText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-    color: colors.error[600],
-  },
-  enrollButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary[600],
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.base,
-    gap: spacing.sm,
-    ...shadows.sm,
-  },
-  enrollButtonText: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.inverse,
-  },
-  tabs: {
-    flexDirection: 'row',
-    backgroundColor: colors.background.primary,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.light,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  activeTab: {
-    borderBottomWidth: 2,
-    borderBottomColor: colors.primary[600],
-  },
-  tabText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.medium,
-    color: colors.text.secondary,
-  },
-  activeTabText: {
-    color: colors.primary[600],
-  },
-  content: {
-    flex: 1,
-  },
-  tabContent: {
-    padding: spacing.xl,
-    gap: spacing.md,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  infoText: {
-    flex: 1,
-    fontSize: typography.size.base,
-    color: colors.text.primary,
-  },
-  linkText: {
-    color: colors.primary[600],
-  },
-  descriptionBox: {
-    backgroundColor: colors.background.primary,
-    padding: spacing.lg,
-    borderRadius: 12,
-    marginTop: spacing.md,
-  },
-  sectionLabel: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.secondary,
-    textTransform: 'uppercase',
-    marginBottom: spacing.sm,
-  },
-  description: {
-    fontSize: typography.size.base,
-    color: colors.text.primary,
-    lineHeight: typography.size.base * typography.lineHeight.normal,
   },
   emptyText: {
-    textAlign: 'center',
     fontSize: typography.size.base,
     color: colors.text.tertiary,
-    paddingVertical: spacing['2xl'],
+    marginTop: spacing.md,
   },
-  instructorCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  listContainer: {
+    padding: spacing.md,
+    backgroundColor: colors.background.secondary,
+  },
+  lessonCard: {
     backgroundColor: colors.background.primary,
-    padding: spacing.lg,
     borderRadius: 12,
-    ...shadows.sm,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    shadowColor: colors.neutral[900],
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  instructorInfo: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  instructorName: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.primary,
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  ratingText: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-  },
-  bookButton: {
-    backgroundColor: colors.primary[600],
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: 8,
-  },
-  bookButtonText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.inverse,
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-  pricingCard: {
+  lessonHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: colors.background.primary,
-    padding: spacing.lg,
-    borderRadius: 12,
-    ...shadows.sm,
+    alignItems: 'flex-start',
+    marginBottom: spacing.sm,
+  },
+  lessonInfo: {
+    flex: 1,
   },
   lessonType: {
     fontSize: typography.size.base,
     fontWeight: typography.weight.semibold,
     color: colors.text.primary,
+    marginBottom: spacing.xs / 2,
   },
-  duration: {
+  lessonDate: {
     fontSize: typography.size.sm,
     color: colors.text.secondary,
-    marginTop: spacing.xs,
   },
-  price: {
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.bold,
-    color: colors.primary[600],
+  statusBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs / 2,
+    borderRadius: 12,
   },
-  modalOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
+  statusAttended: {
+    backgroundColor: colors.success[100],
+  },
+  statusMissed: {
+    backgroundColor: colors.error[100],
+  },
+  statusText: {
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.medium,
+    color: colors.text.primary,
+  },
+  lessonDetails: {
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  detailRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.xl,
+    gap: spacing.xs,
   },
-  modalContent: {
-    width: '100%',
-    backgroundColor: colors.background.primary,
-    borderRadius: 16,
-    padding: spacing.xl,
-    ...shadows.lg,
+  detailText: {
+    fontSize: typography.size.sm,
+    color: colors.text.secondary,
   },
-  modalHeader: {
+  feedbackContainer: {
+    marginTop: spacing.sm,
+    padding: spacing.sm,
+    backgroundColor: colors.neutral[50],
+    borderRadius: 8,
+  },
+  feedbackLabel: {
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.medium,
+    color: colors.text.secondary,
+    marginBottom: spacing.xs / 2,
+  },
+  feedbackText: {
+    fontSize: typography.size.sm,
+    color: colors.text.primary,
+    lineHeight: 20,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    gap: spacing.xs / 2,
+    marginTop: spacing.sm,
+  },
+  paymentSection: {
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.neutral[200],
+  },
+  paymentRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.sm,
   },
-  modalTitle: {
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.bold,
-    color: colors.text.primary,
-  },
-  modalSubtitle: {
-    fontSize: typography.size.base,
-    color: colors.text.secondary,
-    marginBottom: spacing.lg,
-  },
-  messageInput: {
-    backgroundColor: colors.background.tertiary,
-    borderRadius: 12,
-    padding: spacing.base,
-    fontSize: typography.size.base,
-    color: colors.text.primary,
-    minHeight: 100,
-    marginBottom: spacing.lg,
-  },
-  modalActions: {
+  paymentLabel: {
     flexDirection: 'row',
-    gap: spacing.md,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: spacing.md,
-    borderRadius: 8,
     alignItems: 'center',
+    gap: spacing.xs,
   },
-  modalCancelButton: {
-    backgroundColor: colors.background.tertiary,
+  paymentLabelText: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.medium,
+    color: colors.text.primary,
   },
-  modalCancelText: {
+  paymentAmount: {
     fontSize: typography.size.base,
     fontWeight: typography.weight.semibold,
+  },
+  paymentDate: {
+    fontSize: typography.size.xs,
     color: colors.text.secondary,
-  },
-  modalSubmitButton: {
-    backgroundColor: colors.primary[600],
-  },
-  modalSubmitText: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.inverse,
+    marginTop: spacing.xs / 2,
   },
 });
 EOF
 
-# 3. Fix BookLessonScreen - Remove FC type
-cat > src/screens/student/BookLessonScreen.tsx << 'EOF'
+# Update MyExamsPaymentTab - Remove FC<Props>
+cat > src/screens/student/my-profile/tabs/MyExamsPaymentTab.tsx << 'EOF'
 /**
- * Book Lesson Screen - Minimal & Elegant
- * Single Responsibility: Handle lesson booking with enrollment check
+ * My Exams & Payment Tab
+ * Single Responsibility: Display exam history with payment status
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
-  ScrollView,
+  FlatList,
   ActivityIndicator,
   Alert,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { Picker } from '@react-native-picker/picker';
-import { lessonService } from '../../services/api/LessonService';
-import { enrollmentService } from '../../services/api/EnrollmentService';
-import { LessonType } from '../../models/Lesson';
-import { colors, typography, spacing, shadows } from '../../theme';
+import { studentSelfProfileService, MyExamHistory } from '../../../../services/api/StudentSelfProfileService';
+import { colors, typography, spacing } from '../../../../theme';
 
-export const BookLessonScreen = ({ navigation, route }: any) => {
-  const { schoolId, instructorId, instructorName } = route.params;
-  
-  const [loading, setLoading] = useState(false);
-  const [checkingEnrollment, setCheckingEnrollment] = useState(true);
-  const [canBook, setCanBook] = useState(false);
-  
-  const [lessonType, setLessonType] = useState<LessonType>(LessonType.PRACTICAL);
-  const [date, setDate] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [time, setTime] = useState(new Date());
-  const [showTimePicker, setShowTimePicker] = useState(false);
+export const MyExamsPaymentTab = ({ route }: any) => {
+  const { schoolId } = route.params;
+  const [loading, setLoading] = useState(true);
+  const [exams, setExams] = useState<MyExamHistory[]>([]);
 
   useEffect(() => {
-    checkEnrollmentStatus();
-  }, []);
+    loadExams();
+  }, [schoolId]);
 
-  const checkEnrollmentStatus = async () => {
-    try {
-      setCheckingEnrollment(true);
-      const status = await enrollmentService.checkEnrollmentStatus(schoolId);
-      
-      if (!status.canBook) {
-        Alert.alert(
-          'Enrollment Required',
-          'You must be enrolled in this school to book lessons.',
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
-        );
-      }
-      
-      setCanBook(status.canBook);
-    } catch (error: any) {
-      Alert.alert('Error', 'Failed to check enrollment status');
-      navigation.goBack();
-    } finally {
-      setCheckingEnrollment(false);
-    }
-  };
-
-  const handleDateChange = (event: any, selectedDate?: Date) => {
-    setShowDatePicker(false);
-    if (selectedDate) {
-      setDate(selectedDate);
-    }
-  };
-
-  const handleTimeChange = (event: any, selectedTime?: Date) => {
-    setShowTimePicker(false);
-    if (selectedTime) {
-      setTime(selectedTime);
-    }
-  };
-
-  const handleBookLesson = async () => {
+  const loadExams = async () => {
     try {
       setLoading(true);
-
-      const dateTime = new Date(date);
-      dateTime.setHours(time.getHours());
-      dateTime.setMinutes(time.getMinutes());
-
-      await lessonService.bookLesson({
-        schoolId,
-        instructorId,
-        lessonType,
-        dateTime: dateTime.toISOString(),
-      });
-
-      Alert.alert('Success', 'Lesson booked successfully!', [
-        { text: 'OK', onPress: () => navigation.navigate('MyLessons') },
-      ]);
+      const data = await studentSelfProfileService.getMyExams(schoolId);
+      setExams(data);
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'Failed to book lesson');
+      Alert.alert('Error', error.message || 'Failed to load exams');
     } finally {
       setLoading(false);
     }
   };
 
-  if (checkingEnrollment) {
+  const getResultColor = (result?: string) => {
+    if (!result) return colors.text.secondary;
+    switch (result.toLowerCase()) {
+      case 'passed':
+        return colors.success[500];
+      case 'failed':
+        return colors.error[500];
+      default:
+        return colors.warning[500];
+    }
+  };
+
+  const getResultIcon = (result?: string) => {
+    if (!result) return 'help-circle-outline';
+    switch (result.toLowerCase()) {
+      case 'passed':
+        return 'checkmark-circle';
+      case 'failed':
+        return 'close-circle';
+      default:
+        return 'help-circle';
+    }
+  };
+
+  const renderExam = ({ item }: { item: MyExamHistory }) => (
+    <View style={styles.examCard}>
+      {/* Header */}
+      <View style={styles.examHeader}>
+        <View style={styles.examInfo}>
+          <Text style={styles.examType}>{item.examType}</Text>
+          <Text style={styles.examDate}>
+            {new Date(item.dateTime).toLocaleDateString()} at{' '}
+            {new Date(item.dateTime).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
+          </Text>
+        </View>
+      </View>
+
+      {/* Result Section */}
+      {item.result && (
+        <View style={styles.resultSection}>
+          <View style={styles.resultRow}>
+            <Ionicons
+              name={getResultIcon(item.result) as any}
+              size={24}
+              color={getResultColor(item.result)}
+            />
+            <View style={styles.resultInfo}>
+              <Text style={[styles.resultText, { color: getResultColor(item.result) }]}>
+                {item.result.toUpperCase()}
+              </Text>
+              {item.score !== undefined && (
+                <Text style={styles.scoreText}>Score: {item.score}%</Text>
+              )}
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* Notes */}
+      {item.notes && (
+        <View style={styles.notesContainer}>
+          <Text style={styles.notesLabel}>Notes:</Text>
+          <Text style={styles.notesText}>{item.notes}</Text>
+        </View>
+      )}
+
+      {/* Payment Status */}
+      <View style={styles.paymentSection}>
+        <View style={styles.paymentRow}>
+          <View style={styles.paymentLabel}>
+            <Ionicons
+              name={item.paid ? 'checkmark-circle' : 'alert-circle-outline'}
+              size={20}
+              color={item.paid ? colors.success[500] : colors.warning[500]}
+            />
+            <Text style={styles.paymentLabelText}>
+              {item.paid ? 'Paid' : 'Pending Payment'}
+            </Text>
+          </View>
+          {item.amount && (
+            <Text
+              style={[
+                styles.paymentAmount,
+                { color: item.paid ? colors.success[500] : colors.warning[500] },
+              ]}
+            >
+              ${item.amount.toFixed(2)}
+            </Text>
+          )}
+        </View>
+        {item.paid && item.paymentDate && (
+          <Text style={styles.paymentDate}>
+            Paid on {new Date(item.paymentDate).toLocaleDateString()}
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+
+  if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color={colors.primary[600]} />
-        <Text style={styles.loadingText}>Checking enrollment...</Text>
       </View>
     );
   }
 
-  if (!canBook) {
-    return null;
+  if (exams.length === 0) {
+    return (
+      <View style={styles.centerContainer}>
+        <Ionicons name="document-text-outline" size={48} color={colors.text.tertiary} />
+        <Text style={styles.emptyText}>No exams recorded yet</Text>
+      </View>
+    );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Book Lesson</Text>
-      </View>
-
-      <ScrollView contentContainerStyle={styles.content}>
-        {instructorName && (
-          <View style={styles.infoCard}>
-            <Ionicons name="person-outline" size={24} color={colors.primary[600]} />
-            <Text style={styles.infoText}>Instructor: {instructorName}</Text>
-          </View>
-        )}
-
-        <View style={styles.section}>
-          <Text style={styles.label}>Lesson Type</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={lessonType}
-              onValueChange={(value) => setLessonType(value)}
-              style={styles.picker}
-            >
-              <Picker.Item label="Practical Driving" value={LessonType.PRACTICAL} />
-              <Picker.Item label="Theory" value={LessonType.THEORY} />
-            </Picker>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.label}>Date</Text>
-          <TouchableOpacity
-            style={styles.dateButton}
-            onPress={() => setShowDatePicker(true)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="calendar-outline" size={20} color={colors.text.secondary} />
-            <Text style={styles.dateText}>{date.toLocaleDateString()}</Text>
-          </TouchableOpacity>
-          {showDatePicker && (
-            <DateTimePicker
-              value={date}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={handleDateChange}
-              minimumDate={new Date()}
-            />
-          )}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.label}>Time</Text>
-          <TouchableOpacity
-            style={styles.dateButton}
-            onPress={() => setShowTimePicker(true)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="time-outline" size={20} color={colors.text.secondary} />
-            <Text style={styles.dateText}>
-              {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </Text>
-          </TouchableOpacity>
-          {showTimePicker && (
-            <DateTimePicker
-              value={time}
-              mode="time"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={handleTimeChange}
-            />
-          )}
-        </View>
-
-        <TouchableOpacity
-          style={[styles.bookButton, loading && styles.disabledButton]}
-          onPress={handleBookLesson}
-          disabled={loading}
-          activeOpacity={0.8}
-        >
-          {loading ? (
-            <ActivityIndicator size="small" color={colors.text.inverse} />
-          ) : (
-            <>
-              <Text style={styles.bookButtonText}>Confirm Booking</Text>
-              <Ionicons name="arrow-forward" size={20} color={colors.text.inverse} />
-            </>
-          )}
-        </TouchableOpacity>
-      </ScrollView>
-    </View>
+    <FlatList
+      data={exams}
+      renderItem={renderExam}
+      keyExtractor={(item) => item.id}
+      contentContainerStyle={styles.listContainer}
+      showsVerticalScrollIndicator={false}
+    />
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.secondary,
-  },
-  loadingContainer: {
+  centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: colors.background.secondary,
-    gap: spacing.md,
   },
-  loadingText: {
+  emptyText: {
     fontSize: typography.size.base,
-    color: colors.text.secondary,
+    color: colors.text.tertiary,
+    marginTop: spacing.md,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing['4xl'],
-    paddingBottom: spacing.lg,
+  listContainer: {
+    padding: spacing.md,
+    backgroundColor: colors.background.secondary,
+  },
+  examCard: {
     backgroundColor: colors.background.primary,
-    gap: spacing.md,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.background.tertiary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.bold,
-    color: colors.text.primary,
-  },
-  content: {
-    padding: spacing.xl,
-  },
-  infoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.primary[50],
-    padding: spacing.base,
     borderRadius: 12,
-    marginBottom: spacing.xl,
-    gap: spacing.md,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    shadowColor: colors.neutral[900],
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  infoText: {
+  examHeader: {
+    marginBottom: spacing.sm,
+  },
+  examInfo: {
+    flex: 1,
+  },
+  examType: {
     fontSize: typography.size.base,
     fontWeight: typography.weight.semibold,
-    color: colors.primary[600],
+    color: colors.text.primary,
+    marginBottom: spacing.xs / 2,
   },
-  section: {
-    marginBottom: spacing.xl,
+  examDate: {
+    fontSize: typography.size.sm,
+    color: colors.text.secondary,
   },
-  label: {
+  resultSection: {
+    marginBottom: spacing.sm,
+    padding: spacing.sm,
+    backgroundColor: colors.neutral[50],
+    borderRadius: 8,
+  },
+  resultRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  resultInfo: {
+    flex: 1,
+  },
+  resultText: {
+    fontSize: typography.size.base,
+    fontWeight: typography.weight.bold,
+    marginBottom: spacing.xs / 2,
+  },
+  scoreText: {
+    fontSize: typography.size.sm,
+    color: colors.text.secondary,
+  },
+  notesContainer: {
+    marginBottom: spacing.sm,
+    padding: spacing.sm,
+    backgroundColor: colors.neutral[50],
+    borderRadius: 8,
+  },
+  notesLabel: {
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.medium,
+    color: colors.text.secondary,
+    marginBottom: spacing.xs / 2,
+  },
+  notesText: {
+    fontSize: typography.size.sm,
+    color: colors.text.primary,
+    lineHeight: 20,
+  },
+  paymentSection: {
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.neutral[200],
+  },
+  paymentRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  paymentLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  paymentLabelText: {
     fontSize: typography.size.sm,
     fontWeight: typography.weight.medium,
     color: colors.text.primary,
-    marginBottom: spacing.sm,
   },
-  pickerContainer: {
-    backgroundColor: colors.background.primary,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  picker: {
-    height: 52,
-  },
-  dateButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background.primary,
-    padding: spacing.base,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    gap: spacing.md,
-    height: 52,
-  },
-  dateText: {
-    fontSize: typography.size.base,
-    color: colors.text.primary,
-  },
-  bookButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary[600],
-    paddingVertical: spacing.base,
-    borderRadius: 12,
-    gap: spacing.sm,
-    marginTop: spacing.base,
-    ...shadows.sm,
-  },
-  bookButtonText: {
+  paymentAmount: {
     fontSize: typography.size.base,
     fontWeight: typography.weight.semibold,
-    color: colors.text.inverse,
   },
-  disabledButton: {
-    opacity: 0.5,
+  paymentDate: {
+    fontSize: typography.size.xs,
+    color: colors.text.secondary,
+    marginTop: spacing.xs / 2,
   },
 });
 EOF
 
-echo "✅ TypeScript errors fixed!"
 echo ""
-echo "Fixed issues:"
-echo "  ✅ AuthContext - role type changed from string to UserRole"
-echo "  ✅ SchoolDetailScreen - Removed FC type, using regular function"
-echo "  ✅ BookLessonScreen - Removed FC type, using regular function"
+echo "✅ All tab components fixed!"
 echo ""
-echo "Now try starting the app:"
-echo "  npx expo start"
+echo "🔧 Changes applied:"
+echo "   - MyLessonsPaymentTab: Changed to ({ route }: any)"
+echo "   - MyExamsPaymentTab: Changed to ({ route }: any)"
+echo "   - MyProgressTab: Already fixed"
+echo ""
+echo "🎯 All tabs now use the same working pattern!"
+echo ""
+echo "TypeScript should be happy now! 🚀"

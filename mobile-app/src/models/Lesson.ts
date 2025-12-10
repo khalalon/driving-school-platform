@@ -31,3 +31,23 @@ export interface Lesson {
   createdAt: Date;
   updatedAt: Date;
 }
+
+/**
+ * Request Lesson Data - Student requests a lesson
+ */
+export interface RequestLessonData {
+  instructorId: string;
+  type: LessonType;
+  notes?: string;
+}
+
+/**
+ * Book Lesson For Student Data - Instructor books directly
+ */
+export interface BookLessonForStudentData {
+  studentId: string;
+  type: 'theory' | 'practical';
+  startTime: string;
+  endTime: string;
+  notes?: string;
+}

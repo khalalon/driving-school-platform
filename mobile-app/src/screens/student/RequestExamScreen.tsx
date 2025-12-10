@@ -17,43 +17,59 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Picker } from '@react-native-picker/picker';
 import { examService } from '../../services/api/ExamService';
 import { colors, typography, spacing, shadows } from '../../theme';
 
 export const RequestExamScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(false);
-  const [examType, setExamType] = useState('THEORY');
+  const [examType, setExamType] = useState<'THEORY' | 'PRACTICAL'>('THEORY');
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [time, setTime] = useState(new Date());
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [message, setMessage] = useState('');
 
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      setDate(selectedDate);
+    }
+  };
+
+  const handleTimeChange = (event: any, selectedTime?: Date) => {
+    setShowTimePicker(false);
+    if (selectedTime) {
+      setTime(selectedTime);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!message.trim()) {
-      Alert.alert('Required', 'Please add a message');
+      Alert.alert('Required', 'Please add a message about your preparation');
       return;
     }
 
     try {
       setLoading(true);
+      
       // Combine date and time
-      const dateTime = new Date(date);
-      dateTime.setHours(time.getHours());
-      dateTime.setMinutes(time.getMinutes());
+      const preferredDateTime = new Date(date);
+      preferredDateTime.setHours(time.getHours());
+      preferredDateTime.setMinutes(time.getMinutes());
 
       await examService.requestExam({
-        examType,
-        preferredDate: dateTime.toISOString(),
-        message,
+        examType: examType, // Now properly typed as 'THEORY' | 'PRACTICAL'
+        preferredDate: preferredDateTime.toISOString(),
+        message: message.trim(),
       });
 
-      Alert.alert('Success', 'Exam request submitted!', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      Alert.alert(
+        'Request Sent!',
+        'Your exam request has been submitted. The instructor will review and schedule it for you.',
+        [{ text: 'OK', onPress: () => navigation.navigate('MyExams') }]
+      );
     } catch (error: any) {
-      Alert.alert('Error', 'Failed to submit request');
+      Alert.alert('Error', error.response?.data?.message || 'Failed to submit request');
     } finally {
       setLoading(false);
     }
@@ -73,20 +89,70 @@ export const RequestExamScreen = ({ navigation }: any) => {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.section}>
-          <Text style={styles.label}>Exam Type</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={examType}
-              onValueChange={setExamType}
-              style={styles.picker}
-            >
-              <Picker.Item label="Theory Exam" value="THEORY" />
-              <Picker.Item label="Practical Exam" value="PRACTICAL" />
-            </Picker>
+        {/* Info Card */}
+        <View style={styles.infoCard}>
+          <Ionicons name="information-circle-outline" size={24} color={colors.primary[600]} />
+          <View style={styles.infoContent}>
+            <Text style={styles.infoTitle}>How it works</Text>
+            <Text style={styles.infoText}>
+              Submit your exam request with preferred date and time. The instructor will review and confirm the actual schedule.
+            </Text>
           </View>
         </View>
 
+        {/* Exam Type Selection */}
+        <View style={styles.section}>
+          <Text style={styles.label}>Exam Type</Text>
+          <View style={styles.typeContainer}>
+            <TouchableOpacity
+              style={[
+                styles.typeButton,
+                examType === 'THEORY' && styles.typeButtonActive,
+              ]}
+              onPress={() => setExamType('THEORY')}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name="book-outline"
+                size={24}
+                color={examType === 'THEORY' ? colors.text.inverse : colors.text.secondary}
+              />
+              <Text
+                style={[
+                  styles.typeButtonText,
+                  examType === 'THEORY' && styles.typeButtonTextActive,
+                ]}
+              >
+                Theory
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.typeButton,
+                examType === 'PRACTICAL' && styles.typeButtonActive,
+              ]}
+              onPress={() => setExamType('PRACTICAL')}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name="car-sport-outline"
+                size={24}
+                color={examType === 'PRACTICAL' ? colors.text.inverse : colors.text.secondary}
+              />
+              <Text
+                style={[
+                  styles.typeButtonText,
+                  examType === 'PRACTICAL' && styles.typeButtonTextActive,
+                ]}
+              >
+                Practical
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Preferred Date */}
         <View style={styles.section}>
           <Text style={styles.label}>Preferred Date</Text>
           <TouchableOpacity
@@ -102,15 +168,16 @@ export const RequestExamScreen = ({ navigation }: any) => {
               value={date}
               mode="date"
               display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={(event, selectedDate) => {
-                setShowDatePicker(false);
-                if (selectedDate) setDate(selectedDate);
-              }}
+              onChange={handleDateChange}
               minimumDate={new Date()}
             />
           )}
+          <Text style={styles.helperText}>
+            This is your preferred date - the instructor will confirm the actual schedule
+          </Text>
         </View>
 
+        {/* Preferred Time */}
         <View style={styles.section}>
           <Text style={styles.label}>Preferred Time</Text>
           <TouchableOpacity
@@ -128,19 +195,17 @@ export const RequestExamScreen = ({ navigation }: any) => {
               value={time}
               mode="time"
               display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={(event, selectedTime) => {
-                setShowTimePicker(false);
-                if (selectedTime) setTime(selectedTime);
-              }}
+              onChange={handleTimeChange}
             />
           )}
         </View>
 
+        {/* Message */}
         <View style={styles.section}>
           <Text style={styles.label}>Message</Text>
           <TextInput
             style={styles.messageInput}
-            placeholder="Tell us about your preparation..."
+            placeholder="Tell us about your preparation and readiness..."
             placeholderTextColor={colors.neutral[400]}
             value={message}
             onChangeText={setMessage}
@@ -148,8 +213,12 @@ export const RequestExamScreen = ({ navigation }: any) => {
             numberOfLines={4}
             textAlignVertical="top"
           />
+          <Text style={styles.helperText}>
+            Let the instructor know about your progress and any special requirements
+          </Text>
         </View>
 
+        {/* Submit Button */}
         <TouchableOpacity
           style={[styles.submitButton, loading && styles.disabledButton]}
           onPress={handleSubmit}
@@ -160,8 +229,8 @@ export const RequestExamScreen = ({ navigation }: any) => {
             <ActivityIndicator size="small" color={colors.text.inverse} />
           ) : (
             <>
-              <Text style={styles.submitButtonText}>Submit Request</Text>
-              <Ionicons name="arrow-forward" size={20} color={colors.text.inverse} />
+              <Text style={styles.submitButtonText}>Send Request</Text>
+              <Ionicons name="send-outline" size={20} color={colors.text.inverse} />
             </>
           )}
         </TouchableOpacity>
@@ -200,6 +269,28 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.xl,
   },
+  infoCard: {
+    flexDirection: 'row',
+    backgroundColor: colors.primary[50],
+    padding: spacing.base,
+    borderRadius: 12,
+    gap: spacing.md,
+    marginBottom: spacing.xl,
+  },
+  infoContent: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  infoTitle: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
+    color: colors.primary[600],
+  },
+  infoText: {
+    fontSize: typography.size.sm,
+    color: colors.text.secondary,
+    lineHeight: typography.size.sm * typography.lineHeight.normal,
+  },
   section: {
     marginBottom: spacing.xl,
   },
@@ -209,14 +300,33 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     marginBottom: spacing.sm,
   },
-  pickerContainer: {
-    backgroundColor: colors.background.primary,
+  typeContainer: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  typeButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.base,
     borderRadius: 12,
-    borderWidth: 1,
+    gap: spacing.sm,
+    backgroundColor: colors.background.primary,
+    borderWidth: 2,
     borderColor: colors.border.default,
   },
-  picker: {
-    height: 52,
+  typeButtonActive: {
+    backgroundColor: colors.primary[600],
+    borderColor: colors.primary[600],
+  },
+  typeButtonText: {
+    fontSize: typography.size.base,
+    fontWeight: typography.weight.semibold,
+    color: colors.text.secondary,
+  },
+  typeButtonTextActive: {
+    color: colors.text.inverse,
   },
   dateButton: {
     flexDirection: 'row',
@@ -228,10 +338,16 @@ const styles = StyleSheet.create({
     borderColor: colors.border.default,
     gap: spacing.md,
     height: 52,
+    marginBottom: spacing.sm,
   },
   dateText: {
     fontSize: typography.size.base,
     color: colors.text.primary,
+  },
+  helperText: {
+    fontSize: typography.size.xs,
+    color: colors.text.tertiary,
+    fontStyle: 'italic',
   },
   messageInput: {
     backgroundColor: colors.background.primary,
@@ -242,6 +358,7 @@ const styles = StyleSheet.create({
     fontSize: typography.size.base,
     color: colors.text.primary,
     minHeight: 100,
+    marginBottom: spacing.sm,
   },
   submitButton: {
     flexDirection: 'row',

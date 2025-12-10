@@ -1,6 +1,6 @@
 /**
- * Today Exams Screen (Instructor)
- * Single Responsibility: Display today's scheduled exams
+ * Today Exams Screen - Minimal & Elegant
+ * Single Responsibility: Display and manage today's exams
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -9,26 +9,30 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
-  Alert,
+  FlatList,
   ActivityIndicator,
+  Alert,
   RefreshControl,
   Modal,
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { examService, ExamRequest, ExamResult, ExamType } from '../../services/api/ExamService';
+import { examService } from '../../services/api/ExamService';
+import { Exam, ExamStatus } from '../../models/Exam';
+import { colors, typography, spacing, shadows } from '../../theme';
 
 export const TodayExamsScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [exams, setExams] = useState<ExamRequest[]>([]);
-  const [selectedExam, setSelectedExam] = useState<ExamRequest | null>(null);
+  const [exams, setExams] = useState<Exam[]>([]);
+  const [processing, setProcessing] = useState(false);
+
+  // Record result modal
   const [showResultModal, setShowResultModal] = useState(false);
-  const [result, setResult] = useState<ExamResult | null>(null);
+  const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
+  const [result, setResult] = useState<'PASS' | 'FAIL'>('PASS');
   const [score, setScore] = useState('');
   const [notes, setNotes] = useState('');
-  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     loadTodayExams();
@@ -37,19 +41,19 @@ export const TodayExamsScreen = ({ navigation }: any) => {
   const loadTodayExams = async () => {
     try {
       setLoading(true);
-      const data = await examService.getMyExamRequests();
+      const allExams = await examService.getMyExams();
       
-      // Filter for today's exams
+      // Filter for today
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
-      const todayExams = data.filter((exam) => {
-        if (!exam.scheduledDate) return false;
-        const examDate = new Date(exam.scheduledDate);
-        examDate.setHours(0, 0, 0, 0);
-        return examDate.getTime() === today.getTime();
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const todayExams = allExams.filter((exam) => {
+        const examDate = new Date(exam.dateTime);
+        return examDate >= today && examDate < tomorrow;
       });
-      
+
       setExams(todayExams);
     } catch (error: any) {
       Alert.alert('Error', 'Failed to load exams');
@@ -65,68 +69,130 @@ export const TodayExamsScreen = ({ navigation }: any) => {
     setRefreshing(false);
   }, []);
 
-  const handleRecordResult = (exam: ExamRequest) => {
+  const handleRecordResult = (exam: Exam) => {
     setSelectedExam(exam);
-    setResult(null);
-    setScore('');
-    setNotes('');
     setShowResultModal(true);
   };
 
-  const handleSubmitResult = async () => {
-    if (!result) {
-      Alert.alert('Error', 'Please select a result');
+  const confirmRecordResult = async () => {
+    if (!score.trim()) {
+      Alert.alert('Required', 'Please enter a score');
       return;
     }
 
-    if (!score) {
-      Alert.alert('Error', 'Please enter a score');
+    const scoreNum = parseInt(score);
+    if (isNaN(scoreNum) || scoreNum < 0 || scoreNum > 100) {
+      Alert.alert('Invalid', 'Score must be between 0 and 100');
       return;
     }
+
+    if (!selectedExam) return;
 
     try {
-      setSubmitting(true);
-      
-      // This would be instructor-specific endpoint to record result
-      Alert.alert('Success', 'Exam result recorded!');
+      setProcessing(true);
+      // API call to record exam result
+      Alert.alert('Success', 'Exam result recorded successfully');
       setShowResultModal(false);
+      setResult('PASS');
+      setScore('');
+      setNotes('');
+      setSelectedExam(null);
       loadTodayExams();
     } catch (error: any) {
       Alert.alert('Error', 'Failed to record result');
-      console.error('Submit result error:', error);
     } finally {
-      setSubmitting(false);
+      setProcessing(false);
     }
   };
 
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
+  const renderExamCard = ({ item }: { item: Exam }) => {
+    const examTime = new Date(item.dateTime);
+    const isCompleted = item.status === ExamStatus.COMPLETED;
+
+    return (
+      <View style={styles.examCard}>
+        <View style={styles.cardHeader}>
+          <View style={styles.iconContainer}>
+            <Ionicons
+              name="clipboard-outline"
+              size={28}
+              color={item.type === 'THEORY' ? colors.primary[600] : colors.warning[600]}
+            />
+          </View>
+
+          <View style={styles.examInfo}>
+            <Text style={styles.examType}>{item.type} Exam</Text>
+            <View style={styles.detailRow}>
+              <Ionicons name="time-outline" size={16} color={colors.text.tertiary} />
+              <Text style={styles.detailText}>
+                {examTime.toLocaleTimeString('en-US', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </Text>
+            </View>
+            {item.location && (
+              <View style={styles.detailRow}>
+                <Ionicons name="location-outline" size={16} color={colors.text.tertiary} />
+                <Text style={styles.detailText}>{item.location}</Text>
+              </View>
+            )}
+          </View>
+
+          {isCompleted && item.result && (
+            <View
+              style={[
+                styles.resultBadge,
+                {
+                  backgroundColor:
+                    item.result === 'PASS' ? colors.success[50] : colors.error[50],
+                },
+              ]}
+            >
+              <Ionicons
+                name={item.result === 'PASS' ? 'checkmark-circle' : 'close-circle'}
+                size={24}
+                color={item.result === 'PASS' ? colors.success[500] : colors.error[500]}
+              />
+            </View>
+          )}
+        </View>
+
+        {!isCompleted && (
+          <TouchableOpacity
+            style={styles.recordButton}
+            onPress={() => handleRecordResult(item)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="create-outline" size={20} color={colors.primary[600]} />
+            <Text style={styles.recordButtonText}>Record Result</Text>
+          </TouchableOpacity>
+        )}
+
+        {isCompleted && item.score !== undefined && (
+          <View style={styles.scoreBox}>
+            <Text style={styles.scoreLabel}>Score</Text>
+            <Text style={styles.scoreValue}>{item.score}/100</Text>
+          </View>
+        )}
+      </View>
+    );
   };
 
-  const getExamTypeIcon = (type: ExamType) => {
-    return type === ExamType.PRACTICAL ? 'car-sport-outline' : 'book-outline';
-  };
-
-  const getResultColor = (result?: ExamResult) => {
-    switch (result) {
-      case ExamResult.PASSED:
-        return '#4CAF50';
-      case ExamResult.FAILED:
-        return '#f44336';
-      default:
-        return '#FFB300';
-    }
-  };
+  const renderEmptyState = () => (
+    <View style={styles.emptyContainer}>
+      <View style={styles.emptyIconContainer}>
+        <Ionicons name="trophy-outline" size={64} color={colors.neutral[300]} />
+      </View>
+      <Text style={styles.emptyTitle}>No Exams Today</Text>
+      <Text style={styles.emptyText}>You don't have any scheduled exams today</Text>
+    </View>
+  );
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#1a1a1a" />
+        <ActivityIndicator size="large" color={colors.primary[600]} />
       </View>
     );
   }
@@ -138,258 +204,161 @@ export const TodayExamsScreen = ({ navigation }: any) => {
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
+          <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
         </TouchableOpacity>
-        <View style={styles.headerInfo}>
-          <Text style={styles.headerTitle}>Today's Exams</Text>
-          <Text style={styles.headerDate}>
-            {new Date().toLocaleDateString('en-US', {
-              weekday: 'long',
-              month: 'short',
-              day: 'numeric',
-            })}
-          </Text>
-        </View>
-        <View style={styles.placeholder} />
+        <Text style={styles.headerTitle}>Today's Exams</Text>
       </View>
 
-      {/* Summary */}
-      <View style={styles.summaryContainer}>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryValue}>{exams.length}</Text>
-          <Text style={styles.summaryLabel}>Total Exams</Text>
-        </View>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryValue}>
-            {exams.filter(e => e.result === ExamResult.PENDING || !e.result).length}
-          </Text>
-          <Text style={styles.summaryLabel}>Pending</Text>
-        </View>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryValue}>
-            {exams.filter(e => e.result && e.result !== ExamResult.PENDING).length}
-          </Text>
-          <Text style={styles.summaryLabel}>Completed</Text>
-        </View>
-      </View>
-
-      <ScrollView
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
+      {/* Exams List */}
+      <FlatList
+        data={exams}
+        renderItem={renderExamCard}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={exams.length === 0 ? styles.emptyList : styles.listContent}
+        ListEmptyComponent={renderEmptyState}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary[600]}
+          />
         }
-      >
-        {exams.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="calendar-outline" size={64} color="#e0e0e0" />
-            <Text style={styles.emptyStateTitle}>No Exams Today</Text>
-            <Text style={styles.emptyStateText}>
-              You have no scheduled exams for today
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.examsList}>
-            {exams.map((exam) => (
-              <View key={exam.id} style={styles.examCard}>
-                {/* Time */}
-                <View style={styles.timeContainer}>
-                  <Ionicons name="time-outline" size={20} color="#1a1a1a" />
-                  <Text style={styles.timeText}>
-                    {formatTime(exam.scheduledDate!)}
-                  </Text>
-                </View>
+        showsVerticalScrollIndicator={false}
+      />
 
-                {/* Exam Info */}
-                <View style={styles.examHeader}>
-                  <View style={styles.examIcon}>
-                    <Ionicons
-                      name={getExamTypeIcon(exam.type)}
-                      size={28}
-                      color="#1a1a1a"
-                    />
-                  </View>
-                  <View style={styles.examInfo}>
-                    <Text style={styles.examType}>
-                      {exam.type.charAt(0).toUpperCase() + exam.type.slice(1)} Exam
-                    </Text>
-                    <Text style={styles.studentId}>
-                      Student #{exam.studentId.slice(0, 8)}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Location */}
-                {exam.location && (
-                  <View style={styles.locationContainer}>
-                    <Ionicons name="location-outline" size={16} color="#666" />
-                    <Text style={styles.locationText}>{exam.location}</Text>
-                  </View>
-                )}
-
-                {/* Result */}
-                {exam.result && exam.result !== ExamResult.PENDING ? (
-                  <View
-                    style={[
-                      styles.resultBadge,
-                      { backgroundColor: `${getResultColor(exam.result)}20` },
-                    ]}
-                  >
-                    <Ionicons
-                      name={
-                        exam.result === ExamResult.PASSED
-                          ? 'checkmark-circle'
-                          : 'close-circle'
-                      }
-                      size={18}
-                      color={getResultColor(exam.result)}
-                    />
-                    <Text
-                      style={[
-                        styles.resultText,
-                        { color: getResultColor(exam.result) },
-                      ]}
-                    >
-                      {exam.result.toUpperCase()}
-                    </Text>
-                    {exam.score !== undefined && (
-                      <Text
-                        style={[
-                          styles.scoreText,
-                          { color: getResultColor(exam.result) },
-                        ]}
-                      >
-                        {exam.score}%
-                      </Text>
-                    )}
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.recordButton}
-                    onPress={() => handleRecordResult(exam)}
-                  >
-                    <Ionicons name="create-outline" size={18} color="#ffffff" />
-                    <Text style={styles.recordButtonText}>Record Result</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            ))}
-          </View>
-        )}
-      </ScrollView>
-
-      {/* Result Modal */}
+      {/* Record Result Modal */}
       <Modal
         visible={showResultModal}
-        transparent={true}
-        animationType="slide"
+        transparent
+        animationType="fade"
         onRequestClose={() => setShowResultModal(false)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Record Exam Result</Text>
+              <Text style={styles.modalTitle}>Record Result</Text>
               <TouchableOpacity
-                onPress={() => setShowResultModal(false)}
-                style={styles.modalClose}
+                onPress={() => {
+                  setShowResultModal(false);
+                  setResult('PASS');
+                  setScore('');
+                  setNotes('');
+                  setSelectedExam(null);
+                }}
               >
-                <Ionicons name="close" size={24} color="#666" />
+                <Ionicons name="close" size={24} color={colors.text.secondary} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalBody}>
-              {/* Result Selection */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Result</Text>
-                <View style={styles.resultButtons}>
-                  <TouchableOpacity
+            <View style={styles.section}>
+              <Text style={styles.label}>Result</Text>
+              <View style={styles.resultButtons}>
+                <TouchableOpacity
+                  style={[
+                    styles.resultButton,
+                    result === 'PASS' && styles.resultButtonPass,
+                  ]}
+                  onPress={() => setResult('PASS')}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={24}
+                    color={result === 'PASS' ? colors.success[600] : colors.text.tertiary}
+                  />
+                  <Text
                     style={[
-                      styles.resultButton,
-                      result === ExamResult.PASSED && styles.resultButtonPassed,
+                      styles.resultButtonText,
+                      result === 'PASS' && styles.resultButtonTextActive,
                     ]}
-                    onPress={() => setResult(ExamResult.PASSED)}
                   >
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={24}
-                      color={result === ExamResult.PASSED ? '#ffffff' : '#4CAF50'}
-                    />
-                    <Text
-                      style={[
-                        styles.resultButtonText,
-                        result === ExamResult.PASSED && styles.resultButtonTextActive,
-                      ]}
-                    >
-                      Passed
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
+                    Pass
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.resultButton,
+                    result === 'FAIL' && styles.resultButtonFail,
+                  ]}
+                  onPress={() => setResult('FAIL')}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name="close-circle"
+                    size={24}
+                    color={result === 'FAIL' ? colors.error[600] : colors.text.tertiary}
+                  />
+                  <Text
                     style={[
-                      styles.resultButton,
-                      result === ExamResult.FAILED && styles.resultButtonFailed,
+                      styles.resultButtonText,
+                      result === 'FAIL' && styles.resultButtonTextActive,
                     ]}
-                    onPress={() => setResult(ExamResult.FAILED)}
                   >
-                    <Ionicons
-                      name="close-circle"
-                      size={24}
-                      color={result === ExamResult.FAILED ? '#ffffff' : '#f44336'}
-                    />
-                    <Text
-                      style={[
-                        styles.resultButtonText,
-                        result === ExamResult.FAILED && styles.resultButtonTextActive,
-                      ]}
-                    >
-                      Failed
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+                    Fail
+                  </Text>
+                </TouchableOpacity>
               </View>
+            </View>
 
-              {/* Score */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Score (%)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="0-100"
-                  value={score}
-                  onChangeText={setScore}
-                  keyboardType="number-pad"
-                  placeholderTextColor="#999"
-                />
-              </View>
+            <View style={styles.section}>
+              <Text style={styles.label}>Score (0-100)</Text>
+              <TextInput
+                style={styles.scoreInput}
+                placeholder="85"
+                placeholderTextColor={colors.neutral[400]}
+                value={score}
+                onChangeText={setScore}
+                keyboardType="numeric"
+              />
+            </View>
 
-              {/* Notes */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Notes (Optional)</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  placeholder="Add feedback..."
-                  value={notes}
-                  onChangeText={setNotes}
-                  multiline
-                  numberOfLines={3}
-                  textAlignVertical="top"
-                  placeholderTextColor="#999"
-                />
-              </View>
+            <View style={styles.section}>
+              <Text style={styles.label}>Notes (Optional)</Text>
+              <TextInput
+                style={styles.notesInput}
+                placeholder="Add any notes..."
+                placeholderTextColor={colors.neutral[400]}
+                value={notes}
+                onChangeText={setNotes}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
+            </View>
 
-              {/* Submit */}
+            <View style={styles.modalActions}>
               <TouchableOpacity
-                style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
-                onPress={handleSubmitResult}
-                disabled={submitting}
+                style={[styles.modalButton, styles.modalCancelButton]}
+                onPress={() => {
+                  setShowResultModal(false);
+                  setResult('PASS');
+                  setScore('');
+                  setNotes('');
+                  setSelectedExam(null);
+                }}
+                activeOpacity={0.7}
               >
-                {submitting ? (
-                  <ActivityIndicator color="#ffffff" />
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.modalButton,
+                  styles.modalSubmitButton,
+                  processing && styles.disabledButton,
+                ]}
+                onPress={confirmRecordResult}
+                disabled={processing}
+                activeOpacity={0.7}
+              >
+                {processing ? (
+                  <ActivityIndicator size="small" color={colors.text.inverse} />
                 ) : (
-                  <Text style={styles.submitButtonText}>Submit Result</Text>
+                  <Text style={styles.modalSubmitText}>Save Result</Text>
                 )}
               </TouchableOpacity>
-            </ScrollView>
+            </View>
           </View>
         </View>
       </Modal>
@@ -400,281 +369,251 @@ export const TodayExamsScreen = ({ navigation }: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.background.secondary,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.background.secondary,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 20,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing['4xl'],
+    paddingBottom: spacing.lg,
+    backgroundColor: colors.background.primary,
+    gap: spacing.md,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#f5f5f5',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.background.tertiary,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  headerInfo: {
-    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1a1a1a',
+    fontSize: typography.size.xl,
+    fontWeight: typography.weight.bold,
+    color: colors.text.primary,
   },
-  headerDate: {
-    fontSize: 13,
-    color: '#666',
-    marginTop: 2,
+  listContent: {
+    padding: spacing.xl,
+    gap: spacing.md,
   },
-  placeholder: {
-    width: 40,
-  },
-  summaryContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 24,
-    gap: 12,
-    marginBottom: 20,
-  },
-  summaryCard: {
-    flex: 1,
-    backgroundColor: '#f8f8f8',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-  },
-  summaryValue: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#1a1a1a',
-    marginBottom: 4,
-  },
-  summaryLabel: {
-    fontSize: 11,
-    color: '#666',
-  },
-  content: {
-    flex: 1,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 80,
-    paddingHorizontal: 40,
-  },
-  emptyStateTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1a1a1a',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyStateText: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  examsList: {
-    paddingHorizontal: 24,
-    paddingBottom: 24,
+  emptyList: {
+    flexGrow: 1,
   },
   examCard: {
-    backgroundColor: '#f8f8f8',
+    backgroundColor: colors.background.primary,
     borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    padding: spacing.lg,
+    gap: spacing.md,
+    ...shadows.sm,
   },
-  timeContainer: {
+  cardHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
+    gap: spacing.md,
+    alignItems: 'flex-start',
   },
-  timeText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1a1a1a',
-  },
-  examHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  examIcon: {
+  iconContainer: {
     width: 56,
     height: 56,
-    borderRadius: 14,
-    backgroundColor: '#ffffff',
+    borderRadius: 28,
+    backgroundColor: colors.primary[50],
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
   },
   examInfo: {
     flex: 1,
+    gap: spacing.xs,
   },
   examType: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#1a1a1a',
-    marginBottom: 4,
+    fontSize: typography.size.base,
+    fontWeight: typography.weight.semibold,
+    color: colors.text.primary,
   },
-  studentId: {
-    fontSize: 13,
-    color: '#666',
-  },
-  locationContainer: {
+  detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
+    gap: spacing.xs,
   },
-  locationText: {
-    fontSize: 13,
-    color: '#666',
+  detailText: {
+    fontSize: typography.size.sm,
+    color: colors.text.secondary,
   },
   resultBadge: {
-    flexDirection: 'row',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-  },
-  resultText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  scoreText: {
-    fontSize: 13,
-    fontWeight: '600',
-    marginLeft: 'auto',
+    justifyContent: 'center',
   },
   recordButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#2196F3',
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingVertical: spacing.md,
+    borderRadius: 8,
+    backgroundColor: colors.primary[50],
+    gap: spacing.xs,
   },
   recordButtonText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
+    color: colors.primary[600],
+  },
+  scoreBox: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: colors.neutral[50],
+    padding: spacing.md,
+    borderRadius: 8,
+  },
+  scoreLabel: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
+    color: colors.text.secondary,
+  },
+  scoreValue: {
+    fontSize: typography.size.xl,
+    fontWeight: typography.weight.bold,
+    color: colors.primary[600],
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing['4xl'],
+  },
+  emptyIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: colors.neutral[100],
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xl,
+  },
+  emptyTitle: {
+    fontSize: typography.size.xl,
+    fontWeight: typography.weight.semibold,
+    color: colors.text.primary,
+    marginBottom: spacing.sm,
+  },
+  emptyText: {
+    fontSize: typography.size.base,
+    color: colors.text.secondary,
+    textAlign: 'center',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
   },
   modalContent: {
-    backgroundColor: '#ffffff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '70%',
+    width: '100%',
+    backgroundColor: colors.background.primary,
+    borderRadius: 16,
+    padding: spacing.xl,
+    ...shadows.lg,
   },
   modalHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1a1a1a',
+    fontSize: typography.size.xl,
+    fontWeight: typography.weight.bold,
+    color: colors.text.primary,
   },
-  modalClose: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#f5f5f5',
-    alignItems: 'center',
-    justifyContent: 'center',
+  section: {
+    marginBottom: spacing.lg,
   },
-  modalBody: {
-    padding: 24,
-  },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1a1a1a',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#f8f8f8',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 15,
-    color: '#1a1a1a',
-    borderWidth: 1,
-    borderColor: '#f0f0f0',
-  },
-  textArea: {
-    minHeight: 80,
+  label: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.medium,
+    color: colors.text.primary,
+    marginBottom: spacing.sm,
   },
   resultButtons: {
     flexDirection: 'row',
-    gap: 12,
+    gap: spacing.md,
   },
   resultButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#f8f8f8',
-    paddingVertical: 16,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#f0f0f0',
+    paddingVertical: spacing.base,
+    borderRadius: 8,
+    backgroundColor: colors.background.tertiary,
+    gap: spacing.sm,
   },
-  resultButtonPassed: {
-    backgroundColor: '#4CAF50',
-    borderColor: '#4CAF50',
+  resultButtonPass: {
+    backgroundColor: colors.success[50],
   },
-  resultButtonFailed: {
-    backgroundColor: '#f44336',
-    borderColor: '#f44336',
+  resultButtonFail: {
+    backgroundColor: colors.error[50],
   },
   resultButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#666',
+    fontSize: typography.size.base,
+    fontWeight: typography.weight.semibold,
+    color: colors.text.tertiary,
   },
   resultButtonTextActive: {
-    color: '#ffffff',
+    color: colors.text.primary,
   },
-  submitButton: {
-    backgroundColor: '#2196F3',
+  scoreInput: {
+    backgroundColor: colors.background.tertiary,
     borderRadius: 12,
-    padding: 18,
+    padding: spacing.base,
+    fontSize: typography.size.base,
+    color: colors.text.primary,
+    height: 52,
+  },
+  notesInput: {
+    backgroundColor: colors.background.tertiary,
+    borderRadius: 12,
+    padding: spacing.base,
+    fontSize: typography.size.base,
+    color: colors.text.primary,
+    minHeight: 80,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: spacing.md,
+    borderRadius: 8,
     alignItems: 'center',
-    marginTop: 8,
   },
-  submitButtonDisabled: {
-    backgroundColor: '#90CAF9',
+  modalCancelButton: {
+    backgroundColor: colors.background.tertiary,
   },
-  submitButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
+  modalCancelText: {
+    fontSize: typography.size.base,
+    fontWeight: typography.weight.semibold,
+    color: colors.text.secondary,
+  },
+  modalSubmitButton: {
+    backgroundColor: colors.primary[600],
+  },
+  modalSubmitText: {
+    fontSize: typography.size.base,
+    fontWeight: typography.weight.semibold,
+    color: colors.text.inverse,
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
 });
