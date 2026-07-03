@@ -827,14 +827,14 @@ Import this collection into Postman:
 ### Service Not Responding
 ```bash
 # Check if service is running
-docker-compose ps
+docker compose ps
 
 # View service logs
-docker-compose logs auth-service
-docker-compose logs analytics-service
+docker compose logs auth-service
+docker compose logs analytics-service
 
 # Restart service
-docker-compose restart auth-service
+docker compose restart auth-service
 ```
 
 ### Authentication Issues
@@ -925,7 +925,7 @@ Download: https://insomnia.rest/download
 
 ## Support
 
-- View logs: `docker-compose logs -f`
+- View logs: `docker compose logs -f`
 - Check health: `curl http://localhost:3001/health`
 - Database: `docker exec -it driving-school-postgres psql -U admin -d driving_school`
 - Redis: `docker exec -it driving-school-redis redis-cli`

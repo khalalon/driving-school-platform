@@ -3,10 +3,10 @@
  * Single Responsibility: Centralize API endpoint configuration
  */
 
-// Base URL - Update this to your backend URL
-// const BASE_URL = 'http://localhost:3000'; // For local development
-// const BASE_URL = 'http://10.0.2.2:3000'; // For Android Emulator
-const BASE_URL = 'http://192.168.1.34:3000'; // For physical device
+import Constants from 'expo-constants';
+
+// Base URL - Hardcoded for reliability
+const BASE_URL = 'http://192.168.100.113:80';
 
 export const API_CONFIG = {
   BASE_URL,

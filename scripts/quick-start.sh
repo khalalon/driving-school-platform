@@ -13,7 +13,7 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-if ! command -v docker-compose &> /dev/null; then
+if ! command -v docker compose &> /dev/null; then
     echo "❌ Docker Compose is not installed. Install from: https://docs.docker.com/compose/install/"
     exit 1
 fi
@@ -34,12 +34,12 @@ echo ""
 
 # Stop any running containers
 echo "🛑 Stopping any existing containers..."
-docker-compose down 2>/dev/null || true
+docker compose down 2>/dev/null || true
 echo ""
 
 # Start infrastructure first (PostgreSQL + Redis)
 echo "🗄️  Starting database and cache..."
-docker-compose up -d postgres redis
+docker compose up -d postgres redis
 echo "⏳ Waiting for database to be ready..."
 sleep 10
 
@@ -278,11 +278,11 @@ echo ""
 
 # Build and start all services
 echo "🏗️  Building all services..."
-docker-compose build --parallel
+docker compose build --parallel
 echo ""
 
 echo "🚀 Starting all services..."
-docker-compose up -d
+docker compose up -d
 
 # Wait for services to be healthy
 echo "⏳ Waiting for services to start..."
@@ -308,7 +308,7 @@ echo ""
 if [ "$all_healthy" = true ]; then
     echo "🎉 All services are running!"
 else
-    echo "⚠️  Some services are not healthy. Check logs with: docker-compose logs"
+    echo "⚠️  Some services are not healthy. Check logs with: docker compose logs"
 fi
 
 echo ""
@@ -332,8 +332,8 @@ echo "  Instructor: instructor@test.com / instructor123"
 echo ""
 echo "📚 Next Steps:"
 echo "  1. Test API: ./scripts/test-api.sh"
-echo "  2. View logs: docker-compose logs -f"
-echo "  3. Stop: docker-compose down"
+echo "  2. View logs: docker compose logs -f"
+echo "  3. Stop: docker compose down"
 echo ""
 echo "📖 Full API documentation: API_TESTING.md"
 echo "════════════════════════════════════════════════════════════"

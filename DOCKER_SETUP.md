@@ -122,30 +122,30 @@ All services include health checks:
 
 View health status:
 ```bash
-docker-compose ps
+docker compose ps
 ```
 
 ## Scaling Services
 
 Scale a service to multiple replicas:
 ```bash
-docker-compose up -d --scale auth-service=3
-docker-compose up -d --scale lesson-service=2
+docker compose up -d --scale auth-service=3
+docker compose up -d --scale lesson-service=2
 ```
 
 ## Logs
 ```bash
 # All services
-docker-compose logs -f
+docker compose logs -f
 
 # Specific service
-docker-compose logs -f auth-service
+docker compose logs -f auth-service
 
 # Last 100 lines
-docker-compose logs --tail=100
+docker compose logs --tail=100
 
 # With timestamps
-docker-compose logs -f -t
+docker compose logs -f -t
 ```
 
 ## Database Management
@@ -192,23 +192,23 @@ Open http://localhost:8081 in your browser
 ### Service won't start
 ```bash
 # Check logs
-docker-compose logs service-name
+docker compose logs service-name
 
 # Restart service
 make restart SERVICE=service-name
 
 # Rebuild service
-docker-compose build service-name
-docker-compose up -d service-name
+docker compose build service-name
+docker compose up -d service-name
 ```
 
 ### Database connection issues
 ```bash
 # Check PostgreSQL is running
-docker-compose ps postgres
+docker compose ps postgres
 
 # Check PostgreSQL logs
-docker-compose logs postgres
+docker compose logs postgres
 
 # Test connection
 docker exec -it driving-school-postgres pg_isready -U admin
@@ -236,13 +236,13 @@ make dev
 ## Performance Tuning
 
 ### Resource Limits (Production)
-Configured in `docker-compose.prod.yml`:
+Configured in `docker compose.prod.yml`:
 - PostgreSQL: 2 CPU, 2GB RAM
 - Redis: 1 CPU, 512MB RAM
 - Services: 1 CPU, 512MB RAM each
 
 ### Increase limits
-Edit `docker-compose.prod.yml`:
+Edit `docker compose.prod.yml`:
 ```yaml
 services:
   auth-service:
@@ -302,16 +302,16 @@ See `.github/workflows/ci-cd.yml`
 ## FAQ
 
 **Q: How do I add a new service?**
-A: Add to `docker-compose.yml` and create corresponding Dockerfile
+A: Add to `docker compose.yml` and create corresponding Dockerfile
 
 **Q: Can I use this in production?**
-A: Yes, use `docker-compose.prod.yml` with proper environment variables
+A: Yes, use `docker compose.prod.yml` with proper environment variables
 
 **Q: How do I update a service?**
-A: `docker-compose build service-name && docker-compose up -d service-name`
+A: `docker compose build service-name && docker compose up -d service-name`
 
 **Q: Where are logs stored?**
-A: Check `docker-compose logs` or `/var/lib/docker/containers/`
+A: Check `docker compose logs` or `/var/lib/docker/containers/`
 
 ## Support
 

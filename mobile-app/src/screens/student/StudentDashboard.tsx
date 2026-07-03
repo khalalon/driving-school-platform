@@ -20,7 +20,7 @@ export const StudentDashboard = ({ navigation }: any) => {
 
   const handleLogout = async () => {
     await logout();
-    navigation.replace('Login');
+    // No need to navigate - AuthContext will trigger navigator rebuild
   };
 
   const menuItems = [

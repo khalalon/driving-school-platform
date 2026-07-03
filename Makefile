@@ -4,25 +4,36 @@ help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 dev: ## Start development environment
-	@./scripts/docker-dev.sh
+	docker compose down
+	docker compose build
+	docker compose up -d
+	@echo "Services are starting..."
+	@powershell -NoProfile -Command "Start-Sleep -Seconds 10"
+	docker compose ps
 
 prod: ## Start production environment
-	@./scripts/docker-prod.sh
+	docker compose down
+	docker compose -f docker-compose.prod.yml build
+	docker compose -f docker-compose.prod.yml up -d
+	@echo "Production services are starting..."
+	@powershell -NoProfile -Command "Start-Sleep -Seconds 15"
+	docker compose ps
 
 stop: ## Stop all services
-	@./scripts/docker-stop.sh
+	docker compose down
 
 clean: ## Clean up all Docker resources
-	@./scripts/docker-clean.sh
+	docker compose down -v
+	@echo "Cleanup complete"
 
 logs: ## View logs (use SERVICE=name for specific service)
-	@./scripts/docker-logs.sh $(SERVICE)
+	docker compose logs -f --tail=100 $(SERVICE)
 
 restart: ## Restart a service (use SERVICE=name)
-	@./scripts/docker-restart.sh $(SERVICE)
+	docker compose restart $(SERVICE)
 
 build: ## Build all Docker images
-	@docker-compose build
+	@docker compose build
 
 test: ## Run tests for all services
 	@echo "Running tests for all services..."
@@ -60,7 +71,7 @@ migrate: ## Run database migrations
 	@docker exec driving-school-postgres psql -U admin -d driving_school -f /docker-entrypoint-initdb.d/001_initial_schema.sql
 
 ps: ## Show running containers
-	@docker-compose ps
+	@docker compose ps
 
 stats: ## Show container stats
 	@docker stats --no-stream
@@ -167,28 +178,28 @@ coverage: ## Run tests with coverage for all services
 	@cd services/analytics && npm test -- --coverage
 
 watch-logs: ## Watch logs in real-time for all services
-	@docker-compose logs -f --tail=100
+	@docker compose logs -f --tail=100
 
 watch-auth: ## Watch auth service logs
-	@docker-compose logs -f --tail=100 auth-service
+	@docker compose logs -f --tail=100 auth-service
 
 watch-school: ## Watch school service logs
-	@docker-compose logs -f --tail=100 school-service
+	@docker compose logs -f --tail=100 school-service
 
 watch-lesson: ## Watch lesson service logs
-	@docker-compose logs -f --tail=100 lesson-service
+	@docker compose logs -f --tail=100 lesson-service
 
 watch-exam: ## Watch exam service logs
-	@docker-compose logs -f --tail=100 exam-service
+	@docker compose logs -f --tail=100 exam-service
 
 watch-payment: ## Watch payment service logs
-	@docker-compose logs -f --tail=100 payment-service
+	@docker compose logs -f --tail=100 payment-service
 
 watch-notification: ## Watch notification service logs
-	@docker-compose logs -f --tail=100 notification-service
+	@docker compose logs -f --tail=100 notification-service
 
 watch-analytics: ## Watch analytics service logs
-	@docker-compose logs -f --tail=100 analytics-service
+	@docker compose logs -f --tail=100 analytics-service
 
 db-status: ## Show database tables and row counts
 	@docker exec driving-school-postgres psql -U admin -d driving_school -c "\dt"
@@ -215,64 +226,64 @@ prune-all: ## Remove ALL Docker resources (images, volumes, etc.)
 	@echo "✅ All Docker resources removed"
 
 restart-auth: ## Restart auth service
-	@docker-compose restart auth-service
+	@docker compose restart auth-service
 	@echo "✅ Auth service restarted"
 
 restart-school: ## Restart school service
-	@docker-compose restart school-service
+	@docker compose restart school-service
 	@echo "✅ School service restarted"
 
 restart-lesson: ## Restart lesson service
-	@docker-compose restart lesson-service
+	@docker compose restart lesson-service
 	@echo "✅ Lesson service restarted"
 
 restart-exam: ## Restart exam service
-	@docker-compose restart exam-service
+	@docker compose restart exam-service
 	@echo "✅ Exam service restarted"
 
 restart-payment: ## Restart payment service
-	@docker-compose restart payment-service
+	@docker compose restart payment-service
 	@echo "✅ Payment service restarted"
 
 restart-notification: ## Restart notification service
-	@docker-compose restart notification-service
+	@docker compose restart notification-service
 	@echo "✅ Notification service restarted"
 
 restart-analytics: ## Restart analytics service
-	@docker-compose restart analytics-service
+	@docker compose restart analytics-service
 	@echo "✅ Analytics service restarted"
 
 rebuild-auth: ## Rebuild and restart auth service
-	@docker-compose build auth-service
-	@docker-compose up -d auth-service
+	@docker compose build auth-service
+	@docker compose up -d auth-service
 	@echo "✅ Auth service rebuilt and restarted"
 
 rebuild-school: ## Rebuild and restart school service
-	@docker-compose build school-service
-	@docker-compose up -d school-service
+	@docker compose build school-service
+	@docker compose up -d school-service
 	@echo "✅ School service rebuilt and restarted"
 
 rebuild-lesson: ## Rebuild and restart lesson service
-	@docker-compose build lesson-service
-	@docker-compose up -d lesson-service
+	@docker compose build lesson-service
+	@docker compose up -d lesson-service
 	@echo "✅ Lesson service rebuilt and restarted"
 
 rebuild-exam: ## Rebuild and restart exam service
-	@docker-compose build exam-service
-	@docker-compose up -d exam-service
+	@docker compose build exam-service
+	@docker compose up -d exam-service
 	@echo "✅ Exam service rebuilt and restarted"
 
 rebuild-payment: ## Rebuild and restart payment service
-	@docker-compose build payment-service
-	@docker-compose up -d payment-service
+	@docker compose build payment-service
+	@docker compose up -d payment-service
 	@echo "✅ Payment service rebuilt and restarted"
 
 rebuild-notification: ## Rebuild and restart notification service
-	@docker-compose build notification-service
-	@docker-compose up -d notification-service
+	@docker compose build notification-service
+	@docker compose up -d notification-service
 	@echo "✅ Notification service rebuilt and restarted"
 
 rebuild-analytics: ## Rebuild and restart analytics service
-	@docker-compose build analytics-service
-	@docker-compose up -d analytics-service
+	@docker compose build analytics-service
+	@docker compose up -d analytics-service
 	@echo "✅ Analytics service rebuilt and restarted"

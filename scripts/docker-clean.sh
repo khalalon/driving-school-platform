@@ -11,7 +11,7 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
 fi
 
 # Stop all services
-docker-compose down -v
+docker compose down -v
 
 # Remove all project images
 docker images | grep driving-school | awk '{print $3}' | xargs -r docker rmi -f

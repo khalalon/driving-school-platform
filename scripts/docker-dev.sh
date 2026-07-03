@@ -4,15 +4,15 @@ set -e
 echo "🚀 Starting Driving School Platform (Development Mode)..."
 
 # Stop any running containers
-docker-compose down
+docker compose down
 
 # Build images
 echo "📦 Building Docker images..."
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml build
+docker compose -f docker compose.yml -f docker compose.dev.yml build
 
 # Start services
 echo "🔄 Starting services..."
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+docker compose -f docker compose.yml -f docker compose.dev.yml up -d
 
 # Wait for services to be healthy
 echo "⏳ Waiting for services to be healthy..."
@@ -32,7 +32,7 @@ done
 
 echo ""
 echo "📊 Services Status:"
-docker-compose ps
+docker compose ps
 
 echo ""
 echo "🌐 Service URLs:"
@@ -47,5 +47,5 @@ echo "  Redis:                localhost:6379"
 echo "  pgAdmin:              http://localhost:5050"
 echo "  Redis Commander:      http://localhost:8081"
 echo ""
-echo "📝 View logs: docker-compose logs -f [service-name]"
-echo "🛑 Stop all: docker-compose down"
+echo "📝 View logs: docker compose logs -f [service-name]"
+echo "🛑 Stop all: docker compose down"

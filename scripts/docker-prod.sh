@@ -11,11 +11,11 @@ fi
 
 # Build images
 echo "📦 Building Docker images..."
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml build
+docker compose -f docker compose.yml -f docker compose.prod.yml build
 
 # Start services
 echo "🔄 Starting services..."
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+docker compose -f docker compose.yml -f docker compose.prod.yml up -d
 
 # Wait for services
 sleep 15
@@ -23,4 +23,4 @@ sleep 15
 echo "✅ Production services started"
 echo ""
 echo "🌐 Access via Nginx: http://localhost"
-echo "📝 View logs: docker-compose logs -f"
+echo "📝 View logs: docker compose logs -f"

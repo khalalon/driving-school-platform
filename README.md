@@ -227,8 +227,8 @@ driving-school-platform/
 ├── migrations/
 │   └── 001_initial_schema.sql    # Database schema
 │
-├── docker-compose.yml            # Local development
-├── docker-compose.prod.yml       # Production setup
+├── docker compose.yml            # Local development
+├── docker compose.prod.yml       # Production setup
 ├── .env.example                  # Environment template
 ├── Makefile                      # Build automation
 ├── README.md                     # Project documentation
@@ -344,7 +344,7 @@ This script will:
 #### 4. **Manual Start (Alternative)**
 ```bash
 # Start infrastructure
-docker-compose up -d postgres redis
+docker compose up -d postgres redis
 
 # Wait for database
 sleep 10
@@ -353,16 +353,16 @@ sleep 10
 docker exec -i driving-school-postgres psql -U admin -d driving_school < migrations/001_initial_schema.sql
 
 # Build and start all services
-docker-compose up -d --build
+docker compose up -d --build
 
 # Check logs
-docker-compose logs -f
+docker compose logs -f
 ```
 
 #### 5. **Verify Services**
 ```bash
 # Check all services are running
-docker-compose ps
+docker compose ps
 
 # Test health endpoints
 curl http://localhost:3001/health  # Auth
@@ -556,7 +556,7 @@ done
 # 2. Install Docker & Docker Compose
 curl -fsSL https://get.docker.com -o get-docker.sh
 sh get-docker.sh
-sudo apt install docker-compose
+sudo apt install docker compose
 
 # 3. Clone repository
 git clone https://github.com/yourusername/driving-school-platform.git
@@ -566,8 +566,8 @@ cd driving-school-platform
 cp .env.example .env
 nano .env  # Edit with production values
 
-# 5. Use production docker-compose
-docker-compose -f docker-compose.prod.yml up -d
+# 5. Use production docker compose
+docker compose -f docker compose.prod.yml up -d
 
 # 6. Setup SSL with Let's Encrypt
 sudo apt install certbot python3-certbot-nginx
@@ -738,7 +738,7 @@ A **Makefile** is a build automation tool that contains a set of directives (cal
 
 Instead of typing long commands like:
 ```bash
-docker-compose -f docker-compose.yml up -d --build
+docker compose -f docker compose.yml up -d --build
 ```
 
 You can just type:
@@ -897,10 +897,10 @@ pool: {
 #### Application Monitoring
 ```bash
 # Option 1: Prometheus + Grafana
-docker-compose -f docker-compose.monitoring.yml up -d
+docker compose -f docker compose.monitoring.yml up -d
 
 # Option 2: DataDog
-# Add DataDog agent to docker-compose
+# Add DataDog agent to docker compose
 
 # Option 3: New Relic
 # Add New Relic agent to each service
@@ -913,7 +913,7 @@ docker-compose -f docker-compose.monitoring.yml up -d
 # Option 3: Cloud providers (AWS CloudWatch, GCP Logging)
 
 # Simple log viewing
-docker-compose logs -f --tail=100
+docker compose logs -f --tail=100
 ```
 
 #### Health Checks
@@ -1008,7 +1008,7 @@ docker exec driving-school-postgres psql -U admin -d driving_school -c "SELECT c
 # Update dependencies
 
 # Security updates
-docker-compose pull
+docker compose pull
 make restart
 ```
 
@@ -1078,7 +1078,7 @@ make db-restore                    # Restore backup
 #### Service Won't Start
 ```bash
 # Check logs
-docker-compose logs auth-service
+docker compose logs auth-service
 
 # Common causes:
 # 1. Port already in use
@@ -1101,7 +1101,7 @@ docker ps | grep postgres
 docker exec driving-school-postgres pg_isready -U admin
 
 # Restart database
-docker-compose restart postgres
+docker compose restart postgres
 
 # Check credentials in .env
 ```
@@ -1114,7 +1114,7 @@ npm install
 npm run build
 
 # Or rebuild Docker image
-docker-compose build auth-service
+docker compose build auth-service
 ```
 
 #### High CPU/Memory Usage
@@ -1125,7 +1125,7 @@ docker stats
 # Identify problem service
 # Scale down or optimize
 
-# Add resource limits in docker-compose.yml
+# Add resource limits in docker compose.yml
 ```
 
 ---

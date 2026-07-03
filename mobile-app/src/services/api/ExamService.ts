@@ -21,10 +21,10 @@ export interface RecordExamResultData {
 
 class ExamService {
   /**
-   * Student: Get my exams (requested and scheduled)
+   * Student: Get all available exams
    */
   async getMyExams(): Promise<Exam[]> {
-    const response = await apiClient.get(`${API_CONFIG.EXAM_SERVICE}/my-exams`);
+    const response = await apiClient.get(API_CONFIG.ENDPOINTS.EXAMS.LIST);
     return response.data;
   }
 
@@ -33,7 +33,7 @@ class ExamService {
    */
   async requestExam(data: RequestExamData): Promise<Exam> {
     const response = await apiClient.post(
-      `${API_CONFIG.EXAM_SERVICE}/request`,
+      API_CONFIG.ENDPOINTS.EXAMS.REQUEST,
       data
     );
     return response.data;
@@ -44,7 +44,7 @@ class ExamService {
    */
   async getExamRequests(): Promise<Exam[]> {
     const response = await apiClient.get(
-      `${API_CONFIG.EXAM_SERVICE}/requests`
+      API_CONFIG.ENDPOINTS.EXAMS.REQUESTS
     );
     return response.data;
   }
@@ -56,10 +56,8 @@ class ExamService {
     examId: string,
     data: { dateTime: string; location: string }
   ): Promise<Exam> {
-    const response = await apiClient.put(
-      `${API_CONFIG.EXAM_SERVICE}/${examId}/schedule`,
-      data
-    );
+    const url = API_CONFIG.ENDPOINTS.EXAMS.SCHEDULE.replace(':id', examId);
+    const response = await apiClient.put(url, data);
     return response.data;
   }
 
@@ -67,10 +65,8 @@ class ExamService {
    * Instructor: Reject exam request
    */
   async rejectExamRequest(examId: string, reason: string): Promise<Exam> {
-    const response = await apiClient.put(
-      `${API_CONFIG.EXAM_SERVICE}/${examId}/reject`,
-      { reason }
-    );
+    const url = API_CONFIG.ENDPOINTS.EXAMS.REJECT.replace(':id', examId);
+    const response = await apiClient.put(url, { reason });
     return response.data;
   }
 
@@ -81,10 +77,8 @@ class ExamService {
     examId: string,
     data: RecordExamResultData
   ): Promise<Exam> {
-    const response = await apiClient.put(
-      `${API_CONFIG.EXAM_SERVICE}/${examId}/result`,
-      data
-    );
+    const url = API_CONFIG.ENDPOINTS.EXAMS.RESULT.replace(':id', examId);
+    const response = await apiClient.put(url, data);
     return response.data;
   }
 
@@ -93,7 +87,7 @@ class ExamService {
    */
   async getTodayExams(): Promise<Exam[]> {
     const response = await apiClient.get(
-      `${API_CONFIG.EXAM_SERVICE}/today`
+      API_CONFIG.ENDPOINTS.EXAMS.TODAY
     );
     return response.data;
   }

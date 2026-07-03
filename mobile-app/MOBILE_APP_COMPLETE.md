@@ -106,7 +106,7 @@
 2. **Start Backend**
 ```bash
    cd driving-school-platform
-   docker-compose up -d
+   docker compose up -d
 ```
 
 3. **Start Mobile App**

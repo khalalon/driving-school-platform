@@ -41,7 +41,7 @@ services:
     image: redis:7-alpine
     container_name: driving-school-redis
     restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-}
+    command: redis-server --appendonly yes
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
@@ -67,7 +67,7 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 3001
       DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-driving_school}
-      REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379
+      REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-change-this-secret-in-production}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
@@ -266,7 +266,7 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 3006
       DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-driving_school}
-      REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379
+      REDIS_URL: redis://redis:6379
       AUTH_SERVICE_URL: http://auth-service:3001
       EXPO_ACCESS_TOKEN: ${EXPO_ACCESS_TOKEN:-}
       SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
@@ -304,7 +304,7 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 3008
       DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-driving_school}
-      REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379
+      REDIS_URL: redis://redis:6379
       AUTH_SERVICE_URL: http://auth-service:3001
       CACHE_TTL: ${CACHE_TTL:-3600}
     ports:

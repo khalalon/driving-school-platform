@@ -17,8 +17,8 @@ jobs:
       
       - name: Setup services
         run: |
-          docker-compose up -d postgres redis
-          docker-compose up -d ${{ matrix.service }}-service
+          docker compose up -d postgres redis
+          docker compose up -d ${{ matrix.service }}-service
           sleep 10
       
       - name: Install k6

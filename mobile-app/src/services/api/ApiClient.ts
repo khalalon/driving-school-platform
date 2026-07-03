@@ -6,6 +6,7 @@
 
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_CONFIG } from '../../config/api.config';
 
 const TOKEN_KEY = '@auth_token';
 
@@ -14,6 +15,7 @@ class ApiClient {
 
   constructor() {
     this.client = axios.create({
+      baseURL: API_CONFIG.BASE_URL,
       timeout: 10000,
       headers: {
         'Content-Type': 'application/json',

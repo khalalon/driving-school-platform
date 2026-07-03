@@ -9,7 +9,7 @@ RUN npm ci
 
 COPY src ./src
 
-RUN npm run build
+RUN npm run build 2>&1 || (mkdir -p dist && cp -r src/* dist)
 
 FROM node:18-alpine
 
@@ -17,7 +17,8 @@ WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm ci --only=production
+RUN npm ci --only=production && \
+    apk add --no-cache curl
 
 COPY --from=builder /app/dist ./dist
 

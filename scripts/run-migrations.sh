@@ -35,7 +35,7 @@ fi
 # Check if PostgreSQL container exists
 if ! docker ps -a | grep -q $DB_CONTAINER; then
     echo -e "${YELLOW}⚠️  PostgreSQL container not found. Starting it now...${NC}"
-    docker-compose up -d postgres
+    docker compose up -d postgres
     echo -e "${YELLOW}⏳ Waiting 10 seconds for PostgreSQL to be ready...${NC}"
     sleep 10
 fi
@@ -134,4 +134,4 @@ ORDER BY tablename;
 
 echo ""
 echo -e "${GREEN}🎉 Migration process completed successfully!${NC}"
-echo -e "${BLUE}💡 You can now start your services with: docker-compose up -d${NC}"
+echo -e "${BLUE}💡 You can now start your services with: docker compose up -d${NC}"

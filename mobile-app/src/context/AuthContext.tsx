@@ -60,14 +60,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     try {
       const response = await authService.login({ email, password });
-      
+
+      // Backend returns { accessToken, refreshToken }
+      // We need to decode the token to get user info
+      const token = response.accessToken || response.token;
+
+      // Decode JWT to get user info (simple decode)
+      const decodedToken = JSON.parse(atob(token.split('.')[1]));
+
+      // Create user object from token
+      const userData: User = {
+        id: decodedToken.userId,
+        email: decodedToken.email,
+        role: decodedToken.role,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
       // Save token and user data
       await Promise.all([
-        AsyncStorage.setItem(TOKEN_KEY, response.token),
-        AsyncStorage.setItem(USER_KEY, JSON.stringify(response.user)),
+        AsyncStorage.setItem(TOKEN_KEY, token),
+        AsyncStorage.setItem(USER_KEY, JSON.stringify(userData)),
       ]);
 
-      setUser(response.user);
+      setUser(userData);
     } catch (error) {
       throw error;
     }
@@ -76,14 +92,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (data: RegisterData) => {
     try {
       const response = await authService.register(data);
-      
+
+      // Backend returns { accessToken, refreshToken }
+      // We need to decode the token to get user info
+      const token = response.accessToken || response.token;
+
+      // Decode JWT to get user info (simple decode)
+      const decodedToken = JSON.parse(atob(token.split('.')[1]));
+
+      // Create user object from token
+      const userData: User = {
+        id: decodedToken.userId,
+        email: decodedToken.email,
+        role: decodedToken.role,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
       // Save token and user data
       await Promise.all([
-        AsyncStorage.setItem(TOKEN_KEY, response.token),
-        AsyncStorage.setItem(USER_KEY, JSON.stringify(response.user)),
+        AsyncStorage.setItem(TOKEN_KEY, token),
+        AsyncStorage.setItem(USER_KEY, JSON.stringify(userData)),
       ]);
 
-      setUser(response.user);
+      setUser(userData);
     } catch (error) {
       throw error;
     }

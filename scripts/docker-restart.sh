@@ -8,5 +8,5 @@ if [ -z "$1" ]; then
 fi
 
 echo "🔄 Restarting $1..."
-docker-compose restart "$1"
+docker compose restart "$1"
 echo "✅ $1 restarted"

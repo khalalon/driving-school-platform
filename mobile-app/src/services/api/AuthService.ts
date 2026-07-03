@@ -14,7 +14,7 @@ class AuthService {
    */
   async login(data: LoginRequest): Promise<AuthResponse> {
     const response = await apiClient.post(
-      `${API_CONFIG.AUTH_SERVICE}/auth/login`,
+      API_CONFIG.ENDPOINTS.AUTH.LOGIN,
       data
     );
     return response.data;
@@ -22,11 +22,19 @@ class AuthService {
 
   /**
    * Register new user
+   * Note: Backend only accepts email, password, and role (firstName/lastName are ignored)
    */
   async register(data: RegisterRequest): Promise<AuthResponse> {
+    // Only send fields that backend accepts
+    const registerData = {
+      email: data.email,
+      password: data.password,
+      role: data.role,
+    };
+
     const response = await apiClient.post(
-      `${API_CONFIG.AUTH_SERVICE}/auth/register`,
-      data
+      API_CONFIG.ENDPOINTS.AUTH.REGISTER,
+      registerData
     );
     return response.data;
   }
@@ -44,7 +52,7 @@ class AuthService {
    */
   async getCurrentUser(): Promise<AuthResponse['user']> {
     const response = await apiClient.get(
-      `${API_CONFIG.AUTH_SERVICE}/auth/me`
+      API_CONFIG.ENDPOINTS.AUTH.ME
     );
     return response.data;
   }

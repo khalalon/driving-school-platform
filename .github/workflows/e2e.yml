@@ -16,7 +16,7 @@ jobs:
       
       - name: Start all services
         run: |
-          docker-compose up -d
+          docker compose up -d
           sleep 30
       
       - name: Setup Node.js
@@ -43,4 +43,4 @@ jobs:
       
       - name: Shutdown services
         if: always()
-        run: docker-compose down
+        run: docker compose down
