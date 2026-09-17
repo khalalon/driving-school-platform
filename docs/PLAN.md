@@ -3,7 +3,7 @@
 Règles de lecture (voir `CLAUDE.md`, règles d'or 3 et 5) :
 - On travaille **uniquement** sur la première tâche non cochée, dans l'ordre. Une tâche = un commit (message Conventional Commits, scope = domaine ou `infra` / `mobile` / `docs` / `e2e`).
 - Une tâche est cochée **seulement** quand sa commande « Critère de validation » a été exécutée et que sa sortie a été montrée. Pas d'exception.
-- Si une tâche indique « Dépend de : Q-xx » et que la question n'est pas tranchée dans `DECISIONS.md`, on **s'arrête** et on demande. Au 17/09/2026 il reste **Q-06b** (séances `CODE` collectives), **Q-16b** (notifications), **Q-17** (leçon payée annulée), **Q-18** (absence facturée) et **Q-19** (procédure d'examen ATTT).
+- Si une tâche indique « Dépend de : Q-xx » et que la question n'est pas tranchée dans `DECISIONS.md`, on **s'arrête** et on demande. Au 17/09/2026 il reste **Q-17** (leçon payée annulée), **Q-18** (absence facturée) et **Q-19** (procédure d'examen ATTT).
 - Chaque tâche livrée ajoute une ligne dans `CHANGELOG.md` et, si elle touche une route, met à jour `docs/API_CONTRACT.md` dans le même commit.
 - Les commandes sont écrites pour Git Bash (Windows) ou un shell POSIX, depuis la racine du dépôt sauf `cd` explicite.
 
@@ -158,15 +158,14 @@ cd services/api && npx tsc --noEmit && npm test -- --silent && cd ../.. && docke
 ```
 **Hors périmètre** : adaptation au modèle D-01.
 
-### - [ ] 2.5 — `payment` porté non monté, `notification` selon Q-16b, `analytics` supprimé
-**Objectif** : `modules/payment` est copié avec ses tests mais **n'est pas monté** dans `app.ts` (D-31) ; `modules/notification` est copié et monté ou non selon Q-16b ; `services/analytics` n'est pas porté.
-**Fichiers** : `services/api/src/modules/{payment,notification}/**`, `app.ts`.
+### - [ ] 2.5 — `payment` porté non monté ; `notification` et `analytics` non portés
+**Objectif** : `modules/payment` est copié avec ses tests mais **n'est pas monté** dans `app.ts` (D-31) ; `services/notification` et `services/analytics` ne sont **pas portés** (D-31, D-35) — leur code reste dans l'historique git.
+**Fichiers** : `services/api/src/modules/payment/**`, `app.ts`.
 **Critère de validation** :
 ```bash
-cd services/api && npx tsc --noEmit && npm test -- --silent && ! test -d src/modules/analytics && cd ../.. && docker compose up -d --build api && sleep 15 && test "$(curl -s -o /dev/null -w '%{http_code}' localhost:3000/api/payments)" = 404 && test "$(curl -s -o /dev/null -w '%{http_code}' localhost:3000/api/analytics/dashboard)" = 404 && echo OK
+cd services/api && npx tsc --noEmit && npm test -- --silent && ! test -d src/modules/analytics && ! test -d src/modules/notification && cd ../.. && docker compose up -d --build api && sleep 15 && test "$(curl -s -o /dev/null -w '%{http_code}' localhost:3000/api/payments)" = 404 && test "$(curl -s -o /dev/null -w '%{http_code}' localhost:3000/api/notifications)" = 404 && test "$(curl -s -o /dev/null -w '%{http_code}' localhost:3000/api/analytics/dashboard)" = 404 && echo OK
 ```
-**Hors périmètre** : tables notification (3.3).
-**Dépend de** : Q-16b (uniquement pour monter ou non `notification` ; le portage peut se faire sans).
+**Hors périmètre** : —
 
 ### - [ ] 2.6 — Nginx et compose sur un seul upstream
 **Objectif** : `nginx/nginx.conf` proxifie `/api/` vers `api:3000` (un `location`, `include proxy_params.conf`), **n'expose pas** `/api/verification`, n'écoute plus 443 ; les trois compose ne déclarent plus que `postgres`, `redis`, `api`, `nginx`. `/api/profiles` et `/api/student-profiles` deviennent joignables.
@@ -217,38 +216,27 @@ cd services/api && npx jest enrollment --verbose 2>&1 | grep -E 'rollback|reste 
 ```
 **Hors périmètre** : autres opérations multi-tables.
 
-### - [ ] 3.3 — Tables `push_tokens` et `notification_preferences` (si Q-16b = a)
-**Objectif** : migration `007_notifications.sql` crée les deux tables avec exactement les colonnes lues/écrites par `push-token.repository.ts` et `preference.repository.ts`.
-**Fichiers** : `migrations/007_notifications.sql`.
-**Critère de validation** :
-```bash
-./scripts/migrate.sh && docker exec driving-school-postgres psql -U admin -d driving_school -c '\d push_tokens' -c '\d notification_preferences' | grep -cE 'user_id|token' && echo OK
-```
-**Hors périmètre** : aucun endpoint.
-**Dépend de** : Q-16b (si (b) ou (c) : cocher avec « annulée par Q-16b », la numérotation des migrations suivantes se décale).
-
-### - [ ] 3.4 — Schéma des leçons pour D-21
-**Objectif** : migration `008_lessons_requests.sql` : `lessons.status` ∈ `pending | scheduled | completed | cancelled | rejected` (défaut `pending`), `date_time` renommée **`scheduled_date`** (nullable), nouvelle **`requested_date`** (nullable), `student_id → students.id` (nullable pour les séances `CODE` collectives selon Q-06b), **`instructor_id` nullable** (renseigné à l'approbation, D-32), nouvelle **`preferred_instructor_id`** (nullable), `notes`, `admin_notes`, `rejection_reason`, `attended`, `feedback`, `rating`, `paid`, `amount`, `payment_date`, `payment_method` (copiés depuis `lesson_bookings` pour l'individuel) ; `capacity` / `current_bookings` conservés. Types TS et validators du module `lesson` alignés, **sans** nouvelle route.
-**Fichiers** : `migrations/008_*.sql`, `modules/lesson/{types,validators,repositories}/**`.
+### - [ ] 3.3 — Schéma des leçons pour D-21
+**Objectif** : migration `007_lessons_requests.sql` : `lessons.status` ∈ `pending | scheduled | completed | cancelled | rejected` (défaut `pending`), `date_time` renommée **`scheduled_date`** (nullable), nouvelle **`requested_date`** (nullable), `student_id → students.id` (**NOT NULL** : une leçon = un élève, D-34), **`instructor_id` nullable** (renseigné à l'approbation, D-32), nouvelle **`preferred_instructor_id`** (nullable), `notes`, `admin_notes`, `rejection_reason`, `attended`, `feedback`, `rating`, `paid`, `amount`, `payment_date`, `payment_method` (copiés depuis `lesson_bookings` pour l'individuel) ; `capacity` / `current_bookings` conservés avec **`CHECK (capacity = 1)`** (D-34, levé plus tard sans migration de données). Types TS et validators du module `lesson` alignés, **sans** nouvelle route.
+**Fichiers** : `migrations/007_*.sql`, `modules/lesson/{types,validators,repositories}/**`.
 **Critère de validation** :
 ```bash
 docker compose down -v && docker compose up -d postgres && sleep 12 && ./scripts/migrate.sh && docker exec driving-school-postgres psql -U admin -d driving_school -c '\d lessons' | grep -E 'requested_date|scheduled_date|student_id|rejection_reason' && cd services/api && npx tsc --noEmit && npm test -- --silent && echo OK
 ```
 **Hors périmètre** : endpoints (5.2–5.4).
-**Dépend de** : Q-06b.
 
-### - [ ] 3.5 — Schéma des examens pour D-01
-**Objectif** : migration `009_exam_requests.sql` : l'examen devient une demande d'élève — `exams.student_id → students.id`, `preferred_date`, `message`, `status` ∈ `pending | scheduled | completed | cancelled | rejected` (D-33), `location`, `rejection_reason`, `result` ∈ `pending | passed | failed`, `score`, `notes`, `paid`, `amount`, `payment_date`, `payment_method` ; `exam_registrations` abandonnée (données copiées si présentes). Suppression de `checkEligibility` et des constantes `REQUIRED_LESSONS_*` (D-26). Types et validators alignés, pas de nouvelle route.
-**Fichiers** : `migrations/009_*.sql`, `modules/exam/{types,validators,repositories,services}/**`.
+### - [ ] 3.4 — Schéma des examens pour D-01
+**Objectif** : migration `008_exam_requests.sql` : l'examen devient une demande d'élève — `exams.student_id → students.id`, `preferred_date`, `message`, `status` ∈ `pending | scheduled | completed | cancelled | rejected` (D-33), `location`, `rejection_reason`, `result` ∈ `pending | passed | failed`, `score`, `notes`, `paid`, `amount`, `payment_date`, `payment_method` ; `exam_registrations` abandonnée (données copiées si présentes). Suppression de `checkEligibility` et des constantes `REQUIRED_LESSONS_*` (D-26). Types et validators alignés, pas de nouvelle route.
+**Fichiers** : `migrations/008_*.sql`, `modules/exam/{types,validators,repositories,services}/**`.
 **Critère de validation** :
 ```bash
 ./scripts/migrate.sh && docker exec driving-school-postgres psql -U admin -d driving_school -c '\d exams' | grep -E 'student_id|preferred_date|location|rejection_reason|result' && ! grep -rq 'REQUIRED_LESSONS' services/api/src && cd services/api && npx tsc --noEmit && npm test -- --silent && echo OK
 ```
 **Hors périmètre** : endpoints (5.5, 5.6).
 
-### - [ ] 3.6 — Une seule inscription active par élève (D-22)
-**Objectif** : migration `010_one_active_enrollment.sql` : `UNIQUE (students.user_id)` et index unique partiel `enrollment_requests(student_id) WHERE status IN ('pending','approved')`. `createEnrollmentRequest` refuse (409 `CONFLICT`) si une inscription ou une demande active existe dans **n'importe quelle** école.
-**Fichiers** : `migrations/010_*.sql`, `modules/student/services/enrollment.service.ts`, `modules/student/repositories/*.ts`, tests, `docs/API_CONTRACT.md` (E2).
+### - [ ] 3.5 — Une seule inscription active par élève (D-22)
+**Objectif** : migration `009_one_active_enrollment.sql` : `UNIQUE (students.user_id)` et index unique partiel `enrollment_requests(student_id) WHERE status IN ('pending','approved')`. `createEnrollmentRequest` refuse (409 `CONFLICT`) si une inscription ou une demande active existe dans **n'importe quelle** école.
+**Fichiers** : `migrations/009_*.sql`, `modules/student/services/enrollment.service.ts`, `modules/student/repositories/*.ts`, tests, `docs/API_CONTRACT.md` (E2).
 **Critère de validation** :
 ```bash
 ./scripts/migrate.sh && docker exec driving-school-postgres psql -U admin -d driving_school -tAc "SELECT count(*) FROM pg_indexes WHERE tablename IN ('students','enrollment_requests') AND indexdef LIKE 'CREATE UNIQUE%'" | grep -xE '[2-9]' && (cd services/api && npx jest enrollment --silent) && echo OK
@@ -345,7 +333,6 @@ ITOK=$(curl -s -X POST localhost/api/auth/login -H 'Content-Type: application/js
 (cd tests && npx jest e2e/critical-path --bail -t 'demande de leçon|liste des leçons' --verbose) && echo OK
 ```
 **Hors périmètre** : approbation (5.3).
-**Dépend de** : Q-06b (rattachement d'une demande `CODE`).
 
 ### - [ ] 5.3 — Leçons : approbation, refus, annulation (L5, L6, L3)
 **Objectif** : `PUT /:id/approve { scheduledDate, durationMinutes, price?, adminNotes? }` par **tout instructeur de l'école**, qui devient `instructor_id` (D-32) → `scheduled`, `price` copié de `pricing` ou pris du payload (D-30, 400 `PRICE_REQUIRED` si aucun) ; `PUT /:id/reject { reason }` → `rejected` ; `POST /:id/cancel` avec la règle 24 h (`LESSON_CANCEL_HOURS`, D-24).
@@ -355,17 +342,17 @@ ITOK=$(curl -s -X POST localhost/api/auth/login -H 'Content-Type: application/js
 (cd tests && npx jest e2e/critical-path --bail -t 'approbation de la leçon' --verbose) && (cd services/api && npx jest lesson --verbose 2>&1 | grep -E 'PRICE_REQUIRED|CANCEL_WINDOW|NOT_ENROLLED|✓|✕') && (cd services/api && npx jest lesson --silent) && echo OK
 ```
 **Hors périmètre** : présence (5.4).
-**Dépend de** : Q-06b ; Q-17 — la tâche couvre l'annulation des leçons **non payées** ; le cas « leçon déjà payée » n'est pas implémenté (ni accepté, ni refusé, ni inventé) tant que Q-17 n'est pas tranchée : le dire dans le commit et laisser la ligne L3 du contrat marquée « Q-17 ».
+**Dépend de** : Q-17 — la tâche couvre l'annulation des leçons **non payées** ; le cas « leçon déjà payée » n'est pas implémenté (ni accepté, ni refusé, ni inventé) tant que Q-17 n'est pas tranchée : le dire dans le commit et laisser la ligne L3 du contrat marquée « Q-17 ».
 
 ### - [ ] 5.4 — Leçons : présence (L7) et réservation directe (L4)
-**Objectif** : `PUT /:id/attendance` par identifiant de leçon, **réservé à `instructor_id` de la leçon** (+ `studentId` pour une séance collective, Q-06b) → `completed`, `student_lesson_stats.completed_lessons` incrémenté **seulement si `attended = true`** (D-33) ; `POST /api/lessons/book-for-student { studentId, type, scheduledDate, durationMinutes, price?, notes? }` → `scheduled`, `instructor_id` = appelant, prix de la grille ou du payload. Traitement financier d'une absence : Q-18.
+**Objectif** : `PUT /:id/attendance` par identifiant de leçon, **réservé à `instructor_id` de la leçon** → `completed`, `student_lesson_stats.completed_lessons` incrémenté **seulement si `attended = true`** (D-33) ; `POST /api/lessons/book-for-student { studentId, type, scheduledDate, durationMinutes, price?, notes? }` → `scheduled`, `instructor_id` = appelant, prix de la grille ou du payload. Traitement financier d'une absence : Q-18.
 **Fichiers** : `modules/lesson/**`, `modules/student/**` (stats), tests, `docs/API_CONTRACT.md` (L4, L7).
 **Critère de validation** :
 ```bash
 (cd tests && npx jest e2e/critical-path --verbose); echo "exit=$? (attendu 0 : chemin critique complet)"
 ```
 **Hors périmètre** : examens.
-**Dépend de** : Q-06b ; Q-18 (une absence entre-t-elle dans `totalDue` ? — implémenter la présence sans attendre, la règle financière est appliquée en 5.0/P4 quand Q-18 est tranchée).
+**Dépend de** : Q-18 (une absence entre-t-elle dans `totalDue` ? — implémenter la présence sans attendre, la règle financière est appliquée en 5.0/P4 quand Q-18 est tranchée).
 
 ### - [ ] 5.5 — Examens : demande (X2) et liste de l'appelant (X1)
 **Objectif** : `POST /api/exams/request { examType, preferredDate, message? }` (élève autorisé, école résolue) → `pending`, **sans** règle d'éligibilité (D-26) ; `GET /api/exams/my-exams` scoped. Anciennes routes de sessions retirées.
@@ -426,14 +413,13 @@ cd mobile-app && npx tsc --noEmit && npx jest src/services/api --silent && grep 
 **Hors périmètre** : leçons/examens.
 
 ### - [ ] 6.3 — Instructeur : demandes de leçons et présence
-**Objectif** : `LessonRequestsScreen` liste les `pending` de l'école (file partagée, D-32, avec l'instructeur préféré affiché s'il y en a un), appelle `approveLesson { scheduledDate, durationMinutes, price?, adminNotes? }` (champ prix affiché seulement si l'école n'a pas de tarif pour ce type) / `rejectLesson { reason }` (plus de stub, motif ≥ 10 car.) ; `TodayLessonsScreen` liste **ses** leçons `scheduled` du jour (celles dont il est `instructorId`) et appelle `markAttendance` par identifiant de leçon (+ `studentId` si collectif, Q-06b). Tests jest.
+**Objectif** : `LessonRequestsScreen` liste les `pending` de l'école (file partagée, D-32, avec l'instructeur préféré affiché s'il y en a un), appelle `approveLesson { scheduledDate, durationMinutes, price?, adminNotes? }` (champ prix affiché seulement si l'école n'a pas de tarif pour ce type) / `rejectLesson { reason }` (plus de stub, motif ≥ 10 car.) ; `TodayLessonsScreen` liste **ses** leçons `scheduled` du jour (celles dont il est `instructorId`) et appelle `markAttendance` par identifiant de leçon. Tests jest.
 **Fichiers** : `src/screens/instructor/{LessonRequestsScreen,TodayLessonsScreen}.tsx`, `src/services/api/LessonService.ts` + tests.
 **Critère de validation** :
 ```bash
 cd mobile-app && test "$(grep -c 'API call to' src/screens/instructor/LessonRequestsScreen.tsx src/screens/instructor/TodayLessonsScreen.tsx | grep -v ':0' | wc -l)" -eq 0 && npx tsc --noEmit && npx jest src/services/api --silent && echo OK
 ```
 **Hors périmètre** : réservation directe (6.4).
-**Dépend de** : Q-06b.
 
 ### - [ ] 6.4 — Instructeur : réservation directe pour un élève
 **Objectif** : `BookForStudentScreen` charge S6 et propose une liste d'élèves ; payload L4 `{ studentId, type, scheduledDate, durationMinutes, notes? }`.
@@ -464,11 +450,14 @@ cd mobile-app && grep -rq "navigate('StudentProfile'" src/screens/instructor && 
 **Hors périmètre** : —
 **Dépend de** : Q-17 (bouton « Annuler » sur une leçon payée : masqué ou non, selon la réponse).
 
-### - [ ] 6.7 — Notifications push (si Q-16b = a)
-**Objectif** : permission + token Expo au login, `POST /api/notifications/push-tokens`, suppression au logout ; envoi backend à E5, E6, L5, L6, X3, X4. Sinon annulée.
-**Fichiers** : à définir quand Q-16b est tranchée.
-**Critère de validation** : à définir.
-**Dépend de** : Q-16b.
+### - [ ] 6.7 — Approbation multiple des demandes de code (ergonomie, D-34)
+**Objectif** : sur `LessonRequestsScreen`, l'instructeur coche plusieurs demandes `pending` de type `CODE` et les approuve d'un coup pour un même créneau (« approuver ces 12 demandes pour mardi 9 h ») : un seul formulaire (date, heure, durée, prix si nécessaire), puis **un appel L5 par demande**, en séquence, avec récapitulatif des succès/échecs. Aucun changement de modèle de données ni de route.
+**Fichiers** : `src/screens/instructor/LessonRequestsScreen.tsx`, `src/services/api/LessonService.ts` (`approveLessons(ids, data)` = boucle sur `approveLesson`) + test.
+**Critère de validation** :
+```bash
+cd mobile-app && grep -q 'approveLessons' src/screens/instructor/LessonRequestsScreen.tsx && npx tsc --noEmit && npx jest src/services/api --silent && echo OK
+```
+**Hors périmètre** : séances collectives (`capacity > 1`), hors v1.
 
 ---
 

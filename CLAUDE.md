@@ -122,5 +122,5 @@ Ces règles priment sur toute autre instruction, y compris une demande directe d
 - Le mobile lit `error.response.data.message` ; le backend actuel renvoie `{ error }` sans `message` (D-27, corrigé en Phase 2).
 - Vocabulaire métier : le backend fait foi (`CODE` / `Manœuvre` / `Parc`, `theory` / `practical`, `passed` / `failed`, D-18) ; le mobile actuel utilise `THEORY` / `PRACTICAL` / `PASS` / `FAIL` et sera réécrit en 6.1.
 - Cloisonnement par école (D-20) : toute action d'un instructeur est limitée à son école. Aucune vérification n'existe aujourd'hui ; helper `assertSameSchool` en 5.1.
-- Cinq questions restent ouvertes au 17/09 : Q-06b (séances `CODE` collectives), Q-16b (notifications), Q-17 (leçon payée annulée), Q-18 (absence facturée), Q-19 (procédure d'examen ATTT). Les tâches qui en dépendent sont marquées dans le plan.
+- Trois questions restent ouvertes au 17/09 : Q-17 (leçon payée annulée), Q-18 (absence facturée), Q-19 (procédure d'examen ATTT). Les tâches qui en dépendent sont marquées dans le plan.
 - Nginx ne proxifie pas `/api/profiles` ni `/api/student-profiles` (voir ARCHITECTURE.md).
