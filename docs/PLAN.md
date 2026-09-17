@@ -58,9 +58,9 @@ test "$(git ls-files | grep -cE '(^|/)\.env$')" -eq 0 && ls .env.example mobile-
 ```
 **Hors périmètre** : les autres Dockerfiles (déjà corrects).
 
-### - [ ] 0.6 — Typecheck vert sur les 8 services, en local
+### - [x] 0.6 — Typecheck vert sur les 8 services, en local
 **Objectif** : `npx tsc --noEmit` passe dans chaque service ; corrections de types uniquement, sans changement de comportement.
-**Fichiers** : `services/*/src/**`, `services/*/tsconfig.json` si nécessaire.
+**Fichiers** : `services/*/src/**`, `services/*/tsconfig.json` si nécessaire, `services/analytics/package.json` (retrait du script `prepare` qui, à chaque `npm ci` dans analytics, pointait `core.hooksPath` vers `services/analytics/.husky`, vide : hooks racine désactivés — constaté en exécutant le critère, 17/09).
 **Critère de validation** :
 ```bash
 for s in auth school student lesson exam payment notification analytics; do (cd services/$s && npm ci --silent && npx tsc --noEmit) || { echo "FAIL $s"; exit 1; }; done; echo "OK 8/8"

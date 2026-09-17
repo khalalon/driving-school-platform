@@ -12,8 +12,7 @@
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
-    "lint-staged": "lint-staged",
-    "prepare": "cd ../.. && husky install services/analytics/.husky"
+    "lint-staged": "lint-staged"
   },
   "dependencies": {
     "express": "^4.18.2",
