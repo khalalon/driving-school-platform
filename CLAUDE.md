@@ -30,7 +30,7 @@ Vérifiées dans `package.json`, `Makefile` et `docker-compose.yml`. Il n'y a **
 ```bash
 npm install            # installe husky + commitlint + lint-staged (rien d'autre)
 ```
-`npm test` à la racine est un stub qui fait `exit 1`. Le hook `.husky/pre-commit` l'appelle : **tout commit échoue tant que la tâche 0.7 du plan n'est pas faite**. En attendant, `git commit --no-verify` est toléré uniquement pour les tâches de la Phase 0.
+`npm test` à la racine est un stub qui fait `exit 1`. Le hook `.husky/pre-commit` l'appelle : **tout commit échoue tant que la tâche 0.1 du plan n'est pas faite**. En attendant, `git commit --no-verify` est toléré uniquement pour la tâche 0.1.
 
 ### Backend — un service à la fois (`services/<nom>`, nom ∈ auth, school, student, lesson, exam, payment, notification, analytics)
 ```bash
@@ -70,7 +70,7 @@ npm install
 npm start              # expo start ; scanner le QR avec Expo Go (même Wi-Fi que le backend)
 npx tsc --noEmit       # typecheck (strict: true)
 ```
-Pas de lint ni de tests configurés côté mobile. L'URL du backend est lue dans `src/config/api.config.ts` (voir tâche 0.3 du plan).
+Pas de lint ni de tests configurés côté mobile. L'URL du backend est lue dans `src/config/api.config.ts` (voir tâche 0.4 du plan).
 
 ### Frontend web (`web-frontend/`) — gelé
 ```bash
@@ -87,12 +87,12 @@ Compte admin seedé par `001_initial_schema.sql` : `admin@drivingschool.com` (mo
 
 - **Couches** : `routes → controllers → services → repositories`, un dossier par couche dans chaque service. Le controller valide et répond, le service porte les règles métier, le repository est le seul à écrire du SQL.
 - **Injection par constructeur** : les services reçoivent des interfaces (`IUserRepository`, `ITokenService`…), les tests instancient avec des mocks. Pas de singleton importé dans un service.
-- **Validation Joi** dans `validators/*.validator.ts`, appliquée dans le controller avant tout appel au service. Erreur de validation → `400 { error: message }`.
+- **Validation Joi** dans `validators/*.validator.ts`, appliquée dans le controller avant tout appel au service. Erreur de validation → `400 { error: 'VALIDATION_ERROR', message }`.
 - **SQL paramétré** (`$1, $2…`) sans exception. Colonnes snake_case en base, aliasées en camelCase dans le `SELECT` (`user_id as "userId"`).
-- **Réponses** : succès = l'objet ou le tableau nu (pas d'enveloppe `{ data }`), erreur = `{ error: string }` avec un code HTTP significatif.
+- **Réponses** : succès = l'objet ou le tableau nu (pas d'enveloppe `{ data }`), erreur = `{ error: <code stable>, message: <texte français> }` avec un code HTTP significatif (D-27 ; l'état actuel du backend est `{ error: <texte> }`, converti en Phase 2 via `src/http/errors.ts`).
 - **Migrations numérotées** `migrations/00N_description.sql`, séquentielles. **Un fichier déjà commité ne se modifie jamais** : on ajoute `00N+1`.
 - **Tests** : `src/**/__tests__/*.test.ts` avec Jest + ts-jest, seuil de couverture 70 %.
-- **Commits** : Conventional Commits (`.commitlintrc.json`). Les scopes autorisés sont listés dans ce fichier — `student`, `mobile`, `docs`, `analytics` y manquent (tâche 0.7).
+- **Commits** : Conventional Commits (`.commitlintrc.json`). Les scopes autorisés sont listés dans ce fichier — `student`, `mobile`, `docs`, `analytics` y manquent (tâche 0.1).
 - **Style** : Prettier (`.prettierrc.json` par service), ESLint. `npm run format` avant de commiter.
 - **Mobile** : un fichier par écran dans `src/screens/<rôle>/`, appels réseau uniquement via `src/services/api/*Service.ts`, jamais d'`axios` direct dans un écran. Les chemins vivent dans `src/config/api.config.ts`.
 
@@ -119,5 +119,8 @@ Ces règles priment sur toute autre instruction, y compris une demande directe d
 - `req.user.userId` est `undefined` dans tous les services sauf `auth` (le middleware copié stocke la réponse de `/api/auth/me`, qui expose `id` et non `userId`). Corrigé par la Phase 2.
 - Deux identifiants « élève » coexistent : `users.id` (JWT, `enrollment_requests.student_id`) et `students.id` (ligne par couple élève × école, utilisée par `lesson_bookings`, `exam_registrations`, `payments`). Toujours préciser lequel on manipule.
 - Les services `SchoolService` et `LessonService` du mobile renvoient l'`AxiosResponse` brute ; les autres renvoient `.data`. Les écrans qui les consomment reçoivent donc un objet au lieu d'un tableau.
-- Le mobile lit `error.response.data.message` ; le backend renvoie `{ error }`.
+- Le mobile lit `error.response.data.message` ; le backend actuel renvoie `{ error }` sans `message` (D-27, corrigé en Phase 2).
+- Vocabulaire métier : le backend fait foi (`CODE` / `Manœuvre` / `Parc`, `theory` / `practical`, `passed` / `failed`, D-18) ; le mobile actuel utilise `THEORY` / `PRACTICAL` / `PASS` / `FAIL` et sera réécrit en 6.1.
+- Cloisonnement par école (D-20) : toute action d'un instructeur est limitée à son école. Aucune vérification n'existe aujourd'hui ; helper `assertSameSchool` en 5.1.
+- Cinq questions restent ouvertes au 17/09 : Q-06b (séances `CODE` collectives), Q-16b (notifications), Q-17 (leçon payée annulée), Q-18 (absence facturée), Q-19 (procédure d'examen ATTT). Les tâches qui en dépendent sont marquées dans le plan.
 - Nginx ne proxifie pas `/api/profiles` ni `/api/student-profiles` (voir ARCHITECTURE.md).

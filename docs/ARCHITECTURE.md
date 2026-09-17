@@ -183,5 +183,5 @@ Config : l'URL de base est **codée en dur** dans `mobile-app/src/config/api.con
 | `nginx/proxy_params.conf` | Jamais inclus. |
 | `mobile-app/src/app.ts` | Copie égarée du `app.ts` **Express de student-service** (importe `express`, `helmet`, `./routes/enrollment.routes`…) dans le projet mobile. Non importé, mais inclus par `tsconfig` (`**/*.ts`) → fait échouer `npx tsc --noEmit` du mobile. |
 | `mobile-app/MOBILE_APP_COMPLETE.md`, `mobile-app/MINIMAL_DESIGN_GUIDE.md` | Docs de statut hors racine, hors périmètre du ménage de cette session. |
-| Racine : `full-workflow-test.ps1`, `run-tests.ps1`, `test-all-services.ps1`, `test-comprehensive.ps1`, `test-login.html`, `setup-fresh-mobile.sh`, `start-expo-tunnel.bat`, `diagnose-network.ps1` | Scripts de test manuel / réseau d'une session passée ; à évaluer en Phase 0. |
+| Racine : `full-workflow-test.ps1`, `run-tests.ps1`, `test-all-services.ps1`, `test-comprehensive.ps1`, `test-login.html`, `setup-fresh-mobile.sh`, `start-expo-tunnel.bat`, `diagnose-network.ps1` | Scripts de test manuel / réseau d'une session passée ; supprimés en tâche 0.8. |
 | `.env.example` racine | Décrit `STRIPE_*`, `SENDGRID_*`, `TWILIO_*` : lus par compose, mais les intégrations réelles ne sont pas vérifiées dans cette session. |
