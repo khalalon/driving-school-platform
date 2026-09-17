@@ -22,7 +22,7 @@ docker compose down -v && docker compose up -d postgres && sleep 12 && ./scripts
 ```
 **Hors périmètre** : aucun changement de schéma métier ; ne pas réécrire le Makefile pour l'app unique (2.7).
 
-### - [ ] 0.2 — `.gitignore` racine et sortie de `node_modules` de l'index
+### - [x] 0.2 — `.gitignore` racine et sortie de `node_modules` de l'index
 **Objectif** : que `git ls-files` ne contienne plus aucun fichier de dépendances ni d'artefact de build.
 **Fichiers** : `.gitignore` (nouveau, racine : `node_modules/`, `dist/`, `coverage/`, `.env`, `.env.*.local`, `.DS_Store`, `*.log`, `.expo/`), index git (`git rm -r --cached node_modules services/student/node_modules`).
 **Critère de validation** :

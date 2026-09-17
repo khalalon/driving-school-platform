@@ -1,6 +1,7 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-# --config : désactive la découverte de configs, qui parcourt tous les fichiers suivis
-# (dont des node_modules encore indexés, voir tâche 0.2) et trébuche sur des configs invalides.
+# --config : une seule config lint-staged, celle de la racine. Sans lui, la découverte
+# automatique appliquerait aussi la clé `lint-staged` héritée des services/*/package.json
+# (eslint + prettier + jest par fichier, avec le node_modules de chaque service).
 npx --no -- lint-staged --config package.json

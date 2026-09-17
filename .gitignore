@@ -1,0 +1,15 @@
+# Dépendances et artefacts de build (chaque service, le mobile et le web ont leur propre node_modules)
+node_modules/
+dist/
+coverage/
+
+# Secrets locaux (les .env.example restent suivis)
+.env
+.env.*.local
+
+# Système et journaux
+.DS_Store
+*.log
+
+# Expo (mobile-app)
+.expo/
