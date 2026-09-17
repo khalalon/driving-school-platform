@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "prepare": "husky install"
   },
   "keywords": [],
@@ -24,5 +23,8 @@
     "lint-staged": "^16.2.7",
     "prettier": "^3.7.4",
     "ts-jest": "^29.4.6"
+  },
+  "lint-staged": {
+    "services/*/src/**/*.ts": "prettier --write"
   }
 }

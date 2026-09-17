@@ -30,7 +30,7 @@ Vérifiées dans `package.json`, `Makefile` et `docker-compose.yml`. Il n'y a **
 ```bash
 npm install            # installe husky + commitlint + lint-staged (rien d'autre)
 ```
-`npm test` à la racine est un stub qui fait `exit 1`. Le hook `.husky/pre-commit` l'appelle : **tout commit échoue tant que la tâche 0.1 du plan n'est pas faite**. En attendant, `git commit --no-verify` est toléré uniquement pour la tâche 0.1.
+`npm install` active aussi les hooks git (`prepare` → `husky install`) et crée les shims `npx` sous Windows. `.husky/pre-commit` lance `lint-staged` (Prettier sur les `.ts` des services), `.husky/commit-msg` lance commitlint. Il n'y a pas de script `test` à la racine : les tests de bout en bout arrivent en 1.1 (`test:e2e`).
 
 ### Backend — un service à la fois (`services/<nom>`, nom ∈ auth, school, student, lesson, exam, payment, notification, analytics)
 ```bash
@@ -50,18 +50,18 @@ docker compose ps                # état + healthchecks
 docker compose logs -f auth-service
 docker compose down              # stop ; ajouter -v pour effacer la base
 ```
-`make dev` fait `docker compose down && build && up -d`. Les cibles `make install / test / lint / health` **oublient le service `student`** et testent analytics sur le mauvais port (3007 au lieu de 3008) — corrigé en Phase 0.
+`make dev` fait `docker compose down && build && up -d`. Les cibles `make install / test / lint / format / coverage / health` couvrent les 8 services (`student` sur 3007, `analytics` sur 3008).
 
 ### Migrations
-Les fichiers `migrations/00N_*.sql` sont montés dans `/docker-entrypoint-initdb.d` : ils s'appliquent **automatiquement, une seule fois, à la première création du volume Postgres**. Il n'y a pas de table de suivi des migrations et les fichiers ne sont pas idempotents (`CREATE INDEX` sans `IF NOT EXISTS`).
+Les fichiers `migrations/00N_*.sql` sont montés dans `/docker-entrypoint-initdb.d` : sur un volume Postgres vierge, ils s'appliquent **tous, automatiquement, une seule fois** — `004` compris, qui crée la table de suivi `schema_migrations` et y inscrit 001–004. Sur une base existante, `scripts/migrate.sh` (= `make migrate`) applique dans l'ordre les fichiers non encore enregistrés dans `schema_migrations`, chaque fichier et son enregistrement dans une seule transaction ; il est idempotent et se lance depuis n'importe quel répertoire. Les fichiers 001–003 eux-mêmes ne sont pas idempotents (`CREATE INDEX` sans `IF NOT EXISTS`) : ne jamais les rejouer à la main.
 ```bash
-# Repartir d'une base vierge (applique 001, 002, 003 dans l'ordre) :
+# Repartir d'une base vierge (applique 001 → 004 dans l'ordre) :
 docker compose down -v && docker compose up -d postgres
 
-# Appliquer un fichier précis sur une base existante :
-docker exec -i driving-school-postgres psql -U admin -d driving_school < migrations/004_xxx.sql
+# Appliquer les migrations en attente sur une base existante (relançable à volonté) :
+./scripts/migrate.sh        # ou : make migrate
 ```
-`make migrate` ne rejoue que `001` : ne pas l'utiliser. `scripts/run-migrations.sh` doit être lancé **depuis `scripts/`** (chemin relatif `../migrations`).
+Si le port 5432 est déjà pris sur la machine : `POSTGRES_PORT=5433 docker compose up -d postgres` (le script passe par `docker exec`, pas par le port hôte).
 
 ### Mobile (`mobile-app/`)
 ```bash
@@ -92,7 +92,7 @@ Compte admin seedé par `001_initial_schema.sql` : `admin@drivingschool.com` (mo
 - **Réponses** : succès = l'objet ou le tableau nu (pas d'enveloppe `{ data }`), erreur = `{ error: <code stable>, message: <texte français> }` avec un code HTTP significatif (D-27 ; l'état actuel du backend est `{ error: <texte> }`, converti en Phase 2 via `src/http/errors.ts`).
 - **Migrations numérotées** `migrations/00N_description.sql`, séquentielles. **Un fichier déjà commité ne se modifie jamais** : on ajoute `00N+1`.
 - **Tests** : `src/**/__tests__/*.test.ts` avec Jest + ts-jest, seuil de couverture 70 %.
-- **Commits** : Conventional Commits (`.commitlintrc.json`). Les scopes autorisés sont listés dans ce fichier — `student`, `mobile`, `docs`, `analytics` y manquent (tâche 0.1).
+- **Commits** : Conventional Commits (`.commitlintrc.json`). Scopes autorisés : les 8 domaines (`auth`, `school`, `student`, `lesson`, `exam`, `payment`, `notification`, `analytics`) plus `mobile`, `docs`, `infra`, `e2e`, `docker`, `ci`, `deps`.
 - **Style** : Prettier (`.prettierrc.json` par service), ESLint. `npm run format` avant de commiter.
 - **Mobile** : un fichier par écran dans `src/screens/<rôle>/`, appels réseau uniquement via `src/services/api/*Service.ts`, jamais d'`axios` direct dans un écran. Les chemins vivent dans `src/config/api.config.ts`.
 

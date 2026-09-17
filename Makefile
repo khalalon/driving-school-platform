@@ -43,6 +43,7 @@ test: ## Run tests for all services
 	@cd services/exam && npm test
 	@cd services/payment && npm test
 	@cd services/notification && npm test
+	@cd services/student && npm test
 	@cd services/analytics && npm test
 
 test-auth: ## Run tests for auth service only
@@ -63,12 +64,14 @@ test-payment: ## Run tests for payment service only
 test-notification: ## Run tests for notification service only
 	@cd services/notification && npm test
 
+test-student: ## Run tests for student service only
+	@cd services/student && npm test
+
 test-analytics: ## Run tests for analytics service only
 	@cd services/analytics && npm test
 
-migrate: ## Run database migrations
-	@echo "Running database migrations..."
-	@docker exec driving-school-postgres psql -U admin -d driving_school -f /docker-entrypoint-initdb.d/001_initial_schema.sql
+migrate: ## Apply pending database migrations (idempotent, see scripts/migrate.sh)
+	@bash scripts/migrate.sh
 
 ps: ## Show running containers
 	@docker compose ps
@@ -84,7 +87,8 @@ health: ## Check health of all services
 	@curl -sf http://localhost:3004/health > /dev/null && echo "✅ Exam service (3004) is healthy" || echo "❌ Exam service (3004) is down"
 	@curl -sf http://localhost:3005/health > /dev/null && echo "✅ Payment service (3005) is healthy" || echo "❌ Payment service (3005) is down"
 	@curl -sf http://localhost:3006/health > /dev/null && echo "✅ Notification service (3006) is healthy" || echo "❌ Notification service (3006) is down"
-	@curl -sf http://localhost:3007/health > /dev/null && echo "✅ Analytics service (3007) is healthy" || echo "❌ Analytics service (3007) is down"
+	@curl -sf http://localhost:3007/health > /dev/null && echo "✅ Student service (3007) is healthy" || echo "❌ Student service (3007) is down"
+	@curl -sf http://localhost:3008/health > /dev/null && echo "✅ Analytics service (3008) is healthy" || echo "❌ Analytics service (3008) is down"
 
 install: ## Install dependencies for all services
 	@echo "📦 Installing dependencies for all services..."
@@ -94,6 +98,7 @@ install: ## Install dependencies for all services
 	@cd services/exam && npm install
 	@cd services/payment && npm install
 	@cd services/notification && npm install
+	@cd services/student && npm install
 	@cd services/analytics && npm install
 	@echo "✅ All dependencies installed"
 
@@ -105,6 +110,7 @@ lint: ## Lint all services
 	@cd services/exam && npm run lint
 	@cd services/payment && npm run lint
 	@cd services/notification && npm run lint
+	@cd services/student && npm run lint
 	@cd services/analytics && npm run lint
 	@echo "✅ Linting complete"
 
@@ -116,6 +122,7 @@ format: ## Format code for all services
 	@cd services/exam && npm run format
 	@cd services/payment && npm run format
 	@cd services/notification && npm run format
+	@cd services/student && npm run format
 	@cd services/analytics && npm run format
 	@echo "✅ Formatting complete"
 
@@ -175,6 +182,7 @@ coverage: ## Run tests with coverage for all services
 	@cd services/exam && npm test -- --coverage
 	@cd services/payment && npm test -- --coverage
 	@cd services/notification && npm test -- --coverage
+	@cd services/student && npm test -- --coverage
 	@cd services/analytics && npm test -- --coverage
 
 watch-logs: ## Watch logs in real-time for all services

@@ -1,4 +1,4 @@
-# Architecture — état réel au 14/09/2026
+# Architecture — état réel au 17/09/2026
 
 Ce document décrit ce qui **est** dans le dépôt, pas ce qui est souhaité. Les incohérences sont listées telles quelles ; les corrections sont dans `PLAN.md`. Quand une source contredit une autre (README, Makefile, Dockerfile, compose), c'est **`docker-compose.yml`** qui fait foi car c'est lui qui tourne.
 
@@ -36,12 +36,12 @@ Tout tourne sur un réseau Docker `driving-school-network`. Chaque service publi
 | exam | `services/exam` | **3004** | 3004 | 3004 | non | oui | oui | oui |
 | payment | `services/payment` | **3005** | 3005 | 3005 | non | oui | oui | oui |
 | notification | `services/notification` | **3006** | 3006 | 3006 | oui | oui | oui | oui |
-| student | `services/student` | **3007** | 3007 | 3007 | non | **non** | **non** | **non** |
-| analytics | `services/analytics` | **3008** | **3007** | **3007** | oui | oui (sur 3007) | **non** | oui |
+| student | `services/student` | **3007** | 3007 | 3007 | non | oui | **non** | **non** |
+| analytics | `services/analytics` | **3008** | **3007** | **3007** | oui | oui | **non** | oui |
 
 Incohérences :
-- **analytics** : compose dit 3008, mais le fallback dans `src/index.ts`, le `EXPOSE` du Dockerfile, `make health` et le README disent 3007 — qui est le port de `student`. Lancé hors Docker sans `PORT`, analytics et student entrent en collision.
-- **student** est absent du `Makefile` (install/test/lint/health), de `.github/workflows/ci-cd.yml`, de `docker-compose.dev.yml` et de `docker-compose.prod.yml`. C'est pourtant le service qui porte le flux d'inscription, cœur du produit.
+- **analytics** : compose dit 3008, mais le fallback dans `src/index.ts`, le `EXPOSE` du Dockerfile et le README disent 3007 — qui est le port de `student`. Lancé hors Docker sans `PORT`, analytics et student entrent en collision.
+- **student** est absent de `.github/workflows/ci-cd.yml`, de `docker-compose.dev.yml` et de `docker-compose.prod.yml` (présent dans le `Makefile` depuis 0.1). C'est pourtant le service qui porte le flux d'inscription, cœur du produit.
 - Le README historique décrivait 7 services ; il y en a 8.
 
 ### Structure interne d'un service (identique partout sauf analytics)
@@ -79,9 +79,9 @@ services/<nom>/src/
 Une seule base `driving_school`, un seul schéma `public`, partagée par tous les services. Les services lisent et écrivent librement les tables des autres (ex. `lesson-service` lit `students`, `student-service` lit `lesson_bookings` et `exam_registrations`). Il n'y a **aucun** appel HTTP entre services autre que vers `auth`. Les variables `SCHOOL_SERVICE_URL`, `STUDENT_SERVICE_URL`, `LESSON_SERVICE_URL` du compose ne sont lues nulle part.
 
 ### Migrations
-`migrations/001_initial_schema.sql`, `002_enrollment_system.sql`, `003_student_profile.sql`, appliquées par Postgres à la première initialisation du volume. Pas de table de suivi, pas d'idempotence (`CREATE INDEX` sans `IF NOT EXISTS` dans 001 et 002 ; `CREATE TRIGGER` sans `IF NOT EXISTS`). Rejouer un fichier sur une base existante échoue.
+`migrations/001_initial_schema.sql`, `002_enrollment_system.sql`, `003_student_profile.sql`, `004_schema_migrations.sql`, appliquées par Postgres à la première initialisation du volume. `004` crée la table de suivi `schema_migrations` (`name`, `applied_at`) et y inscrit 001–004. `scripts/migrate.sh` (`make migrate`) applique ensuite, dans l'ordre et en une transaction chacune, les migrations non enregistrées ; relançable sans effet. Les fichiers 001 et 002 ne sont pas idempotents (`CREATE INDEX` / `CREATE TRIGGER` sans `IF NOT EXISTS`) : rejouer l'un d'eux à la main sur une base existante échoue — passer par le script.
 
-### Tables (état après 003)
+### Tables (état après 004)
 
 | Table | Clés / colonnes notables | Écrite par | Lue par |
 |---|---|---|---|
@@ -99,6 +99,7 @@ Une seule base `driving_school`, un seul schéma `public`, partagée par tous le
 | `school_codes` (002) | `school_id`, `code` unique, `role` ∈ instructor/student, `max_uses`, `uses_count`, `expires_at`, `is_active` | **personne** | **personne** |
 | `enrollment_requests` (002) | `student_id` → **users** (pas students), `school_id`, `status` ∈ pending/approved/rejected, `message`, `rejection_reason`, `processed_by` → users, `processed_at` ; unique(student, school) | student | student |
 | `student_lesson_stats` (002) | `student_id` → students, `school_id`, compteurs de leçons complétées | student (`/verification/.../lesson-completed`) | student |
+| `schema_migrations` (004) | `name` (PK, nom du fichier), `applied_at` | 004, `scripts/migrate.sh` | `scripts/migrate.sh` |
 
 Tables **utilisées par le code mais absentes des migrations** : `push_tokens` et `notification_preferences` (`services/notification/src/repositories/push-token.repository.ts`, `preference.repository.ts`). Tout appel à `/api/notifications/push-tokens` ou `/preferences` échoue en SQL.
 
@@ -167,7 +168,7 @@ Config : l'URL de base est **codée en dur** dans `mobile-app/src/config/api.con
 
 - **Docker** : `Dockerfile` multi-stage identique par service (builder `npm ci` + `tsc`, runtime `npm ci --only=production`, user `nodejs`). `services/auth/Dockerfile` contient `npm run build || (mkdir -p dist && cp -r src/* dist)` : si `tsc` échoue, les `.ts` sont copiés dans `dist/` et le conteneur meurt au démarrage sur `dist/index.js` introuvable — l'erreur de compilation est masquée.
 - **CI** (`.github/workflows/ci-cd.yml`) : matrice par service (lint, test, build, codecov) pour auth/school/lesson/exam/payment/notification uniquement, puis build d'images et deploy staging/prod. Pas de student, pas d'analytics, pas de mobile. Aucun job n'échoue sur un `tsc --noEmit` explicite (le `build` en tient lieu).
-- **Hooks git** : `.husky/pre-commit` lance `npm test` racine (= `exit 1`) puis `lint-staged` ; `.husky/commit-msg` lance commitlint avec des scopes qui n'incluent ni `student`, ni `mobile`, ni `docs`. Les deux hooks bloquent tout commit régulier ; l'historique montre qu'ils ont été contournés.
+- **Hooks git** : `.husky/pre-commit` lance `lint-staged --config package.json` (Prettier `--write` sur `services/*/src/**/*.ts` ; `--config` désactive la découverte de configs, qui parcourt les `node_modules` encore suivis et trébuche sur des configs invalides) ; `.husky/commit-msg` lance commitlint (scopes : 8 domaines + `mobile`, `docs`, `infra`, `e2e`, `docker`, `ci`, `deps`). Husky s'active par `npm install` racine ; sans lui, aucun hook ne tourne. Pas de script `test` racine (e2e en 1.1).
 - **Tests** : chaque service a 1 fichier `__tests__` (3 500 lignes au total, mocks de repositories). `tests/e2e` et `tests/integration` à la racine n'ont **ni jest.config ni package.json** pour les exécuter et appellent des routes inexistantes (`POST /api/student-profiles`).
 - **Git** : 24 290 des 24 687 fichiers suivis sont du `node_modules` (racine + `services/student`). Pas de `.gitignore` racine. `.env`, `mobile-app/.env`, `web-frontend/.env` sont suivis.
 

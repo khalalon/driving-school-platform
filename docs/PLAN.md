@@ -13,7 +13,7 @@ Le frontend web (`web-frontend/`) n'apparaît dans aucune phase (D-05).
 
 ## Phase 0 — Hygiène
 
-### - [ ] 0.1 — Réparer l'outillage avant tout : migrations, `make`, `npm test`, hooks
+### - [x] 0.1 — Réparer l'outillage avant tout : migrations, `make`, `npm test`, hooks
 **Objectif** : tant que cette tâche n'est pas faite, aucune commande de validation du plan ne prouve quoi que ce soit. (1) Un lanceur `scripts/migrate.sh` applique dans l'ordre **toutes** les migrations non encore appliquées, via une table `schema_migrations` créée par `migrations/004_schema_migrations.sql` (qui y inscrit 001–003 comme appliquées) ; idempotent ; `make migrate` l'appelle. (2) Les cibles `make install / test / lint / health` incluent `student` et interrogent `analytics` sur 3008. (3) `npm test` racine ne sort plus en 1 (pointe vers `tests/`, créé en 1.1, ou est retiré) ; `.husky/pre-commit` ne l'appelle plus. (4) `.commitlintrc.json` accepte les scopes `student`, `analytics`, `mobile`, `docs`, `infra`, `e2e`. Les fichiers 001–003 ne sont **pas** modifiés.
 **Fichiers** : `migrations/004_schema_migrations.sql`, `scripts/migrate.sh` (nouveau), suppression de `scripts/run-migrations.sh`, `Makefile`, `package.json` racine, `.husky/pre-commit`, `.commitlintrc.json`.
 **Critère de validation** :
