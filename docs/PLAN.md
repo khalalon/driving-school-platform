@@ -31,7 +31,7 @@ test "$(git ls-files | grep -c 'node_modules/')" -eq 0 && test "$(git ls-files |
 ```
 **Hors périmètre** : ne pas supprimer les dossiers `node_modules` du disque.
 
-### - [ ] 0.3 — Sortie des `.env` de l'index, `.env.example` partout
+### - [x] 0.3 — Sortie des `.env` de l'index, `.env.example` partout
 **Objectif** : aucun secret suivi ; chaque emplacement qui lit un `.env` a un `.env.example` à jour.
 **Fichiers** : index git (`git rm --cached .env mobile-app/.env web-frontend/.env`), `mobile-app/.env.example` (nouveau), `web-frontend/.env.example` (nouveau), `.env.example` racine (couvre toutes les variables lues par `docker-compose.yml`).
 **Critère de validation** :
