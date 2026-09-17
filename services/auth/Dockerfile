@@ -9,7 +9,7 @@ RUN npm ci
 
 COPY src ./src
 
-RUN npm run build 2>&1 || (mkdir -p dist && cp -r src/* dist)
+RUN npm run build
 
 FROM node:18-alpine
 

@@ -49,9 +49,9 @@ test "$(git ls-files | grep -cE '(^|/)\.env$')" -eq 0 && ls .env.example mobile-
 ```
 **Hors périmètre** : ne pas modifier les chemins d'endpoints (6.1).
 
-### - [ ] 0.5 — Suppression du fallback qui masque les erreurs TypeScript dans `services/auth/Dockerfile`
-**Objectif** : une erreur `tsc` fait échouer le build de l'image.
-**Fichiers** : `services/auth/Dockerfile`.
+### - [x] 0.5 — Suppression du fallback qui masque les erreurs TypeScript dans `services/auth/Dockerfile`
+**Objectif** : une erreur `tsc` fait échouer le build de l'image. Le fallback masquait 3 erreurs de type réelles dans `auth` (`expiresIn` typé `string` dans `token.service.ts`, générique `RedisClientType` dans `redis.config.ts`) : corrigées ici, type-only, pour que le critère puisse passer (décision du 17/09, plutôt que d'inverser 0.5 et 0.6).
+**Fichiers** : `services/auth/Dockerfile`, `services/auth/src/services/token.service.ts`, `services/auth/src/config/redis.config.ts`.
 **Critère de validation** :
 ```bash
 ! grep -q 'mkdir -p dist' services/auth/Dockerfile && docker compose build auth-service && echo OK

@@ -1,5 +1,8 @@
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import { TokenPayload, AuthTokens } from '../types';
+
+// Durée acceptée par jsonwebtoken (`15m`, `7d`, ou un nombre de secondes).
+type TokenExpiry = SignOptions['expiresIn'];
 
 export interface ITokenService {
   generateTokens(payload: TokenPayload): AuthTokens;
@@ -9,13 +12,13 @@ export interface ITokenService {
 
 export class TokenService implements ITokenService {
   private readonly jwtSecret: string;
-  private readonly accessTokenExpiry: string;
-  private readonly refreshTokenExpiry: string;
+  private readonly accessTokenExpiry: TokenExpiry;
+  private readonly refreshTokenExpiry: TokenExpiry;
 
   constructor() {
     this.jwtSecret = process.env.JWT_SECRET || 'fallback-secret-change-me';
-    this.accessTokenExpiry = process.env.JWT_EXPIRES_IN || '15m';
-    this.refreshTokenExpiry = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
+    this.accessTokenExpiry = (process.env.JWT_EXPIRES_IN || '15m') as TokenExpiry;
+    this.refreshTokenExpiry = (process.env.JWT_REFRESH_EXPIRES_IN || '7d') as TokenExpiry;
   }
 
   generateTokens(payload: TokenPayload): AuthTokens {
