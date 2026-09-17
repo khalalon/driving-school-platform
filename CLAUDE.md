@@ -70,7 +70,7 @@ npm install
 npm start              # expo start ; scanner le QR avec Expo Go (même Wi-Fi que le backend)
 npx tsc --noEmit       # typecheck (strict: true)
 ```
-Pas de lint ni de tests configurés côté mobile. L'URL du backend est lue dans `src/config/api.config.ts` (voir tâche 0.4 du plan).
+Pas de lint ni de tests configurés côté mobile. L'URL du backend vient de `app.json` → `expo.extra.API_BASE_URL`, surchargeable par `EXPO_PUBLIC_API_BASE_URL` dans `mobile-app/.env` (ignoré par git, modèle dans `mobile-app/.env.example`) ; `src/config/api.config.ts` ne contient aucune URL.
 
 ### Frontend web (`web-frontend/`) — gelé
 ```bash

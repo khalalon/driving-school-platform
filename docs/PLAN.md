@@ -40,7 +40,7 @@ test "$(git ls-files | grep -cE '(^|/)\.env$')" -eq 0 && ls .env.example mobile-
 ```
 **Hors périmètre** : ne pas changer les valeurs ; ne pas purger l'historique git.
 
-### - [ ] 0.4 — Une seule source pour l'URL du backend côté mobile
+### - [x] 0.4 — Une seule source pour l'URL du backend côté mobile
 **Objectif** : l'URL de base est lue depuis `app.json` → `expo.extra.API_BASE_URL` (surchargeable par `EXPO_PUBLIC_API_BASE_URL`), plus aucune IP codée en dur, et le `.env` racine ne porte plus de variable mobile.
 **Fichiers** : `mobile-app/src/config/api.config.ts`, `mobile-app/app.json`, `mobile-app/.env.example`, `.env.example` racine, `mobile-app/src/types/env.d.ts`.
 **Critère de validation** :
@@ -395,7 +395,7 @@ test "$(grep -cE '^\| [A-Z]+[0-9]+ .*\*\*(MANQUE|DIVERGE)\*\*' docs/API_CONTRACT
 ## Phase 6 — Câblage des écrans mobile
 
 ### - [ ] 6.1 — Hygiène mobile : services homogènes, erreurs, vocabulaire, §9, typecheck, CI
-**Objectif** : tous les `*Service.ts` renvoient `response.data` ; les `catch` affichent `error.response?.data?.message ?? error.response?.data?.error` (D-27) ; enums `LessonType` = `CODE | Manœuvre | Parc`, `ExamType` = `theory | practical`, `ExamResult` = `passed | failed` (D-18), avec libellés d'affichage ; `BookLessonScreen` ajoute la date souhaitée (`requestedDate`, D-21), un sélecteur à 3 types, et rend l'instructeur **facultatif** (préférence, D-32) ; `MyLessonsScreen` et `MyExamsScreen` affichent l'état de paiement (`paid`, `amount`) ; suppression de `SchoolCodeService.ts` et des chemins du §9 ; `npx tsc --noEmit` passe ; job CI mobile (typecheck + jest).
+**Objectif** : tous les `*Service.ts` renvoient `response.data` ; les `catch` affichent `error.response?.data?.message ?? error.response?.data?.error` (D-27) ; enums `LessonType` = `CODE | Manœuvre | Parc`, `ExamType` = `theory | practical`, `ExamResult` = `passed | failed` (D-18), avec libellés d'affichage ; `BookLessonScreen` ajoute la date souhaitée (`requestedDate`, D-21), un sélecteur à 3 types, et rend l'instructeur **facultatif** (préférence, D-32) ; `MyLessonsScreen` et `MyExamsScreen` affichent l'état de paiement (`paid`, `amount`) ; suppression de `SchoolCodeService.ts`, des chemins du §9 et du plugin Babel `react-native-dotenv` (plus aucun import `@env` depuis 0.4) ; `npx tsc --noEmit` passe ; job CI mobile (typecheck + jest).
 **Fichiers** : `mobile-app/src/services/api/*.ts`, `src/config/api.config.ts`, `src/models/*.ts`, `src/screens/student/BookLessonScreen.tsx`, `.github/workflows/ci-cd.yml`.
 **Critère de validation** :
 ```bash

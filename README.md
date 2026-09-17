@@ -24,7 +24,7 @@ curl http://localhost/api/schools
 # 2. Mobile
 cd mobile-app
 npm install
-# Renseigner l'IP de la machine dans app.json → expo.extra.API_BASE_URL (ex. http://192.168.1.20:80)
+cp .env.example .env         # puis EXPO_PUBLIC_API_BASE_URL=http://<IP de la machine>:80 (surcharge app.json)
 npm start                     # scanner le QR code avec Expo Go
 ```
 

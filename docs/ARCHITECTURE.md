@@ -155,7 +155,7 @@ Le détail par écran est dans `API_CONTRACT.md`. Résumé des dépendances rée
 | BookForStudent | lessons (`/book-for-student` — inexistant ; envoie l'email de l'élève comme `studentId`) |
 | StudentProfile (3 onglets) | profiles — **injoignable** : aucun écran n'y navigue |
 
-Config : l'URL de base est **codée en dur** dans `mobile-app/src/config/api.config.ts` (`http://192.168.100.113:80`) ; `app.json` → `extra.API_BASE_URL` et `mobile-app/.env` contiennent la même valeur mais ne sont pas lus ; `.env` racine contient `http://192.168.1.100:3000` (aucun service n'écoute sur 3000).
+Config : l'URL de base vient de `app.json` → `expo.extra.API_BASE_URL`, surchargeable par `EXPO_PUBLIC_API_BASE_URL` (fichier `mobile-app/.env`, ignoré ; modèle `.env.example`), résolue dans `mobile-app/src/config/api.config.ts` via `expo-constants` (déclaré en dépendance directe depuis 0.4 ; il n'était que transitif, imbriqué sous `expo/node_modules`). Le plugin Babel `react-native-dotenv` (module ``) reste configuré mais plus rien ne l'importe.
 
 ### Backend → backend
 - 6 services → `auth-service` `GET /api/auth/me` (voir §3). C'est le seul appel inter-services.
@@ -183,6 +183,7 @@ Config : l'URL de base est **codée en dur** dans `mobile-app/src/config/api.con
 | `services/*/src/middleware/auth.middleware.ts` × 6 | Même code copié (lesson/exam/payment/notification/student identiques au byte près ; school = variante cosmétique). |
 | `nginx/proxy_params.conf` | Jamais inclus. |
 | `mobile-app/src/app.ts` | Copie égarée du `app.ts` **Express de student-service** (importe `express`, `helmet`, `./routes/enrollment.routes`…) dans le projet mobile. Non importé, mais inclus par `tsconfig` (`**/*.ts`) → fait échouer `npx tsc --noEmit` du mobile. |
+| `mobile-app/babel.config.js` plugin `module:react-native-dotenv` (+ dépendance `react-native-dotenv`) | Plus aucun import `@env` depuis 0.4 (l'URL vient de `expo-constants` / `EXPO_PUBLIC_*`) ; à retirer en 6.1. |
 | `mobile-app/MOBILE_APP_COMPLETE.md`, `mobile-app/MINIMAL_DESIGN_GUIDE.md` | Docs de statut hors racine, hors périmètre du ménage de cette session. |
 | Racine : `full-workflow-test.ps1`, `run-tests.ps1`, `test-all-services.ps1`, `test-comprehensive.ps1`, `test-login.html`, `setup-fresh-mobile.sh`, `start-expo-tunnel.bat`, `diagnose-network.ps1` | Scripts de test manuel / réseau d'une session passée ; supprimés en tâche 0.8. |
 | `.env.example` racine | Décrit `STRIPE_*`, `SENDGRID_*`, `TWILIO_*` : lus par compose, mais les intégrations réelles ne sont pas vérifiées dans cette session. |

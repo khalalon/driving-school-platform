@@ -5,8 +5,25 @@
 
 import Constants from 'expo-constants';
 
-// Base URL - Hardcoded for reliability
-const BASE_URL = 'http://192.168.100.113:80';
+/**
+ * URL de base du backend (Nginx), sans slash final. Source unique : `app.json` →
+ * `expo.extra.API_BASE_URL`, surchargeable par `EXPO_PUBLIC_API_BASE_URL` (fichier
+ * `mobile-app/.env`, ignoré par git — voir `.env.example`). Aucune valeur par défaut ici.
+ */
+const resolveBaseUrl = (): string => {
+  const fromEnv = process.env.EXPO_PUBLIC_API_BASE_URL;
+  const fromAppJson = Constants.expoConfig?.extra?.API_BASE_URL;
+  const url = fromEnv || fromAppJson;
+  if (typeof url !== 'string' || url.trim() === '') {
+    throw new Error(
+      'API_BASE_URL manquante : renseigner expo.extra.API_BASE_URL dans app.json ' +
+        'ou EXPO_PUBLIC_API_BASE_URL dans mobile-app/.env'
+    );
+  }
+  return url.trim().replace(/\/+$/, '');
+};
+
+const BASE_URL = resolveBaseUrl();
 
 export const API_CONFIG = {
   BASE_URL,
