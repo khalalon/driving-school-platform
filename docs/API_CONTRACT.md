@@ -41,8 +41,8 @@ Chaque ligne décrit la **cible** (ce que le mobile doit envoyer / recevoir une 
 | A1 | POST | `/api/auth/login` | `LoginScreen` → `AuthContext.login` | `{ email, password }` (public) | `{ accessToken, refreshToken }` ; le mobile enchaîne sur A3 pour le profil | **EXISTE** | Jetons D-12 / D-23 depuis 4.4 : `accessToken` 1 h et `refreshToken` 30 j, claim `type`, deux secrets. Le mobile stocke la paire et rejoue sur 401 via `/refresh` (4.5) ; il décode encore le JWT au lieu d'appeler A3 (6.2). |
 | A2 | POST | `/api/auth/register` | `RegisterScreen`, `InstructorRegistrationScreen` (une seule étape après 6.2) | `{ email, password, firstName, lastName, schoolCode?, phone?, licenseNumber? }` (public). Sans `schoolCode` → rôle `student`. Avec `schoolCode` valide → rôle = `school_codes.role`, `phone` et `licenseNumber` **requis**, ligne `instructors` créée, code consommé (D-17). Le champ `role` n'est **plus accepté**. | 201 `{ accessToken, refreshToken }` ; 400 `INVALID_SCHOOL_CODE` si code inconnu/expiré/épuisé ; 409 `CONFLICT` si email pris | **EXISTE** | Backend conforme (4.1, 4.2) : `role` refusé (400) ; avec `schoolCode`, `phone` et `licenseNumber` exigés par Joi, code consommé et fiche `instructors` créée dans une transaction (`uses_count` incrémenté en une seule instruction : deux inscriptions simultanées ne dépassent pas `max_uses`). Mobile actuel : envoie `role`, jette `firstName`/`lastName` → 400 jusqu'à 6.2. |
 | A3 | GET | `/api/auth/me` | `AuthContext` après login (6.2) ; plus aucun middleware backend après 2.2 | — | `{ id, email, firstName, lastName, role, createdAt }` + si `role = instructor` : `schoolId`, `instructorId` (D-19) | **DIVERGE** | Backend actuel : `{ id, email, firstName, lastName, role, createdAt, updatedAt }` (noms depuis 3.1), sans `schoolId` / `instructorId`. Tâche 5.1 (école). |
-| A4 | POST | `/api/auth/refresh` | `ApiClient` interceptor sur 401 (4.5 : un seul refresh partagé, rejeu, déconnexion si refus) | `{ refreshToken }` (public) | `{ accessToken, refreshToken }` — **nouveau** refresh, l'ancien est révoqué (rotation, D-12) | **DIVERGE** | Backend actuel : renvoie une paire et refuse un access token présenté comme refresh (claim `type`, secret distinct — 4.4), mais ne révoque rien (pas de rotation). Tâche 4.6. |
-| A5 | POST | `/api/auth/logout` | `AuthContext.logout` (6.2) | — (Bearer) | 204 ; le refresh token courant est révoqué | **DIVERGE** | Backend actuel : no-op (supprime une clé Redis jamais écrite). Mobile actuel : n'appelle pas. Tâche 4.6. |
+| A4 | POST | `/api/auth/refresh` | `ApiClient` interceptor sur 401 (4.5 : un seul refresh partagé, rejeu, déconnexion si refus) | `{ refreshToken }` (public) | `{ accessToken, refreshToken }` — **nouveau** refresh, l'ancien est révoqué (rotation, D-12) | **EXISTE** | Rotation (4.6) : le refresh token est consommé en Redis (GETDEL) et une paire de la même session (`sid`) est émise ; un refresh token valide mais déjà consommé → 401 et révocation de toute la session (marqueur Redis 30 j) ; une session révoquée refuse tous ses refresh tokens. Un access token présenté ici → 401 (claim `type`). |
+| A5 | POST | `/api/auth/logout` | `AuthContext.logout` (6.2) | — (Bearer) | 204 ; le refresh token courant est révoqué | **EXISTE** | Révoque la session du jeton présenté (`sid` de l'access token → marqueur Redis) : ses refresh tokens sont refusés ; l'access token courant reste valable jusqu'à son expiration (1 h max, accepté). Mobile actuel : n'appelle pas (6.2). |
 
 ## 2. Écoles
 
@@ -149,8 +149,8 @@ Elles existent aujourd'hui, ne sont appelées par aucun écran, et sont **retir�
 
 | Statut | Nombre | Lignes |
 |---|---|---|
-| EXISTE | 11 | A1, A2, S1, S2, S3, S4, E1, E2, E3, E5, E6 |
-| DIVERGE | 20 | A3, A4, A5, E4, L1, L2, L3, L7, P1–P11 |
+| EXISTE | 13 | A1, A2, A4, A5, S1, S2, S3, S4, E1, E2, E3, E5, E6 |
+| DIVERGE | 18 | A3, E4, L1, L2, L3, L7, P1–P11 |
 | MANQUE | 9 | S6, L4, L5, L6, X1–X5 |
 | SUPPRIMÉE | 2 | S5, L8 |
 

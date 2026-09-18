@@ -3,6 +3,8 @@ import { RedisClientType } from 'redis';
 export interface ICacheService {
   set(key: string, value: string, expirySeconds?: number): Promise<void>;
   get(key: string): Promise<string | null>;
+  /** Lit et supprime en une seule commande (GETDEL) : deux appels concurrents n'en gagnent qu'un. */
+  take(key: string): Promise<string | null>;
   delete(key: string): Promise<void>;
 }
 
@@ -19,6 +21,10 @@ export class CacheService implements ICacheService {
 
   get(key: string): Promise<string | null> {
     return this.redis.get(key);
+  }
+
+  take(key: string): Promise<string | null> {
+    return this.redis.getDel(key);
   }
 
   async delete(key: string): Promise<void> {

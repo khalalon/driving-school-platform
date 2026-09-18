@@ -8,13 +8,16 @@ import {
   PublicUser,
   RegisterDTO,
   SchoolCodeConsumer,
-  TokenPayload,
   User,
   UserRole,
 } from '../types/auth.types';
 import { ICacheService } from './cache.service';
 import { IPasswordService } from './password.service';
-import { ITokenService } from './token.service';
+import { IssuedTokens, ITokenService, RefreshTokenPayload } from './token.service';
+
+// Clés Redis (4.6) : un refresh token valide = sa clé présente ; une session révoquée = marqueur.
+const refreshKey = (jti: string): string => `auth:refresh:${jti}`;
+const revokedSessionKey = (sid: string): string => `auth:session:${sid}:revoked`;
 
 export class AuthService {
   constructor(
@@ -24,7 +27,9 @@ export class AuthService {
     private readonly cacheService: ICacheService,
     private readonly schoolCodes: SchoolCodeConsumer,
     private readonly instructors: InstructorCreator,
-    private readonly transactions: ITransactionRunner
+    private readonly transactions: ITransactionRunner,
+    /** Durée du marqueur de session révoquée : au moins la durée de vie d'un refresh token. */
+    private readonly sessionRevocationTtlSeconds: number = 30 * 24 * 3600
   ) {}
 
   /**
@@ -47,7 +52,7 @@ export class AuthService {
         dto.firstName,
         dto.lastName
       );
-      return this.generateTokensForUser(student);
+      return this.issueTokens(student);
     }
 
     const schoolCode = dto.schoolCode;
@@ -84,7 +89,7 @@ export class AuthService {
       return created;
     });
 
-    return this.generateTokensForUser(user);
+    return this.issueTokens(user);
   }
 
   async login(dto: LoginDTO): Promise<AuthTokens> {
@@ -98,15 +103,33 @@ export class AuthService {
       throw new HttpError(401, 'UNAUTHORIZED', 'Identifiants invalides');
     }
 
-    return this.generateTokensForUser(user);
+    return this.issueTokens(user);
   }
 
+  /**
+   * Rotation (D-12) : le refresh token présenté est consommé (GETDEL) et une nouvelle paire de la
+   * même session est émise. Un refresh token valide mais déjà consommé = réutilisation (vol
+   * probable) : toute la session est révoquée. Une session révoquée refuse tous ses jetons.
+   */
   async refreshToken(refreshToken: string): Promise<AuthTokens> {
-    let payload: TokenPayload;
+    let payload: RefreshTokenPayload;
     try {
       payload = this.tokenService.verifyRefreshToken(refreshToken);
     } catch {
       throw new HttpError(401, 'UNAUTHORIZED', 'Jeton de rafraîchissement invalide ou expiré');
+    }
+
+    if (await this.cacheService.get(revokedSessionKey(payload.sid))) {
+      throw new HttpError(401, 'UNAUTHORIZED', 'Session révoquée, reconnectez-vous');
+    }
+    const stored = await this.cacheService.take(refreshKey(payload.jti));
+    if (!stored) {
+      await this.revokeSession(payload.sid);
+      throw new HttpError(
+        401,
+        'UNAUTHORIZED',
+        'Jeton de rafraîchissement déjà utilisé : session révoquée, reconnectez-vous'
+      );
     }
 
     const user = await this.userRepository.findById(payload.userId);
@@ -114,12 +137,14 @@ export class AuthService {
       throw new HttpError(401, 'UNAUTHORIZED', 'Utilisateur introuvable');
     }
 
-    return this.generateTokensForUser(user);
+    return this.issueTokens(user, payload.sid);
   }
 
-  // Révocation réelle des refresh tokens : tâche 4.6. Ici, l'état actuel (clé jamais écrite).
-  async logout(userId: string): Promise<void> {
-    await this.cacheService.delete(`user:${userId}:session`);
+  /** A5 : révoque la session du jeton présenté (ses refresh tokens) ; l'access token expire seul. */
+  async logout(userId: string, sid?: string): Promise<void> {
+    if (sid) {
+      await this.revokeSession(sid);
+    }
   }
 
   async getCurrentUser(userId: string): Promise<PublicUser> {
@@ -131,11 +156,17 @@ export class AuthService {
     return publicUser;
   }
 
-  private generateTokensForUser(user: User): AuthTokens {
-    return this.tokenService.generateTokens({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-    });
+  /** Émet une paire et enregistre le refresh token (clé présente = utilisable une fois). */
+  private async issueTokens(user: User, sid?: string): Promise<AuthTokens> {
+    const issued: IssuedTokens = this.tokenService.generateTokens(
+      { userId: user.id, email: user.email, role: user.role },
+      sid
+    );
+    await this.cacheService.set(refreshKey(issued.jti), issued.sid, issued.refreshTtlSeconds);
+    return { accessToken: issued.accessToken, refreshToken: issued.refreshToken };
+  }
+
+  private revokeSession(sid: string): Promise<void> {
+    return this.cacheService.set(revokedSessionKey(sid), '1', this.sessionRevocationTtlSeconds);
   }
 }

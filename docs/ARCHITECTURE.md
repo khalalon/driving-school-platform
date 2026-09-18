@@ -38,7 +38,7 @@ services/api/src/
 
 | Module | Préfixes montés | Contenu (état actuel, contrat cible entre parenthèses) | Réutilisé par |
 |---|---|---|---|
-| `auth` | `/api/auth` | A1–A5 ; `register` conforme à D-17 (sans `role` ; `schoolCode` → rôle du code + fiche `instructors` en transaction, via `SchoolCodeRepository` et `InstructorRepository` du module school injectés) ; jetons D-12 (claim `type`, deux secrets, 1 h / 30 j — 4.4) ; logout = clé Redis jamais écrite, pas de rotation (4.6) ; expose `requireAuth` | tous |
+| `auth` | `/api/auth` | A1–A5 ; `register` conforme à D-17 (sans `role` ; `schoolCode` → rôle du code + fiche `instructors` en transaction, via `SchoolCodeRepository` et `InstructorRepository` du module school injectés) ; jetons D-12 (claim `type`, deux secrets, 1 h / 30 j, rotation et révocation des refresh tokens en Redis — 4.4, 4.6) ; expose `requireAuth` | tous |
 | `school` | `/api/schools` | S1–S4 publics + administration `admin` ; colonnes aliasées en camelCase ; `LessonType` D-18 | `lesson` (grille tarifaire, D-30) |
 | `student` | `/api/enrollment`, `/api/profiles`, `/api/student-profiles`, `/api/verification` | E1–E6, P1–P11 (`:studentId` = students.id jusqu'à 5.0), vérification (publique dans l'app, **bloquée par Nginx**, retirée en 5.7) ; `approveRequest` atomique (UPDATE + INSERT dans une transaction, 3.2) | `lesson`, `exam` (`StudentRepository`, `StatsRepository`) |
 | `lesson` | `/api/lessons` | schéma 007 (une leçon = un élève, D-21 / D-34) : types, validators L1–L7 et repository alignés (3.3) ; anciennes routes de créneaux encore montées (`POST /` exige `studentId`, `/:lessonId/book` refuse : capacité 1), remplacées par L1–L7 en 5.2–5.4 | — |
@@ -49,7 +49,7 @@ Non portés : `notification` (D-35) et `analytics` (D-31, dont le middleware pas
 
 ## 3. Authentification — comment ça marche
 
-- Le module `auth` signe deux JWT HS256 (D-12, D-23) : `accessToken` (1 h, `JWT_ACCESS_SECRET`) et `refreshToken` (30 j, `JWT_REFRESH_SECRET`), payload `{ userId, email, role, type }`. Le middleware n'accepte que `type = access`, `/refresh` que `type = refresh`. Pas encore de rotation ni de révocation (4.6).
+- Le module `auth` signe deux JWT HS256 (D-12, D-23) : `accessToken` (1 h, `JWT_ACCESS_SECRET`) et `refreshToken` (30 j, `JWT_REFRESH_SECRET`), payload `{ userId, email, role, type, sid }` (+ `jti` sur le refresh). Le middleware n'accepte que `type = access`, `/refresh` que `type = refresh`. Redis : `auth:refresh:<jti>` (refresh token utilisable une fois, TTL 30 j, consommé par GETDEL à la rotation) et `auth:session:<sid>:revoked` (session révoquée par logout ou par réutilisation d'un refresh token déjà consommé, TTL 30 j). `req.user` porte `sid`.
 - **Un seul middleware** (`src/middleware/auth.middleware.ts`) vérifie le jeton localement et pose `req.user` ; plus aucun appel HTTP vers `/api/auth/me` (D-03). Le bug historique `req.user.userId === undefined` des anciens services n'existe plus : `POST /api/enrollment/schools/:id/request` rattache la demande au `users.id` du jeton.
 - `POST /api/auth/register` est public et accepte `role ∈ {admin, instructor, student}` : n'importe qui peut encore se créer un compte admin (4.1, 4.2).
 - `POST /api/auth/logout` répond 204 et supprime une clé Redis `user:<id>:session` que rien n'écrit. Aucune révocation de jeton n'existe (4.6).

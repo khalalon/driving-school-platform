@@ -176,6 +176,6 @@ describe('Routes /api/auth', () => {
   it('POST /logout : 204 avec un jeton valide', async () => {
     authService.logout.mockResolvedValue(undefined);
     await request(app).post('/api/auth/logout').set('Authorization', bearer()).expect(204);
-    expect(authService.logout).toHaveBeenCalledWith('u1');
+    expect(authService.logout).toHaveBeenCalledWith('u1', expect.any(String));
   });
 });

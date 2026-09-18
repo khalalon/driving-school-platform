@@ -36,6 +36,14 @@ describe('AuthService', () => {
     createdAt: new Date('2026-01-01T00:00:00Z'),
     updatedAt: new Date('2026-01-01T00:00:00Z'),
   };
+  // Ce que TokenService émet (4.6) : la paire plus la session et l'identifiant du refresh token.
+  const issued = {
+    accessToken: 'access-token',
+    refreshToken: 'refresh-token',
+    sid: 'sid-1',
+    jti: 'jti-1',
+    refreshTtlSeconds: 2_592_000,
+  };
   const tokens = { accessToken: 'access-token', refreshToken: 'refresh-token' };
 
   beforeEach(() => {
@@ -51,7 +59,7 @@ describe('AuthService', () => {
       verifyAccessToken: jest.fn(),
       verifyRefreshToken: jest.fn(),
     };
-    cacheService = { get: jest.fn(), set: jest.fn(), delete: jest.fn() };
+    cacheService = { get: jest.fn(), set: jest.fn(), take: jest.fn(), delete: jest.fn() };
     schoolCodes = { consume: jest.fn() };
     instructors = { create: jest.fn() };
     const run = jest.fn((work: (client: Queryable) => Promise<unknown>) => work(tx));
@@ -79,7 +87,7 @@ describe('AuthService', () => {
       userRepository.findByEmail.mockResolvedValue(null);
       passwordService.hash.mockResolvedValue('hashed-password');
       userRepository.create.mockResolvedValue(user);
-      tokenService.generateTokens.mockReturnValue(tokens);
+      tokenService.generateTokens.mockReturnValue(issued);
 
       const result = await authService.register(dto);
 
@@ -92,11 +100,12 @@ describe('AuthService', () => {
         'Test',
         'Élève'
       );
-      expect(tokenService.generateTokens).toHaveBeenCalledWith({
-        userId: user.id,
-        email: user.email,
-        role: user.role,
-      });
+      expect(tokenService.generateTokens).toHaveBeenCalledWith(
+        { userId: user.id, email: user.email, role: user.role },
+        undefined
+      );
+      // Le refresh token émis est enregistré, utilisable une seule fois (4.6).
+      expect(cacheService.set).toHaveBeenCalledWith('auth:refresh:jti-1', 'sid-1', 2_592_000);
       expect(result).toEqual(tokens);
     });
 
@@ -121,7 +130,7 @@ describe('AuthService', () => {
       beforeEach(() => {
         userRepository.findByEmail.mockResolvedValue(null);
         passwordService.hash.mockResolvedValue('hashed-password');
-        tokenService.generateTokens.mockReturnValue(tokens);
+        tokenService.generateTokens.mockReturnValue(issued);
       });
 
       it('code instructeur : consomme le code, crée le compte et la fiche instructors dans la transaction', async () => {
@@ -145,11 +154,10 @@ describe('AuthService', () => {
           { userId: user.id, phone: '+21600000009', licenseNumber: 'LIC-9', specialties: [] },
           tx
         );
-        expect(tokenService.generateTokens).toHaveBeenCalledWith({
-          userId: user.id,
-          email: user.email,
-          role: UserRole.INSTRUCTOR,
-        });
+        expect(tokenService.generateTokens).toHaveBeenCalledWith(
+          { userId: user.id, email: user.email, role: UserRole.INSTRUCTOR },
+          undefined
+        );
       });
 
       it('code élève : compte student, pas de fiche instructors', async () => {
@@ -204,7 +212,7 @@ describe('AuthService', () => {
     it('renvoie une paire de jetons pour des identifiants valides', async () => {
       userRepository.findByEmail.mockResolvedValue(user);
       passwordService.compare.mockResolvedValue(true);
-      tokenService.generateTokens.mockReturnValue(tokens);
+      tokenService.generateTokens.mockReturnValue(issued);
 
       const result = await authService.login(dto);
 
@@ -235,21 +243,64 @@ describe('AuthService', () => {
     });
   });
 
-  describe('refreshToken', () => {
-    it('émet une nouvelle paire à partir d’un refresh token valide', async () => {
-      tokenService.verifyRefreshToken.mockReturnValue({
-        userId: user.id,
-        email: user.email,
-        role: user.role,
-      });
+  describe('refreshToken (rotation et révocation, D-12 / 4.6)', () => {
+    const presented = {
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      sid: 'sid-1',
+      jti: 'jti-old',
+    };
+
+    it('rotation : consomme le refresh token présenté (GETDEL), émet une paire de la même session', async () => {
+      tokenService.verifyRefreshToken.mockReturnValue(presented);
+      cacheService.get.mockResolvedValue(null); // session non révoquée
+      cacheService.take.mockResolvedValue('sid-1'); // jeton encore valide → consommé
       userRepository.findById.mockResolvedValue(user);
-      tokenService.generateTokens.mockReturnValue(tokens);
+      tokenService.generateTokens.mockReturnValue({ ...issued, jti: 'jti-new' });
 
       const result = await authService.refreshToken('valid-refresh');
 
       expect(tokenService.verifyRefreshToken).toHaveBeenCalledWith('valid-refresh');
+      expect(cacheService.get).toHaveBeenCalledWith('auth:session:sid-1:revoked');
+      expect(cacheService.take).toHaveBeenCalledWith('auth:refresh:jti-old');
       expect(userRepository.findById).toHaveBeenCalledWith(user.id);
+      expect(tokenService.generateTokens).toHaveBeenCalledWith(
+        { userId: user.id, email: user.email, role: user.role },
+        'sid-1'
+      );
+      expect(cacheService.set).toHaveBeenCalledWith('auth:refresh:jti-new', 'sid-1', 2_592_000);
       expect(result).toEqual(tokens);
+    });
+
+    it('réutilisation d’un refresh token déjà consommé : 401 et révocation de toute la session', async () => {
+      tokenService.verifyRefreshToken.mockReturnValue(presented);
+      cacheService.get.mockResolvedValue(null);
+      cacheService.take.mockResolvedValue(null); // clé absente : déjà utilisé
+
+      await expect(authService.refreshToken('reused')).rejects.toMatchObject({
+        status: 401,
+        code: 'UNAUTHORIZED',
+        message: expect.stringContaining('déjà utilisé') as string,
+      });
+
+      expect(cacheService.set).toHaveBeenCalledWith(
+        'auth:session:sid-1:revoked',
+        '1',
+        30 * 24 * 3600
+      );
+      expect(tokenService.generateTokens).not.toHaveBeenCalled();
+    });
+
+    it('session révoquée (logout ou réutilisation antérieure) : 401 sans consommer le jeton', async () => {
+      tokenService.verifyRefreshToken.mockReturnValue(presented);
+      cacheService.get.mockResolvedValue('1');
+
+      await expect(authService.refreshToken('revoked-session')).rejects.toMatchObject({
+        status: 401,
+        message: 'Session révoquée, reconnectez-vous',
+      });
+      expect(cacheService.take).not.toHaveBeenCalled();
     });
 
     it('traduit un jeton invalide en 401 UNAUTHORIZED', async () => {
@@ -265,11 +316,9 @@ describe('AuthService', () => {
     });
 
     it("répond 401 si l'utilisateur du jeton n'existe plus", async () => {
-      tokenService.verifyRefreshToken.mockReturnValue({
-        userId: 'ghost',
-        email: 'ghost@example.com',
-        role: UserRole.STUDENT,
-      });
+      tokenService.verifyRefreshToken.mockReturnValue({ ...presented, userId: 'ghost' });
+      cacheService.get.mockResolvedValue(null);
+      cacheService.take.mockResolvedValue('sid-1');
       userRepository.findById.mockResolvedValue(null);
 
       await expect(authService.refreshToken('valid-refresh')).rejects.toMatchObject({
@@ -278,19 +327,29 @@ describe('AuthService', () => {
     });
   });
 
-  describe('logout', () => {
-    it('supprime la clé de session du cache', async () => {
-      cacheService.delete.mockResolvedValue();
+  describe('logout (A5)', () => {
+    it('révoque la session du jeton présenté : ses refresh tokens sont refusés', async () => {
+      cacheService.set.mockResolvedValue();
 
+      await authService.logout(user.id, 'sid-1');
+
+      expect(cacheService.set).toHaveBeenCalledWith(
+        'auth:session:sid-1:revoked',
+        '1',
+        30 * 24 * 3600
+      );
+    });
+
+    it('jeton émis avant 4.6 (sans sid) : rien à révoquer, pas d’erreur', async () => {
       await authService.logout(user.id);
 
-      expect(cacheService.delete).toHaveBeenCalledWith(`user:${user.id}:session`);
+      expect(cacheService.set).not.toHaveBeenCalled();
     });
 
     it('propage une erreur du cache', async () => {
-      cacheService.delete.mockRejectedValue(new Error('redis indisponible'));
+      cacheService.set.mockRejectedValue(new Error('redis indisponible'));
 
-      await expect(authService.logout(user.id)).rejects.toThrow('redis indisponible');
+      await expect(authService.logout(user.id, 'sid-1')).rejects.toThrow('redis indisponible');
     });
   });
 

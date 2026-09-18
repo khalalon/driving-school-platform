@@ -13,12 +13,28 @@ describe('TokenService (D-12 : claim type, deux secrets, 1 h / 30 j)', () => {
     refreshTokenExpiry: '30d',
   });
 
-  it('génère deux jetons distincts, vérifiables chacun par sa méthode, portant le payload', () => {
+  it('génère deux jetons distincts, vérifiables chacun par sa méthode, portant le payload + session', () => {
     const tokens = service.generateTokens(payload);
 
     expect(tokens.accessToken).not.toEqual(tokens.refreshToken);
-    expect(service.verifyAccessToken(tokens.accessToken)).toEqual(payload);
-    expect(service.verifyRefreshToken(tokens.refreshToken)).toEqual(payload);
+    expect(tokens.sid).toMatch(/^[0-9a-f-]{36}$/);
+    expect(tokens.jti).toMatch(/^[0-9a-f-]{36}$/);
+    expect(tokens.refreshTtlSeconds).toBe(30 * 24 * 3600);
+    expect(service.verifyAccessToken(tokens.accessToken)).toEqual({ ...payload, sid: tokens.sid });
+    expect(service.verifyRefreshToken(tokens.refreshToken)).toEqual({
+      ...payload,
+      sid: tokens.sid,
+      jti: tokens.jti,
+    });
+  });
+
+  it('rotation : un sid fourni est conservé, le jti change à chaque émission (4.6)', () => {
+    const first = service.generateTokens(payload);
+    const second = service.generateTokens(payload, first.sid);
+
+    expect(second.sid).toBe(first.sid);
+    expect(second.jti).not.toBe(first.jti);
+    expect(service.verifyRefreshToken(second.refreshToken).jti).toBe(second.jti);
   });
 
   it('claims : type access / refresh, durées 1 h et 30 j', () => {
@@ -40,28 +56,40 @@ describe('TokenService (D-12 : claim type, deux secrets, 1 h / 30 j)', () => {
   });
 
   it('le type est vérifié même avec le bon secret (jeton forgé sans type ou avec le mauvais)', () => {
-    const noType = jwt.sign(payload, accessSecret, { expiresIn: '1h' });
-    const wrongType = jwt.sign({ ...payload, type: 'refresh' }, accessSecret, { expiresIn: '1h' });
+    const noType = jwt.sign({ ...payload, sid: 's' }, accessSecret, { expiresIn: '1h' });
+    const wrongType = jwt.sign({ ...payload, sid: 's', type: 'refresh' }, accessSecret, {
+      expiresIn: '1h',
+    });
 
     expect(() => service.verifyAccessToken(noType)).toThrow(/type undefined refusé/);
     expect(() => service.verifyAccessToken(wrongType)).toThrow(/type refresh refusé/);
   });
 
   it('rejette un jeton signé avec un autre secret', () => {
-    const forged = jwt.sign({ ...payload, type: 'access' }, 'another-secret', { expiresIn: '1h' });
+    const forged = jwt.sign({ ...payload, sid: 's', type: 'access' }, 'another-secret', {
+      expiresIn: '1h',
+    });
 
     expect(() => service.verifyAccessToken(forged)).toThrow(jwt.JsonWebTokenError);
   });
 
   it('rejette un jeton expiré', () => {
-    const expired = jwt.sign({ ...payload, type: 'access' }, accessSecret, { expiresIn: -10 });
+    const expired = jwt.sign({ ...payload, sid: 's', type: 'access' }, accessSecret, {
+      expiresIn: -10,
+    });
 
     expect(() => service.verifyAccessToken(expired)).toThrow(jwt.TokenExpiredError);
   });
 
-  it('rejette un jeton valide dont le payload n’a pas la forme attendue', () => {
+  it('rejette un jeton valide dont le payload n’a pas la forme attendue (sans sid, sans jti)', () => {
     const odd = jwt.sign({ sub: 'x', type: 'access' }, accessSecret, { expiresIn: '1h' });
+    const noSid = jwt.sign({ ...payload, type: 'access' }, accessSecret, { expiresIn: '1h' });
+    const noJti = jwt.sign({ ...payload, sid: 's', type: 'refresh' }, refreshSecret, {
+      expiresIn: '1h',
+    });
 
     expect(() => service.verifyAccessToken(odd)).toThrow('Payload de jeton inattendu');
+    expect(() => service.verifyAccessToken(noSid)).toThrow('Payload de jeton inattendu');
+    expect(() => service.verifyRefreshToken(noJti)).toThrow('sans identifiant (jti)');
   });
 });

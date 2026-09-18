@@ -56,7 +56,7 @@ export class AuthController {
       return;
     }
     try {
-      await this.authService.logout(req.user.userId);
+      await this.authService.logout(req.user.userId, req.user.sid);
       res.status(204).send();
     } catch (err) {
       sendCaughtError(res, err);

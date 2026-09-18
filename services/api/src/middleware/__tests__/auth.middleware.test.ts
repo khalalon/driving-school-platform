@@ -35,10 +35,10 @@ describe('middleware/auth', () => {
   const bearer = (payload: typeof student): string =>
     `Bearer ${tokenService.generateTokens(payload).accessToken}`;
 
-  it('jeton valide : pose req.user = { userId, email, role } sans appel réseau', async () => {
+  it('jeton valide : pose req.user = { userId, email, role, sid } sans appel réseau', async () => {
     const res = await request(app).get('/me').set('Authorization', bearer(student));
     expect(res.status).toBe(200);
-    expect(res.body).toEqual(student);
+    expect(res.body).toEqual({ ...student, sid: expect.any(String) as string });
   });
 
   it('jeton absent : 401 UNAUTHORIZED « Jeton manquant »', async () => {
@@ -53,7 +53,7 @@ describe('middleware/auth', () => {
   });
 
   it('jeton expiré : 401 UNAUTHORIZED « Jeton invalide ou expiré »', async () => {
-    const expired = jwt.sign({ ...student, type: 'access' }, secret, { expiresIn: -10 });
+    const expired = jwt.sign({ ...student, sid: 's', type: 'access' }, secret, { expiresIn: -10 });
     const res = await request(app).get('/me').set('Authorization', `Bearer ${expired}`);
     expect(res.status).toBe(401);
     expect(res.body).toEqual({ error: 'UNAUTHORIZED', message: 'Jeton invalide ou expiré' });
@@ -67,7 +67,9 @@ describe('middleware/auth', () => {
   });
 
   it('jeton signé avec un autre secret : 401', async () => {
-    const forged = jwt.sign({ ...student, type: 'access' }, 'other-secret', { expiresIn: '15m' });
+    const forged = jwt.sign({ ...student, sid: 's', type: 'access' }, 'other-secret', {
+      expiresIn: '15m',
+    });
     const res = await request(app).get('/me').set('Authorization', `Bearer ${forged}`);
     expect(res.status).toBe(401);
   });

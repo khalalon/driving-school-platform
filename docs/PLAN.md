@@ -310,7 +310,7 @@ cd mobile-app && npm ci --silent && npx jest src/services/api --verbose 2>&1 | g
 ```
 **Hors périmètre** : typecheck global (6.1).
 
-### - [ ] 4.6 — Rotation et révocation des refresh tokens
+### - [x] 4.6 — Rotation et révocation des refresh tokens
 **Objectif** : chaque refresh token émis est enregistré (hash) en Redis avec TTL ; `/refresh` invalide l'ancien et émet une nouvelle paire (rotation, D-12) ; un refresh token réutilisé après rotation → 401 et révocation de toute la famille ; `/logout` révoque le token courant.
 **Fichiers** : `modules/auth/services/{auth,cache,token}.service.ts`, tests, `docs/API_CONTRACT.md` (A4, A5).
 **Critère de validation** :
