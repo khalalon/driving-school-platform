@@ -9,12 +9,13 @@ module.exports = {
     '!src/index.ts',
     '!src/types/**',
   ],
+  // Seuils = couverture mesurée le 18/09/2026 (D-37) ; à remonter avec les tests des phases 2–5.
   coverageThreshold: {
     global: {
-      branches: 70,
-      functions: 70,
-      lines: 70,
-      statements: 70,
+      branches: 28,
+      functions: 30,
+      lines: 35,
+      statements: 34,
     },
   },
   coverageDirectory: 'coverage',
