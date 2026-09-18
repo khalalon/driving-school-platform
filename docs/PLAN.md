@@ -117,7 +117,7 @@ cd tests && npm ci --silent && npx jest --listTests && cd .. && test "$(git ls-f
 **Hors périmètre** : aucun test métier (1.2).
 **Note** : le hash bcrypt du mot de passe seed est généré une fois (`node -e "console.log(require('bcryptjs').hashSync('Seed1234!', 12))"`) et collé dans `seed.sql`. Admin = celui de la migration 001.
 
-### - [ ] 1.2 — Test du chemin critique (D-15), qui échoue aujourd'hui
+### - [x] 1.2 — Test du chemin critique (D-15), qui échoue aujourd'hui
 **Objectif** : `tests/e2e/critical-path.e2e.test.ts` enchaîne, **sur les routes cibles du contrat** : A2 register élève `{ email, password, firstName, lastName }` → E2 demande d'inscription → A1 login instructeur → E4 liste (contient la demande, `studentEmail`) → E5 approbation → E1 `canBook: true` → L2 demande de leçon `{ type: 'Parc', requestedDate, preferredInstructorId }` → L1 (contient la leçon `pending`) → L5 approbation `{ scheduledDate, durationMinutes }` (réponse avec `price` = tarif `Parc` du seed) → L7 présence `{ attended: true }`. Chaque étape est un `test()` nommé, `--bail`. Il **doit échouer** aujourd'hui, à une étape métier.
 **Fichiers** : `tests/e2e/critical-path.e2e.test.ts`, `tests/helpers/api.ts`.
 **Critère de validation** :

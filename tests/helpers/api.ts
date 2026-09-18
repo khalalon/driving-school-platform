@@ -58,3 +58,24 @@ export async function login(email: string, password: string): Promise<Tokens> {
   expectStatus(res, 200, `A1 login ${email}`);
   return res.body as Tokens;
 }
+
+/**
+ * Étapes dépendantes dans un même fichier : `--bail` de Jest n'arrête qu'entre fichiers.
+ * `step()` mémorise la première étape en échec et fait échouer les suivantes aussitôt, avec
+ * un message qui la désigne — la sortie montre une seule vraie erreur.
+ */
+let firstFailedStep: string | null = null;
+
+export function step(name: string, fn: () => Promise<void>): void {
+  test(name, async () => {
+    if (firstFailedStep) {
+      throw new Error(`Étape non exécutée : échec en amont à « ${firstFailedStep} »`);
+    }
+    try {
+      await fn();
+    } catch (err) {
+      firstFailedStep = name;
+      throw err;
+    }
+  });
+}
