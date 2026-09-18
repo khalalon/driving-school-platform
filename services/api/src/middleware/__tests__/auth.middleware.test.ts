@@ -6,11 +6,12 @@ import { UserRole } from '../../types/auth';
 import { AuthRequest, authenticate, authorize } from '../auth.middleware';
 
 describe('middleware/auth', () => {
-  const secret = 'test-secret-key-for-jwt-tokens-0123456789';
+  const secret = 'test-access-secret-key-for-jwt-tokens-0123456789';
   const tokenService = new TokenService({
-    secret,
-    accessTokenExpiry: '15m',
-    refreshTokenExpiry: '7d',
+    accessSecret: secret,
+    refreshSecret: 'test-refresh-secret-key-for-jwt-tokens-0123456789',
+    accessTokenExpiry: '1h',
+    refreshTokenExpiry: '30d',
   });
   const student = { userId: 'u-student', email: 's@x.io', role: UserRole.STUDENT };
   const instructor = { userId: 'u-instr', email: 'i@x.io', role: UserRole.INSTRUCTOR };
@@ -52,14 +53,21 @@ describe('middleware/auth', () => {
   });
 
   it('jeton expiré : 401 UNAUTHORIZED « Jeton invalide ou expiré »', async () => {
-    const expired = jwt.sign(student, secret, { expiresIn: -10 });
+    const expired = jwt.sign({ ...student, type: 'access' }, secret, { expiresIn: -10 });
     const res = await request(app).get('/me').set('Authorization', `Bearer ${expired}`);
     expect(res.status).toBe(401);
     expect(res.body).toEqual({ error: 'UNAUTHORIZED', message: 'Jeton invalide ou expiré' });
   });
 
+  it('refresh token présenté comme access token : 401 (claim type, 4.4)', async () => {
+    const { refreshToken } = tokenService.generateTokens(student);
+    const res = await request(app).get('/me').set('Authorization', `Bearer ${refreshToken}`);
+    expect(res.status).toBe(401);
+    expect(res.body).toEqual({ error: 'UNAUTHORIZED', message: 'Jeton invalide ou expiré' });
+  });
+
   it('jeton signé avec un autre secret : 401', async () => {
-    const forged = jwt.sign(student, 'other-secret', { expiresIn: '15m' });
+    const forged = jwt.sign({ ...student, type: 'access' }, 'other-secret', { expiresIn: '15m' });
     const res = await request(app).get('/me').set('Authorization', `Bearer ${forged}`);
     expect(res.status).toBe(401);
   });

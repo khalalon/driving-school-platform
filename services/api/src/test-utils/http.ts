@@ -6,9 +6,10 @@ import { UserRole } from '../types/auth';
 /** Outils partagés par les tests HTTP et repository ; exclus de la couverture. */
 
 export const testTokenService = new TokenService({
-  secret: 'test-secret-key-for-jwt-tokens-0123456789',
-  accessTokenExpiry: '15m',
-  refreshTokenExpiry: '7d',
+  accessSecret: 'test-access-secret-key-for-jwt-tokens-0123456789',
+  refreshSecret: 'test-refresh-secret-key-for-jwt-tokens-0123456789',
+  accessTokenExpiry: '1h',
+  refreshTokenExpiry: '30d',
 });
 
 export const testRequireAuth = authenticate(testTokenService);

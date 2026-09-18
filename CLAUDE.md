@@ -82,7 +82,7 @@ cd web-frontend && npm install && npm run dev    # vite ; npm run build fait tsc
 ```bash
 docker exec -it driving-school-postgres psql -U admin -d driving_school
 ```
-Compte admin seedé par `001_initial_schema.sql` : `admin@drivingschool.com` (mot de passe `admin123` d'après le commentaire de la migration).
+Compte admin seedé par `001_initial_schema.sql` : `admin@drivingschool.com` / `admin123` (hash corrigé par la migration 010 : celui de 001 ne correspondait à aucun mot de passe).
 
 ## Conventions existantes à respecter
 

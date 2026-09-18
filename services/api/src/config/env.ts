@@ -10,8 +10,9 @@ export interface Env {
   PORT: number;
   DATABASE_URL: string;
   REDIS_URL: string;
-  JWT_SECRET: string;
-  JWT_EXPIRES_IN: string;
+  JWT_ACCESS_SECRET: string;
+  JWT_REFRESH_SECRET: string;
+  JWT_ACCESS_EXPIRES_IN: string;
   JWT_REFRESH_EXPIRES_IN: string;
   BCRYPT_ROUNDS: number;
 }
@@ -25,9 +26,16 @@ const envSchema = Joi.object<Env>({
   REDIS_URL: Joi.string()
     .uri({ scheme: ['redis', 'rediss'] })
     .required(),
-  JWT_SECRET: Joi.string().min(16).required(),
-  JWT_EXPIRES_IN: Joi.string().default('15m'),
-  JWT_REFRESH_EXPIRES_IN: Joi.string().default('7d'),
+  // Deux secrets distincts (D-12), 32 caractères minimum, sans valeur de repli.
+  JWT_ACCESS_SECRET: Joi.string().min(32).required(),
+  JWT_REFRESH_SECRET: Joi.string()
+    .min(32)
+    .invalid(Joi.ref('JWT_ACCESS_SECRET'))
+    .required()
+    .messages({ 'any.invalid': '"JWT_REFRESH_SECRET" doit différer de JWT_ACCESS_SECRET' }),
+  // Durées D-23.
+  JWT_ACCESS_EXPIRES_IN: Joi.string().default('1h'),
+  JWT_REFRESH_EXPIRES_IN: Joi.string().default('30d'),
   BCRYPT_ROUNDS: Joi.number().integer().min(4).max(15).default(12),
 }).unknown(true);
 

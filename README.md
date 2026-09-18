@@ -15,7 +15,7 @@ Prérequis : Docker Desktop, Node 20+, Expo Go sur un téléphone connecté au *
 ```bash
 # 1. Backend (Postgres, Redis, API, Nginx). Les migrations s'appliquent automatiquement à la
 #    première création du volume Postgres ; ensuite : ./scripts/migrate.sh (= make migrate).
-cp .env.example .env          # puis remplacer les valeurs "change-this-*" ; POSTGRES_PORT=5433 si 5432 est pris
+cp .env.example .env          # puis remplacer les valeurs "change-this-*" (JWT_ACCESS_SECRET et JWT_REFRESH_SECRET : openssl rand -hex 32) ; POSTGRES_PORT=5433 si 5432 est pris
 docker compose up -d --build
 docker compose ps             # attendre que tout soit "healthy"
 curl http://localhost/health  # → healthy

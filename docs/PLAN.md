@@ -292,7 +292,7 @@ R1=$(curl -s -o /dev/null -w '%{http_code}' -X POST localhost/api/auth/register 
 ```
 **Hors périmètre** : écran ou route de gestion des codes.
 
-### - [ ] 4.4 — Claim `type`, secrets distincts, durées 1 h / 30 j
+### - [x] 4.4 — Claim `type`, secrets distincts, durées 1 h / 30 j
 **Objectif** : `JWT_ACCESS_SECRET` + `JWT_REFRESH_SECRET` (plus de `JWT_SECRET` ni de fallback ; refus de démarrer sans), claim `type`, le middleware rejette un refresh token, `/refresh` rejette un access token, `JWT_ACCESS_EXPIRES_IN=1h`, `JWT_REFRESH_EXPIRES_IN=30d` (D-23).
 **Fichiers** : `modules/auth/services/token.service.ts`, `middleware/auth.middleware.ts`, `src/index.ts`, `.env.example`, `docker-compose*.yml`, tests, `docs/API_CONTRACT.md` (A1, A4).
 **Critère de validation** :

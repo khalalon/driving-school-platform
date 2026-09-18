@@ -17,7 +17,14 @@ import { TokenService } from './services/token.service';
 export interface AuthModuleDeps {
   db: Pool;
   redis: RedisClientType;
-  env: Pick<Env, 'JWT_SECRET' | 'JWT_EXPIRES_IN' | 'JWT_REFRESH_EXPIRES_IN' | 'BCRYPT_ROUNDS'>;
+  env: Pick<
+    Env,
+    | 'JWT_ACCESS_SECRET'
+    | 'JWT_REFRESH_SECRET'
+    | 'JWT_ACCESS_EXPIRES_IN'
+    | 'JWT_REFRESH_EXPIRES_IN'
+    | 'BCRYPT_ROUNDS'
+  >;
 }
 
 export interface AuthModule {
@@ -32,8 +39,9 @@ export function buildAuthModule({ db, redis, env }: AuthModuleDeps): AuthModule 
   const userRepository = new UserRepository(db);
   const passwordService = new PasswordService(env.BCRYPT_ROUNDS);
   const tokenService = new TokenService({
-    secret: env.JWT_SECRET,
-    accessTokenExpiry: env.JWT_EXPIRES_IN,
+    accessSecret: env.JWT_ACCESS_SECRET,
+    refreshSecret: env.JWT_REFRESH_SECRET,
+    accessTokenExpiry: env.JWT_ACCESS_EXPIRES_IN,
     refreshTokenExpiry: env.JWT_REFRESH_EXPIRES_IN,
   });
   const cacheService = new CacheService(redis);
