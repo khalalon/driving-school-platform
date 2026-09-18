@@ -33,7 +33,7 @@ npm run test:e2e       # tests de bout en bout (paquet tests/, stack Docker dém
 ```
 `npm install` active aussi les hooks git (`prepare` → `husky install`) et crée les shims `npx` sous Windows. `.husky/pre-commit` lance `lint-staged` (Prettier sur les `.ts` des services), `.husky/commit-msg` lance commitlint. Il n'y a pas de script `test` à la racine : les tests de bout en bout arrivent en 1.1 (`test:e2e`).
 
-### Backend — un service à la fois (`services/<nom>`, nom ∈ auth, school, student, lesson, exam, payment, notification, analytics)
+### Backend — un service à la fois (`services/<nom>`, nom ∈ **api** (application unique, port 3000, Phase 2), auth, school, student, lesson, exam, payment, notification, analytics)
 ```bash
 cd services/auth
 npm ci                 # install (lockfile présent dans chaque service)
@@ -90,10 +90,10 @@ Compte admin seedé par `001_initial_schema.sql` : `admin@drivingschool.com` (mo
 - **Injection par constructeur** : les services reçoivent des interfaces (`IUserRepository`, `ITokenService`…), les tests instancient avec des mocks. Pas de singleton importé dans un service.
 - **Validation Joi** dans `validators/*.validator.ts`, appliquée dans le controller avant tout appel au service. Erreur de validation → `400 { error: 'VALIDATION_ERROR', message }`.
 - **SQL paramétré** (`$1, $2…`) sans exception. Colonnes snake_case en base, aliasées en camelCase dans le `SELECT` (`user_id as "userId"`).
-- **Réponses** : succès = l'objet ou le tableau nu (pas d'enveloppe `{ data }`), erreur = `{ error: <code stable>, message: <texte français> }` avec un code HTTP significatif (D-27 ; l'état actuel du backend est `{ error: <texte> }`, converti en Phase 2 via `src/http/errors.ts`).
+- **Réponses** : succès = l'objet ou le tableau nu (pas d'enveloppe `{ data }`), erreur = `{ error: <code stable>, message: <texte français> }` avec un code HTTP significatif (D-27 ; `services/api` l'applique via `src/http/errors.ts` — `HttpError`, `sendError`, `sendCaughtError`, `sendValidationError` ; les 8 anciens services renvoient encore `{ error: <texte> }`).
 - **Migrations numérotées** `migrations/00N_description.sql`, séquentielles. **Un fichier déjà commité ne se modifie jamais** : on ajoute `00N+1`.
 - **Tests** : `src/**/__tests__/*.test.ts` avec Jest + ts-jest, seuil de couverture 70 %.
-- **Commits** : Conventional Commits (`.commitlintrc.json`). Scopes autorisés : les 8 domaines (`auth`, `school`, `student`, `lesson`, `exam`, `payment`, `notification`, `analytics`) plus `mobile`, `docs`, `infra`, `e2e`, `docker`, `ci`, `deps`.
+- **Commits** : Conventional Commits (`.commitlintrc.json`). Scopes autorisés : `api` (application unique), les 8 domaines (`auth`, `school`, `student`, `lesson`, `exam`, `payment`, `notification`, `analytics`) plus `mobile`, `docs`, `infra`, `e2e`, `docker`, `ci`, `deps`.
 - **Style** : Prettier (`.prettierrc.json` par service), ESLint. `npm run format` avant de commiter.
 - **Mobile** : un fichier par écran dans `src/screens/<rôle>/`, appels réseau uniquement via `src/services/api/*Service.ts`, jamais d'`axios` direct dans un écran. Les chemins vivent dans `src/config/api.config.ts`.
 

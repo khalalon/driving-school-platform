@@ -26,6 +26,21 @@ Expo Go (mobile-app)            web-frontend (gelé)
 
 Tout tourne sur un réseau Docker `driving-school-network`. Chaque service publie aussi son port sur l'hôte (`3001:3001`, etc.), donc on peut contourner Nginx en dev.
 
+## 1 bis. `services/api` — l'application unique (Phase 2, en cours)
+
+Depuis 2.1, `services/api` (port **3000**, `node:20-alpine`, conteneur `driving-school-api`) tourne **à côté** des 8 anciens services, qui disparaissent en 2.7. Structure :
+
+```
+services/api/src/
+  index.ts              # dotenv, loadEnv() (Joi : DATABASE_URL, REDIS_URL, JWT_SECRET obligatoires), câblage, listen
+  app.ts                # createApp({ routers }) : helmet, cors, json, rate-limit (garde-fou), /health, /api/<domaine>, 404 D-27
+  config/{env,database,redis}.ts
+  http/errors.ts        # HttpError(status, code, message), sendError, sendCaughtError (500 masqué), sendValidationError
+  http/validation.ts    # validate(schema, input) typé
+  modules/<domaine>/    # routes → controllers → services → repositories, validators, types, __tests__ ; index.ts = build<Module>()
+```
+Modules portés : `auth` (2.1). Règles : aucun `any` (lint strict), `db.query<T>`, schémas Joi génériques, erreurs métier = `HttpError` levée par le service et traduite par le controller. Tests : unitaires (mocks d'interfaces) + HTTP (supertest sur `createApp`).
+
 ## 2. Services et ports
 
 | Service | Dossier | Port (compose) | Fallback code | `EXPOSE` Dockerfile | Redis | Dans `make` | Dans CI | Dans compose prod |

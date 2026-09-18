@@ -140,7 +140,7 @@ grep -q 'test:e2e' .github/workflows/e2e.yml && grep -q 'continue-on-error: true
 
 ## Phase 2 — Consolidation en une application
 
-### - [ ] 2.1 — Squelette de `services/api`, helper d'erreurs, module `auth`
+### - [x] 2.1 — Squelette de `services/api`, helper d'erreurs, module `auth`
 **Objectif** : une seule application Express (`services/api`, port **3000**) : `src/index.ts` (validation des variables d'env au démarrage), `src/app.ts`, `src/config/{database,redis}.ts`, `src/http/errors.ts` (`sendError(res, status, code, message)` → `{ error, message }`, D-27), `src/modules/auth/` copié depuis `services/auth` et converti au helper d'erreurs. `/health` et `/api/auth/*` répondent.
 **Fichiers** : `services/api/{package.json,tsconfig.json,jest.config.js,.eslintrc.json,.prettierrc.json,Dockerfile,.dockerignore,.env.example}`, `services/api/src/**`, `docker-compose.yml` (ajoute `api`, garde les anciens). Le `.eslintrc.json` de `services/api` est **strict** : `recommended-requiring-type-checking` avec `no-unsafe-*`, `no-explicit-any`, `require-await` en `error` (les assouplissements de 0.10 ne concernent que les 8 anciens services).
 **Critère de validation** :
