@@ -10,15 +10,16 @@ module.exports = {
     '!src/index.ts',
     '!src/config/**',
     '!src/**/types/**',
+    '!src/test-utils/**',
   ],
   // Seuils = couverture mesurée à la création du paquet (18/09/2026, D-37) ; à remonter à
   // chaque module porté (2.3, 2.4, 2.5) puis avec les phases 3–5.
   coverageThreshold: {
     global: {
-      branches: 65,
-      functions: 71,
-      lines: 75,
-      statements: 75,
+      branches: 83,
+      functions: 89,
+      lines: 84,
+      statements: 84,
     },
   },
 };

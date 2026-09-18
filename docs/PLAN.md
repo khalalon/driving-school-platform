@@ -158,7 +158,7 @@ cd services/api && npx jest middleware --silent && test "$(grep -rl 'api/auth/me
 ```
 **Hors périmètre** : claim `type`, secrets séparés (4.4).
 
-### - [ ] 2.3 — Migration des modules `school` et `student`
+### - [x] 2.3 — Migration des modules `school` et `student`
 **Objectif** : `modules/school` et `modules/student` tournent dans `services/api` avec le middleware de 2.2 et le helper d'erreurs. Preuve que le bug `userId` est corrigé : une demande d'inscription est rattachée à l'élève.
 **Fichiers** : `services/api/src/modules/{school,student}/**`, `app.ts`, tests unitaires des deux modules (les suites d'origine ont été supprimées en 0.9, D-39 : à écrire contre le code porté).
 **Critère de validation** :

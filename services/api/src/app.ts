@@ -4,8 +4,14 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { sendError } from './http/errors';
 
+/** Routeurs fournis par les modules ; chaque clé est un préfixe `/api/<clé>`. */
 export interface AppRouters {
   auth: Router;
+  schools?: Router;
+  enrollment?: Router;
+  profiles?: Router;
+  'student-profiles'?: Router;
+  verification?: Router;
 }
 
 /**
@@ -26,7 +32,12 @@ export function createApp(routers: AppRouters): Application {
     res.status(200).json({ status: 'ok' });
   });
 
-  app.use('/api/auth', routers.auth);
+  for (const prefix of Object.keys(routers) as (keyof AppRouters)[]) {
+    const router = routers[prefix];
+    if (router) {
+      app.use(`/api/${prefix}`, router);
+    }
+  }
 
   app.use((_req, res) => {
     sendError(res, 404, 'NOT_FOUND', 'Route inconnue');

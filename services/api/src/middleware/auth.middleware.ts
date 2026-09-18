@@ -1,5 +1,5 @@
 import { NextFunction, Request, RequestHandler, Response } from 'express';
-import { sendError } from '../http/errors';
+import { HttpError, sendError } from '../http/errors';
 import { AuthUser, UserRole } from '../types/auth';
 
 export interface AuthRequest extends Request {
@@ -46,4 +46,15 @@ export function authorize(...roles: UserRole[]): RequestHandler {
     }
     next();
   };
+}
+
+/**
+ * Identité de l'appelant dans un controller placé derrière `authenticate`. Lève une HttpError 401
+ * si le middleware n'a pas été posé (erreur de câblage), plutôt qu'un `req.user!`.
+ */
+export function getAuthUser(req: AuthRequest): AuthUser {
+  if (!req.user) {
+    throw new HttpError(401, 'UNAUTHORIZED', 'Authentification requise');
+  }
+  return req.user;
 }

@@ -30,7 +30,7 @@ Chaque ligne décrit la **cible** (ce que le mobile doit envoyer / recevoir une 
 - Vocabulaire (D-18) : leçons `CODE` / `Manœuvre` / `Parc` ; examens `theory` / `practical` ; résultats `passed` / `failed` / `pending`. *État actuel du mobile : `THEORY` / `PRACTICAL`, `PASS` / `FAIL` — à réécrire en 6.1.*
 - Cloisonnement (D-20) : toute action d'un `instructor` est limitée à son école → 403 `FORBIDDEN_SCHOOL` sinon. Non répété ligne par ligne.
 - Une seule inscription active par élève (D-22) : les routes qui prennent `:schoolId` sont conservées ; celles qui n'en prennent pas résolvent l'école depuis l'inscription active.
-- Bug transverse actuel : dans les 6 services autres que `auth`, `req.user.userId` vaut `undefined` (`ARCHITECTURE.md` §3). Toutes les lignes « EXISTE » qui s'appuient sur l'identité de l'appelant sont cassées à l'exécution tant que la tâche 2.2 n'est pas faite. Non répété ligne par ligne.
+- Bug transverse : dans les 6 anciens services autres que `auth`, `req.user.userId` vaut `undefined` (`ARCHITECTURE.md` §3). **Corrigé dans `services/api`** (2.2, 2.3 : E2 rattache la demande au `users.id` du jeton) ; les anciens services restent cassés jusqu'à leur suppression (2.7) et Nginx ne bascule sur `services/api` qu'en 2.6.
 
 ---
 
