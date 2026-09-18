@@ -129,28 +129,16 @@ Tables **utilisées par le code mais absentes des migrations** : `push_tokens` e
 
 ## 5. Nginx — où passent les requêtes
 
-Fichier : `nginx/nginx.conf` (le `nginx.conf` vide à la racine a été supprimé). `nginx/proxy_params.conf` existe mais n'est pas inclus ; les 12 lignes `proxy_set_header…` sont copiées dans chaque `location`.
+Fichier : `nginx/nginx.conf` (+ `nginx/proxy_params.conf`, inclus). Depuis 2.6, **un seul upstream** : l'application unique.
 
-| Préfixe | Upstream | Rate limit |
+| Préfixe | Traitement | Rate limit |
 |---|---|---|
-| `/api/auth` | auth-service:3001 | 5 r/s, burst 5 |
-| `/api/schools` | school-service:3002 | 10 r/s, burst 10 |
-| `/api/enrollment` | student-service:3007 | 10 r/s |
-| `/api/verification` | student-service:3007 | 10 r/s |
-| `/api/lessons` | lesson-service:3003 | 10 r/s |
-| `/api/exams` | exam-service:3004 | 10 r/s |
-| `/api/payments` | payment-service:3005 | 10 r/s |
-| `/api/notifications` | notification-service:3006 | 10 r/s |
-| `/api/analytics` | analytics-service:3008 | 10 r/s |
 | `/health` | réponse statique `healthy` | — |
+| `/api/verification/*` | **404 JSON**, jamais transmis (D-14 ; routes retirées de l'application en 5.7) | — |
+| `/api/*` | `proxy_pass` vers `api:3000`, nom résolu **à la requête** (`resolver 127.0.0.11 valid=10s`) : recréer le conteneur `api` ne casse plus la passerelle | 10 r/s par IP, burst 20 |
+| tout le reste | 404 JSON `{ error: NOT_FOUND }` | — |
 
-**Non routés** alors que montés par `student-service` : `/api/profiles/*` (fiche élève côté instructeur, marquage payé) et `/api/student-profiles/*` (profil élève côté élève). Depuis le mobile (qui passe par `:80`), ces appels tombent sur le `error_page 404` de Nginx.
-
-Autres points :
-- `Access-Control-Allow-Origin: *` sur tout, y compris les routes authentifiées.
-- Pas de `listen 443` alors que compose publie `443:443` et monte `./nginx/ssl` (dossier inexistant → le conteneur peut refuser de démarrer selon la version de Docker).
-- `proxy_pass http://<service>:<port>` avec un nom fixe : Nginx résout l'IP du conteneur **au chargement de la conf**. Après un `docker compose up -d --build` qui recrée un service, la passerelle renvoie **502** pour ce service jusqu'à `docker compose restart nginx` (constaté le 18/09 sur `school-service`). Disparaît avec l'upstream unique de 2.6 (ou `resolver 127.0.0.11` + variable).
-- Les routes `/api/verification/*` sont publiques côté service (aucun middleware) **et** exposées par Nginx : n'importe qui peut appeler `POST /api/verification/students/:id/lesson-completed` et incrémenter les compteurs d'éligibilité.
+Conséquences : `/api/profiles/*` et `/api/student-profiles/*` sont **joignables** (ils ne l'étaient pas) ; `/api/payments`, `/api/notifications`, `/api/analytics` répondent 404 par l'application (modules non montés / non portés). Plus de `listen 443` ni de montage `./nginx/ssl` (TLS hors périmètre). `Access-Control-Allow-Origin: *` conservé (le mobile appelle depuis un autre hôte).
 
 ## 6. Qui appelle quoi
 

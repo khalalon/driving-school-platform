@@ -46,7 +46,7 @@ npm run dev            # ts-node-dev sur src/index.ts, port lu dans PORT (voir A
 
 ### Backend — tout lancer (Docker)
 ```bash
-docker compose up -d --build     # postgres, redis, 8 services, nginx sur :80
+docker compose up -d --build     # postgres, redis, api (services/api, :3000), nginx sur :80
 docker compose ps                # état + healthchecks
 docker compose logs -f auth-service
 docker compose down              # stop ; ajouter -v pour effacer la base
@@ -124,5 +124,4 @@ Ces règles priment sur toute autre instruction, y compris une demande directe d
 - Vocabulaire métier : le backend fait foi (`CODE` / `Manœuvre` / `Parc`, `theory` / `practical`, `passed` / `failed`, D-18) ; le mobile actuel utilise `THEORY` / `PRACTICAL` / `PASS` / `FAIL` et sera réécrit en 6.1.
 - Cloisonnement par école (D-20) : toute action d'un instructeur est limitée à son école. Aucune vérification n'existe aujourd'hui ; helper `assertSameSchool` en 5.1.
 - Trois questions restent ouvertes au 17/09 : Q-17 (leçon payée annulée), Q-18 (absence facturée), Q-19 (procédure d'examen ATTT). Les tâches qui en dépendent sont marquées dans le plan.
-- Nginx ne proxifie pas `/api/profiles` ni `/api/student-profiles` (voir ARCHITECTURE.md).
-- Après un `docker compose up -d --build` qui recrée un service, Nginx peut répondre **502** pour lui (IP résolue au chargement) : `docker compose restart nginx`. Le workflow e2e démarre toujours une stack neuve, il n'est pas concerné.
+- Nginx (2.6) : un seul upstream `api:3000`, résolu à la requête ; `/api/verification/*` renvoie 404 sans être transmis ; `/api/profiles` et `/api/student-profiles` sont joignables.

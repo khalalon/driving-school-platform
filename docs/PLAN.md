@@ -185,7 +185,7 @@ cd services/api && npx tsc --noEmit && npm test -- --silent && ! test -d src/mod
 ```
 **Hors périmètre** : —
 
-### - [ ] 2.6 — Nginx et compose sur un seul upstream
+### - [x] 2.6 — Nginx et compose sur un seul upstream
 **Objectif** : `nginx/nginx.conf` proxifie `/api/` vers `api:3000` (un `location`, `include proxy_params.conf`), **n'expose pas** `/api/verification`, n'écoute plus 443 ; les trois compose ne déclarent plus que `postgres`, `redis`, `api`, `nginx`. `/api/profiles` et `/api/student-profiles` deviennent joignables.
 **Fichiers** : `nginx/nginx.conf`, `nginx/proxy_params.conf`, `docker-compose{,.dev,.prod}.yml`, `.env.example`.
 **Critère de validation** :

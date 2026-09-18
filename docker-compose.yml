@@ -1,5 +1,3 @@
-version: '3.8'
-
 networks:
   driving-school-network:
     driver: bridge
@@ -25,6 +23,7 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # Appliquées une seule fois, à la création du volume (puis scripts/migrate.sh).
       - ./migrations:/docker-entrypoint-initdb.d
     networks:
       - driving-school-network
@@ -55,7 +54,7 @@ services:
       retries: 5
 
   # ============================================
-  # API UNIQUE (services/api) — remplace les 8 services en Phase 2 (2.7)
+  # API UNIQUE (services/api)
   # ============================================
   api:
     build:
@@ -73,6 +72,7 @@ services:
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
       BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
     ports:
+      # Accès direct en développement ; la passerelle reste Nginx sur :80.
       - "3000:3000"
     depends_on:
       postgres:
@@ -89,278 +89,7 @@ services:
       start_period: 20s
 
   # ============================================
-  # AUTH SERVICE
-  # ============================================
-  auth-service:
-    build:
-      context: ./services/auth
-      dockerfile: Dockerfile
-    container_name: auth-service
-    restart: unless-stopped
-    environment:
-      NODE_ENV: ${NODE_ENV:-production}
-      PORT: 3001
-      DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-driving_school}
-      REDIS_URL: redis://redis:6379
-      JWT_SECRET: ${JWT_SECRET:-change-this-secret-in-production}
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
-      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
-      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
-    ports:
-      - "3001:3001"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - driving-school-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  # ============================================
-  # SCHOOL SERVICE
-  # ============================================
-  school-service:
-    build:
-      context: ./services/school
-      dockerfile: Dockerfile
-    container_name: school-service
-    restart: unless-stopped
-    environment:
-      NODE_ENV: ${NODE_ENV:-production}
-      PORT: 3002
-      DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-driving_school}
-      AUTH_SERVICE_URL: http://auth-service:3001
-    ports:
-      - "3002:3002"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      auth-service:
-        condition: service_healthy
-    networks:
-      - driving-school-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  # ============================================
-  # STUDENT SERVICE
-  # ============================================
-  student-service:
-    build:
-      context: ./services/student
-      dockerfile: Dockerfile
-    container_name: student-service
-    restart: unless-stopped
-    environment:
-      NODE_ENV: ${NODE_ENV:-production}
-      PORT: 3007
-      DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-driving_school}
-      AUTH_SERVICE_URL: http://auth-service:3001
-      LESSON_SERVICE_URL: http://lesson-service:3003
-    ports:
-      - "3007:3007"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      auth-service:
-        condition: service_healthy
-    networks:
-      - driving-school-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3007/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  # ============================================
-  # LESSON SERVICE
-  # ============================================
-  lesson-service:
-    build:
-      context: ./services/lesson
-      dockerfile: Dockerfile
-    container_name: lesson-service
-    restart: unless-stopped
-    environment:
-      NODE_ENV: ${NODE_ENV:-production}
-      PORT: 3003
-      DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-driving_school}
-      AUTH_SERVICE_URL: http://auth-service:3001
-      SCHOOL_SERVICE_URL: http://school-service:3002
-      STUDENT_SERVICE_URL: http://student-service:3007
-    ports:
-      - "3003:3003"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      auth-service:
-        condition: service_healthy
-      school-service:
-        condition: service_healthy
-      student-service:
-        condition: service_healthy
-    networks:
-      - driving-school-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  # ============================================
-  # EXAM SERVICE
-  # ============================================
-  exam-service:
-    build:
-      context: ./services/exam
-      dockerfile: Dockerfile
-    container_name: exam-service
-    restart: unless-stopped
-    environment:
-      NODE_ENV: ${NODE_ENV:-production}
-      PORT: 3004
-      DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-driving_school}
-      AUTH_SERVICE_URL: http://auth-service:3001
-      SCHOOL_SERVICE_URL: http://school-service:3002
-      STUDENT_SERVICE_URL: http://student-service:3007
-    ports:
-      - "3004:3004"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      auth-service:
-        condition: service_healthy
-      school-service:
-        condition: service_healthy
-      student-service:
-        condition: service_healthy
-    networks:
-      - driving-school-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3004/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  # ============================================
-  # PAYMENT SERVICE
-  # ============================================
-  payment-service:
-    build:
-      context: ./services/payment
-      dockerfile: Dockerfile
-    container_name: payment-service
-    restart: unless-stopped
-    environment:
-      NODE_ENV: ${NODE_ENV:-production}
-      PORT: 3005
-      DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-driving_school}
-      AUTH_SERVICE_URL: http://auth-service:3001
-      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
-      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
-    ports:
-      - "3005:3005"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      auth-service:
-        condition: service_healthy
-    networks:
-      - driving-school-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3005/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  # ============================================
-  # NOTIFICATION SERVICE
-  # ============================================
-  notification-service:
-    build:
-      context: ./services/notification
-      dockerfile: Dockerfile
-    container_name: notification-service
-    restart: unless-stopped
-    environment:
-      NODE_ENV: ${NODE_ENV:-production}
-      PORT: 3006
-      DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-driving_school}
-      REDIS_URL: redis://redis:6379
-      AUTH_SERVICE_URL: http://auth-service:3001
-      EXPO_ACCESS_TOKEN: ${EXPO_ACCESS_TOKEN:-}
-      SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
-      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
-      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
-      TWILIO_PHONE_NUMBER: ${TWILIO_PHONE_NUMBER:-}
-    ports:
-      - "3006:3006"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      auth-service:
-        condition: service_healthy
-    networks:
-      - driving-school-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3006/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  # ============================================
-  # ANALYTICS SERVICE
-  # ============================================
-  analytics-service:
-    build:
-      context: ./services/analytics
-      dockerfile: Dockerfile
-    container_name: analytics-service
-    restart: unless-stopped
-    environment:
-      NODE_ENV: ${NODE_ENV:-production}
-      PORT: 3008
-      DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-driving_school}
-      REDIS_URL: redis://redis:6379
-      AUTH_SERVICE_URL: http://auth-service:3001
-      CACHE_TTL: ${CACHE_TTL:-3600}
-    ports:
-      - "3008:3008"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      auth-service:
-        condition: service_healthy
-    networks:
-      - driving-school-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3008/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  # ============================================
-  # NGINX API GATEWAY
+  # NGINX - passerelle (:80), un seul upstream
   # ============================================
   nginx:
     image: nginx:alpine
@@ -368,19 +97,12 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
-      - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx/proxy_params.conf:/etc/nginx/proxy_params.conf:ro
     depends_on:
-      - auth-service
-      - school-service
-      - student-service
-      - lesson-service
-      - exam-service
-      - payment-service
-      - notification-service
-      - analytics-service
+      api:
+        condition: service_healthy
     networks:
       - driving-school-network
     healthcheck:
