@@ -107,7 +107,7 @@ for s in auth school student lesson exam payment notification analytics; do (cd 
 
 ## Phase 1 — Filet de sécurité
 
-### - [ ] 1.1 — Harnais de test de bout en bout exécutable
+### - [x] 1.1 — Harnais de test de bout en bout exécutable
 **Objectif** : `tests/` devient un paquet npm autonome (jest + ts-jest + supertest) ciblant `GATEWAY_URL` (défaut `http://localhost`), avec `tests/fixtures/seed.sql` (une école `Seed Driving School`, un instructeur `instructor@seed.io` / `Seed1234!` inséré par SQL direct dans `users` + `instructors`, une grille `pricing` pour les 3 types, un `school_codes` `INST-SEED` pour l'instructeur) appliqué par le harnais. Les deux fichiers de tests existants, non exécutables, sont supprimés.
 **Fichiers** : `tests/package.json`, `tests/jest.config.js`, `tests/tsconfig.json`, `tests/fixtures/seed.sql`, `tests/setup.ts`, `tests/helpers/api.ts`, `package.json` racine (`"test:e2e"`), suppression de `tests/e2e/complete-workflow.e2e.test.ts` et `tests/integration/api-integration.test.ts`.
 **Critère de validation** :

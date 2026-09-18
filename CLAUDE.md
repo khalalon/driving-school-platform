@@ -26,9 +26,10 @@ Vérifiées dans `package.json`, `Makefile` et `docker-compose.yml`. Il n'y a **
 - Node 18+, npm, Docker Desktop avec `docker compose` v2.
 - Sous Windows le shell principal est PowerShell ; les scripts `scripts/*.sh` demandent Git Bash.
 
-### Racine (outillage git uniquement)
+### Racine (outillage git et tests de bout en bout)
 ```bash
 npm install            # installe husky + commitlint + lint-staged (rien d'autre)
+npm run test:e2e       # tests de bout en bout (paquet tests/, stack Docker démarrée ; voir tests/setup.ts)
 ```
 `npm install` active aussi les hooks git (`prepare` → `husky install`) et crée les shims `npx` sous Windows. `.husky/pre-commit` lance `lint-staged` (Prettier sur les `.ts` des services), `.husky/commit-msg` lance commitlint. Il n'y a pas de script `test` à la racine : les tests de bout en bout arrivent en 1.1 (`test:e2e`).
 

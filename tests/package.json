@@ -1,0 +1,21 @@
+{
+  "name": "driving-school-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tests de bout en bout contre la passerelle Nginx (GATEWAY_URL, défaut http://localhost)",
+  "scripts": {
+    "test": "jest --runInBand",
+    "test:critical": "jest e2e/critical-path --bail --verbose"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.11",
+    "@types/node": "^20.10.5",
+    "@types/pg": "^8.11.0",
+    "@types/supertest": "^6.0.2",
+    "jest": "^29.7.0",
+    "pg": "^8.11.3",
+    "supertest": "^7.0.0",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.3.3"
+  }
+}

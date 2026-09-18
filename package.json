@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "test:e2e": "npm --prefix tests test"
   },
   "keywords": [],
   "author": "",
