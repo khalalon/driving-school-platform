@@ -167,7 +167,7 @@ cd services/api && npx tsc --noEmit && npm test -- --silent && cd ../.. && docke
 ```
 **Hors périmètre** : `students.name` (3.1), identifiants des fiches (5.0).
 
-### - [ ] 2.4 — Migration des modules `lesson` et `exam` (tels quels)
+### - [x] 2.4 — Migration des modules `lesson` et `exam` (tels quels)
 **Objectif** : les deux modules tournent dans `services/api` **sans** changer leurs routes.
 **Fichiers** : `services/api/src/modules/{lesson,exam}/**`, `app.ts`, tests unitaires des deux modules (D-39).
 **Critère de validation** :

@@ -4,6 +4,8 @@ import { createPool } from './config/database';
 import { loadEnv } from './config/env';
 import { createRedisClient } from './config/redis';
 import { buildAuthModule } from './modules/auth';
+import { buildExamModule } from './modules/exam';
+import { buildLessonModule } from './modules/lesson';
 import { buildSchoolModule } from './modules/school';
 import { buildStudentModule } from './modules/student';
 
@@ -17,6 +19,16 @@ async function bootstrap(): Promise<void> {
   const auth = buildAuthModule({ db, redis, env });
   const school = buildSchoolModule({ db, requireAuth: auth.requireAuth });
   const student = buildStudentModule({ db, requireAuth: auth.requireAuth });
+  const lesson = buildLessonModule({
+    db,
+    requireAuth: auth.requireAuth,
+    students: student.studentRepository,
+  });
+  const exam = buildExamModule({
+    db,
+    requireAuth: auth.requireAuth,
+    students: student.studentRepository,
+  });
 
   const app = createApp({
     auth: auth.router,
@@ -25,6 +37,8 @@ async function bootstrap(): Promise<void> {
     profiles: student.profileRouter,
     'student-profiles': student.studentProfileRouter,
     verification: student.verificationRouter,
+    lessons: lesson.router,
+    exams: exam.router,
   });
 
   app.listen(env.PORT, () => {
