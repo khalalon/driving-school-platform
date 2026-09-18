@@ -24,10 +24,10 @@ export interface AuthTokens {
   refreshToken: string;
 }
 
+/** A2 : sans `role` (toujours `student`, 4.1) ; `schoolCode` arrive en 4.2 (D-17). */
 export interface RegisterDTO {
   email: string;
   password: string;
-  role: UserRole;
   firstName: string;
   lastName: string;
 }

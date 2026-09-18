@@ -46,12 +46,11 @@ describe('AuthService', () => {
     const dto: RegisterDTO = {
       email: 'test@example.com',
       password: 'Password@123',
-      role: UserRole.STUDENT,
       firstName: 'Test',
       lastName: 'Élève',
     };
 
-    it('crée le compte, hache le mot de passe et renvoie une paire de jetons', async () => {
+    it('crée un compte student, hache le mot de passe et renvoie une paire de jetons', async () => {
       userRepository.findByEmail.mockResolvedValue(null);
       passwordService.hash.mockResolvedValue('hashed-password');
       userRepository.create.mockResolvedValue(user);
@@ -64,7 +63,7 @@ describe('AuthService', () => {
       expect(userRepository.create).toHaveBeenCalledWith(
         dto.email,
         'hashed-password',
-        dto.role,
+        UserRole.STUDENT,
         'Test',
         'Élève'
       );

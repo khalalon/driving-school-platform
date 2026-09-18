@@ -56,15 +56,13 @@ export function rememberStudent(student: StudentAccount, accessToken: string): v
   cache.studentToken = accessToken;
 }
 
-/** A2 rejoué comme prérequis. TODO(4.1) : retirer `role`, refusé par A2 à partir de là. */
+/** A2 rejoué comme prérequis (payload du contrat : sans `role`, 4.1). */
 export async function ensureStudent(): Promise<{ student: StudentAccount; token: string }> {
   if (cache.student && cache.studentToken) {
     return { student: cache.student, token: cache.studentToken };
   }
   const student = newStudent();
-  const res = await api()
-    .post('/api/auth/register')
-    .send({ ...student, role: 'student' });
+  const res = await api().post('/api/auth/register').send(student);
   expectStatus(res, 201, 'prérequis A2 register élève');
   const token = (res.body as { accessToken: string }).accessToken;
   rememberStudent(student, token);

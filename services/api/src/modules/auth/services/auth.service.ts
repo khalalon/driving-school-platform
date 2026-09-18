@@ -7,6 +7,7 @@ import {
   RegisterDTO,
   TokenPayload,
   User,
+  UserRole,
 } from '../types/auth.types';
 import { ICacheService } from './cache.service';
 import { IPasswordService } from './password.service';
@@ -26,11 +27,12 @@ export class AuthService {
       throw new HttpError(409, 'CONFLICT', 'Un compte existe déjà avec cet email');
     }
 
+    // Sans code d'école, le compte est un élève (4.1) ; le rôle n'est jamais choisi par l'appelant.
     const passwordHash = await this.passwordService.hash(dto.password);
     const user = await this.userRepository.create(
       dto.email,
       passwordHash,
-      dto.role,
+      UserRole.STUDENT,
       dto.firstName,
       dto.lastName
     );

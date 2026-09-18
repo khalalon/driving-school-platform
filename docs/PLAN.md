@@ -265,7 +265,7 @@ docker compose down -v && docker compose up -d postgres && sleep 12 && ./scripts
 
 ## Phase 4 — Auth
 
-### - [ ] 4.1 — `POST /api/auth/register` sans `role` : toujours `student`
+### - [x] 4.1 — `POST /api/auth/register` sans `role` : toujours `student`
 **Objectif** : le champ `role` n'est plus accepté (400 `VALIDATION_ERROR` s'il est présent) ; sans `schoolCode`, le compte est `student`. `firstName` / `lastName` exigés (3.1).
 **Fichiers** : `modules/auth/validators/auth.validator.ts`, `modules/auth/{controllers,services}/auth.*`, tests, `docs/API_CONTRACT.md` (A2), `tests/helpers/api.ts`.
 **Critère de validation** :

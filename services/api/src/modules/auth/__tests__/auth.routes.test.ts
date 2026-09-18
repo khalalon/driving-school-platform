@@ -35,7 +35,6 @@ describe('Routes /api/auth', () => {
   const registerBody = {
     email: 'x@x.io',
     password: 'Passw0rd!',
-    role: 'student',
     firstName: 'Ali',
     lastName: 'Ben Salah',
   };
@@ -67,9 +66,18 @@ describe('Routes /api/auth', () => {
   it('POST /register : 400 VALIDATION_ERROR sans firstName / lastName (D-16)', async () => {
     const res = await request(app)
       .post('/api/auth/register')
-      .send({ email: 'x@x.io', password: 'Passw0rd!', role: 'student' });
+      .send({ email: 'x@x.io', password: 'Passw0rd!' });
     expect(res.status).toBe(400);
     expect((res.body as { message: string }).message).toContain('firstName');
+    expect(authService.register).not.toHaveBeenCalled();
+  });
+
+  it('POST /register : 400 VALIDATION_ERROR si `role` est présent (4.1, jamais choisi par l’appelant)', async () => {
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({ ...registerBody, role: 'admin' });
+    expect(res.status).toBe(400);
+    expect((res.body as { message: string }).message).toContain('role');
     expect(authService.register).not.toHaveBeenCalled();
   });
 
