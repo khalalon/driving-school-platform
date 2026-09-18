@@ -1,5 +1,5 @@
 import Joi from 'joi';
-import { NotificationType, NotificationChannel } from '../types';
+import { NotificationType } from '../types';
 
 export const sendNotificationSchema = Joi.object({
   userId: Joi.string().uuid().required(),

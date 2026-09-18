@@ -6,12 +6,7 @@
 
 import { Pool } from 'pg';
 import { DatabaseConfig } from '../config/database.config';
-import {
-  StudentProfile,
-  LessonHistory,
-  ExamHistory,
-  FinancialSummary,
-} from '../types';
+import { StudentProfile, LessonHistory, ExamHistory, FinancialSummary } from '../types';
 
 export interface IProfileRepository {
   getStudentProfile(studentId: string, schoolId: string): Promise<StudentProfile | null>;

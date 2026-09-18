@@ -5,12 +5,7 @@
  */
 
 import { IProfileRepository } from '../repositories/profile.repository';
-import {
-  StudentProfile,
-  LessonHistory,
-  ExamHistory,
-  FinancialSummary,
-} from '../types';
+import { StudentProfile, LessonHistory, ExamHistory, FinancialSummary } from '../types';
 
 export class ProfileService {
   constructor(private readonly profileRepository: IProfileRepository) {}

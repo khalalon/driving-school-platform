@@ -1,0 +1,17 @@
+# Fins de ligne : LF dans le dépôt ET dans la copie de travail, quel que soit l'OS
+# (sinon, sous Windows avec core.autocrlf=true, Prettier voit des CRLF : `prettier/prettier: Delete ␍`).
+* text=auto eol=lf
+
+# Binaires : jamais normalisés
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.jar binary
+*.keystore binary

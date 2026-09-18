@@ -90,17 +90,17 @@ export interface StudentProfile {
   licenseNumber?: string;
   profilePhotoUrl?: string;
   enrollmentDate?: Date;
-  
+
   // Emergency Contact
   emergencyContact?: string;
   emergencyPhone?: string;
-  
+
   // Stats
   totalLessons: number;
   completedLessons: number;
   totalExams: number;
   passedExams: number;
-  
+
   // Instructor Notes
   notes?: string;
 }
@@ -136,13 +136,13 @@ export interface ExamHistory {
 }
 
 export interface FinancialSummary {
-  totalRevenue: number;      // Total paid
-  totalPending: number;      // Total unpaid
-  totalDue: number;          // Amount owed
-  lessonsRevenue: number;    // Paid lessons
-  examsRevenue: number;      // Paid exams
-  lessonsPending: number;    // Unpaid lessons
-  examsPending: number;      // Unpaid exams
+  totalRevenue: number; // Total paid
+  totalPending: number; // Total unpaid
+  totalDue: number; // Amount owed
+  lessonsRevenue: number; // Paid lessons
+  examsRevenue: number; // Paid exams
+  lessonsPending: number; // Unpaid lessons
+  examsPending: number; // Unpaid exams
   lastPaymentDate?: Date;
 }
 

@@ -91,12 +91,12 @@ export class ProfileController {
     try {
       const studentId = req.user!.userId; // From JWT token
       const { schoolId } = req.params;
-      
+
       const profile = await this.profileService.getCompleteProfile(studentId, schoolId);
-      
+
       // Remove instructor private notes
       delete profile.notes;
-      
+
       res.json(profile);
     } catch (error: any) {
       res.status(404).json({ error: error.message });
@@ -107,7 +107,7 @@ export class ProfileController {
     try {
       const studentId = req.user!.userId;
       const { schoolId } = req.params;
-      
+
       const lessons = await this.profileService.getStudentLessons(studentId, schoolId);
       res.json(lessons);
     } catch (error: any) {
@@ -119,7 +119,7 @@ export class ProfileController {
     try {
       const studentId = req.user!.userId;
       const { schoolId } = req.params;
-      
+
       const exams = await this.profileService.getStudentExams(studentId, schoolId);
       res.json(exams);
     } catch (error: any) {
@@ -131,7 +131,7 @@ export class ProfileController {
     try {
       const studentId = req.user!.userId;
       const { schoolId } = req.params;
-      
+
       const summary = await this.profileService.getFinancialSummary(studentId, schoolId);
       res.json(summary);
     } catch (error: any) {

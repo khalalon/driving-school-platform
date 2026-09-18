@@ -17,7 +17,7 @@ export interface PaymentIntent {
 export class MockPaymentGateway implements IPaymentGateway {
   async createPaymentIntent(
     amount: number,
-    metadata: Record<string, unknown>
+    _metadata: Record<string, unknown>
   ): Promise<PaymentIntent> {
     // Simulate API call delay
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -32,7 +32,7 @@ export class MockPaymentGateway implements IPaymentGateway {
     };
   }
 
-  async confirmPayment(transactionId: string): Promise<boolean> {
+  async confirmPayment(_transactionId: string): Promise<boolean> {
     // Simulate API call delay
     await new Promise((resolve) => setTimeout(resolve, 100));
 
@@ -40,7 +40,7 @@ export class MockPaymentGateway implements IPaymentGateway {
     return Math.random() > 0.05;
   }
 
-  async refundPayment(transactionId: string, amount: number): Promise<boolean> {
+  async refundPayment(_transactionId: string, _amount: number): Promise<boolean> {
     // Simulate API call delay
     await new Promise((resolve) => setTimeout(resolve, 100));
 
