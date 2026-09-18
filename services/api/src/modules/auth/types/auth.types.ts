@@ -1,8 +1,6 @@
-export enum UserRole {
-  ADMIN = 'admin',
-  INSTRUCTOR = 'instructor',
-  STUDENT = 'student',
-}
+import { AuthUser, UserRole } from '../../../types/auth';
+
+export { UserRole };
 
 export interface User {
   id: string;
@@ -16,11 +14,8 @@ export interface User {
 /** Utilisateur tel qu'exposé par l'API (jamais le hash). */
 export type PublicUser = Omit<User, 'passwordHash'>;
 
-export interface TokenPayload {
-  userId: string;
-  email: string;
-  role: UserRole;
-}
+/** Contenu signé dans les jetons = identité posée sur req.user par le middleware. */
+export type TokenPayload = AuthUser;
 
 export interface AuthTokens {
   accessToken: string;

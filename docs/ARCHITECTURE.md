@@ -39,7 +39,7 @@ services/api/src/
   http/validation.ts    # validate(schema, input) typé
   modules/<domaine>/    # routes → controllers → services → repositories, validators, types, __tests__ ; index.ts = build<Module>()
 ```
-Modules portés : `auth` (2.1). Règles : aucun `any` (lint strict), `db.query<T>`, schémas Joi génériques, erreurs métier = `HttpError` levée par le service et traduite par le controller. Tests : unitaires (mocks d'interfaces) + HTTP (supertest sur `createApp`).
+Modules portés : `auth` (2.1). Middleware unique `src/middleware/auth.middleware.ts` (2.2) : `authenticate(tokenService)` vérifie le JWT localement et pose `req.user = { userId, email, role }` ; `authorize(...roles)` → 403 FORBIDDEN. Plus aucun appel HTTP entre modules (D-03) ; le bug `req.user.userId === undefined` n'existe pas dans `services/api`. Règles : aucun `any` (lint strict), `db.query<T>`, schémas Joi génériques, erreurs métier = `HttpError` levée par le service et traduite par le controller. Tests : unitaires (mocks d'interfaces) + HTTP (supertest sur `createApp`).
 
 ## 2. Services et ports
 

@@ -149,7 +149,7 @@ cd services/api && npm ci --silent && npx tsc --noEmit && npm test -- --silent &
 ```
 **Hors périmètre** : autres modules ; Nginx.
 
-### - [ ] 2.2 — Middleware d'auth unique, vérification locale du JWT
+### - [x] 2.2 — Middleware d'auth unique, vérification locale du JWT
 **Objectif** : `src/middleware/auth.middleware.ts` vérifie le token avec le secret, pose `req.user = { userId, email, role }`, expose `authenticate` et `authorize(...roles)` ; testé (valide, expiré, absent, mauvais rôle). Plus aucun appel HTTP vers `/api/auth/me` dans le code de l'app.
 **Fichiers** : `services/api/src/middleware/auth.middleware.ts` + `__tests__`, suppression de la copie dans `modules/auth`.
 **Critère de validation** :

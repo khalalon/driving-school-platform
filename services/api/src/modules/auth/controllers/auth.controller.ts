@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { sendCaughtError, sendError, sendValidationError } from '../../../http/errors';
 import { validate } from '../../../http/validation';
-import { AuthRequest } from '../middleware/auth.middleware';
+import { AuthRequest } from '../../../middleware/auth.middleware';
 import { AuthService } from '../services/auth.service';
 import { loginSchema, refreshTokenSchema, registerSchema } from '../validators/auth.validator';
 

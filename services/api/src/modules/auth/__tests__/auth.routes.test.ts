@@ -2,7 +2,7 @@ import request from 'supertest';
 import { createApp } from '../../../app';
 import { HttpError } from '../../../http/errors';
 import { AuthController } from '../controllers/auth.controller';
-import { AuthMiddleware } from '../middleware/auth.middleware';
+import { authenticate } from '../../../middleware/auth.middleware';
 import { createAuthRouter } from '../routes/auth.routes';
 import { AuthService } from '../services/auth.service';
 import { TokenService } from '../services/token.service';
@@ -28,7 +28,7 @@ describe('Routes /api/auth', () => {
   const app = createApp({
     auth: createAuthRouter(
       new AuthController(authService as unknown as AuthService),
-      new AuthMiddleware(tokenService)
+      authenticate(tokenService)
     ),
   });
   const tokens = { accessToken: 'a', refreshToken: 'r' };

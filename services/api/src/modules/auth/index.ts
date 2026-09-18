@@ -1,9 +1,9 @@
-import { Router } from 'express';
+import { RequestHandler, Router } from 'express';
 import { Pool } from 'pg';
 import { RedisClientType } from 'redis';
 import { Env } from '../../config/env';
+import { authenticate } from '../../middleware/auth.middleware';
 import { AuthController } from './controllers/auth.controller';
-import { AuthMiddleware } from './middleware/auth.middleware';
 import { UserRepository } from './repositories/user.repository';
 import { createAuthRouter } from './routes/auth.routes';
 import { AuthService } from './services/auth.service';
@@ -20,7 +20,8 @@ export interface AuthModuleDeps {
 export interface AuthModule {
   router: Router;
   tokenService: TokenService;
-  middleware: AuthMiddleware;
+  /** `authenticate` câblé sur le TokenService : à réutiliser par tous les autres modules. */
+  requireAuth: RequestHandler;
 }
 
 /** Câblage du module (repositories → services → controller → routeur), sans singleton. */
@@ -35,7 +36,7 @@ export function buildAuthModule({ db, redis, env }: AuthModuleDeps): AuthModule 
   const cacheService = new CacheService(redis);
   const authService = new AuthService(userRepository, passwordService, tokenService, cacheService);
   const controller = new AuthController(authService);
-  const middleware = new AuthMiddleware(tokenService);
+  const requireAuth = authenticate(tokenService);
 
-  return { router: createAuthRouter(controller, middleware), tokenService, middleware };
+  return { router: createAuthRouter(controller, requireAuth), tokenService, requireAuth };
 }
