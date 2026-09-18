@@ -207,7 +207,7 @@ test "$(ls services)" = "api" && test "$(grep -c 'services/auth' Makefile .githu
 
 ## Phase 3 — Blocages données
 
-### - [ ] 3.0 — Purge des demandes d'inscription orphelines, `student_id NOT NULL`
+### - [x] 3.0 — Purge des demandes d'inscription orphelines, `student_id NOT NULL`
 **Objectif** : migration `005_enrollment_student_not_null.sql` : supprime les `enrollment_requests` dont `student_id IS NULL` (créées par le bug `userId`, aucune ne peut être rattachée puisque l'identité est perdue), puis `ALTER COLUMN student_id SET NOT NULL`. Sans la contrainte le bug reviendrait par un autre chemin d'écriture.
 **Fichiers** : `migrations/005_enrollment_student_not_null.sql`.
 **Critère de validation** :

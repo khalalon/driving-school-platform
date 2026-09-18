@@ -61,9 +61,9 @@ Non portés : `notification` (D-35) et `analytics` (D-31, dont le middleware pas
 Une seule base `driving_school`, un seul schéma `public`. Les modules lisent et écrivent librement les tables des autres (ex. `lesson` lit `students`, `student` lit `lesson_bookings` et `exam_registrations`) ; c'est voulu dans une application unique.
 
 ### Migrations
-`migrations/001_initial_schema.sql`, `002_enrollment_system.sql`, `003_student_profile.sql`, `004_schema_migrations.sql`, appliquées par Postgres à la première initialisation du volume. `004` crée la table de suivi `schema_migrations` (`name`, `applied_at`) et y inscrit 001–004. `scripts/migrate.sh` (`make migrate`) applique ensuite, dans l'ordre et en une transaction chacune, les migrations non enregistrées ; relançable sans effet. Les fichiers 001 et 002 ne sont pas idempotents (`CREATE INDEX` / `CREATE TRIGGER` sans `IF NOT EXISTS`) : rejouer l'un d'eux à la main sur une base existante échoue — passer par le script.
+`migrations/001_initial_schema.sql`, `002_enrollment_system.sql`, `003_student_profile.sql`, `004_schema_migrations.sql`, `005_enrollment_student_not_null.sql` (purge des demandes orphelines, `student_id NOT NULL`), appliquées par Postgres à la première initialisation du volume. `004` crée la table de suivi `schema_migrations` (`name`, `applied_at`) et y inscrit 001–004. `scripts/migrate.sh` (`make migrate`) applique ensuite, dans l'ordre et en une transaction chacune, les migrations non enregistrées ; relançable sans effet. Les fichiers 001 et 002 ne sont pas idempotents (`CREATE INDEX` / `CREATE TRIGGER` sans `IF NOT EXISTS`) : rejouer l'un d'eux à la main sur une base existante échoue — passer par le script.
 
-### Tables (état après 004)
+### Tables (état après 005)
 
 | Table | Clés / colonnes notables | Écrite par (module) | Lue par (module) |
 |---|---|---|---|
@@ -79,7 +79,7 @@ Une seule base `driving_school`, un seul schéma `public`. Les modules lisent et
 | `payments` | `student_id` → students, `reference_type` ∈ lesson/exam, `reference_id`, `amount`, `status`, `method`, `transaction_id` — **pas de `metadata`** | personne (module non monté) | personne |
 | `notifications` | `user_id` → users, `type`, `title`, `message`, `read` | personne (module non porté, D-35) | personne |
 | `school_codes` (002) | `school_id`, `code` unique, `role` ∈ instructor/student, `max_uses`, `uses_count`, `expires_at`, `is_active` | personne (4.2 : consommé par `register`) | personne |
-| `enrollment_requests` (002) | `student_id` → **users** (pas students), `school_id`, `status` ∈ pending/approved/rejected, `message`, `rejection_reason`, `processed_by` → users, `processed_at` ; unique(student, school) | student | student |
+| `enrollment_requests` (002) | `student_id` → **users** (pas students), **NOT NULL depuis 005**, `school_id`, `status` ∈ pending/approved/rejected, `message`, `rejection_reason`, `processed_by` → users, `processed_at` ; unique(student, school) | student | student |
 | `student_lesson_stats` (002) | `student_id` → students, `school_id`, compteurs de leçons effectuées | student (`/verification/.../lesson-completed`, bloqué par Nginx) | student |
 | `schema_migrations` (004) | `name` (PK, nom du fichier), `applied_at` | 004, `scripts/migrate.sh` | `scripts/migrate.sh` |
 
