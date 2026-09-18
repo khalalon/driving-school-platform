@@ -40,6 +40,31 @@ jobs:
       - name: Lint commit messages
         uses: wagoid/commitlint-github-action@v5
 
+  typecheck:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [auth, school, student, lesson, exam, payment, notification, analytics]
+    defaults:
+      run:
+        working-directory: services/${{ matrix.service }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: services/${{ matrix.service }}/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
   code-quality:
     runs-on: ubuntu-latest
     steps:

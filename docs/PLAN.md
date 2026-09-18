@@ -67,7 +67,7 @@ for s in auth school student lesson exam payment notification analytics; do (cd 
 ```
 **Hors périmètre** : bugs fonctionnels découverts au passage (les ajouter au plan).
 
-### - [ ] 0.7 — Le CI échoue sur erreur de typecheck et couvre les 8 services
+### - [x] 0.7 — Le CI échoue sur erreur de typecheck et couvre les 8 services
 **Objectif** : chaque job exécute `npx tsc --noEmit` avant `npm test` ; `student` et `analytics` ont leur job ; `detect-changes` connaît les 8 dossiers.
 **Fichiers** : `.github/workflows/ci-cd.yml`, `.github/workflows/pr-check.yml`.
 **Critère de validation** :
@@ -93,6 +93,15 @@ test "$(ls *.ps1 *.bat *.html 2>/dev/null | wc -l)" -eq 0 && ! grep -q '192.168'
 for s in auth school student lesson exam payment notification analytics; do (cd services/$s && npm test --silent >/dev/null 2>&1) || { echo "FAIL $s"; exit 1; }; done; echo "OK 8/8"
 ```
 **Hors périmètre** : écrire des tests ; un service dont les tests échouent (et pas seulement le seuil) est signalé et ajouté au plan.
+
+### - [ ] 0.10 — Lint vert sur les 8 services, fins de ligne normalisées
+**Objectif** : `npm run lint` passe dans chaque service. (1) `.gitattributes` racine (`* text=auto eol=lf`) pour que la copie de travail soit en LF partout : les `prettier/prettier: Delete ␍` disparaissent sous Windows. (2) Les vraies erreurs ESLint restantes (`@typescript-eslint/no-unsafe-*`, `no-misused-promises`, `no-console`, `no-unused-vars`…) sont corrigées sans changer le comportement, ou la règle est assouplie dans `.eslintrc.json` si elle est manifestement inadaptée (à justifier dans le commit).
+**Fichiers** : `.gitattributes` (nouveau), `services/*/src/**`, `services/*/.eslintrc.json` si nécessaire.
+**Critère de validation** :
+```bash
+for s in auth school student lesson exam payment notification analytics; do (cd services/$s && npm run lint --silent >/dev/null 2>&1) || { echo "FAIL $s"; exit 1; }; done; echo "OK 8/8"
+```
+**Hors périmètre** : le lint du mobile (6.1) ; le web (D-05).
 
 ---
 

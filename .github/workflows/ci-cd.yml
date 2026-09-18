@@ -24,6 +24,8 @@ jobs:
       exam: ${{ steps.filter.outputs.exam }}
       payment: ${{ steps.filter.outputs.payment }}
       notification: ${{ steps.filter.outputs.notification }}
+      student: ${{ steps.filter.outputs.student }}
+      analytics: ${{ steps.filter.outputs.analytics }}
     steps:
       - uses: actions/checkout@v4
       
@@ -43,6 +45,10 @@ jobs:
               - 'services/payment/**'
             notification:
               - 'services/notification/**'
+            student:
+              - 'services/student/**'
+            analytics:
+              - 'services/analytics/**'
 
   # ============================================
   # AUTH SERVICE
@@ -95,6 +101,9 @@ jobs:
       
       - name: Run linter
         run: npm run lint
+      
+      - name: Typecheck
+        run: npx tsc --noEmit
       
       - name: Run tests
         run: npm test
@@ -154,6 +163,9 @@ jobs:
       - name: Run linter
         run: npm run lint
       
+      - name: Typecheck
+        run: npx tsc --noEmit
+      
       - name: Run tests
         run: npm test
         env:
@@ -209,6 +221,9 @@ jobs:
       
       - name: Run linter
         run: npm run lint
+      
+      - name: Typecheck
+        run: npx tsc --noEmit
       
       - name: Run tests
         run: npm test
@@ -266,6 +281,9 @@ jobs:
       - name: Run linter
         run: npm run lint
       
+      - name: Typecheck
+        run: npx tsc --noEmit
+      
       - name: Run tests
         run: npm test
         env:
@@ -321,6 +339,9 @@ jobs:
       
       - name: Run linter
         run: npm run lint
+      
+      - name: Typecheck
+        run: npx tsc --noEmit
       
       - name: Run tests
         run: npm test
@@ -388,6 +409,9 @@ jobs:
       - name: Run linter
         run: npm run lint
       
+      - name: Typecheck
+        run: npx tsc --noEmit
+      
       - name: Run tests
         run: npm test
         env:
@@ -404,10 +428,140 @@ jobs:
           flags: notification-service
 
   # ============================================
+  # STUDENT SERVICE
+  # ============================================
+  student-service:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.student == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/student
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: driving_school_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: services/student/package-lock.json
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run linter
+        run: npm run lint
+      
+      - name: Typecheck
+        run: npx tsc --noEmit
+      
+      - name: Run tests
+        run: npm test
+        env:
+          DATABASE_URL: postgresql://admin:password@localhost:5432/driving_school_test
+      
+      - name: Build
+        run: npm run build
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./services/student/coverage/lcov.info
+          flags: student-service
+
+  # ============================================
+  # ANALYTICS SERVICE
+  # ============================================
+  analytics-service:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.analytics == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/analytics
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: driving_school_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: services/analytics/package-lock.json
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run linter
+        run: npm run lint
+      
+      - name: Typecheck
+        run: npx tsc --noEmit
+      
+      - name: Run tests
+        run: npm test
+        env:
+          DATABASE_URL: postgresql://admin:password@localhost:5432/driving_school_test
+          REDIS_HOST: localhost
+          REDIS_PORT: '6379'
+      
+      - name: Build
+        run: npm run build
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./services/analytics/coverage/lcov.info
+          flags: analytics-service
+
+  # ============================================
   # BUILD AND PUSH DOCKER IMAGES
   # ============================================
   build-images:
-    needs: [auth-service, school-service, lesson-service, exam-service, payment-service, notification-service]
+    needs: [auth-service, school-service, lesson-service, exam-service, payment-service, notification-service, student-service, analytics-service]
     if: |
       always() &&
       github.event_name == 'push' &&
@@ -417,11 +571,13 @@ jobs:
       (needs.lesson-service.result == 'success' || needs.lesson-service.result == 'skipped') &&
       (needs.exam-service.result == 'success' || needs.exam-service.result == 'skipped') &&
       (needs.payment-service.result == 'success' || needs.payment-service.result == 'skipped') &&
-      (needs.notification-service.result == 'success' || needs.notification-service.result == 'skipped')
+      (needs.notification-service.result == 'success' || needs.notification-service.result == 'skipped') &&
+      (needs.student-service.result == 'success' || needs.student-service.result == 'skipped') &&
+      (needs.analytics-service.result == 'success' || needs.analytics-service.result == 'skipped')
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [auth, school, lesson, exam, payment, notification]
+        service: [auth, school, lesson, exam, payment, notification, student, analytics]
     
     steps:
       - uses: actions/checkout@v4
