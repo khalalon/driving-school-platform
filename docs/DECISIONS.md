@@ -64,6 +64,14 @@ Deux sections. « Décisions prises » fait autorité : on ne la rediscute pas d
 
 ---
 
+### Décisions du 18/09/2026 (mode de travail)
+
+| ID | Décision | Justification | Note d'application |
+|---|---|---|---|
+| **D-36** | **Mode d'exécution du plan** : les tâches d'une même phase s'enchaînent sans validation humaine intermédiaire ; arrêt obligatoire en fin de phase, sur question ouverte non tranchée, sur échec d'un critère de validation non réparable dans le périmètre de la tâche, ou sur tout choix produit absent du contrat et de ce fichier. Chaque commit est poussé sur `origin/main` aussitôt. Après chaque livraison, l'auteur teste sur son téléphone **Android** (Expo Go + Metro sur le même Wi-Fi ; EAS Update quand un compte Expo sera connecté). | Demande de l'auteur : accélérer sans perdre les garde-fous des règles 2 et 5. | Règle d'or 3 de `CLAUDE.md` et règles de lecture de `PLAN.md` réécrites. |
+| **D-37** | **Seuil de couverture Jest par service = couverture actuellement mesurée** (arrondi à l'entier inférieur), au lieu de 70 % partout ; à remonter avec les tests des phases 2–5. | 70 % faisait échouer `npm test` (auth : 16,9 %) et donc la CI, tests verts ou pas. | Tâche 0.9. |
+| **D-38** | **`app.json` → `expo.extra.API_BASE_URL` porte une valeur neutre : `http://10.0.2.2:80`** (la machine hôte vue depuis l'émulateur Android) ; l'IP réelle de chaque poste, pour un téléphone physique, vit dans `mobile-app/.env` (`EXPO_PUBLIC_API_BASE_URL`), ignoré par git. | L'IP LAN de l'auteur était commitée et déjà périmée le lendemain. L'émulateur fonctionne ainsi sans configuration. | Tâche 0.8. |
+
 ## Questions ouvertes
 
 ### Q-17 — Leçon déjà payée puis annulée : que devient le montant ?

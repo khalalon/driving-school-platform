@@ -1,7 +1,7 @@
 # Plan d'exécution
 
 Règles de lecture (voir `CLAUDE.md`, règles d'or 3 et 5) :
-- On travaille **uniquement** sur la première tâche non cochée, dans l'ordre. Une tâche = un commit (message Conventional Commits, scope = domaine ou `infra` / `mobile` / `docs` / `e2e`).
+- On travaille dans l'ordre, sur la première tâche non cochée. Une tâche = un commit (message Conventional Commits, scope = domaine ou `infra` / `mobile` / `docs` / `e2e`), poussé sur `origin/main` aussitôt. Les tâches d'une même phase s'enchaînent sans validation intermédiaire ; arrêt obligatoire en fin de phase, sur question ouverte non tranchée, sur échec de critère non réparable dans la tâche, ou sur choix produit non tranché (D-36, 18/09/2026).
 - Une tâche est cochée **seulement** quand sa commande « Critère de validation » a été exécutée et que sa sortie a été montrée. Pas d'exception.
 - Si une tâche indique « Dépend de : Q-xx » et que la question n'est pas tranchée dans `DECISIONS.md`, on **s'arrête** et on demande. Au 17/09/2026 il reste **Q-17** (leçon payée annulée), **Q-18** (absence facturée) et **Q-19** (procédure d'examen ATTT).
 - Chaque tâche livrée ajoute une ligne dans `CHANGELOG.md` et, si elle touche une route, met à jour `docs/API_CONTRACT.md` dans le même commit.
@@ -77,13 +77,22 @@ test "$(grep -c 'tsc --noEmit' .github/workflows/ci-cd.yml)" -ge 8 && grep -q 's
 **Hors périmètre** : job mobile (6.1) ; jobs deploy.
 
 ### - [ ] 0.8 — Suppression des fichiers morts : scripts racine, copie égarée, écrans morts
-**Objectif** : la racine ne contient plus que la config du dépôt, les compose, le Makefile, les docs et les dossiers de code ; le mobile ne contient plus le serveur Express égaré ni les écrans injoignables (D-13).
-**Fichiers** : supprimer `full-workflow-test.ps1`, `run-tests.ps1`, `test-all-services.ps1`, `test-comprehensive.ps1`, `test-login.html`, `setup-fresh-mobile.sh`, `start-expo-tunnel.bat`, `diagnose-network.ps1`, `scripts/test-api.sh` ; `mobile-app/src/app.ts` ; `mobile-app/src/screens/student/{StudentDashboardScreen,RequestLessonScreen,ExamsListScreen}.tsx` ; `mobile-app/MOBILE_APP_COMPLETE.md` ; `services/student/src/repositories/profile.service.ts` (vide).
+**Objectif** : la racine ne contient plus que la config du dépôt, les compose, le Makefile, les docs et les dossiers de code ; le mobile ne contient plus le serveur Express égaré ni les écrans injoignables (D-13) ; `app.json` → `expo.extra.API_BASE_URL` prend la valeur neutre `http://10.0.2.2:80` (hôte vu de l'émulateur Android, D-38) à la place de l'IP LAN de l'auteur.
+**Fichiers** : supprimer `full-workflow-test.ps1`, `run-tests.ps1`, `test-all-services.ps1`, `test-comprehensive.ps1`, `test-login.html`, `setup-fresh-mobile.sh`, `start-expo-tunnel.bat`, `diagnose-network.ps1`, `scripts/test-api.sh` ; `mobile-app/src/app.ts` ; `mobile-app/src/screens/student/{StudentDashboardScreen,RequestLessonScreen,ExamsListScreen}.tsx` ; `mobile-app/MOBILE_APP_COMPLETE.md` ; `services/student/src/repositories/profile.service.ts` (vide) ; `mobile-app/app.json`.
 **Critère de validation** :
 ```bash
-test "$(ls *.ps1 *.bat *.html 2>/dev/null | wc -l)" -eq 0 && ! test -e mobile-app/src/app.ts && ! test -e mobile-app/src/screens/student/StudentDashboardScreen.tsx && ! test -e services/student/src/repositories/profile.service.ts && (cd mobile-app && npm ci --silent && npx tsc --noEmit 2>&1 | tail -5; echo "erreurs tsc restantes (attendu : uniquement dans src/services/api, corrigées en 6.1)")
+test "$(ls *.ps1 *.bat *.html 2>/dev/null | wc -l)" -eq 0 && ! grep -q '192.168' mobile-app/app.json && ! test -e mobile-app/src/app.ts && ! test -e mobile-app/src/screens/student/StudentDashboardScreen.tsx && ! test -e services/student/src/repositories/profile.service.ts && (cd mobile-app && npm ci --silent && npx tsc --noEmit 2>&1 | tail -5; echo "erreurs tsc restantes (attendu : uniquement dans src/services/api, corrigées en 6.1)")
 ```
 **Hors périmètre** : `scripts/docker-*.{sh,ps1}` ; les erreurs de type des `*Service.ts` (6.1).
+
+### - [ ] 0.9 — Seuils de couverture Jest réalistes par service (D-37)
+**Objectif** : `npm test` passe dans chaque service dès que ses tests passent. Dans chaque `services/*/jest.config.js`, `coverageThreshold.global` (statements, branches, functions, lines) = couverture actuellement mesurée, arrondie à l'entier inférieur, avec un commentaire « à remonter avec les tests des phases 2–5 ». Aucun test écrit ni modifié.
+**Fichiers** : `services/*/jest.config.js`.
+**Critère de validation** :
+```bash
+for s in auth school student lesson exam payment notification analytics; do (cd services/$s && npm test --silent >/dev/null 2>&1) || { echo "FAIL $s"; exit 1; }; done; echo "OK 8/8"
+```
+**Hors périmètre** : écrire des tests ; un service dont les tests échouent (et pas seulement le seuil) est signalé et ajouté au plan.
 
 ---
 
