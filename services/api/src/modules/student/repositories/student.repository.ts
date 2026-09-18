@@ -1,8 +1,10 @@
 import { Pool } from 'pg';
+import { Queryable } from '../../../db/transaction';
 import { CreateStudentDTO, Student } from '../types/student.types';
 
 export interface IStudentRepository {
-  create(data: CreateStudentDTO): Promise<Student>;
+  /** `executor` : client d'une transaction en cours (3.2), le pool sinon. */
+  create(data: CreateStudentDTO, executor?: Queryable): Promise<Student>;
   findById(id: string): Promise<Student | null>;
   findByUserId(userId: string): Promise<Student | null>;
   findByUserAndSchool(userId: string, schoolId: string): Promise<Student | null>;
@@ -19,12 +21,9 @@ const STUDENT_COLUMNS = (alias = ''): string => {
 export class StudentRepository implements IStudentRepository {
   constructor(private readonly db: Pool) {}
 
-  /**
-   * État actuel : `students.name` est NOT NULL et n'est pas renseigné ici → l'INSERT échoue
-   * (ARCHITECTURE §4, corrigé en 3.1 / 3.2). Porté tel quel.
-   */
-  async create(data: CreateStudentDTO): Promise<Student> {
-    const result = await this.db.query<Student>(
+  /** Sans `name` : l'identité est portée par `users` (006). */
+  async create(data: CreateStudentDTO, executor: Queryable = this.db): Promise<Student> {
+    const result = await executor.query<Student>(
       `INSERT INTO students (user_id, school_id, authorized, enrollment_request_id, enrollment_date)
        VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
        RETURNING ${STUDENT_COLUMNS()}`,

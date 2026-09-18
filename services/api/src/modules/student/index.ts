@@ -1,5 +1,6 @@
 import { RequestHandler, Router } from 'express';
 import { Pool } from 'pg';
+import { PgTransactionRunner } from '../../db/transaction';
 import { EnrollmentController } from './controllers/enrollment.controller';
 import { ProfileController } from './controllers/profile.controller';
 import { VerificationController } from './controllers/verification.controller';
@@ -36,7 +37,11 @@ export function buildStudentModule({ db, requireAuth }: StudentModuleDeps): Stud
   const statsRepository = new StatsRepository(db);
   const profileRepository = new ProfileRepository(db);
 
-  const enrollmentService = new EnrollmentService(enrollmentRepository, studentRepository);
+  const enrollmentService = new EnrollmentService(
+    enrollmentRepository,
+    studentRepository,
+    new PgTransactionRunner(db)
+  );
   const profileService = new ProfileService(profileRepository);
   const verificationService = new VerificationService(studentRepository, statsRepository);
 

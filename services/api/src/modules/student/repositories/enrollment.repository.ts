@@ -1,4 +1,5 @@
 import { Pool } from 'pg';
+import { Queryable } from '../../../db/transaction';
 import { EnrollmentRequestStatus } from '../../../types/domain';
 import { EnrollmentRequest } from '../types/student.types';
 
@@ -8,11 +9,13 @@ export interface IEnrollmentRepository {
   findByStudent(studentId: string): Promise<EnrollmentRequest[]>;
   findBySchool(schoolId: string, status?: EnrollmentRequestStatus): Promise<EnrollmentRequest[]>;
   findByStudentAndSchool(studentId: string, schoolId: string): Promise<EnrollmentRequest | null>;
+  /** `executor` : client d'une transaction en cours (3.2), le pool sinon. */
   updateStatus(
     requestId: string,
     status: 'approved' | 'rejected',
     processedBy: string,
-    reason?: string
+    reason?: string,
+    executor?: Queryable
   ): Promise<EnrollmentRequest>;
 }
 
@@ -104,9 +107,10 @@ export class EnrollmentRepository implements IEnrollmentRepository {
     requestId: string,
     status: 'approved' | 'rejected',
     processedBy: string,
-    reason?: string
+    reason?: string,
+    executor: Queryable = this.db
   ): Promise<EnrollmentRequest> {
-    const result = await this.db.query<EnrollmentRequest>(
+    const result = await executor.query<EnrollmentRequest>(
       `UPDATE enrollment_requests
        SET status = $1, processed_by = $2, processed_at = CURRENT_TIMESTAMP,
            rejection_reason = $3, updated_at = CURRENT_TIMESTAMP

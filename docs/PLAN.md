@@ -225,7 +225,7 @@ test "$(ls services)" = "api" && test "$(grep -c 'services/auth' Makefile .githu
 ```
 **Hors périmètre** : `schoolCode` (4.2).
 
-### - [ ] 3.2 — Approbation en transaction
+### - [x] 3.2 — Approbation en transaction
 **Objectif** : `approveRequest` fait `UPDATE enrollment_requests` + `INSERT students` dans une transaction ; si l'INSERT échoue, la demande reste `pending`. Test unitaire avec un client pg mocké dont le second appel rejette.
 **Fichiers** : `modules/student/services/enrollment.service.ts`, `modules/student/repositories/*.ts`, `__tests__/enrollment.service.test.ts`.
 **Critère de validation** :

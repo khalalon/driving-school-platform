@@ -40,7 +40,7 @@ services/api/src/
 |---|---|---|---|
 | `auth` | `/api/auth` | A1–A5 ; `register` exige encore `role` (4.1) ; même secret pour access et refresh (4.4) ; logout = clé Redis jamais écrite (4.6) ; expose `requireAuth` | tous |
 | `school` | `/api/schools` | S1–S4 publics + administration `admin` ; colonnes aliasées en camelCase ; `LessonType` D-18 | `lesson` (grille tarifaire, D-30) |
-| `student` | `/api/enrollment`, `/api/profiles`, `/api/student-profiles`, `/api/verification` | E1–E6, P1–P11 (`:studentId` = students.id jusqu'à 5.0), vérification (publique dans l'app, **bloquée par Nginx**, retirée en 5.7) ; `approveRequest` fonctionne depuis 3.1 (`students.name` nullable) mais sans transaction (3.2) | `lesson`, `exam` (`StudentRepository`, `StatsRepository`) |
+| `student` | `/api/enrollment`, `/api/profiles`, `/api/student-profiles`, `/api/verification` | E1–E6, P1–P11 (`:studentId` = students.id jusqu'à 5.0), vérification (publique dans l'app, **bloquée par Nginx**, retirée en 5.7) ; `approveRequest` atomique (UPDATE + INSERT dans une transaction, 3.2) | `lesson`, `exam` (`StudentRepository`, `StatsRepository`) |
 | `lesson` | `/api/lessons` | ancien modèle « l'école crée un créneau, l'élève réserve » (`lesson_bookings`, `studentId` = students.id) ; refonte D-01/D-21 en 3.3 et 5.2–5.4 | — |
 | `exam` | `/api/exams` | ancien modèle « session + inscription », éligibilité 20/30 leçons (supprimée en 5.7, D-26) ; refonte D-01 en 3.4 et 5.5–5.6 | — |
 | `payment` | **non monté** | porté typé (D-31 : paiement manuel en v1) ; sa table `payments` n'a pas la colonne `metadata` que le code écrit — migration nécessaire s'il est un jour monté | — |
@@ -89,8 +89,8 @@ Une seule base `driving_school`, un seul schéma `public`. Les modules lisent et
 - Le mobile ne connaît que `users.id`. `POST /api/lessons/:id/book` et `POST /api/exams/:id/register` exigent un `students.id` dans le body : le mobile ne peut pas les appeler correctement (D-28, Phase 5).
 - Un élève inscrit dans deux écoles a deux `students.id` (D-22 : une seule inscription active, 3.5).
 
-### Approbation sans transaction (3.2)
-`EnrollmentService.approveRequest` (`services/api/src/modules/student/services/enrollment.service.ts`) fait `updateStatus(approved)` puis `studentRepository.create({ userId, schoolId, authorized, enrollmentRequestId })` en deux requêtes indépendantes. Depuis 006 l'INSERT passe (`students.name` nullable), mais si la seconde requête échoue la demande reste `approved` sans ligne `students` : transaction en 3.2.
+### Écritures multi-tables
+`src/db/transaction.ts` : `PgTransactionRunner.run(work)` (BEGIN / COMMIT, ROLLBACK et rejet en cas d'erreur) et le type `Queryable` (`Pool` ou `PoolClient`) que les méthodes de repository concernées acceptent en dernier paramètre (`executor`). Seule utilisation : `EnrollmentService.approveRequest` (UPDATE `enrollment_requests` + INSERT `students`) ; si l'INSERT échoue, la demande reste `pending`.
 
 ## 5. Nginx — où passent les requêtes
 

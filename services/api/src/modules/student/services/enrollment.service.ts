@@ -1,3 +1,4 @@
+import { ITransactionRunner } from '../../../db/transaction';
 import { HttpError } from '../../../http/errors';
 import { EnrollmentRequestStatus } from '../../../types/domain';
 import { IEnrollmentRepository } from '../repositories/enrollment.repository';
@@ -6,13 +7,14 @@ import { EnrollmentRequest, EnrollmentStatus } from '../types/student.types';
 
 /**
  * Cycle d'inscription (D-09) : pending → approved | rejected. `studentId` = users.id.
- * État actuel porté tel quel : contrôle limité à la même école (D-22 → 3.5), approbation sans
- * transaction et INSERT `students` sans `name` (3.1, 3.2), pas de cloisonnement (5.1).
+ * L'approbation (UPDATE demande + INSERT students) est atomique (3.2). Reste à faire : contrôle
+ * limité à la même école (D-22 → 3.5), cloisonnement (5.1).
  */
 export class EnrollmentService {
   constructor(
     private readonly enrollmentRepository: IEnrollmentRepository,
-    private readonly studentRepository: IStudentRepository
+    private readonly studentRepository: IStudentRepository,
+    private readonly transactions: ITransactionRunner
   ) {}
 
   async createEnrollmentRequest(
@@ -53,20 +55,26 @@ export class EnrollmentService {
   async approveRequest(requestId: string, processedBy: string): Promise<EnrollmentRequest> {
     const request = await this.getPendingRequest(requestId);
 
-    const updatedRequest = await this.enrollmentRepository.updateStatus(
-      requestId,
-      'approved',
-      processedBy
-    );
-
-    await this.studentRepository.create({
-      userId: request.studentId,
-      schoolId: request.schoolId,
-      authorized: true,
-      enrollmentRequestId: requestId,
+    // Si l'INSERT échoue, le ROLLBACK laisse la demande en pending.
+    return this.transactions.run(async (tx) => {
+      const updatedRequest = await this.enrollmentRepository.updateStatus(
+        requestId,
+        'approved',
+        processedBy,
+        undefined,
+        tx
+      );
+      await this.studentRepository.create(
+        {
+          userId: request.studentId,
+          schoolId: request.schoolId,
+          authorized: true,
+          enrollmentRequestId: requestId,
+        },
+        tx
+      );
+      return updatedRequest;
     });
-
-    return updatedRequest;
   }
 
   async rejectRequest(

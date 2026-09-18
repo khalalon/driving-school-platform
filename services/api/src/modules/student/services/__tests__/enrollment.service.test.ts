@@ -1,12 +1,20 @@
-import { IEnrollmentRepository } from '../../repositories/enrollment.repository';
-import { IStudentRepository } from '../../repositories/student.repository';
+import { Pool, PoolClient } from 'pg';
+import { ITransactionRunner, PgTransactionRunner, Queryable } from '../../../../db/transaction';
+import {
+  EnrollmentRepository,
+  IEnrollmentRepository,
+} from '../../repositories/enrollment.repository';
+import { IStudentRepository, StudentRepository } from '../../repositories/student.repository';
 import { EnrollmentRequest, Student } from '../../types/student.types';
 import { EnrollmentService } from '../enrollment.service';
 
 describe('EnrollmentService (D-09)', () => {
   let enrollmentRepository: jest.Mocked<IEnrollmentRepository>;
   let studentRepository: jest.Mocked<IStudentRepository>;
+  let transactions: jest.Mocked<ITransactionRunner>;
   let service: EnrollmentService;
+  // Client de transaction factice : le service doit le transmettre aux deux repositories.
+  const tx: Queryable = { query: jest.fn() };
 
   const userId = 'user-1';
   const schoolId = 'school-1';
@@ -52,7 +60,11 @@ describe('EnrollmentService (D-09)', () => {
       findByUserAndSchool: jest.fn(),
       findBySchool: jest.fn(),
     };
-    service = new EnrollmentService(enrollmentRepository, studentRepository);
+    // Le générique de `run` ne se mocke pas directement : le runner factice exécute le travail
+    // avec le client factice, sans BEGIN/COMMIT.
+    const run = jest.fn((work: (client: Queryable) => Promise<unknown>) => work(tx));
+    transactions = { run } as unknown as jest.Mocked<ITransactionRunner>;
+    service = new EnrollmentService(enrollmentRepository, studentRepository, transactions);
   });
 
   describe('createEnrollmentRequest (E2)', () => {
@@ -112,25 +124,59 @@ describe('EnrollmentService (D-09)', () => {
   });
 
   describe('approveRequest (E5)', () => {
-    it('passe la demande en approved puis crée la ligne students autorisée', async () => {
+    it('passe la demande en approved puis crée la ligne students, dans une même transaction', async () => {
       enrollmentRepository.findById.mockResolvedValue(pending);
       enrollmentRepository.updateStatus.mockResolvedValue({ ...pending, status: 'approved' });
       studentRepository.create.mockResolvedValue(student);
 
       const result = await service.approveRequest('req-1', instructorId);
 
+      expect(transactions.run).toHaveBeenCalledTimes(1);
       expect(enrollmentRepository.updateStatus).toHaveBeenCalledWith(
         'req-1',
         'approved',
-        instructorId
+        instructorId,
+        undefined,
+        tx
       );
-      expect(studentRepository.create).toHaveBeenCalledWith({
-        userId,
-        schoolId,
-        authorized: true,
-        enrollmentRequestId: 'req-1',
-      });
+      expect(studentRepository.create).toHaveBeenCalledWith(
+        { userId, schoolId, authorized: true, enrollmentRequestId: 'req-1' },
+        tx
+      );
       expect(result.status).toBe('approved');
+    });
+
+    it("l'INSERT students échoue → rollback, la demande reste pending (COMMIT jamais émis)", async () => {
+      // Repositories réels + PgTransactionRunner sur un client pg mocké dont le second appel
+      // métier (INSERT students) rejette.
+      const insertFailure = new Error('insert or update on table "students" violates foreign key');
+      const clientQuery = jest
+        .fn()
+        .mockResolvedValueOnce({ rows: [] }) // BEGIN
+        .mockResolvedValueOnce({ rows: [{ ...pending, status: 'approved' }] }) // UPDATE
+        .mockRejectedValueOnce(insertFailure) // INSERT students
+        .mockResolvedValueOnce({ rows: [] }); // ROLLBACK
+      const release = jest.fn();
+      const client = { query: clientQuery, release } as unknown as PoolClient;
+      const pool = {
+        query: jest.fn().mockResolvedValue({ rows: [pending] }), // findById, hors transaction
+        connect: jest.fn().mockResolvedValue(client),
+      } as unknown as Pool;
+      const realService = new EnrollmentService(
+        new EnrollmentRepository(pool),
+        new StudentRepository(pool),
+        new PgTransactionRunner(pool)
+      );
+
+      await expect(realService.approveRequest('req-1', instructorId)).rejects.toBe(insertFailure);
+
+      const statements = clientQuery.mock.calls.map((call) => String((call as [string])[0]));
+      expect(statements[0]).toBe('BEGIN');
+      expect(statements[1]).toMatch(/UPDATE enrollment_requests/);
+      expect(statements[2]).toMatch(/INSERT INTO students/);
+      expect(statements[3]).toBe('ROLLBACK');
+      expect(statements).not.toContain('COMMIT');
+      expect(release).toHaveBeenCalledTimes(1);
     });
 
     it('404 NOT_FOUND pour une demande inconnue', async () => {
