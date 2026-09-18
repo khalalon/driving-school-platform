@@ -13,3 +13,6 @@ coverage/
 
 # Expo (mobile-app)
 .expo/
+
+# Rapport JSON du harnais e2e (npm run test:e2e -- --json --outputFile=report.json)
+tests/report.json

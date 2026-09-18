@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "prepare": "husky install",
-    "test:e2e": "npm --prefix tests test"
+    "test:e2e": "npm --prefix tests test --"
   },
   "keywords": [],
   "author": "",

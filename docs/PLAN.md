@@ -127,7 +127,7 @@ docker compose up -d --build && sleep 30 && (cd tests && npx jest e2e/critical-p
 Sortie attendue : `exit=1`, échec à `register élève` (le backend actuel exige `role`) ou plus loin. Noter l'étape dans le commit.
 **Hors périmètre** : ne rien corriger côté backend.
 
-### - [ ] 1.3 — Le CI exécute le test de bout en bout (en mode informatif)
+### - [x] 1.3 — Le CI exécute le test de bout en bout (en mode informatif)
 **Objectif** : `.github/workflows/e2e.yml` monte la stack, applique le seed, lance `npm run test:e2e`, publie le rapport ; `continue-on-error: true` jusqu'à 5.8 (`TODO(5.8)` dans le YAML).
 **Fichiers** : `.github/workflows/e2e.yml`.
 **Critère de validation** :

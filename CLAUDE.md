@@ -125,3 +125,4 @@ Ces règles priment sur toute autre instruction, y compris une demande directe d
 - Cloisonnement par école (D-20) : toute action d'un instructeur est limitée à son école. Aucune vérification n'existe aujourd'hui ; helper `assertSameSchool` en 5.1.
 - Trois questions restent ouvertes au 17/09 : Q-17 (leçon payée annulée), Q-18 (absence facturée), Q-19 (procédure d'examen ATTT). Les tâches qui en dépendent sont marquées dans le plan.
 - Nginx ne proxifie pas `/api/profiles` ni `/api/student-profiles` (voir ARCHITECTURE.md).
+- Après un `docker compose up -d --build` qui recrée un service, Nginx peut répondre **502** pour lui (IP résolue au chargement) : `docker compose restart nginx`. Le workflow e2e démarre toujours une stack neuve, il n'est pas concerné.
