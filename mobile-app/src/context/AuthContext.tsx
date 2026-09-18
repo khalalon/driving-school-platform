@@ -6,6 +6,7 @@
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiClient, TOKEN_KEY, USER_KEY } from '../services/api/ApiClient';
 import { authService } from '../services/api/AuthService';
 import { User, UserRole } from '../models/User';
 
@@ -27,9 +28,6 @@ interface RegisterData {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const TOKEN_KEY = '@auth_token';
-const USER_KEY = '@auth_user';
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -37,6 +35,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Load user from storage on app start
   useEffect(() => {
     loadUserFromStorage();
+  }, []);
+
+  // Refresh token refusé (4.5) : la session locale est déjà effacée par ApiClient, on déconnecte.
+  useEffect(() => {
+    apiClient.onSessionExpired(() => setUser(null));
+    return () => apiClient.onSessionExpired(null);
   }, []);
 
   const loadUserFromStorage = async () => {
@@ -61,9 +65,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const response = await authService.login({ email, password });
 
-      // Backend returns { accessToken, refreshToken }
+      // Backend returns { accessToken, refreshToken } (contrat A1 / A2)
       // We need to decode the token to get user info
-      const token = response.accessToken || response.token;
+      const token = response.accessToken;
 
       // Decode JWT to get user info (simple decode)
       const decodedToken = JSON.parse(atob(token.split('.')[1]));
@@ -77,9 +81,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updatedAt: new Date(),
       };
 
-      // Save token and user data
+      // Save both tokens (refresh utilisé par ApiClient sur 401) and user data
       await Promise.all([
-        AsyncStorage.setItem(TOKEN_KEY, token),
+        apiClient.storeTokens({ accessToken: token, refreshToken: response.refreshToken }),
         AsyncStorage.setItem(USER_KEY, JSON.stringify(userData)),
       ]);
 
@@ -93,9 +97,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const response = await authService.register(data);
 
-      // Backend returns { accessToken, refreshToken }
+      // Backend returns { accessToken, refreshToken } (contrat A1 / A2)
       // We need to decode the token to get user info
-      const token = response.accessToken || response.token;
+      const token = response.accessToken;
 
       // Decode JWT to get user info (simple decode)
       const decodedToken = JSON.parse(atob(token.split('.')[1]));
@@ -109,9 +113,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updatedAt: new Date(),
       };
 
-      // Save token and user data
+      // Save both tokens (refresh utilisé par ApiClient sur 401) and user data
       await Promise.all([
-        AsyncStorage.setItem(TOKEN_KEY, token),
+        apiClient.storeTokens({ accessToken: token, refreshToken: response.refreshToken }),
         AsyncStorage.setItem(USER_KEY, JSON.stringify(userData)),
       ]);
 
@@ -123,11 +127,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
-      // Clear storage
-      await Promise.all([
-        AsyncStorage.removeItem(TOKEN_KEY),
-        AsyncStorage.removeItem(USER_KEY),
-      ]);
+      // Clear storage (access, refresh, user)
+      await apiClient.clearSession();
 
       setUser(null);
     } catch (error) {

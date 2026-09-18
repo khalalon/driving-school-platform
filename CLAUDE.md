@@ -69,9 +69,10 @@ Si le port 5432 est déjà pris sur la machine : `POSTGRES_PORT=5433 docker comp
 cd mobile-app
 npm install
 npm start              # expo start ; scanner le QR avec Expo Go (même Wi-Fi que le backend)
-npx tsc --noEmit       # typecheck (strict: true)
+npx tsc --noEmit       # typecheck (strict: true) ; erreurs restantes dans src/services/api et quelques écrans (6.1)
+npm test               # jest-expo (ApiClient : refresh sur 401)
 ```
-Pas de lint ni de tests configurés côté mobile. L'URL du backend vient de `app.json` → `expo.extra.API_BASE_URL`, surchargeable par `EXPO_PUBLIC_API_BASE_URL` dans `mobile-app/.env` (ignoré par git, modèle dans `mobile-app/.env.example`) ; `src/config/api.config.ts` ne contient aucune URL.
+Tests unitaires : `npm test` (jest-expo, `src/**/__tests__/*.test.ts`, AsyncStorage mocké via `jest.setup.js`) ; pas de lint. L'URL du backend vient de `app.json` → `expo.extra.API_BASE_URL`, surchargeable par `EXPO_PUBLIC_API_BASE_URL` dans `mobile-app/.env` (ignoré par git, modèle dans `mobile-app/.env.example`) ; `src/config/api.config.ts` ne contient aucune URL.
 
 ### Frontend web (`web-frontend/`) — gelé
 ```bash

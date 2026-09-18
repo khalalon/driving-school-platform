@@ -33,7 +33,10 @@ export interface RegisterRequest {
   role: UserRole;
 }
 
+/** Réponse réelle de A1 / A2 (contrat) : une paire de jetons. `token` / `user` : anciens champs, retirés en 6.2. */
 export interface AuthResponse {
-  token: string;
-  user: User;
+  accessToken: string;
+  refreshToken: string;
+  token?: string;
+  user?: User;
 }

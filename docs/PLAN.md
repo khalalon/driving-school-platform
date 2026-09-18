@@ -301,7 +301,7 @@ R=$(curl -s -X POST localhost/api/auth/login -H 'Content-Type: application/json'
 ```
 **Hors périmètre** : rotation et révocation (4.6).
 
-### - [ ] 4.5 — Refresh token réellement utilisé par le mobile
+### - [x] 4.5 — Refresh token réellement utilisé par le mobile
 **Objectif** : `AuthContext` stocke `refreshToken` ; `ApiClient` intercepte un 401, appelle `/api/auth/refresh` une seule fois, stocke la nouvelle paire, rejoue la requête, et déconnecte si le refresh échoue. `jest-expo` installé avec un test de l'interceptor (axios et AsyncStorage mockés).
 **Fichiers** : `mobile-app/package.json`, `mobile-app/jest.config.js`, `mobile-app/src/services/api/ApiClient.ts`, `mobile-app/src/context/AuthContext.tsx`, `mobile-app/src/services/api/__tests__/ApiClient.test.ts`.
 **Critère de validation** :
