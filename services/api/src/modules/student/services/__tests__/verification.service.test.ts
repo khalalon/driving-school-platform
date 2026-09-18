@@ -55,30 +55,6 @@ describe('VerificationService', () => {
     });
   });
 
-  it('checkExamEligibility : sous le seuil, non éligible avec le manque ; au-dessus, éligible', async () => {
-    statsRepository.findByStudentAndSchool.mockResolvedValue(stats);
-
-    await expect(service.checkExamEligibility('student-1', 'school-1', 'theory')).resolves.toEqual({
-      eligible: false,
-      requiredLessons: 20,
-      completedLessons: 12,
-      reason: 'Il manque 8 leçon(s) effectuée(s)',
-    });
-
-    statsRepository.findByStudentAndSchool.mockResolvedValue({ ...stats, completedLessons: 31 });
-    await expect(
-      service.checkExamEligibility('student-1', 'school-1', 'practical')
-    ).resolves.toEqual({ eligible: true, requiredLessons: 30, completedLessons: 31 });
-  });
-
-  it('checkExamEligibility : sans statistiques, 0 leçon', async () => {
-    statsRepository.findByStudentAndSchool.mockResolvedValue(null);
-
-    await expect(
-      service.checkExamEligibility('student-1', 'school-1', 'theory')
-    ).resolves.toMatchObject({ eligible: false, completedLessons: 0 });
-  });
-
   it('recordLessonCompletion : présent → incrémente', async () => {
     statsRepository.incrementLessonCount.mockResolvedValue({ ...stats, completedLessons: 13 });
     const dto = { schoolId: 'school-1', lessonType: LessonType.PARC, attended: true };

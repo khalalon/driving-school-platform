@@ -243,7 +243,7 @@ docker compose down -v && docker compose up -d postgres && sleep 12 && ./scripts
 ```
 **Hors périmètre** : endpoints (5.2–5.4).
 
-### - [ ] 3.4 — Schéma des examens pour D-01
+### - [x] 3.4 — Schéma des examens pour D-01
 **Objectif** : migration `008_exam_requests.sql` : l'examen devient une demande d'élève — `exams.student_id → students.id`, `preferred_date`, `message`, `status` ∈ `pending | scheduled | completed | cancelled | rejected` (D-33), `location`, `rejection_reason`, `result` ∈ `pending | passed | failed`, `score`, `notes`, `paid`, `amount`, `payment_date`, `payment_method` ; `exam_registrations` abandonnée (données copiées si présentes). Suppression de `checkEligibility` et des constantes `REQUIRED_LESSONS_*` (D-26). Types et validators alignés, pas de nouvelle route.
 **Fichiers** : `migrations/008_*.sql`, `modules/exam/{types,validators,repositories,services}/**`.
 **Critère de validation** :

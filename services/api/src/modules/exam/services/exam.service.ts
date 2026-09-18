@@ -2,7 +2,10 @@ import { HttpError } from '../../../http/errors';
 import { IExamRepository } from '../repositories/exam.repository';
 import { CreateExamDTO, Exam, ExamFilters, UpdateExamDTO } from '../types/exam.types';
 
-/** Sessions d'examen, état actuel (créées par l'école). Modèle « demande d'élève » en 3.4 / 5.5. */
+/**
+ * Anciennes routes de sessions sur le schéma 008 (un examen = un élève), conservées jusqu'à leur
+ * remplacement par X1–X5 (5.5–5.6) : l'examen naîtra d'une demande de l'élève (D-01).
+ */
 export class ExamService {
   constructor(private readonly examRepository: IExamRepository) {}
 
@@ -33,18 +36,7 @@ export class ExamService {
 
   async deleteExam(id: string): Promise<void> {
     await this.getExamById(id);
-    if ((await this.examRepository.countRegistrations(id)) > 0) {
-      throw new HttpError(409, 'CONFLICT', 'Impossible de supprimer un examen qui a des inscrits');
-    }
     await this.examRepository.delete(id);
-  }
-
-  async checkAvailability(examId: string): Promise<boolean> {
-    const exam = await this.getExamById(examId);
-    if (!exam.capacity) {
-      return true;
-    }
-    return (await this.examRepository.countRegistrations(examId)) < exam.capacity;
   }
 
   private assertFuture(date: Date): void {

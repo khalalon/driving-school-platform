@@ -35,11 +35,16 @@ describe('EnrollmentRepository', () => {
     expect(paramsFiltered).toEqual([UUID.school, 'pending']);
   });
 
-  it('findById / findByStudentAndSchool : null quand aucune ligne', async () => {
-    const repo = new EnrollmentRepository(fakePool([]).pool);
+  it('findById / findByStudentAndSchool : null quand aucune ligne ; findByStudent joint l’école', async () => {
+    const { pool, query } = fakePool([]);
+    const repo = new EnrollmentRepository(pool);
 
     await expect(repo.findById(UUID.request)).resolves.toBeNull();
     await expect(repo.findByStudentAndSchool('user-1', UUID.school)).resolves.toBeNull();
+    await expect(repo.findByStudent('user-1')).resolves.toEqual([]);
+    const [sql, params] = query.mock.calls[2] as [string, unknown[]];
+    expect(sql).toMatch(/s.name AS "schoolName", s.address AS "schoolAddress"/);
+    expect(params).toEqual(['user-1']);
   });
 
   it('updateStatus : statut, auteur, motif (null si absent), identifiant', async () => {

@@ -63,6 +63,30 @@ describe('ProfileService', () => {
     expect(own).toMatchObject({ id: 'student-1', completedLessons: 2 });
   });
 
+  it('les lectures (leçons, examens, finances) délèguent au repository', async () => {
+    repository.getStudentLessons.mockResolvedValue([]);
+    repository.getStudentExams.mockResolvedValue([]);
+    repository.getFinancialSummary.mockResolvedValue({
+      totalRevenue: 0,
+      totalPending: 0,
+      totalDue: 0,
+      lessonsRevenue: 0,
+      examsRevenue: 0,
+      lessonsPending: 0,
+      examsPending: 0,
+      lastPaymentDate: null,
+    });
+
+    await expect(service.getStudentLessons('student-1', 'school-1')).resolves.toEqual([]);
+    await expect(service.getStudentExams('student-1', 'school-1')).resolves.toEqual([]);
+    await expect(service.getFinancialSummary('student-1', 'school-1')).resolves.toMatchObject({
+      totalDue: 0,
+    });
+    expect(repository.getStudentLessons).toHaveBeenCalledWith('student-1', 'school-1');
+    expect(repository.getStudentExams).toHaveBeenCalledWith('student-1', 'school-1');
+    expect(repository.getFinancialSummary).toHaveBeenCalledWith('student-1', 'school-1');
+  });
+
   it('les écritures délèguent au repository avec les mêmes arguments', async () => {
     repository.updateNotes.mockResolvedValue();
     repository.markLessonPaid.mockResolvedValue();

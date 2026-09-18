@@ -24,11 +24,7 @@ async function bootstrap(): Promise<void> {
     requireAuth: auth.requireAuth,
     students: student.studentRepository,
   });
-  const exam = buildExamModule({
-    db,
-    requireAuth: auth.requireAuth,
-    students: student.studentRepository,
-  });
+  const exam = buildExamModule({ db, requireAuth: auth.requireAuth });
 
   const app = createApp({
     auth: auth.router,

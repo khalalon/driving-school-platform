@@ -1,25 +1,13 @@
 import { HttpError } from '../../../http/errors';
 import { IStatsRepository } from '../repositories/stats.repository';
 import { IStudentRepository } from '../repositories/student.repository';
-import {
-  EnrollmentStatus,
-  ExamEligibility,
-  LessonCompletedDTO,
-  StudentLessonStats,
-} from '../types/student.types';
-
-export type ExamType = 'theory' | 'practical';
+import { EnrollmentStatus, LessonCompletedDTO, StudentLessonStats } from '../types/student.types';
 
 /**
- * Porté tel quel depuis student-service. La règle d'éligibilité (20 / 30 leçons) est
- * supprimée en v1 (D-26) : `checkExamEligibility` disparaît en 5.7 avec les routes hors contrat.
+ * Porté depuis student-service. La règle d'éligibilité aux examens (20 / 30 leçons) a été
+ * supprimée (D-26, 3.4) ; les routes restantes disparaissent en 5.7.
  */
 export class VerificationService {
-  private static readonly REQUIRED_LESSONS: Record<ExamType, number> = {
-    theory: 20,
-    practical: 30,
-  };
-
   constructor(
     private readonly studentRepository: IStudentRepository,
     private readonly statsRepository: IStatsRepository
@@ -36,26 +24,6 @@ export class VerificationService {
       };
     }
     return { isEnrolled: false, canBook: false };
-  }
-
-  async checkExamEligibility(
-    studentId: string,
-    schoolId: string,
-    examType: ExamType
-  ): Promise<ExamEligibility> {
-    const stats = await this.statsRepository.findByStudentAndSchool(studentId, schoolId);
-    const completedLessons = stats?.completedLessons ?? 0;
-    const requiredLessons = VerificationService.REQUIRED_LESSONS[examType];
-
-    if (completedLessons < requiredLessons) {
-      return {
-        eligible: false,
-        requiredLessons,
-        completedLessons,
-        reason: `Il manque ${requiredLessons - completedLessons} leçon(s) effectuée(s)`,
-      };
-    }
-    return { eligible: true, requiredLessons, completedLessons };
   }
 
   /** Une absence n'incrémente rien (D-33) ; l'état courant est renvoyé s'il existe. */

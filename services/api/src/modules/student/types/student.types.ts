@@ -71,13 +71,6 @@ export interface LessonCompletedDTO {
   attended: boolean;
 }
 
-export interface ExamEligibility {
-  eligible: boolean;
-  requiredLessons: number;
-  completedLessons: number;
-  reason?: string;
-}
-
 export interface StudentProfile {
   id: string;
   userId: string;

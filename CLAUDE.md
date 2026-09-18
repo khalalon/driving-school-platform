@@ -117,7 +117,7 @@ Ces règles priment sur toute autre instruction, y compris une demande directe d
 
 ## Pièges connus (lire avant de coder)
 
-- Deux identifiants « élève » coexistent : `users.id` (JWT, `enrollment_requests.student_id`) et `students.id` (ligne par couple élève × école, utilisée par `lessons.student_id` depuis 007, `exam_registrations`, `payments`). Toujours préciser lequel on manipule. Dans `services/api`, le `StudentRepository` du module `student` est le seul à lire `students` : les modules `lesson` et `exam` le reçoivent par injection.
+- Deux identifiants « élève » coexistent : `users.id` (JWT, `enrollment_requests.student_id`) et `students.id` (ligne par couple élève × école, utilisée par `lessons.student_id` (007), `exams.student_id` (008), `payments`). Toujours préciser lequel on manipule. Dans `services/api`, le `StudentRepository` du module `student` est le seul à lire `students` : les modules `lesson` et `exam` le reçoivent par injection.
 - Le chemin critique e2e complet échoue dès A2 (`register` exige encore `role`) jusqu'à 4.1 ; chaque étape se lance seule avec `-t '<étape>'` (prérequis rejoués par `tests/helpers/flow.ts`).
 - Les services `SchoolService` et `LessonService` du mobile renvoient l'`AxiosResponse` brute ; les autres renvoient `.data`. Les écrans qui les consomment reçoivent donc un objet au lieu d'un tableau.
 - Le backend renvoie partout `{ error: <code>, message: <français> }` (D-27) ; le mobile lit `error.response.data.message` mais affiche parfois `error` — harmonisé en 6.1.

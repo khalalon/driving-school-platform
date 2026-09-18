@@ -22,7 +22,6 @@ describe('Routes /api/profiles, /api/student-profiles, /api/verification', () =>
   };
   const verificationService = {
     verifyEnrollment: jest.fn(),
-    checkExamEligibility: jest.fn(),
     recordLessonCompletion: jest.fn(),
   };
   const profileController = new ProfileController(profileService as unknown as ProfileService);
@@ -156,17 +155,10 @@ describe('Routes /api/profiles, /api/student-profiles, /api/verification', () =>
       .get(`/api/verification/verify-enrollment?userId=u&schoolId=${UUID.school}`)
       .expect(200, { isEnrolled: false, canBook: false });
 
-    const badType = await request(app).get(
-      `/api/verification/students/${UUID.student}/eligibility?schoolId=${UUID.school}&examType=oral`
-    );
-    expect(badType.status).toBe(400);
-
-    verificationService.checkExamEligibility.mockResolvedValue({ eligible: true });
+    // Éligibilité retirée (D-26, 3.4) : la route n'existe plus.
     await request(app)
-      .get(
-        `/api/verification/students/${UUID.student}/eligibility?schoolId=${UUID.school}&examType=theory`
-      )
-      .expect(200, { eligible: true });
+      .get(`/api/verification/students/${UUID.student}/eligibility?schoolId=${UUID.school}`)
+      .expect(404);
 
     const badBody = await request(app)
       .post(`/api/verification/students/${UUID.student}/lesson-completed`)

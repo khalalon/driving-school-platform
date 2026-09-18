@@ -1,123 +1,126 @@
+import { Pool } from 'pg';
 import { fakePool, UUID } from '../../../../test-utils/http';
-import { ExamResult, ExamType } from '../../types/exam.types';
+import { ExamStatus, ExamType } from '../../types/exam.types';
 import { ExamRepository } from '../exam.repository';
-import { RegistrationRepository } from '../registration.repository';
 
-describe('ExamRepository', () => {
+describe('ExamRepository (schéma 008 : un examen = un élève)', () => {
   const dateTime = new Date('2026-10-15T09:00:00Z');
+  const row = { id: UUID.booking, studentFirstName: 'Élève', studentCompletedLessons: 3 };
 
-  it('create : examinerId et capacity absents → null', async () => {
-    const { pool, query } = fakePool([{ id: UUID.booking }]);
-    await new ExamRepository(pool).create({
+  it('create : INSERT scheduled avec l’élève, location / examinerId absents → null, relecture jointe', async () => {
+    const query = jest
+      .fn()
+      .mockResolvedValueOnce({ rows: [{ id: UUID.booking }] })
+      .mockResolvedValueOnce({ rows: [row] });
+    const repo = new ExamRepository({ query } as unknown as Pool);
+
+    const created = await repo.create({
       schoolId: UUID.school,
+      studentId: UUID.student,
       type: ExamType.THEORY,
       dateTime,
       price: 60,
     });
-    expect((query.mock.calls[0] as [string, unknown[]])[1]).toEqual([
-      UUID.school,
-      'theory',
-      dateTime,
-      null,
-      60,
-      null,
-    ]);
+
+    expect(created).toEqual(row);
+    const [insertSql, params] = query.mock.calls[0] as [string, unknown[]];
+    expect(insertSql).toMatch(
+      /INSERT INTO exams \(school_id, student_id, type, date_time, location/
+    );
+    expect(insertSql).toMatch(/'scheduled'/);
+    expect(params).toEqual([UUID.school, UUID.student, 'theory', dateTime, null, null, 60]);
+    const [selectSql] = query.mock.calls[1] as [string, unknown[]];
+    expect(selectSql).toMatch(/LEFT JOIN users u ON u\.id = s\.user_id/);
+    expect(selectSql).toMatch(/LEFT JOIN student_lesson_stats sls/);
+    expect(selectSql).toMatch(/AS "studentCompletedLessons"/);
+    expect(selectSql).toMatch(/WHERE e\.id = \$1/);
   });
 
-  it('findAll : filtres facultatifs ; update : SET dynamique ; countRegistrations en nombre', async () => {
-    const { pool, query } = fakePool([{ count: '3' }]);
+  it('create : erreur si la ligne écrite est introuvable à la relecture', async () => {
+    const query = jest
+      .fn()
+      .mockResolvedValueOnce({ rows: [{ id: UUID.booking }] })
+      .mockResolvedValueOnce({ rows: [] });
+    const repo = new ExamRepository({ query } as unknown as Pool);
+
+    await expect(
+      repo.create({
+        schoolId: UUID.school,
+        studentId: UUID.student,
+        type: ExamType.PRACTICAL,
+        dateTime,
+        price: 80,
+      })
+    ).rejects.toThrow(/introuvable après écriture/);
+  });
+
+  it('findAll : filtres facultatifs, status multiple (ANY), tri par date de session puis souhaitée', async () => {
+    const { pool, query } = fakePool([]);
     const repo = new ExamRepository(pool);
 
-    await repo.findAll({ type: ExamType.PRACTICAL, dateTo: dateTime });
-    const [sql, params] = query.mock.calls[0] as [string, unknown[]];
-    expect(sql).toMatch(/WHERE type = \$1 AND date_time <= \$2/);
-    expect(params).toEqual(['practical', dateTime]);
-
-    await repo.update(UUID.booking, { capacity: 10 });
-    expect((query.mock.calls[1] as [string, unknown[]])[1]).toEqual([10, UUID.booking]);
-
-    await expect(repo.countRegistrations(UUID.booking)).resolves.toBe(3);
-    await repo.delete(UUID.booking);
-    await expect(new ExamRepository(fakePool([]).pool).findById('x')).resolves.toBeNull();
-  });
-});
-
-describe('RegistrationRepository', () => {
-  it('create : résultat pending ; updateResult : score et notes facultatifs', async () => {
-    const { pool, query } = fakePool([{ id: UUID.request }]);
-    const repo = new RegistrationRepository(pool);
-
-    await repo.create(UUID.booking, UUID.student);
-    expect((query.mock.calls[0] as [string, unknown[]])[1]).toEqual([
-      UUID.booking,
-      UUID.student,
-      'pending',
-    ]);
-
-    await repo.updateResult(UUID.request, { result: ExamResult.PASSED, score: 18 });
-    const [sql, params] = query.mock.calls[1] as [string, unknown[]];
-    expect(sql).toMatch(
-      /SET result = \$1, score = \$2, updated_at = CURRENT_TIMESTAMP WHERE id = \$3/
-    );
-    expect(params).toEqual(['passed', 18, UUID.request]);
-  });
-
-  it('lectures, suppression, compte de leçons pointées', async () => {
-    const row = { id: UUID.request };
-    const { pool } = fakePool([row]);
-    const repo = new RegistrationRepository(pool);
-
-    await expect(repo.findById(UUID.request)).resolves.toEqual(row);
-    await expect(repo.findByExamId(UUID.booking)).resolves.toEqual([row]);
-    await expect(repo.findByStudentId(UUID.student)).resolves.toEqual([row]);
-    await expect(repo.findByExamAndStudent(UUID.booking, UUID.student)).resolves.toEqual(row);
-    await repo.delete(UUID.request);
-
-    const counting = new RegistrationRepository(fakePool([{ count: '12' }]).pool);
-    await expect(counting.countCompletedLessons(UUID.student)).resolves.toBe(12);
-    await expect(new RegistrationRepository(fakePool([]).pool).findById('x')).resolves.toBeNull();
-  });
-});
-
-describe('ExamRepository — toutes les branches des constructeurs SQL', () => {
-  it('findAll avec tous les filtres ; update avec tous les champs ; create complet', async () => {
-    const dateFrom = new Date('2026-10-01T00:00:00Z');
-    const dateTo = new Date('2026-10-31T00:00:00Z');
-    const { pool, query } = fakePool([{ id: UUID.booking }]);
-    const repo = new ExamRepository(pool);
-
-    await repo.findAll({ schoolId: UUID.school, type: ExamType.THEORY, dateFrom, dateTo });
-    expect((query.mock.calls[0] as [string])[0]).toMatch(
-      /WHERE school_id = \$1 AND type = \$2 AND date_time >= \$3 AND date_time <= \$4/
-    );
-
-    await repo.update(UUID.booking, {
-      dateTime: dateFrom,
-      examinerId: UUID.instructor,
-      price: 80,
-      capacity: 5,
-    });
-    const [sqlUpd, paramsUpd] = query.mock.calls[1] as [string, unknown[]];
-    expect(sqlUpd).toMatch(
-      /SET date_time = \$1, examiner_id = \$2, price = \$3, capacity = \$4, updated_at = CURRENT_TIMESTAMP WHERE id = \$5/
-    );
-    expect(paramsUpd).toEqual([dateFrom, UUID.instructor, 80, 5, UUID.booking]);
-
-    await repo.create({
+    await repo.findAll({});
+    await repo.findAll({
       schoolId: UUID.school,
+      studentId: UUID.student,
       type: ExamType.PRACTICAL,
-      dateTime: dateFrom,
-      examinerId: UUID.instructor,
-      price: 90,
-      capacity: 3,
+      status: [ExamStatus.PENDING, ExamStatus.SCHEDULED],
+      dateFrom: dateTime,
+      dateTo: dateTime,
     });
-    expect((query.mock.calls[2] as [string, unknown[]])[1]).toEqual([
+    await repo.findAll({ status: [] });
+
+    const [sqlNone] = query.mock.calls[0] as [string, unknown[]];
+    const [sqlAll, paramsAll] = query.mock.calls[1] as [string, unknown[]];
+    const [sqlEmpty] = query.mock.calls[2] as [string, unknown[]];
+    expect(sqlNone).not.toMatch(/WHERE/);
+    expect(sqlNone).toMatch(/ORDER BY COALESCE\(e\.date_time, e\.preferred_date\) ASC/);
+    expect(sqlAll).toMatch(
+      /WHERE e\.school_id = \$1 AND e\.student_id = \$2 AND e\.type = \$3 AND e\.status = ANY\(\$4\) AND e\.date_time >= \$5 AND e\.date_time <= \$6/
+    );
+    expect(paramsAll).toEqual([
       UUID.school,
+      UUID.student,
       'practical',
-      dateFrom,
-      UUID.instructor,
-      90,
-      3,
+      ['pending', 'scheduled'],
+      dateTime,
+      dateTime,
     ]);
+    expect(sqlEmpty).not.toMatch(/WHERE/);
+  });
+
+  it('update : SET dynamique puis relecture ; findById null ; delete', async () => {
+    const query = jest
+      .fn()
+      .mockResolvedValueOnce({ rows: [] }) // UPDATE
+      .mockResolvedValueOnce({ rows: [row] }) // relecture
+      .mockResolvedValueOnce({ rows: [] }) // findById
+      .mockResolvedValueOnce({ rows: [] }); // DELETE
+    const repo = new ExamRepository({ query } as unknown as Pool);
+
+    await expect(
+      repo.update(UUID.booking, {
+        dateTime,
+        location: 'Salle 2',
+        examinerId: UUID.instructor,
+        price: 70,
+        status: ExamStatus.COMPLETED,
+      })
+    ).resolves.toEqual(row);
+    const [sqlUpd, paramsUpd] = query.mock.calls[0] as [string, unknown[]];
+    expect(sqlUpd).toMatch(
+      /SET date_time = \$1, location = \$2, examiner_id = \$3, price = \$4, status = \$5, updated_at = CURRENT_TIMESTAMP WHERE id = \$6/
+    );
+    expect(paramsUpd).toEqual([
+      dateTime,
+      'Salle 2',
+      UUID.instructor,
+      70,
+      'completed',
+      UUID.booking,
+    ]);
+
+    await expect(repo.findById(UUID.booking)).resolves.toBeNull();
+    await repo.delete(UUID.booking);
+    expect((query.mock.calls[3] as [string, unknown[]])[0]).toMatch(/DELETE FROM exams/);
   });
 });
