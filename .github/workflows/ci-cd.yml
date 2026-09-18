@@ -7,7 +7,7 @@ on:
     branches: [main, develop]
 
 env:
-  NODE_VERSION: '18'
+  NODE_VERSION: '20'
   DOCKER_REGISTRY: ghcr.io
   IMAGE_PREFIX: ${{ github.repository_owner }}
 
@@ -18,595 +18,100 @@ jobs:
   detect-changes:
     runs-on: ubuntu-latest
     outputs:
-      auth: ${{ steps.filter.outputs.auth }}
-      school: ${{ steps.filter.outputs.school }}
-      lesson: ${{ steps.filter.outputs.lesson }}
-      exam: ${{ steps.filter.outputs.exam }}
-      payment: ${{ steps.filter.outputs.payment }}
-      notification: ${{ steps.filter.outputs.notification }}
-      student: ${{ steps.filter.outputs.student }}
-      analytics: ${{ steps.filter.outputs.analytics }}
+      api: ${{ steps.filter.outputs.api }}
     steps:
       - uses: actions/checkout@v4
-      
+
       - uses: dorny/paths-filter@v2
         id: filter
         with:
           filters: |
-            auth:
-              - 'services/auth/**'
-            school:
-              - 'services/school/**'
-            lesson:
-              - 'services/lesson/**'
-            exam:
-              - 'services/exam/**'
-            payment:
-              - 'services/payment/**'
-            notification:
-              - 'services/notification/**'
-            student:
-              - 'services/student/**'
-            analytics:
-              - 'services/analytics/**'
+            api:
+              - 'services/api/**'
 
   # ============================================
-  # AUTH SERVICE
+  # API (services/api) — l'application unique
   # ============================================
-  auth-service:
+  api:
     needs: detect-changes
-    if: needs.detect-changes.outputs.auth == 'true'
+    if: needs.detect-changes.outputs.api == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: services/auth
-    
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_USER: admin
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: driving_school_test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-      
-      redis:
-        image: redis:7-alpine
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 6379:6379
+        working-directory: services/api
 
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          cache-dependency-path: services/auth/package-lock.json
-      
+          cache-dependency-path: services/api/package-lock.json
+
       - name: Install dependencies
         run: npm ci
-      
-      - name: Run linter
+
+      - name: Lint
         run: npm run lint
-      
+
       - name: Typecheck
         run: npx tsc --noEmit
-      
-      - name: Run tests
+
+      # Tests unitaires : mocks et Pool factice, aucune base requise.
+      - name: Tests (couverture)
         run: npm test
-        env:
-          DATABASE_URL: postgresql://admin:password@localhost:5432/driving_school_test
-          REDIS_URL: redis://localhost:6379
-          JWT_SECRET: test-secret
-      
+
       - name: Build
         run: npm run build
-      
+
       - name: Upload coverage
         uses: codecov/codecov-action@v3
         with:
-          files: ./services/auth/coverage/lcov.info
-          flags: auth-service
+          files: ./services/api/coverage/lcov.info
+          flags: api
 
   # ============================================
-  # SCHOOL SERVICE
-  # ============================================
-  school-service:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.school == 'true'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: services/school
-    
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_USER: admin
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: driving_school_test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: services/school/package-lock.json
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Run linter
-        run: npm run lint
-      
-      - name: Typecheck
-        run: npx tsc --noEmit
-      
-      - name: Run tests
-        run: npm test
-        env:
-          DATABASE_URL: postgresql://admin:password@localhost:5432/driving_school_test
-      
-      - name: Build
-        run: npm run build
-      
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./services/school/coverage/lcov.info
-          flags: school-service
-
-  # ============================================
-  # LESSON SERVICE
-  # ============================================
-  lesson-service:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.lesson == 'true'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: services/lesson
-    
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_USER: admin
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: driving_school_test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: services/lesson/package-lock.json
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Run linter
-        run: npm run lint
-      
-      - name: Typecheck
-        run: npx tsc --noEmit
-      
-      - name: Run tests
-        run: npm test
-        env:
-          DATABASE_URL: postgresql://admin:password@localhost:5432/driving_school_test
-      
-      - name: Build
-        run: npm run build
-      
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./services/lesson/coverage/lcov.info
-          flags: lesson-service
-
-  # ============================================
-  # EXAM SERVICE
-  # ============================================
-  exam-service:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.exam == 'true'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: services/exam
-    
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_USER: admin
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: driving_school_test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: services/exam/package-lock.json
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Run linter
-        run: npm run lint
-      
-      - name: Typecheck
-        run: npx tsc --noEmit
-      
-      - name: Run tests
-        run: npm test
-        env:
-          DATABASE_URL: postgresql://admin:password@localhost:5432/driving_school_test
-      
-      - name: Build
-        run: npm run build
-      
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./services/exam/coverage/lcov.info
-          flags: exam-service
-
-  # ============================================
-  # PAYMENT SERVICE
-  # ============================================
-  payment-service:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.payment == 'true'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: services/payment
-    
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_USER: admin
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: driving_school_test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: services/payment/package-lock.json
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Run linter
-        run: npm run lint
-      
-      - name: Typecheck
-        run: npx tsc --noEmit
-      
-      - name: Run tests
-        run: npm test
-        env:
-          DATABASE_URL: postgresql://admin:password@localhost:5432/driving_school_test
-      
-      - name: Build
-        run: npm run build
-      
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./services/payment/coverage/lcov.info
-          flags: payment-service
-
-  # ============================================
-  # NOTIFICATION SERVICE
-  # ============================================
-  notification-service:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.notification == 'true'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: services/notification
-    
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_USER: admin
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: driving_school_test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-      
-      redis:
-        image: redis:7-alpine
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 6379:6379
-
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: services/notification/package-lock.json
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Run linter
-        run: npm run lint
-      
-      - name: Typecheck
-        run: npx tsc --noEmit
-      
-      - name: Run tests
-        run: npm test
-        env:
-          DATABASE_URL: postgresql://admin:password@localhost:5432/driving_school_test
-          REDIS_URL: redis://localhost:6379
-      
-      - name: Build
-        run: npm run build
-      
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./services/notification/coverage/lcov.info
-          flags: notification-service
-
-  # ============================================
-  # STUDENT SERVICE
-  # ============================================
-  student-service:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.student == 'true'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: services/student
-    
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_USER: admin
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: driving_school_test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: services/student/package-lock.json
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Run linter
-        run: npm run lint
-      
-      - name: Typecheck
-        run: npx tsc --noEmit
-      
-      - name: Run tests
-        run: npm test
-        env:
-          DATABASE_URL: postgresql://admin:password@localhost:5432/driving_school_test
-      
-      - name: Build
-        run: npm run build
-      
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./services/student/coverage/lcov.info
-          flags: student-service
-
-  # ============================================
-  # ANALYTICS SERVICE
-  # ============================================
-  analytics-service:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.analytics == 'true'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: services/analytics
-    
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_USER: admin
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: driving_school_test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-      
-      redis:
-        image: redis:7-alpine
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 6379:6379
-
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: services/analytics/package-lock.json
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Run linter
-        run: npm run lint
-      
-      - name: Typecheck
-        run: npx tsc --noEmit
-      
-      - name: Run tests
-        run: npm test
-        env:
-          DATABASE_URL: postgresql://admin:password@localhost:5432/driving_school_test
-          REDIS_HOST: localhost
-          REDIS_PORT: '6379'
-      
-      - name: Build
-        run: npm run build
-      
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./services/analytics/coverage/lcov.info
-          flags: analytics-service
-
-  # ============================================
-  # BUILD AND PUSH DOCKER IMAGES
+  # BUILD AND PUSH DOCKER IMAGE
   # ============================================
   build-images:
-    needs: [auth-service, school-service, lesson-service, exam-service, payment-service, notification-service, student-service, analytics-service]
+    needs: [api]
     if: |
       always() &&
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
-      (needs.auth-service.result == 'success' || needs.auth-service.result == 'skipped') &&
-      (needs.school-service.result == 'success' || needs.school-service.result == 'skipped') &&
-      (needs.lesson-service.result == 'success' || needs.lesson-service.result == 'skipped') &&
-      (needs.exam-service.result == 'success' || needs.exam-service.result == 'skipped') &&
-      (needs.payment-service.result == 'success' || needs.payment-service.result == 'skipped') &&
-      (needs.notification-service.result == 'success' || needs.notification-service.result == 'skipped') &&
-      (needs.student-service.result == 'success' || needs.student-service.result == 'skipped') &&
-      (needs.analytics-service.result == 'success' || needs.analytics-service.result == 'skipped')
+      (needs.api.result == 'success' || needs.api.result == 'skipped')
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        service: [auth, school, lesson, exam, payment, notification, student, analytics]
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.DOCKER_REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service }}-service
+          images: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_PREFIX }}/driving-school-api
           tags: |
             type=ref,event=branch
             type=sha,prefix={{branch}}-
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-      
+
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
-          context: ./services/${{ matrix.service }}
+          context: ./services/api
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -623,18 +128,14 @@ jobs:
     environment:
       name: staging
       url: https://staging.drivingschool.com
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Deploy to staging
         run: |
           echo "Deploying to staging environment..."
           # Add your deployment commands here
-          # Examples:
-          # - kubectl apply -f k8s/staging/
-          # - docker compose -f docker compose.staging.yml up -d
-          # - railway up --environment staging
 
   # ============================================
   # DEPLOY TO PRODUCTION
@@ -646,15 +147,11 @@ jobs:
     environment:
       name: production
       url: https://drivingschool.com
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Deploy to production
         run: |
           echo "Deploying to production environment..."
           # Add your deployment commands here
-          # Examples:
-          # - kubectl apply -f k8s/production/
-          # - docker compose -f docker compose.production.yml up -d
-          # - railway up --environment production

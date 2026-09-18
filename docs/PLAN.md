@@ -194,7 +194,7 @@ docker compose down && docker compose up -d --build && sleep 30 && test "$(docke
 ```
 **Hors périmètre** : TLS.
 
-### - [ ] 2.7 — Suppression des 8 anciens services, Makefile et CI mis à jour
+### - [x] 2.7 — Suppression des 8 anciens services, Makefile et CI mis à jour
 **Objectif** : `services/` ne contient plus que `api` ; Makefile, workflows, `README.md`, `ARCHITECTURE.md` reflètent l'app unique. Le test de bout en bout échoue **au même endroit ou plus loin** qu'en 1.2.
 **Fichiers** : suppression de `services/{auth,school,student,lesson,exam,payment,notification,analytics}`, `Makefile`, `.github/workflows/*.yml`, `README.md`, `docs/ARCHITECTURE.md`.
 **Critère de validation** :

@@ -45,19 +45,20 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        service: [auth, school, student, lesson, exam, payment, notification, analytics]
+        # L'application unique et le harnais de bout en bout.
+        package: [services/api, tests]
     defaults:
       run:
-        working-directory: services/${{ matrix.service }}
+        working-directory: ${{ matrix.package }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
-          cache-dependency-path: services/${{ matrix.service }}/package-lock.json
+          cache-dependency-path: ${{ matrix.package }}/package-lock.json
 
       - name: Install dependencies
         run: npm ci

@@ -4,7 +4,7 @@
 
 Plateforme de gestion d'auto-écoles (types de leçons `CODE` / `Manœuvre` / `Parc`, examens théorique et pratique).
 Un **mobile Expo / React Native** (`mobile-app/`) est le produit principal : un élève demande à rejoindre une école, l'instructeur approuve, puis l'élève demande des leçons et des examens que l'instructeur planifie.
-Le **backend** est en Node 18 / TypeScript / Express (`services/`), découpé aujourd'hui en 8 services derrière Nginx, avec **une seule base PostgreSQL** partagée et un Redis.
+Le **backend** est **une seule application** Node 20 / TypeScript / Express (`services/api`, modules `auth`, `school`, `student`, `lesson`, `exam` ; `payment` porté non monté) derrière Nginx, avec **une seule base PostgreSQL** et un Redis. Les 8 anciens services ont été fusionnés puis supprimés en Phase 2.
 Le frontend web (`web-frontend/`) est un squelette Vite, **gelé pour la v1** — ne pas y toucher.
 Le mobile et le backend implémentent deux modèles de domaine différents ; le contrat cible est dans `docs/API_CONTRACT.md`, l'ordre de travail dans `docs/PLAN.md`.
 
@@ -20,10 +20,10 @@ Le mobile et le backend implémentent deux modèles de domaine différents ; le 
 
 ## Commandes réelles
 
-Vérifiées dans `package.json`, `Makefile` et `docker-compose.yml`. Il n'y a **pas** de workspace npm racine : chaque service, le mobile et le web ont leur propre `package.json` et `node_modules`.
+Vérifiées dans `package.json`, `Makefile` et `docker-compose.yml`. Il n'y a **pas** de workspace npm racine : `services/api`, `tests`, le mobile et le web ont chacun leur `package.json` et leur `node_modules`.
 
 ### Prérequis
-- Node 18+, npm, Docker Desktop avec `docker compose` v2.
+- Node 20+ (l'API tourne sur `node:20-alpine`, Expo 54 exige ≥ 20.19), npm, Docker Desktop avec `docker compose` v2.
 - Sous Windows le shell principal est PowerShell ; les scripts `scripts/*.sh` demandent Git Bash.
 
 ### Racine (outillage git et tests de bout en bout)
@@ -33,25 +33,25 @@ npm run test:e2e       # tests de bout en bout (paquet tests/, stack Docker dém
 ```
 `npm install` active aussi les hooks git (`prepare` → `husky install`) et crée les shims `npx` sous Windows. `.husky/pre-commit` lance `lint-staged` (Prettier sur les `.ts` des services), `.husky/commit-msg` lance commitlint. Il n'y a pas de script `test` à la racine : les tests de bout en bout arrivent en 1.1 (`test:e2e`).
 
-### Backend — un service à la fois (`services/<nom>`, nom ∈ **api** (application unique, port 3000, Phase 2), auth, school, student, lesson, exam, payment, notification, analytics)
+### Backend — l'application (`services/api`)
 ```bash
-cd services/auth
-npm ci                 # install (lockfile présent dans chaque service)
-npm run build          # tsc → dist/  — c'est AUSSI le typecheck (pas de script typecheck séparé)
-npx tsc --noEmit       # typecheck seul, sans écrire dist/
-npm run lint           # eslint . --ext .ts
-npm test               # jest --coverage (seuil 70 % dans jest.config.js)
-npm run dev            # ts-node-dev sur src/index.ts, port lu dans PORT (voir ARCHITECTURE.md)
+cd services/api
+npm ci                 # install (lockfile présent)
+npx tsc --noEmit       # typecheck (strict) ; npm run build = tsc → dist/
+npm run lint           # eslint strict : no-unsafe-*, no-explicit-any, require-await en error
+npm test               # jest --coverage ; seuils = couverture mesurée (D-37), à remonter, jamais à baisser
+npm run dev            # ts-node-dev sur src/index.ts ; lit .env (modèle services/api/.env.example) ; PORT 3000
 ```
+Un module = `src/modules/<domaine>/{routes,controllers,services,repositories,validators,types,__tests__}` + `index.ts` (`build<Module>()`). Les tests unitaires n'ont besoin ni de base ni de Redis (mocks d'interfaces, `Pool` factice de `src/test-utils/http.ts`).
 
 ### Backend — tout lancer (Docker)
 ```bash
 docker compose up -d --build     # postgres, redis, api (services/api, :3000), nginx sur :80
 docker compose ps                # état + healthchecks
-docker compose logs -f auth-service
+docker compose logs -f api
 docker compose down              # stop ; ajouter -v pour effacer la base
 ```
-`make dev` fait `docker compose down && build && up -d`. Les cibles `make install / test / lint / format / coverage / health` couvrent les 8 services (`student` sur 3007, `analytics` sur 3008).
+`make dev` fait `docker compose down && build && up -d` ; `make dev-watch` lance l'API en `ts-node-dev` sur les sources (`docker-compose.dev.yml`) ; `make prod` applique `docker-compose.prod.yml`. `make install / typecheck / lint / test / format` agissent sur `services/api` ; `make health` interroge Nginx (:80) et l'API (:3000). `make help` liste tout.
 
 ### Migrations
 Les fichiers `migrations/00N_*.sql` sont montés dans `/docker-entrypoint-initdb.d` : sur un volume Postgres vierge, ils s'appliquent **tous, automatiquement, une seule fois** — `004` compris, qui crée la table de suivi `schema_migrations` et y inscrit 001–004. Sur une base existante, `scripts/migrate.sh` (= `make migrate`) applique dans l'ordre les fichiers non encore enregistrés dans `schema_migrations`, chaque fichier et son enregistrement dans une seule transaction ; il est idempotent et se lance depuis n'importe quel répertoire. Les fichiers 001–003 eux-mêmes ne sont pas idempotents (`CREATE INDEX` sans `IF NOT EXISTS`) : ne jamais les rejouer à la main.
@@ -117,10 +117,10 @@ Ces règles priment sur toute autre instruction, y compris une demande directe d
 
 ## Pièges connus (lire avant de coder)
 
-- `req.user.userId` est `undefined` dans tous les services sauf `auth` (le middleware copié stocke la réponse de `/api/auth/me`, qui expose `id` et non `userId`). Corrigé par la Phase 2.
-- Deux identifiants « élève » coexistent : `users.id` (JWT, `enrollment_requests.student_id`) et `students.id` (ligne par couple élève × école, utilisée par `lesson_bookings`, `exam_registrations`, `payments`). Toujours préciser lequel on manipule.
+- Deux identifiants « élève » coexistent : `users.id` (JWT, `enrollment_requests.student_id`) et `students.id` (ligne par couple élève × école, utilisée par `lesson_bookings`, `exam_registrations`, `payments`). Toujours préciser lequel on manipule. Dans `services/api`, le `StudentRepository` du module `student` est le seul à lire `students` : les modules `lesson` et `exam` le reçoivent par injection.
+- `EnrollmentService.approveRequest` échoue toujours (`students.name NOT NULL`, pas de transaction) : 3.1 et 3.2. Le chemin critique e2e échoue dès A2 (`register` exige `role`) jusqu'à 4.1.
 - Les services `SchoolService` et `LessonService` du mobile renvoient l'`AxiosResponse` brute ; les autres renvoient `.data`. Les écrans qui les consomment reçoivent donc un objet au lieu d'un tableau.
-- Le mobile lit `error.response.data.message` ; le backend actuel renvoie `{ error }` sans `message` (D-27, corrigé en Phase 2).
+- Le backend renvoie partout `{ error: <code>, message: <français> }` (D-27) ; le mobile lit `error.response.data.message` mais affiche parfois `error` — harmonisé en 6.1.
 - Vocabulaire métier : le backend fait foi (`CODE` / `Manœuvre` / `Parc`, `theory` / `practical`, `passed` / `failed`, D-18) ; le mobile actuel utilise `THEORY` / `PRACTICAL` / `PASS` / `FAIL` et sera réécrit en 6.1.
 - Cloisonnement par école (D-20) : toute action d'un instructeur est limitée à son école. Aucune vérification n'existe aujourd'hui ; helper `assertSameSchool` en 5.1.
 - Trois questions restent ouvertes au 17/09 : Q-17 (leçon payée annulée), Q-18 (absence facturée), Q-19 (procédure d'examen ATTT). Les tâches qui en dépendent sont marquées dans le plan.

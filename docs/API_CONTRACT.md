@@ -30,7 +30,7 @@ Chaque ligne décrit la **cible** (ce que le mobile doit envoyer / recevoir une 
 - Vocabulaire (D-18) : leçons `CODE` / `Manœuvre` / `Parc` ; examens `theory` / `practical` ; résultats `passed` / `failed` / `pending`. *État actuel du mobile : `THEORY` / `PRACTICAL`, `PASS` / `FAIL` — à réécrire en 6.1.*
 - Cloisonnement (D-20) : toute action d'un `instructor` est limitée à son école → 403 `FORBIDDEN_SCHOOL` sinon. Non répété ligne par ligne.
 - Une seule inscription active par élève (D-22) : les routes qui prennent `:schoolId` sont conservées ; celles qui n'en prennent pas résolvent l'école depuis l'inscription active.
-- Bug transverse : dans les 6 anciens services autres que `auth`, `req.user.userId` vaut `undefined` (`ARCHITECTURE.md` §3). **Corrigé dans `services/api`** (2.2, 2.3 : E2 rattache la demande au `users.id` du jeton) ; les anciens services restent cassés jusqu'à leur suppression (2.7) et Nginx ne bascule sur `services/api` qu'en 2.6.
+- Identité de l'appelant : `req.user = { userId, email, role }` posé par le middleware unique de `services/api` (D-03). Le bug historique `req.user.userId === undefined` des anciens services a disparu avec eux (2.7).
 
 ---
 
@@ -101,7 +101,7 @@ Objet `Exam` (cible) : `{ id, schoolId, studentId (users.id), studentFirstName, 
 
 ## 6. Profils (fiche élève)
 
-Deux familles montées par `student-service` : `/api/profiles/*` (vue instructeur) et `/api/student-profiles/*` (vue élève). **Aucune n'est proxifiée par Nginx** aujourd'hui (2.6). **`:studentId` = `users.id`** (D-28) ; le backend joint `students ON user_id = :studentId AND school_id = :schoolId`.
+Deux familles montées par le module `student` de `services/api` : `/api/profiles/*` (vue instructeur) et `/api/student-profiles/*` (vue élève), **joignables via Nginx depuis 2.6**. **`:studentId` = `users.id`** (D-28) ; le backend joint `students ON user_id = :studentId AND school_id = :schoolId`.
 
 | # | Méthode | Chemin | Appelé par | Payload | Réponse (cible) | Statut | Écart / notes |
 |---|---|---|---|---|---|---|---|
@@ -125,7 +125,7 @@ Deux familles montées par `student-service` : `/api/profiles/*` (vue instructeu
 
 Elles existent aujourd'hui, ne sont appelées par aucun écran, et sont **retirées** (5.7) sauf mention.
 
-- `/api/verification/*` (student-service, **public**) : retiré de Nginx en 2.6, supprimé en 5.7 (`student_lesson_stats` est mis à jour directement par L7).
+- `/api/verification/*` (module `student`, **public dans l'application**, bloqué par Nginx depuis 2.6) : supprimé en 5.7 (`student_lesson_stats` est mis à jour directement par L7).
 - `/api/schools` : `POST /`, `PUT /:id`, `DELETE /:id`, `POST /:schoolId/instructors`, `GET /instructors/:id`, `PUT|DELETE /instructors/:id`, `POST /:schoolId/pricing`, `DELETE /pricing/:id` — **conservées, `admin` uniquement** (onboarding des écoles par script + ces routes).
 - `/api/lessons` : `GET /:id` (conservée, scoping D-20), `GET /:id/availability`, `PUT /:id`, `DELETE /:id`, `POST /:lessonId/book`, `GET /bookings/:id`, `GET /:lessonId/bookings`, `GET /students/:studentId/bookings`, `DELETE /bookings/:bookingId` — retirées en 5.2 / 5.7.
 - `/api/exams` : `POST /`, `GET /`, `GET /:id` (conservée, scoping), `GET /:id/availability`, `PUT|DELETE /:id`, `POST /:examId/register`, `GET /registrations/:id`, `GET /:examId/registrations`, `GET /students/:studentId/registrations`, `GET /students/:studentId/eligibility`, `PUT /registrations/:id/result`, `DELETE /registrations/:id` — retirées en 5.5 / 5.7.

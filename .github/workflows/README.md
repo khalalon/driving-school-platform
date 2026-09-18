@@ -8,13 +8,13 @@ This directory contains all CI/CD workflows for the Driving School Platform.
 **Trigger:** Push to main/develop, Pull Requests
 
 **Jobs:**
-- Detect changes in services
-- Run tests for each modified service
+- Detect changes in services/api
+- Lint, typecheck, test and build the API when it changed
 - Build and push Docker images
 - Deploy to staging/production
 
 **Features:**
-- Smart change detection (only tests modified services)
+- Smart change detection (only when services/api changed)
 - Parallel testing
 - Code coverage upload
 - Automated deployments
