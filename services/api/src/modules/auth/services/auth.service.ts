@@ -1,10 +1,13 @@
+import { ITransactionRunner } from '../../../db/transaction';
 import { HttpError } from '../../../http/errors';
 import { IUserRepository } from '../repositories/user.repository';
 import {
   AuthTokens,
+  InstructorCreator,
   LoginDTO,
   PublicUser,
   RegisterDTO,
+  SchoolCodeConsumer,
   TokenPayload,
   User,
   UserRole,
@@ -18,24 +21,68 @@ export class AuthService {
     private readonly userRepository: IUserRepository,
     private readonly passwordService: IPasswordService,
     private readonly tokenService: ITokenService,
-    private readonly cacheService: ICacheService
+    private readonly cacheService: ICacheService,
+    private readonly schoolCodes: SchoolCodeConsumer,
+    private readonly instructors: InstructorCreator,
+    private readonly transactions: ITransactionRunner
   ) {}
 
+  /**
+   * A2 (D-17). Sans `schoolCode` : compte `student`. Avec : le code est consommé, le compte prend
+   * son rôle et un instructeur reçoit sa fiche `instructors`, le tout dans une transaction — un
+   * code inconnu, inactif, expiré ou épuisé laisse tout intact (400 INVALID_SCHOOL_CODE).
+   */
   async register(dto: RegisterDTO): Promise<AuthTokens> {
     const existingUser = await this.userRepository.findByEmail(dto.email);
     if (existingUser) {
       throw new HttpError(409, 'CONFLICT', 'Un compte existe déjà avec cet email');
     }
-
-    // Sans code d'école, le compte est un élève (4.1) ; le rôle n'est jamais choisi par l'appelant.
     const passwordHash = await this.passwordService.hash(dto.password);
-    const user = await this.userRepository.create(
-      dto.email,
-      passwordHash,
-      UserRole.STUDENT,
-      dto.firstName,
-      dto.lastName
-    );
+
+    if (dto.schoolCode === undefined) {
+      const student = await this.userRepository.create(
+        dto.email,
+        passwordHash,
+        UserRole.STUDENT,
+        dto.firstName,
+        dto.lastName
+      );
+      return this.generateTokensForUser(student);
+    }
+
+    const schoolCode = dto.schoolCode;
+    const user = await this.transactions.run(async (tx) => {
+      const code = await this.schoolCodes.consume(schoolCode, tx);
+      if (!code) {
+        throw new HttpError(
+          400,
+          'INVALID_SCHOOL_CODE',
+          "Code d'école inconnu, inactif, expiré ou épuisé"
+        );
+      }
+      const created = await this.userRepository.create(
+        dto.email,
+        passwordHash,
+        code.role,
+        dto.firstName,
+        dto.lastName,
+        tx
+      );
+      if (code.role === UserRole.INSTRUCTOR) {
+        // `phone` et `licenseNumber` sont garantis par le validateur quand `schoolCode` est présent.
+        await this.instructors.create(
+          code.schoolId,
+          {
+            userId: created.id,
+            phone: dto.phone ?? '',
+            licenseNumber: dto.licenseNumber ?? '',
+            specialties: [],
+          },
+          tx
+        );
+      }
+      return created;
+    });
 
     return this.generateTokensForUser(user);
   }

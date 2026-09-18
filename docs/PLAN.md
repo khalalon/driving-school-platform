@@ -274,7 +274,7 @@ test "$(curl -s -o /dev/null -w '%{http_code}' -X POST localhost/api/auth/regist
 ```
 **Hors périmètre** : `schoolCode` (4.2).
 
-### - [ ] 4.2 — `register` avec `schoolCode` : instructeur (ou admin) rattaché à une école
+### - [x] 4.2 — `register` avec `schoolCode` : instructeur (ou admin) rattaché à une école
 **Objectif** : avec `schoolCode` (D-17) : le code doit être `is_active`, non expiré, `uses_count < max_uses` (ou `max_uses NULL`) → sinon 400 `INVALID_SCHOOL_CODE` ; `phone` et `licenseNumber` requis si `role = instructor` ; dans une transaction : `users` (rôle du code), `instructors` (si instructeur), `uses_count + 1`. Réponse identique à un register simple.
 **Fichiers** : `modules/auth/**`, `modules/school/repositories/school-code.repository.ts` (nouveau), validators, tests, `docs/API_CONTRACT.md` (A2, S5 supprimée).
 **Critère de validation** :

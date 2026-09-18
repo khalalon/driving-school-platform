@@ -38,7 +38,7 @@ services/api/src/
 
 | Module | Préfixes montés | Contenu (état actuel, contrat cible entre parenthèses) | Réutilisé par |
 |---|---|---|---|
-| `auth` | `/api/auth` | A1–A5 ; `register` exige encore `role` (4.1) ; même secret pour access et refresh (4.4) ; logout = clé Redis jamais écrite (4.6) ; expose `requireAuth` | tous |
+| `auth` | `/api/auth` | A1–A5 ; `register` conforme à D-17 (sans `role` ; `schoolCode` → rôle du code + fiche `instructors` en transaction, via `SchoolCodeRepository` et `InstructorRepository` du module school injectés) ; même secret pour access et refresh (4.4) ; logout = clé Redis jamais écrite (4.6) ; expose `requireAuth` | tous |
 | `school` | `/api/schools` | S1–S4 publics + administration `admin` ; colonnes aliasées en camelCase ; `LessonType` D-18 | `lesson` (grille tarifaire, D-30) |
 | `student` | `/api/enrollment`, `/api/profiles`, `/api/student-profiles`, `/api/verification` | E1–E6, P1–P11 (`:studentId` = students.id jusqu'à 5.0), vérification (publique dans l'app, **bloquée par Nginx**, retirée en 5.7) ; `approveRequest` atomique (UPDATE + INSERT dans une transaction, 3.2) | `lesson`, `exam` (`StudentRepository`, `StatsRepository`) |
 | `lesson` | `/api/lessons` | schéma 007 (une leçon = un élève, D-21 / D-34) : types, validators L1–L7 et repository alignés (3.3) ; anciennes routes de créneaux encore montées (`POST /` exige `studentId`, `/:lessonId/book` refuse : capacité 1), remplacées par L1–L7 en 5.2–5.4 | — |
@@ -78,7 +78,7 @@ Une seule base `driving_school`, un seul schéma `public`. Les modules lisent et
 | `exam_registrations` | `exam_id`, `student_id` → **students**, `result` ∈ passed/failed/pending, `score`, `notes`, + (003) `paid`, `payment_date`, `payment_method`, `amount`. **Données reprises dans `exams` par 008, table conservée mais plus alimentée** (lue par P3, P4, P7 jusqu'en 5.0) | personne | student (profils, jusqu'en 5.0) |
 | `payments` | `student_id` → students, `reference_type` ∈ lesson/exam, `reference_id`, `amount`, `status`, `method`, `transaction_id` — **pas de `metadata`** | personne (module non monté) | personne |
 | `notifications` | `user_id` → users, `type`, `title`, `message`, `read` | personne (module non porté, D-35) | personne |
-| `school_codes` (002) | `school_id`, `code` unique, `role` ∈ instructor/student, `max_uses`, `uses_count`, `expires_at`, `is_active` | personne (4.2 : consommé par `register`) | personne |
+| `school_codes` (002) | `school_id`, `code` unique, `role` ∈ instructor/student, `max_uses`, `uses_count`, `expires_at`, `is_active` | auth (`register` consomme : `uses_count + 1` sous conditions de validité, 4.2) ; insérés par script (4.3) | auth |
 | `enrollment_requests` (002) | `student_id` → **users** (pas students), **NOT NULL depuis 005**, `school_id`, `status` ∈ pending/approved/rejected, `message`, `rejection_reason`, `processed_by` → users, `processed_at` ; **index unique partiel sur `student_id` WHERE status IN (pending, approved)** depuis 009 (D-22 ; l'ancienne unique(student, school) de 002 est levée : les refus s'accumulent) | student | student |
 | `student_lesson_stats` (002) | `student_id` → students, `school_id`, compteurs de leçons effectuées | student (`/verification/.../lesson-completed`, bloqué par Nginx) | student |
 | `schema_migrations` (004) | `name` (PK, nom du fichier), `applied_at` | 004, `scripts/migrate.sh` | `scripts/migrate.sh` |

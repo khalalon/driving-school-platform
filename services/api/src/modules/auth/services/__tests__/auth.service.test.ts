@@ -1,6 +1,14 @@
+import { ITransactionRunner, Queryable } from '../../../../db/transaction';
 import { HttpError } from '../../../../http/errors';
 import { IUserRepository } from '../../repositories/user.repository';
-import { LoginDTO, RegisterDTO, User, UserRole } from '../../types/auth.types';
+import {
+  InstructorCreator,
+  LoginDTO,
+  RegisterDTO,
+  SchoolCodeConsumer,
+  User,
+  UserRole,
+} from '../../types/auth.types';
 import { AuthService } from '../auth.service';
 import { ICacheService } from '../cache.service';
 import { IPasswordService } from '../password.service';
@@ -12,6 +20,11 @@ describe('AuthService', () => {
   let passwordService: jest.Mocked<IPasswordService>;
   let tokenService: jest.Mocked<ITokenService>;
   let cacheService: jest.Mocked<ICacheService>;
+  let schoolCodes: jest.Mocked<SchoolCodeConsumer>;
+  let instructors: jest.Mocked<InstructorCreator>;
+  let transactions: jest.Mocked<ITransactionRunner>;
+  // Client de transaction factice, transmis par le service à chaque écriture de l'inscription.
+  const tx: Queryable = { query: jest.fn() };
 
   const user: User = {
     id: 'user-123',
@@ -39,7 +52,19 @@ describe('AuthService', () => {
       verifyRefreshToken: jest.fn(),
     };
     cacheService = { get: jest.fn(), set: jest.fn(), delete: jest.fn() };
-    authService = new AuthService(userRepository, passwordService, tokenService, cacheService);
+    schoolCodes = { consume: jest.fn() };
+    instructors = { create: jest.fn() };
+    const run = jest.fn((work: (client: Queryable) => Promise<unknown>) => work(tx));
+    transactions = { run } as unknown as jest.Mocked<ITransactionRunner>;
+    authService = new AuthService(
+      userRepository,
+      passwordService,
+      tokenService,
+      cacheService,
+      schoolCodes,
+      instructors,
+      transactions
+    );
   });
 
   describe('register', () => {
@@ -83,6 +108,86 @@ describe('AuthService', () => {
         code: 'CONFLICT',
       });
       expect(userRepository.create).not.toHaveBeenCalled();
+    });
+
+    describe('avec schoolCode (D-17)', () => {
+      const withCode: RegisterDTO = {
+        ...dto,
+        schoolCode: 'INST-SEED',
+        phone: '+21600000009',
+        licenseNumber: 'LIC-9',
+      };
+
+      beforeEach(() => {
+        userRepository.findByEmail.mockResolvedValue(null);
+        passwordService.hash.mockResolvedValue('hashed-password');
+        tokenService.generateTokens.mockReturnValue(tokens);
+      });
+
+      it('code instructeur : consomme le code, crée le compte et la fiche instructors dans la transaction', async () => {
+        schoolCodes.consume.mockResolvedValue({ schoolId: 'school-1', role: UserRole.INSTRUCTOR });
+        userRepository.create.mockResolvedValue({ ...user, role: UserRole.INSTRUCTOR });
+
+        await expect(authService.register(withCode)).resolves.toEqual(tokens);
+
+        expect(transactions.run).toHaveBeenCalledTimes(1);
+        expect(schoolCodes.consume).toHaveBeenCalledWith('INST-SEED', tx);
+        expect(userRepository.create).toHaveBeenCalledWith(
+          withCode.email,
+          'hashed-password',
+          UserRole.INSTRUCTOR,
+          'Test',
+          'Élève',
+          tx
+        );
+        expect(instructors.create).toHaveBeenCalledWith(
+          'school-1',
+          { userId: user.id, phone: '+21600000009', licenseNumber: 'LIC-9', specialties: [] },
+          tx
+        );
+        expect(tokenService.generateTokens).toHaveBeenCalledWith({
+          userId: user.id,
+          email: user.email,
+          role: UserRole.INSTRUCTOR,
+        });
+      });
+
+      it('code élève : compte student, pas de fiche instructors', async () => {
+        schoolCodes.consume.mockResolvedValue({ schoolId: 'school-1', role: UserRole.STUDENT });
+        userRepository.create.mockResolvedValue(user);
+
+        await expect(authService.register(withCode)).resolves.toEqual(tokens);
+
+        expect(userRepository.create).toHaveBeenCalledWith(
+          withCode.email,
+          'hashed-password',
+          UserRole.STUDENT,
+          'Test',
+          'Élève',
+          tx
+        );
+        expect(instructors.create).not.toHaveBeenCalled();
+      });
+
+      it('code inconnu, inactif, expiré ou épuisé : 400 INVALID_SCHOOL_CODE, aucun compte créé', async () => {
+        schoolCodes.consume.mockResolvedValue(null);
+
+        await expect(authService.register(withCode)).rejects.toMatchObject({
+          status: 400,
+          code: 'INVALID_SCHOOL_CODE',
+        });
+        expect(userRepository.create).not.toHaveBeenCalled();
+        expect(instructors.create).not.toHaveBeenCalled();
+      });
+
+      it('sans schoolCode : aucune transaction ni consommation de code', async () => {
+        userRepository.create.mockResolvedValue(user);
+
+        await authService.register(dto);
+
+        expect(transactions.run).not.toHaveBeenCalled();
+        expect(schoolCodes.consume).not.toHaveBeenCalled();
+      });
     });
 
     it('propage une erreur de base de données telle quelle (500 côté controller)', async () => {

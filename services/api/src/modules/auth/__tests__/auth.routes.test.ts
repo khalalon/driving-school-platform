@@ -72,6 +72,32 @@ describe('Routes /api/auth', () => {
     expect(authService.register).not.toHaveBeenCalled();
   });
 
+  it('POST /register : avec schoolCode, phone et licenseNumber deviennent obligatoires (D-17)', async () => {
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({ ...registerBody, schoolCode: 'INST-SEED' });
+    expect(res.status).toBe(400);
+    expect((res.body as { message: string }).message).toContain('phone');
+    expect(authService.register).not.toHaveBeenCalled();
+
+    authService.register.mockResolvedValue(tokens);
+    const ok = await request(app)
+      .post('/api/auth/register')
+      .send({
+        ...registerBody,
+        schoolCode: ' INST-SEED ',
+        phone: '+21600000009',
+        licenseNumber: 'LIC-9',
+      });
+    expect(ok.status).toBe(201);
+    expect(authService.register).toHaveBeenCalledWith({
+      ...registerBody,
+      schoolCode: 'INST-SEED',
+      phone: '+21600000009',
+      licenseNumber: 'LIC-9',
+    });
+  });
+
   it('POST /register : 400 VALIDATION_ERROR si `role` est présent (4.1, jamais choisi par l’appelant)', async () => {
     const res = await request(app)
       .post('/api/auth/register')

@@ -1,9 +1,11 @@
 import { Pool } from 'pg';
+import { Queryable } from '../../../db/transaction';
 import { CreateInstructorDTO, Instructor, UpdateInstructorDTO } from '../types/school.types';
 
 export interface IInstructorRepository {
-  create(schoolId: string, data: CreateInstructorDTO): Promise<Instructor>;
-  findById(id: string): Promise<Instructor | null>;
+  /** `executor` : client d'une transaction en cours (inscription avec code, 4.2), le pool sinon. */
+  create(schoolId: string, data: CreateInstructorDTO, executor?: Queryable): Promise<Instructor>;
+  findById(id: string, executor?: Queryable): Promise<Instructor | null>;
   findBySchoolId(schoolId: string): Promise<Instructor[]>;
   update(id: string, data: UpdateInstructorDTO): Promise<Instructor>;
   delete(id: string): Promise<void>;
@@ -22,18 +24,22 @@ const INSTRUCTOR_FROM = `FROM instructors i LEFT JOIN users u ON i.user_id = u.i
 export class InstructorRepository implements IInstructorRepository {
   constructor(private readonly db: Pool) {}
 
-  async create(schoolId: string, data: CreateInstructorDTO): Promise<Instructor> {
-    const result = await this.db.query<{ id: string }>(
+  async create(
+    schoolId: string,
+    data: CreateInstructorDTO,
+    executor: Queryable = this.db
+  ): Promise<Instructor> {
+    const result = await executor.query<{ id: string }>(
       `INSERT INTO instructors (school_id, user_id, name, phone, license_number, specialties)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING id`,
       [schoolId, data.userId, data.name ?? null, data.phone, data.licenseNumber, data.specialties]
     );
-    return this.requireById(result.rows[0].id);
+    return this.requireById(result.rows[0].id, executor);
   }
 
-  async findById(id: string): Promise<Instructor | null> {
-    const result = await this.db.query<Instructor>(
+  async findById(id: string, executor: Queryable = this.db): Promise<Instructor | null> {
+    const result = await executor.query<Instructor>(
       `SELECT ${INSTRUCTOR_COLUMNS} ${INSTRUCTOR_FROM} WHERE i.id = $1`,
       [id]
     );
@@ -75,8 +81,8 @@ export class InstructorRepository implements IInstructorRepository {
   }
 
   /** Relecture avec la jointure users après une écriture (RETURNING ne peut pas joindre). */
-  private async requireById(id: string): Promise<Instructor> {
-    const instructor = await this.findById(id);
+  private async requireById(id: string, executor: Queryable = this.db): Promise<Instructor> {
+    const instructor = await this.findById(id, executor);
     if (!instructor) {
       throw new Error(`Instructeur ${id} introuvable après écriture`);
     }

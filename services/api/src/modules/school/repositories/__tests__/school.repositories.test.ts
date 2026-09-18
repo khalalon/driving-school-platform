@@ -68,6 +68,24 @@ describe('InstructorRepository', () => {
     expect(selectSql).toMatch(/COALESCE\(u\.first_name, ''\) AS "firstName"/);
   });
 
+  it('create avec un client de transaction : INSERT et relecture sur ce client, pas sur le pool', async () => {
+    const { pool, query: poolQuery } = fakePool([]);
+    const txQuery = jest
+      .fn()
+      .mockResolvedValueOnce({ rows: [{ id: UUID.instructor }] })
+      .mockResolvedValueOnce({ rows: [{ id: UUID.instructor, firstName: 'Seed' }] });
+
+    const created = await new InstructorRepository(pool).create(
+      UUID.school,
+      { userId: 'user-1', phone: '+216', licenseNumber: 'LIC-1', specialties: [] },
+      { query: txQuery }
+    );
+
+    expect(created).toMatchObject({ firstName: 'Seed' });
+    expect(txQuery).toHaveBeenCalledTimes(2);
+    expect(poolQuery).not.toHaveBeenCalled();
+  });
+
   it('create : erreur si la ligne écrite est introuvable à la relecture', async () => {
     const query = jest
       .fn()

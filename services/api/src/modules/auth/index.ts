@@ -2,7 +2,10 @@ import { RequestHandler, Router } from 'express';
 import { Pool } from 'pg';
 import { RedisClientType } from 'redis';
 import { Env } from '../../config/env';
+import { PgTransactionRunner } from '../../db/transaction';
 import { authenticate } from '../../middleware/auth.middleware';
+import { InstructorRepository } from '../school/repositories/instructor.repository';
+import { SchoolCodeRepository } from '../school/repositories/school-code.repository';
 import { AuthController } from './controllers/auth.controller';
 import { UserRepository } from './repositories/user.repository';
 import { createAuthRouter } from './routes/auth.routes';
@@ -34,7 +37,16 @@ export function buildAuthModule({ db, redis, env }: AuthModuleDeps): AuthModule 
     refreshTokenExpiry: env.JWT_REFRESH_EXPIRES_IN,
   });
   const cacheService = new CacheService(redis);
-  const authService = new AuthService(userRepository, passwordService, tokenService, cacheService);
+  // Inscription avec code d'école (D-17) : repositories du module school, injectés ici.
+  const authService = new AuthService(
+    userRepository,
+    passwordService,
+    tokenService,
+    cacheService,
+    new SchoolCodeRepository(db),
+    new InstructorRepository(db),
+    new PgTransactionRunner(db)
+  );
   const controller = new AuthController(authService);
   const requireAuth = authenticate(tokenService);
 

@@ -1,3 +1,4 @@
+import { UserRole } from '../../../types/auth';
 import { LessonType } from '../../../types/domain';
 
 export interface School {
@@ -76,4 +77,18 @@ export interface SetPricingDTO {
   lessonType: LessonType;
   price: number;
   duration: number;
+}
+
+/** Code d'inscription d'une école (D-17) : `role` du compte créé, quota et expiration facultatifs. */
+export interface SchoolCode {
+  id: string;
+  schoolId: string;
+  code: string;
+  role: UserRole.INSTRUCTOR | UserRole.STUDENT;
+  maxUses: number | null;
+  usesCount: number;
+  expiresAt: Date | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
