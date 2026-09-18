@@ -27,12 +27,18 @@ export interface UpdateSchoolDTO {
   logoUrl?: string;
 }
 
-/** Colonne `name` : nullable puis supprimée en 3.1 (D-16) ; `firstName`/`lastName` via `users` ensuite. */
+/**
+ * `firstName` / `lastName` viennent de `users` (D-16, 3.1 ; vides sans compte lié).
+ * `name` : dérivé (`users` puis repli `instructors.name`), transitoire pour le mobile actuel,
+ * retiré du contrat S3 en 6.1.
+ */
 export interface Instructor {
   id: string;
   schoolId: string;
   userId: string | null;
-  name: string;
+  firstName: string;
+  lastName: string;
+  name: string | null;
   phone: string;
   licenseNumber: string;
   specialties: string[];
@@ -42,7 +48,8 @@ export interface Instructor {
 
 export interface CreateInstructorDTO {
   userId: string;
-  name: string;
+  /** Colonne héritée, nullable depuis 3.1 ; l'identité est celle de `users`. */
+  name?: string;
   phone: string;
   licenseNumber: string;
   specialties: string[];

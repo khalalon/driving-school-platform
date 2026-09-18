@@ -32,6 +32,13 @@ describe('Routes /api/auth', () => {
     ),
   });
   const tokens = { accessToken: 'a', refreshToken: 'r' };
+  const registerBody = {
+    email: 'x@x.io',
+    password: 'Passw0rd!',
+    role: 'student',
+    firstName: 'Ali',
+    lastName: 'Ben Salah',
+  };
   const bearer = (): string =>
     `Bearer ${
       tokenService.generateTokens({ userId: 'u1', email: 'u@x.io', role: UserRole.STUDENT })
@@ -57,20 +64,28 @@ describe('Routes /api/auth', () => {
     expect(authService.register).not.toHaveBeenCalled();
   });
 
-  it('POST /register : 201 avec les jetons', async () => {
-    authService.register.mockResolvedValue(tokens);
+  it('POST /register : 400 VALIDATION_ERROR sans firstName / lastName (D-16)', async () => {
     const res = await request(app)
       .post('/api/auth/register')
       .send({ email: 'x@x.io', password: 'Passw0rd!', role: 'student' });
+    expect(res.status).toBe(400);
+    expect((res.body as { message: string }).message).toContain('firstName');
+    expect(authService.register).not.toHaveBeenCalled();
+  });
+
+  it('POST /register : 201 avec les jetons ; noms transmis épurés', async () => {
+    authService.register.mockResolvedValue(tokens);
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({ ...registerBody, firstName: '  Ali ' });
     expect(res.status).toBe(201);
     expect(res.body).toEqual(tokens);
+    expect(authService.register).toHaveBeenCalledWith({ ...registerBody, firstName: 'Ali' });
   });
 
   it('POST /register : 409 CONFLICT relayé depuis le service', async () => {
     authService.register.mockRejectedValue(new HttpError(409, 'CONFLICT', 'Un compte existe déjà'));
-    const res = await request(app)
-      .post('/api/auth/register')
-      .send({ email: 'x@x.io', password: 'Passw0rd!', role: 'student' });
+    const res = await request(app).post('/api/auth/register').send(registerBody);
     expect(res.status).toBe(409);
     expect(res.body).toEqual({ error: 'CONFLICT', message: 'Un compte existe déjà' });
   });

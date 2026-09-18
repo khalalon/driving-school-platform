@@ -40,7 +40,7 @@ services/api/src/
 |---|---|---|---|
 | `auth` | `/api/auth` | A1–A5 ; `register` exige encore `role` (4.1) ; même secret pour access et refresh (4.4) ; logout = clé Redis jamais écrite (4.6) ; expose `requireAuth` | tous |
 | `school` | `/api/schools` | S1–S4 publics + administration `admin` ; colonnes aliasées en camelCase ; `LessonType` D-18 | `lesson` (grille tarifaire, D-30) |
-| `student` | `/api/enrollment`, `/api/profiles`, `/api/student-profiles`, `/api/verification` | E1–E6, P1–P11 (`:studentId` = students.id jusqu'à 5.0), vérification (publique dans l'app, **bloquée par Nginx**, retirée en 5.7) ; `approveRequest` toujours cassé par `students.name NOT NULL` (3.1, 3.2) | `lesson`, `exam` (`StudentRepository`, `StatsRepository`) |
+| `student` | `/api/enrollment`, `/api/profiles`, `/api/student-profiles`, `/api/verification` | E1–E6, P1–P11 (`:studentId` = students.id jusqu'à 5.0), vérification (publique dans l'app, **bloquée par Nginx**, retirée en 5.7) ; `approveRequest` fonctionne depuis 3.1 (`students.name` nullable) mais sans transaction (3.2) | `lesson`, `exam` (`StudentRepository`, `StatsRepository`) |
 | `lesson` | `/api/lessons` | ancien modèle « l'école crée un créneau, l'élève réserve » (`lesson_bookings`, `studentId` = students.id) ; refonte D-01/D-21 en 3.3 et 5.2–5.4 | — |
 | `exam` | `/api/exams` | ancien modèle « session + inscription », éligibilité 20/30 leçons (supprimée en 5.7, D-26) ; refonte D-01 en 3.4 et 5.5–5.6 | — |
 | `payment` | **non monté** | porté typé (D-31 : paiement manuel en v1) ; sa table `payments` n'a pas la colonne `metadata` que le code écrit — migration nécessaire s'il est un jour monté | — |
@@ -61,17 +61,17 @@ Non portés : `notification` (D-35) et `analytics` (D-31, dont le middleware pas
 Une seule base `driving_school`, un seul schéma `public`. Les modules lisent et écrivent librement les tables des autres (ex. `lesson` lit `students`, `student` lit `lesson_bookings` et `exam_registrations`) ; c'est voulu dans une application unique.
 
 ### Migrations
-`migrations/001_initial_schema.sql`, `002_enrollment_system.sql`, `003_student_profile.sql`, `004_schema_migrations.sql`, `005_enrollment_student_not_null.sql` (purge des demandes orphelines, `student_id NOT NULL`), appliquées par Postgres à la première initialisation du volume. `004` crée la table de suivi `schema_migrations` (`name`, `applied_at`) et y inscrit 001–004. `scripts/migrate.sh` (`make migrate`) applique ensuite, dans l'ordre et en une transaction chacune, les migrations non enregistrées ; relançable sans effet. Les fichiers 001 et 002 ne sont pas idempotents (`CREATE INDEX` / `CREATE TRIGGER` sans `IF NOT EXISTS`) : rejouer l'un d'eux à la main sur une base existante échoue — passer par le script.
+`migrations/001_initial_schema.sql`, `002_enrollment_system.sql`, `003_student_profile.sql`, `004_schema_migrations.sql`, `005_enrollment_student_not_null.sql` (purge des demandes orphelines, `student_id NOT NULL`), `006_user_names.sql` (`users.first_name` / `last_name` avec backfill, `students.name` et `instructors.name` nullables), appliquées par Postgres à la première initialisation du volume. `004` crée la table de suivi `schema_migrations` (`name`, `applied_at`) et y inscrit 001–004. `scripts/migrate.sh` (`make migrate`) applique ensuite, dans l'ordre et en une transaction chacune, les migrations non enregistrées ; relançable sans effet. Les fichiers 001 et 002 ne sont pas idempotents (`CREATE INDEX` / `CREATE TRIGGER` sans `IF NOT EXISTS`) : rejouer l'un d'eux à la main sur une base existante échoue — passer par le script.
 
-### Tables (état après 005)
+### Tables (état après 006)
 
 | Table | Clés / colonnes notables | Écrite par (module) | Lue par (module) |
 |---|---|---|---|
-| `users` | `id`, `email` unique, `password_hash`, `role` ∈ admin/instructor/student | auth | tous |
+| `users` | `id`, `email` unique, `password_hash`, `role` ∈ admin/instructor/student, + (006) `first_name`, `last_name` NOT NULL (`''` pour les comptes antérieurs, D-16) | auth | tous (identité : jointures depuis school, student) |
 | `schools` | `id`, `name`, `address`, `phone`, `email`, `logo_url` | school | school, student |
-| `instructors` | `id`, `user_id` → users, `school_id` → schools, `name`, `phone`, `license_number`, `specialties[]` | school | school, student (jointures) |
+| `instructors` | `id`, `user_id` → users, `school_id` → schools, `name` (**nullable depuis 006**, identité portée par users), `phone`, `license_number`, `specialties[]` | school | school, student (jointures) |
 | `pricing` | `school_id`, `lesson_type` ∈ CODE/Manœuvre/Parc, `price`, `duration`, unique(school, type) | school | school |
-| `students` | `id`, `user_id` → users, `school_id` → schools, **`name NOT NULL`**, `authorized`, + (002) `enrollment_date`, `enrollment_request_id`, + (003) `date_of_birth`, `license_number`, `emergency_contact`, `emergency_phone`, `notes` | student | student, lesson, exam |
+| `students` | `id`, `user_id` → users, `school_id` → schools, `name` (**nullable depuis 006**, plus alimentée), `authorized`, + (002) `enrollment_date`, `enrollment_request_id`, + (003) `date_of_birth`, `license_number`, `emergency_contact`, `emergency_phone`, `notes` | student | student, lesson, exam |
 | `lessons` | `school_id`, `instructor_id`, `type` ∈ CODE/Manœuvre/Parc, `date_time`, `duration_minutes`, `capacity`, `current_bookings`, `price`, `status` ∈ scheduled/completed/cancelled | lesson | lesson, student |
 | `lesson_bookings` | `lesson_id`, `student_id` → **students**, `attended`, `feedback`, `rating`, + (003) `paid`, `payment_date`, `payment_method`, `amount` ; unique(lesson, student) | lesson, student | lesson, exam (compte les leçons pointées), student |
 | `exams` | `school_id`, `type` ∈ theory/practical, `date_time`, `examiner_id` (sans FK), `price`, `capacity` | exam | exam, student |
@@ -89,8 +89,8 @@ Une seule base `driving_school`, un seul schéma `public`. Les modules lisent et
 - Le mobile ne connaît que `users.id`. `POST /api/lessons/:id/book` et `POST /api/exams/:id/register` exigent un `students.id` dans le body : le mobile ne peut pas les appeler correctement (D-28, Phase 5).
 - Un élève inscrit dans deux écoles a deux `students.id` (D-22 : une seule inscription active, 3.5).
 
-### Bug bloquant connu
-`EnrollmentService.approveRequest` (`services/api/src/modules/student/services/enrollment.service.ts`) fait `updateStatus(approved)` puis `studentRepository.create({ userId, schoolId, authorized, enrollmentRequestId })` **sans `name`**. `students.name` est `NOT NULL` → l'INSERT échoue (500 `INTERNAL_ERROR`), mais la demande est déjà passée à `approved` (pas de transaction). L'approbation reste impossible : 3.1 (noms sur `users`, `name` nullable) et 3.2 (transaction).
+### Approbation sans transaction (3.2)
+`EnrollmentService.approveRequest` (`services/api/src/modules/student/services/enrollment.service.ts`) fait `updateStatus(approved)` puis `studentRepository.create({ userId, schoolId, authorized, enrollmentRequestId })` en deux requêtes indépendantes. Depuis 006 l'INSERT passe (`students.name` nullable), mais si la seconde requête échoue la demande reste `approved` sans ligne `students` : transaction en 3.2.
 
 ## 5. Nginx — où passent les requêtes
 

@@ -216,7 +216,7 @@ test "$(ls services)" = "api" && test "$(grep -c 'services/auth' Makefile .githu
 ```
 **Hors périmètre** : —
 
-### - [ ] 3.1 — Noms sur `users` ; `students.name` et `instructors.name` nullables
+### - [x] 3.1 — Noms sur `users` ; `students.name` et `instructors.name` nullables
 **Objectif** : migration `006_user_names.sql` : `users.first_name`, `users.last_name` (`NOT NULL DEFAULT ''` puis contrainte levée en fin de migration pour les lignes existantes, ou nullable + backfill `''`), `students.name` et `instructors.name` passent en **nullable** (D-16 ; suppression dans une migration ultérieure). `register` accepte et exige `firstName`/`lastName` ; `approveRequest` n'écrit plus `name` ; A3, S3, E4 et P1 exposent `firstName`/`lastName` par jointure.
 **Fichiers** : `migrations/006_user_names.sql`, `modules/auth/{validators,repositories,controllers}`, `modules/student/{services,repositories}`, `modules/school/repositories/instructor.repository.ts`, tests, `docs/API_CONTRACT.md` (A2, A3, S3, E4, P1).
 **Critère de validation** :

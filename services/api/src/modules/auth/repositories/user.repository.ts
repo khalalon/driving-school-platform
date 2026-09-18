@@ -2,24 +2,37 @@ import { Pool } from 'pg';
 import { User, UserRole } from '../types/auth.types';
 
 export interface IUserRepository {
-  create(email: string, passwordHash: string, role: UserRole): Promise<User>;
+  create(
+    email: string,
+    passwordHash: string,
+    role: UserRole,
+    firstName: string,
+    lastName: string
+  ): Promise<User>;
   findById(id: string): Promise<User | null>;
   findByEmail(email: string): Promise<User | null>;
   updatePassword(id: string, passwordHash: string): Promise<void>;
 }
 
 const USER_COLUMNS = `id, email, password_hash AS "passwordHash", role,
+  first_name AS "firstName", last_name AS "lastName",
   created_at AS "createdAt", updated_at AS "updatedAt"`;
 
 export class UserRepository implements IUserRepository {
   constructor(private readonly db: Pool) {}
 
-  async create(email: string, passwordHash: string, role: UserRole): Promise<User> {
+  async create(
+    email: string,
+    passwordHash: string,
+    role: UserRole,
+    firstName: string,
+    lastName: string
+  ): Promise<User> {
     const result = await this.db.query<User>(
-      `INSERT INTO users (email, password_hash, role, created_at, updated_at)
-       VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `INSERT INTO users (email, password_hash, role, first_name, last_name, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
        RETURNING ${USER_COLUMNS}`,
-      [email, passwordHash, role]
+      [email, passwordHash, role, firstName, lastName]
     );
     return result.rows[0];
   }

@@ -16,6 +16,10 @@ export interface IEnrollmentRepository {
   ): Promise<EnrollmentRequest>;
 }
 
+// Identité de l'élève : users.first_name / users.last_name depuis 3.1 (D-16).
+const STUDENT_IDENTITY = `u.email AS "studentEmail", u.first_name AS "studentFirstName",
+    u.last_name AS "studentLastName"`;
+
 const REQUEST_COLUMNS = (alias = ''): string => {
   const p = alias ? `${alias}.` : '';
   return `${p}id, ${p}student_id AS "studentId", ${p}school_id AS "schoolId", ${p}status, ${p}message,
@@ -38,7 +42,7 @@ export class EnrollmentRepository implements IEnrollmentRepository {
 
   async findById(id: string): Promise<EnrollmentRequest | null> {
     const result = await this.db.query<EnrollmentRequest>(
-      `SELECT ${REQUEST_COLUMNS('er')}, u.email AS "studentEmail", s.name AS "schoolName"
+      `SELECT ${REQUEST_COLUMNS('er')}, ${STUDENT_IDENTITY}, s.name AS "schoolName"
        FROM enrollment_requests er
        LEFT JOIN users u ON er.student_id = u.id
        LEFT JOIN schools s ON er.school_id = s.id
@@ -71,7 +75,7 @@ export class EnrollmentRepository implements IEnrollmentRepository {
       where += ' AND er.status = $2';
     }
     const result = await this.db.query<EnrollmentRequest>(
-      `SELECT ${REQUEST_COLUMNS('er')}, u.email AS "studentEmail"
+      `SELECT ${REQUEST_COLUMNS('er')}, ${STUDENT_IDENTITY}
        FROM enrollment_requests er
        LEFT JOIN users u ON er.student_id = u.id
        ${where}

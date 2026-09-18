@@ -6,7 +6,8 @@ describe('ProfileService', () => {
   const profile: StudentProfile = {
     id: 'student-1',
     userId: 'user-1',
-    name: 'Élève Test',
+    firstName: 'Élève',
+    lastName: 'Test',
     email: 'eleve@x.io',
     phone: null,
     address: null,

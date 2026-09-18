@@ -24,7 +24,8 @@ export class ProfileRepository implements IProfileRepository {
 
   async getStudentProfile(studentId: string, schoolId: string): Promise<StudentProfile | null> {
     const profile = await this.db.query<ProfileRow>(
-      `SELECT s.id, s.user_id AS "userId", s.name, u.email, s.phone, s.address,
+      `SELECT s.id, s.user_id AS "userId", u.first_name AS "firstName", u.last_name AS "lastName",
+              u.email, s.phone, s.address,
               s.date_of_birth AS "dateOfBirth", s.license_number AS "licenseNumber",
               s.profile_photo_url AS "profilePhotoUrl", s.enrollment_date AS "enrollmentDate",
               s.emergency_contact AS "emergencyContact", s.emergency_phone AS "emergencyPhone",
@@ -68,12 +69,15 @@ export class ProfileRepository implements IProfileRepository {
   async getStudentLessons(studentId: string, schoolId: string): Promise<LessonHistory[]> {
     const result = await this.db.query<LessonHistory>(
       `SELECT lb.id, l.id AS "lessonId", l.type AS "lessonType", l.date_time AS "dateTime",
-              l.duration_minutes AS duration, i.name AS "instructorName", lb.attended, lb.feedback,
+              l.duration_minutes AS duration,
+              COALESCE(NULLIF(trim(concat_ws(' ', iu.first_name, iu.last_name)), ''), i.name) AS "instructorName",
+              lb.attended, lb.feedback,
               lb.rating, COALESCE(lb.paid, false) AS paid, lb.amount::float8 AS amount,
               lb.payment_date AS "paymentDate", lb.payment_method AS "paymentMethod"
        FROM lesson_bookings lb
        JOIN lessons l ON lb.lesson_id = l.id
        LEFT JOIN instructors i ON l.instructor_id = i.id
+       LEFT JOIN users iu ON i.user_id = iu.id
        WHERE lb.student_id = $1 AND l.school_id = $2
        ORDER BY l.date_time DESC`,
       [studentId, schoolId]

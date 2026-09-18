@@ -43,26 +43,50 @@ describe('SchoolRepository', () => {
 });
 
 describe('InstructorRepository', () => {
-  it('create : école, utilisateur, identité, spécialités', async () => {
-    const { pool, query } = fakePool([{ id: UUID.instructor }]);
-    await new InstructorRepository(pool).create(UUID.school, {
+  it('create : name facultatif (null) ; relecture jointe à users pour firstName / lastName', async () => {
+    const query = jest
+      .fn()
+      .mockResolvedValueOnce({ rows: [{ id: UUID.instructor }] })
+      .mockResolvedValueOnce({
+        rows: [{ id: UUID.instructor, firstName: 'Seed', lastName: 'Instructor', name: null }],
+      });
+    const repo = new InstructorRepository({ query } as unknown as import('pg').Pool);
+
+    const created = await repo.create(UUID.school, {
       userId: 'user-1',
-      name: 'Instr',
       phone: '+216',
       licenseNumber: 'LIC-1',
       specialties: ['Parc'],
     });
 
-    const [sql, params] = query.mock.calls[0] as [string, unknown[]];
-    expect(sql).toMatch(/INSERT INTO instructors/);
-    expect(params).toEqual([UUID.school, 'user-1', 'Instr', '+216', 'LIC-1', ['Parc']]);
+    expect(created).toMatchObject({ firstName: 'Seed', lastName: 'Instructor' });
+    const [insertSql, params] = query.mock.calls[0] as [string, unknown[]];
+    expect(insertSql).toMatch(/INSERT INTO instructors/);
+    expect(params).toEqual([UUID.school, 'user-1', null, '+216', 'LIC-1', ['Parc']]);
+    const [selectSql] = query.mock.calls[1] as [string, unknown[]];
+    expect(selectSql).toMatch(/LEFT JOIN users u ON i\.user_id = u\.id/);
+    expect(selectSql).toMatch(/COALESCE\(u\.first_name, ''\) AS "firstName"/);
+  });
+
+  it('create : erreur si la ligne écrite est introuvable à la relecture', async () => {
+    const query = jest
+      .fn()
+      .mockResolvedValueOnce({ rows: [{ id: UUID.instructor }] })
+      .mockResolvedValueOnce({ rows: [] });
+    const repo = new InstructorRepository({ query } as unknown as import('pg').Pool);
+
+    await expect(
+      repo.create(UUID.school, { userId: 'u', phone: '+216', licenseNumber: 'L', specialties: [] })
+    ).rejects.toThrow(/introuvable après écriture/);
   });
 
   it('update partiel, lectures, suppression', async () => {
     const { pool, query } = fakePool([{ id: UUID.instructor }]);
     const repo = new InstructorRepository(pool);
 
-    await repo.update(UUID.instructor, { specialties: ['CODE'] });
+    await expect(repo.update(UUID.instructor, { specialties: ['CODE'] })).resolves.toEqual({
+      id: UUID.instructor,
+    });
     expect((query.mock.calls[0] as [string, unknown[]])[1]).toEqual([
       UUID.instructor,
       null,
@@ -70,6 +94,7 @@ describe('InstructorRepository', () => {
       null,
       ['CODE'],
     ]);
+    expect((query.mock.calls[1] as [string, unknown[]])[0]).toMatch(/WHERE i\.id = \$1/);
     await expect(repo.findById(UUID.instructor)).resolves.toEqual({ id: UUID.instructor });
     await expect(repo.findBySchoolId(UUID.school)).resolves.toEqual([{ id: UUID.instructor }]);
     await repo.delete(UUID.instructor);

@@ -27,7 +27,13 @@ export class AuthService {
     }
 
     const passwordHash = await this.passwordService.hash(dto.password);
-    const user = await this.userRepository.create(dto.email, passwordHash, dto.role);
+    const user = await this.userRepository.create(
+      dto.email,
+      passwordHash,
+      dto.role,
+      dto.firstName,
+      dto.lastName
+    );
 
     return this.generateTokensForUser(user);
   }

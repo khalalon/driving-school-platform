@@ -29,6 +29,7 @@ describe('EnrollmentRepository', () => {
     const [sqlAll, paramsAll] = query.mock.calls[0] as [string, unknown[]];
     const [sqlFiltered, paramsFiltered] = query.mock.calls[1] as [string, unknown[]];
     expect(sqlAll).not.toMatch(/er\.status = \$2/);
+    expect(sqlAll).toMatch(/u.first_name AS "studentFirstName"/);
     expect(paramsAll).toEqual([UUID.school]);
     expect(sqlFiltered).toMatch(/er\.status = \$2/);
     expect(paramsFiltered).toEqual([UUID.school, 'pending']);
@@ -122,14 +123,17 @@ describe('ProfileRepository', () => {
   it('getStudentProfile : agrège fiche, compte de leçons et statistiques d’examens', async () => {
     const query = jest
       .fn()
-      .mockResolvedValueOnce({ rows: [{ id: UUID.student, name: 'Élève', completedLessons: 2 }] })
+      .mockResolvedValueOnce({
+        rows: [{ id: UUID.student, firstName: 'Élève', lastName: 'Test', completedLessons: 2 }],
+      })
       .mockResolvedValueOnce({ rows: [{ total: '3' }] })
       .mockResolvedValueOnce({ rows: [{ total: '2', passed: '1' }] });
     const repo = new ProfileRepository({ query } as unknown as import('pg').Pool);
 
     await expect(repo.getStudentProfile(UUID.student, UUID.school)).resolves.toEqual({
       id: UUID.student,
-      name: 'Élève',
+      firstName: 'Élève',
+      lastName: 'Test',
       completedLessons: 2,
       totalLessons: 3,
       totalExams: 2,

@@ -33,6 +33,8 @@ export interface EnrollmentRequest {
   createdAt: Date;
   updatedAt: Date;
   studentEmail?: string;
+  studentFirstName?: string;
+  studentLastName?: string;
   schoolName?: string;
   schoolAddress?: string;
 }
@@ -79,7 +81,8 @@ export interface ExamEligibility {
 export interface StudentProfile {
   id: string;
   userId: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   phone: string | null;
   address: string | null;

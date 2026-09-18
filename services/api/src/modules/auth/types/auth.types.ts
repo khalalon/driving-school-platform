@@ -7,6 +7,8 @@ export interface User {
   email: string;
   passwordHash: string;
   role: UserRole;
+  firstName: string;
+  lastName: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,6 +28,8 @@ export interface RegisterDTO {
   email: string;
   password: string;
   role: UserRole;
+  firstName: string;
+  lastName: string;
 }
 
 export interface LoginDTO {

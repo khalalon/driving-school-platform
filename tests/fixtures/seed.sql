@@ -19,12 +19,14 @@ ON CONFLICT DO NOTHING;
 -- Instructeur : instructor@seed.io / Seed1234!
 -- Hash bcryptjs (12 tours) généré une fois avec :
 --   node -e "console.log(require('bcryptjs').hashSync('Seed1234!', 12))"
-INSERT INTO users (id, email, password_hash, role)
+INSERT INTO users (id, email, password_hash, role, first_name, last_name)
 VALUES (
     '22222222-2222-4222-8222-222222222222',
     'instructor@seed.io',
     '$2a$12$bPihATbM3D3a32OuGL0DL.ciKH75/Xf9ir5h6SzcFqP4R.zW9HKou',
-    'instructor'
+    'instructor',
+    'Seed',
+    'Instructor'
 )
 ON CONFLICT DO NOTHING;
 

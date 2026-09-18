@@ -18,6 +18,8 @@ describe('AuthService', () => {
     email: 'test@example.com',
     passwordHash: 'hashed-password',
     role: UserRole.STUDENT,
+    firstName: 'Test',
+    lastName: 'Élève',
     createdAt: new Date('2026-01-01T00:00:00Z'),
     updatedAt: new Date('2026-01-01T00:00:00Z'),
   };
@@ -45,6 +47,8 @@ describe('AuthService', () => {
       email: 'test@example.com',
       password: 'Password@123',
       role: UserRole.STUDENT,
+      firstName: 'Test',
+      lastName: 'Élève',
     };
 
     it('crée le compte, hache le mot de passe et renvoie une paire de jetons', async () => {
@@ -57,7 +61,13 @@ describe('AuthService', () => {
 
       expect(userRepository.findByEmail).toHaveBeenCalledWith(dto.email);
       expect(passwordService.hash).toHaveBeenCalledWith(dto.password);
-      expect(userRepository.create).toHaveBeenCalledWith(dto.email, 'hashed-password', dto.role);
+      expect(userRepository.create).toHaveBeenCalledWith(
+        dto.email,
+        'hashed-password',
+        dto.role,
+        'Test',
+        'Élève'
+      );
       expect(tokenService.generateTokens).toHaveBeenCalledWith({
         userId: user.id,
         email: user.email,
@@ -190,6 +200,8 @@ describe('AuthService', () => {
         id: user.id,
         email: user.email,
         role: user.role,
+        firstName: 'Test',
+        lastName: 'Élève',
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
       });
