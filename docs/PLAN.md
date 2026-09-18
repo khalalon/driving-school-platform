@@ -176,7 +176,7 @@ cd services/api && npx tsc --noEmit && npm test -- --silent && cd ../.. && docke
 ```
 **Hors périmètre** : adaptation au modèle D-01.
 
-### - [ ] 2.5 — `payment` porté non monté ; `notification` et `analytics` non portés
+### - [x] 2.5 — `payment` porté non monté ; `notification` et `analytics` non portés
 **Objectif** : `modules/payment` est copié avec ses tests mais **n'est pas monté** dans `app.ts` (D-31) ; `services/notification` et `services/analytics` ne sont **pas portés** (D-31, D-35) — leur code reste dans l'historique git.
 **Fichiers** : `services/api/src/modules/payment/**`, `app.ts`.
 **Critère de validation** :
