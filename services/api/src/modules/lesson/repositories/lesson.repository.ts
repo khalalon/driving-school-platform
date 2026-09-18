@@ -11,27 +11,33 @@ export interface ILessonRepository {
   decrementBookings(id: string): Promise<void>;
 }
 
-const LESSON_COLUMNS = `id, school_id AS "schoolId", instructor_id AS "instructorId", type,
-  date_time AS "dateTime", duration_minutes AS "durationMinutes", capacity,
-  current_bookings AS "currentBookings", price::float8 AS price, status,
+/** Schéma 007 : une leçon = un élève, deux dates (demandée / planifiée), paiement sur la leçon. */
+const LESSON_COLUMNS = `id, school_id AS "schoolId", student_id AS "studentId",
+  instructor_id AS "instructorId", preferred_instructor_id AS "preferredInstructorId", type, status,
+  requested_date AS "requestedDate", scheduled_date AS "scheduledDate",
+  duration_minutes AS "durationMinutes", price::float8 AS price, capacity,
+  current_bookings AS "currentBookings", notes, admin_notes AS "adminNotes",
+  rejection_reason AS "rejectionReason", attended, feedback, rating, paid, amount::float8 AS amount,
+  payment_date AS "paymentDate", payment_method AS "paymentMethod",
   created_at AS "createdAt", updated_at AS "updatedAt"`;
 
 export class LessonRepository implements ILessonRepository {
   constructor(private readonly db: Pool) {}
 
+  /** Ancienne route de création (jusqu'en 5.2) : leçon directement `scheduled` pour un élève. */
   async create(dto: CreateLessonDTO): Promise<Lesson> {
     const result = await this.db.query<Lesson>(
-      `INSERT INTO lessons (school_id, instructor_id, type, date_time, duration_minutes, capacity,
-         current_bookings, price, status, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, 0, $7, 'scheduled', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `INSERT INTO lessons (school_id, student_id, instructor_id, type, scheduled_date,
+         duration_minutes, price, status, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'scheduled', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
        RETURNING ${LESSON_COLUMNS}`,
       [
         dto.schoolId,
+        dto.studentId,
         dto.instructorId,
         dto.type,
-        dto.dateTime,
+        dto.scheduledDate,
         dto.durationMinutes,
-        dto.capacity,
         dto.price,
       ]
     );
@@ -46,7 +52,10 @@ export class LessonRepository implements ILessonRepository {
     return result.rows[0] ?? null;
   }
 
-  /** Le filtre `studentId` est accepté par le validateur mais ignoré ici (état actuel). */
+  /**
+   * Filtres par colonnes. `scope` est résolu par le service (5.2 : il dépend de l'appelant) ;
+   * `date` cible le jour de `scheduled_date`, ou de `requested_date` pour une demande `pending`.
+   */
   async findAll(filters: LessonFilters): Promise<Lesson[]> {
     const conditions: string[] = [];
     const values: unknown[] = [];
@@ -57,14 +66,25 @@ export class LessonRepository implements ILessonRepository {
 
     if (filters.schoolId) add('school_id', '=', filters.schoolId);
     if (filters.instructorId) add('instructor_id', '=', filters.instructorId);
+    if (filters.studentId) add('student_id', '=', filters.studentId);
     if (filters.type) add('type', '=', filters.type);
-    if (filters.status) add('status', '=', filters.status);
-    if (filters.dateFrom) add('date_time', '>=', filters.dateFrom);
-    if (filters.dateTo) add('date_time', '<=', filters.dateTo);
+    if (filters.status && filters.status.length > 0) {
+      values.push(filters.status);
+      conditions.push(`status = ANY($${values.length})`);
+    }
+    if (filters.date) {
+      values.push(filters.date);
+      conditions.push(
+        `COALESCE(scheduled_date, CASE WHEN status = 'pending' THEN requested_date END)::date = $${values.length}::date`
+      );
+    }
+    if (filters.dateFrom) add('scheduled_date', '>=', filters.dateFrom);
+    if (filters.dateTo) add('scheduled_date', '<=', filters.dateTo);
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const result = await this.db.query<Lesson>(
-      `SELECT ${LESSON_COLUMNS} FROM lessons ${where} ORDER BY date_time ASC`,
+      `SELECT ${LESSON_COLUMNS} FROM lessons ${where}
+       ORDER BY COALESCE(scheduled_date, requested_date) ASC, created_at ASC`,
       values
     );
     return result.rows;
@@ -79,9 +99,8 @@ export class LessonRepository implements ILessonRepository {
     };
 
     if (dto.instructorId !== undefined) set('instructor_id', dto.instructorId);
-    if (dto.dateTime !== undefined) set('date_time', dto.dateTime);
+    if (dto.scheduledDate !== undefined) set('scheduled_date', dto.scheduledDate);
     if (dto.durationMinutes !== undefined) set('duration_minutes', dto.durationMinutes);
-    if (dto.capacity !== undefined) set('capacity', dto.capacity);
     if (dto.price !== undefined) set('price', dto.price);
     if (dto.status !== undefined) set('status', dto.status);
     updates.push('updated_at = CURRENT_TIMESTAMP');
@@ -99,9 +118,10 @@ export class LessonRepository implements ILessonRepository {
     await this.db.query('DELETE FROM lessons WHERE id = $1', [id]);
   }
 
+  /** Anciennes réservations (jusqu'en 5.2) ; `capacity = 1` depuis 007, donc jamais au-delà. */
   async incrementBookings(id: string): Promise<void> {
     await this.db.query(
-      'UPDATE lessons SET current_bookings = current_bookings + 1 WHERE id = $1',
+      'UPDATE lessons SET current_bookings = LEAST(current_bookings + 1, capacity) WHERE id = $1',
       [id]
     );
   }

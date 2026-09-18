@@ -53,11 +53,11 @@ describe('Routes /api/lessons (état actuel)', () => {
   it('POST / : 403 élève ; 201 instructeur avec payload valide ; date passée → 400 Joi', async () => {
     const body = {
       schoolId: UUID.school,
+      studentId: UUID.student,
       instructorId: UUID.instructor,
       type: 'Parc',
-      dateTime: future,
+      scheduledDate: future,
       durationMinutes: 60,
-      capacity: 1,
       price: 40,
     };
     await request(app).post(base).set('Authorization', bearerFor('student')).send(body).expect(403);
@@ -72,7 +72,7 @@ describe('Routes /api/lessons (état actuel)', () => {
     const past = await request(app)
       .post(base)
       .set('Authorization', bearerFor('instructor'))
-      .send({ ...body, dateTime: '2020-01-01T10:00:00.000Z' });
+      .send({ ...body, scheduledDate: '2020-01-01T10:00:00.000Z' });
     expect(past.status).toBe(400);
   });
 

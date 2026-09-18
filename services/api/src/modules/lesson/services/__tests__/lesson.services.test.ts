@@ -10,14 +10,27 @@ const past = new Date(Date.now() - 24 * 3600 * 1000);
 const lesson: Lesson = {
   id: 'lesson-1',
   schoolId: 'school-1',
+  studentId: 'student-1',
   instructorId: 'instr-1',
+  preferredInstructorId: null,
   type: LessonType.PARC,
-  dateTime: future,
+  status: LessonStatus.SCHEDULED,
+  requestedDate: null,
+  scheduledDate: future,
   durationMinutes: 60,
+  price: 40,
   capacity: 1,
   currentBookings: 0,
-  price: 40,
-  status: LessonStatus.SCHEDULED,
+  notes: null,
+  adminNotes: null,
+  rejectionReason: null,
+  attended: null,
+  feedback: null,
+  rating: null,
+  paid: false,
+  amount: null,
+  paymentDate: null,
+  paymentMethod: null,
   createdAt: past,
   updatedAt: past,
 };
@@ -54,18 +67,26 @@ describe('LessonService (créneaux, état actuel)', () => {
 
   it('createLesson : refuse une date passée (400), crée sinon', async () => {
     await expect(
-      service.createLesson({ ...lesson, dateTime: past, instructorId: 'instr-1' })
+      service.createLesson({
+        schoolId: 'school-1',
+        studentId: 'student-1',
+        instructorId: 'instr-1',
+        type: LessonType.PARC,
+        scheduledDate: past,
+        durationMinutes: 60,
+        price: 40,
+      })
     ).rejects.toMatchObject({ status: 400, code: 'VALIDATION_ERROR' });
 
     repository.create.mockResolvedValue(lesson);
     await expect(
       service.createLesson({
         schoolId: 'school-1',
+        studentId: 'student-1',
         instructorId: 'instr-1',
         type: LessonType.PARC,
-        dateTime: future,
+        scheduledDate: future,
         durationMinutes: 60,
-        capacity: 1,
         price: 40,
       })
     ).resolves.toEqual(lesson);
@@ -86,7 +107,7 @@ describe('LessonService (créneaux, état actuel)', () => {
     });
 
     repository.findById.mockResolvedValue(lesson);
-    await expect(service.updateLesson('lesson-1', { dateTime: past })).rejects.toMatchObject({
+    await expect(service.updateLesson('lesson-1', { scheduledDate: past })).rejects.toMatchObject({
       status: 400,
     });
 

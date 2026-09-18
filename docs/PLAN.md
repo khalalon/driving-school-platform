@@ -234,7 +234,7 @@ cd services/api && npx jest enrollment --verbose 2>&1 | grep -E 'rollback|reste 
 ```
 **Hors périmètre** : autres opérations multi-tables.
 
-### - [ ] 3.3 — Schéma des leçons pour D-21
+### - [x] 3.3 — Schéma des leçons pour D-21
 **Objectif** : migration `007_lessons_requests.sql` : `lessons.status` ∈ `pending | scheduled | completed | cancelled | rejected` (défaut `pending`), `date_time` renommée **`scheduled_date`** (nullable), nouvelle **`requested_date`** (nullable), `student_id → students.id` (**NOT NULL** : une leçon = un élève, D-34), **`instructor_id` nullable** (renseigné à l'approbation, D-32), nouvelle **`preferred_instructor_id`** (nullable), `notes`, `admin_notes`, `rejection_reason`, `attended`, `feedback`, `rating`, `paid`, `amount`, `payment_date`, `payment_method` (copiés depuis `lesson_bookings` pour l'individuel) ; `capacity` / `current_bookings` conservés avec **`CHECK (capacity = 1)`** (D-34, levé plus tard sans migration de données). Types TS et validators du module `lesson` alignés, **sans** nouvelle route.
 **Fichiers** : `migrations/007_*.sql`, `modules/lesson/{types,validators,repositories}/**`.
 **Critère de validation** :

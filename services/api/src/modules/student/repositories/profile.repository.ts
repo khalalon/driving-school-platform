@@ -68,7 +68,7 @@ export class ProfileRepository implements IProfileRepository {
 
   async getStudentLessons(studentId: string, schoolId: string): Promise<LessonHistory[]> {
     const result = await this.db.query<LessonHistory>(
-      `SELECT lb.id, l.id AS "lessonId", l.type AS "lessonType", l.date_time AS "dateTime",
+      `SELECT lb.id, l.id AS "lessonId", l.type AS "lessonType", l.scheduled_date AS "dateTime",
               l.duration_minutes AS duration,
               COALESCE(NULLIF(trim(concat_ws(' ', iu.first_name, iu.last_name)), ''), i.name) AS "instructorName",
               lb.attended, lb.feedback,
@@ -79,7 +79,7 @@ export class ProfileRepository implements IProfileRepository {
        LEFT JOIN instructors i ON l.instructor_id = i.id
        LEFT JOIN users iu ON i.user_id = iu.id
        WHERE lb.student_id = $1 AND l.school_id = $2
-       ORDER BY l.date_time DESC`,
+       ORDER BY l.scheduled_date DESC`,
       [studentId, schoolId]
     );
     return result.rows;

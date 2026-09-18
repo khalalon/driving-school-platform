@@ -9,14 +9,14 @@ import {
 } from '../types/lesson.types';
 
 /**
- * Créneaux de leçon, état actuel (modèle « l'école crée, l'élève réserve »). Réécrit selon D-01 /
- * D-21 en 3.3 et 5.2–5.4 : la leçon naîtra d'une demande de l'élève.
+ * Anciennes routes de créneaux sur le schéma 007 (une leçon = un élève), conservées jusqu'à leur
+ * remplacement par L1–L7 (5.2–5.4) : la leçon naîtra d'une demande de l'élève (D-01, D-21).
  */
 export class LessonService {
   constructor(private readonly lessonRepository: ILessonRepository) {}
 
   async createLesson(dto: CreateLessonDTO): Promise<Lesson> {
-    this.assertFuture(dto.dateTime);
+    this.assertFuture(dto.scheduledDate);
     return await this.lessonRepository.create(dto);
   }
 
@@ -37,8 +37,8 @@ export class LessonService {
     if (lesson.status !== LessonStatus.SCHEDULED) {
       throw new HttpError(409, 'CONFLICT', 'Seule une leçon planifiée peut être modifiée');
     }
-    if (dto.dateTime) {
-      this.assertFuture(dto.dateTime);
+    if (dto.scheduledDate) {
+      this.assertFuture(dto.scheduledDate);
     }
     return this.lessonRepository.update(id, dto);
   }

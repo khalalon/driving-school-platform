@@ -16,10 +16,10 @@ module.exports = {
   // chaque module porté (2.3, 2.4, 2.5) puis avec les phases 3–5.
   coverageThreshold: {
     global: {
-      branches: 85,
-      functions: 93,
-      lines: 87,
-      statements: 87,
+      branches: 86,
+      functions: 95,
+      lines: 88,
+      statements: 88,
     },
   },
 };
