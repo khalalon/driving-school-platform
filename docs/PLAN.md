@@ -252,7 +252,7 @@ docker compose down -v && docker compose up -d postgres && sleep 12 && ./scripts
 ```
 **Hors périmètre** : endpoints (5.5, 5.6).
 
-### - [ ] 3.5 — Une seule inscription active par élève (D-22)
+### - [x] 3.5 — Une seule inscription active par élève (D-22)
 **Objectif** : migration `009_one_active_enrollment.sql` : `UNIQUE (students.user_id)` et index unique partiel `enrollment_requests(student_id) WHERE status IN ('pending','approved')`. `createEnrollmentRequest` refuse (409 `CONFLICT`) si une inscription ou une demande active existe dans **n'importe quelle** école.
 **Fichiers** : `migrations/009_*.sql`, `modules/student/services/enrollment.service.ts`, `modules/student/repositories/*.ts`, tests, `docs/API_CONTRACT.md` (E2).
 **Critère de validation** :

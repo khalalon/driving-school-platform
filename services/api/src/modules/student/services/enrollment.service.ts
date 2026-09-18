@@ -7,9 +7,13 @@ import { EnrollmentRequest, EnrollmentStatus } from '../types/student.types';
 
 /**
  * Cycle d'inscription (D-09) : pending → approved | rejected. `studentId` = users.id.
- * L'approbation (UPDATE demande + INSERT students) est atomique (3.2). Reste à faire : contrôle
- * limité à la même école (D-22 → 3.5), cloisonnement (5.1).
+ * L'approbation (UPDATE demande + INSERT students) est atomique (3.2). Une seule inscription
+ * active par élève, toutes écoles confondues (D-22, index uniques de 009). Reste : cloisonnement (5.1).
  */
+/** Code SQLSTATE 23505 (unique_violation) de node-postgres. */
+const isUniqueViolation = (err: unknown): boolean =>
+  typeof err === 'object' && err !== null && (err as { code?: unknown }).code === '23505';
+
 export class EnrollmentService {
   constructor(
     private readonly enrollmentRepository: IEnrollmentRepository,
@@ -22,23 +26,41 @@ export class EnrollmentService {
     schoolId: string,
     message?: string
   ): Promise<EnrollmentRequest> {
-    const existingStudent = await this.studentRepository.findByUserAndSchool(studentId, schoolId);
+    // D-22 : une seule inscription active, dans n'importe quelle école.
+    const existingStudent = await this.studentRepository.findByUserId(studentId);
     if (existingStudent) {
-      throw new HttpError(409, 'CONFLICT', 'Vous êtes déjà inscrit dans cette école');
+      throw new HttpError(
+        409,
+        'CONFLICT',
+        existingStudent.schoolId === schoolId
+          ? 'Vous êtes déjà inscrit dans cette école'
+          : 'Vous êtes déjà inscrit dans une autre école'
+      );
     }
 
-    const existingRequest = await this.enrollmentRepository.findByStudentAndSchool(
-      studentId,
-      schoolId
-    );
-    if (existingRequest?.status === 'pending') {
-      throw new HttpError(409, 'CONFLICT', 'Une demande est déjà en attente pour cette école');
+    const activeRequest = await this.enrollmentRepository.findActiveByStudent(studentId);
+    if (activeRequest?.status === 'pending') {
+      throw new HttpError(
+        409,
+        'CONFLICT',
+        activeRequest.schoolId === schoolId
+          ? 'Une demande est déjà en attente pour cette école'
+          : 'Une demande est déjà en attente dans une autre école'
+      );
     }
-    if (existingRequest?.status === 'approved') {
-      throw new HttpError(409, 'CONFLICT', 'Votre inscription dans cette école est déjà approuvée');
+    if (activeRequest) {
+      throw new HttpError(409, 'CONFLICT', 'Votre inscription est déjà approuvée');
     }
 
-    return this.enrollmentRepository.create(studentId, schoolId, message);
+    try {
+      return await this.enrollmentRepository.create(studentId, schoolId, message);
+    } catch (err) {
+      // Deux demandes simultanées : l'index unique partiel de 009 tranche, on répond 409.
+      if (isUniqueViolation(err)) {
+        throw new HttpError(409, 'CONFLICT', 'Une demande est déjà en attente');
+      }
+      throw err;
+    }
   }
 
   getStudentRequests(studentId: string): Promise<EnrollmentRequest[]> {

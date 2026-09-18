@@ -9,6 +9,8 @@ export interface IEnrollmentRepository {
   findByStudent(studentId: string): Promise<EnrollmentRequest[]>;
   findBySchool(schoolId: string, status?: EnrollmentRequestStatus): Promise<EnrollmentRequest[]>;
   findByStudentAndSchool(studentId: string, schoolId: string): Promise<EnrollmentRequest | null>;
+  /** Demande `pending` ou `approved` de l'élève, toutes écoles confondues (D-22 : au plus une). */
+  findActiveByStudent(studentId: string): Promise<EnrollmentRequest | null>;
   /** `executor` : client d'une transaction en cours (3.2), le pool sinon. */
   updateStatus(
     requestId: string,
@@ -99,6 +101,19 @@ export class EnrollmentRepository implements IEnrollmentRepository {
        ORDER BY created_at DESC
        LIMIT 1`,
       [studentId, schoolId]
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async findActiveByStudent(studentId: string): Promise<EnrollmentRequest | null> {
+    const result = await this.db.query<EnrollmentRequest>(
+      `SELECT ${REQUEST_COLUMNS('er')}, s.name AS "schoolName"
+       FROM enrollment_requests er
+       LEFT JOIN schools s ON er.school_id = s.id
+       WHERE er.student_id = $1 AND er.status IN ('pending', 'approved')
+       ORDER BY er.created_at DESC
+       LIMIT 1`,
+      [studentId]
     );
     return result.rows[0] ?? null;
   }

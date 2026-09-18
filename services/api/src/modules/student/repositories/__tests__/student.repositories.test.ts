@@ -43,8 +43,15 @@ describe('EnrollmentRepository', () => {
     await expect(repo.findByStudentAndSchool('user-1', UUID.school)).resolves.toBeNull();
     await expect(repo.findByStudent('user-1')).resolves.toEqual([]);
     const [sql, params] = query.mock.calls[2] as [string, unknown[]];
-    expect(sql).toMatch(/s.name AS "schoolName", s.address AS "schoolAddress"/);
+    expect(sql).toMatch(/s\.name AS "schoolName", s\.address AS "schoolAddress"/);
     expect(params).toEqual(['user-1']);
+
+    await expect(repo.findActiveByStudent('user-1')).resolves.toBeNull();
+    const [sqlActive, paramsActive] = query.mock.calls[3] as [string, unknown[]];
+    expect(sqlActive).toMatch(
+      /WHERE er\.student_id = \$1 AND er\.status IN \('pending', 'approved'\)/
+    );
+    expect(paramsActive).toEqual(['user-1']);
   });
 
   it('updateStatus : statut, auteur, motif (null si absent), identifiant', async () => {

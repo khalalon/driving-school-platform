@@ -51,6 +51,7 @@ describe('EnrollmentService (D-09)', () => {
       findByStudent: jest.fn(),
       findBySchool: jest.fn(),
       findByStudentAndSchool: jest.fn(),
+      findActiveByStudent: jest.fn(),
       updateStatus: jest.fn(),
     };
     studentRepository = {
@@ -67,59 +68,93 @@ describe('EnrollmentService (D-09)', () => {
     service = new EnrollmentService(enrollmentRepository, studentRepository, transactions);
   });
 
-  describe('createEnrollmentRequest (E2)', () => {
+  describe('createEnrollmentRequest (E2, une seule inscription active — D-22)', () => {
+    const otherSchool = 'school-2';
+
     it('crée la demande avec le users.id de l’appelant et le message', async () => {
-      studentRepository.findByUserAndSchool.mockResolvedValue(null);
-      enrollmentRepository.findByStudentAndSchool.mockResolvedValue(null);
+      studentRepository.findByUserId.mockResolvedValue(null);
+      enrollmentRepository.findActiveByStudent.mockResolvedValue(null);
       enrollmentRepository.create.mockResolvedValue(pending);
 
       const result = await service.createEnrollmentRequest(userId, schoolId, 'Bonjour');
 
+      expect(studentRepository.findByUserId).toHaveBeenCalledWith(userId);
+      expect(enrollmentRepository.findActiveByStudent).toHaveBeenCalledWith(userId);
       expect(enrollmentRepository.create).toHaveBeenCalledWith(userId, schoolId, 'Bonjour');
       expect(result).toEqual(pending);
     });
 
-    it('409 CONFLICT si l’élève est déjà inscrit dans cette école', async () => {
-      studentRepository.findByUserAndSchool.mockResolvedValue(student);
-
+    it('409 CONFLICT si l’élève est déjà inscrit — dans cette école ou dans une autre', async () => {
+      studentRepository.findByUserId.mockResolvedValue(student);
       await expect(service.createEnrollmentRequest(userId, schoolId)).rejects.toMatchObject({
         status: 409,
         code: 'CONFLICT',
+        message: 'Vous êtes déjà inscrit dans cette école',
+      });
+
+      studentRepository.findByUserId.mockResolvedValue({ ...student, schoolId: otherSchool });
+      await expect(service.createEnrollmentRequest(userId, schoolId)).rejects.toMatchObject({
+        status: 409,
+        message: 'Vous êtes déjà inscrit dans une autre école',
       });
       expect(enrollmentRepository.create).not.toHaveBeenCalled();
     });
 
-    it('409 CONFLICT si une demande est déjà pending', async () => {
-      studentRepository.findByUserAndSchool.mockResolvedValue(null);
-      enrollmentRepository.findByStudentAndSchool.mockResolvedValue(pending);
-
+    it('409 CONFLICT si une demande est déjà pending, quelle que soit l’école', async () => {
+      studentRepository.findByUserId.mockResolvedValue(null);
+      enrollmentRepository.findActiveByStudent.mockResolvedValue(pending);
       await expect(service.createEnrollmentRequest(userId, schoolId)).rejects.toMatchObject({
         status: 409,
         message: 'Une demande est déjà en attente pour cette école',
       });
+
+      enrollmentRepository.findActiveByStudent.mockResolvedValue({
+        ...pending,
+        schoolId: otherSchool,
+      });
+      await expect(service.createEnrollmentRequest(userId, schoolId)).rejects.toMatchObject({
+        status: 409,
+        message: 'Une demande est déjà en attente dans une autre école',
+      });
     });
 
-    it('409 CONFLICT si la dernière demande est approved', async () => {
-      studentRepository.findByUserAndSchool.mockResolvedValue(null);
-      enrollmentRepository.findByStudentAndSchool.mockResolvedValue({
+    it('409 CONFLICT si une demande est déjà approved', async () => {
+      studentRepository.findByUserId.mockResolvedValue(null);
+      enrollmentRepository.findActiveByStudent.mockResolvedValue({
         ...pending,
         status: 'approved',
       });
 
       await expect(service.createEnrollmentRequest(userId, schoolId)).rejects.toMatchObject({
         status: 409,
+        message: 'Votre inscription est déjà approuvée',
       });
     });
 
-    it('autorise une nouvelle demande après un refus', async () => {
-      studentRepository.findByUserAndSchool.mockResolvedValue(null);
-      enrollmentRepository.findByStudentAndSchool.mockResolvedValue({
-        ...pending,
-        status: 'rejected',
-      });
+    it('autorise une nouvelle demande après un refus (aucune demande active)', async () => {
+      studentRepository.findByUserId.mockResolvedValue(null);
+      enrollmentRepository.findActiveByStudent.mockResolvedValue(null);
       enrollmentRepository.create.mockResolvedValue(pending);
 
       await expect(service.createEnrollmentRequest(userId, schoolId)).resolves.toEqual(pending);
+    });
+
+    it('deux demandes simultanées : la violation d’unicité (23505) devient un 409', async () => {
+      studentRepository.findByUserId.mockResolvedValue(null);
+      enrollmentRepository.findActiveByStudent.mockResolvedValue(null);
+      enrollmentRepository.create.mockRejectedValue(
+        Object.assign(new Error('duplicate key value'), { code: '23505' })
+      );
+
+      await expect(service.createEnrollmentRequest(userId, schoolId)).rejects.toMatchObject({
+        status: 409,
+        code: 'CONFLICT',
+      });
+
+      enrollmentRepository.create.mockRejectedValue(new Error('connexion perdue'));
+      await expect(service.createEnrollmentRequest(userId, schoolId)).rejects.toThrow(
+        'connexion perdue'
+      );
     });
   });
 
