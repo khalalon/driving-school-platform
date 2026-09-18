@@ -172,18 +172,14 @@ Config : l'URL de base vient de `app.json` → `expo.extra.API_BASE_URL`, surcha
 - **Tests** : chaque service a 1 fichier `__tests__` (3 500 lignes au total, mocks de repositories). `tests/e2e` et `tests/integration` à la racine n'ont **ni jest.config ni package.json** pour les exécuter et appellent des routes inexistantes (`POST /api/student-profiles`).
 - **Git** : `.gitignore` racine (`node_modules/`, `dist/`, `coverage/`, `.env`, `.env.*.local`, `.DS_Store`, `*.log`, `.expo/`) ; plus aucun `node_modules` ni `.env` suivi (380 fichiers suivis au 17/09). Un `.env.example` à la racine (toutes les variables lues par `docker-compose.yml`), dans `mobile-app/` et dans `web-frontend/`.
 
-## 8. Doublons et fichiers morts repérés (non supprimés)
+## 8. Doublons et fichiers morts restants (état après 0.8)
 
 | Fichier | Constat |
 |---|---|
-| `mobile-app/src/screens/student/StudentDashboardScreen.tsx` | Doublon de `StudentDashboard.tsx` ; non importé par le navigateur ; appelle `enrollmentService.getMyEnrollments()` qui n'existe pas. |
-| `mobile-app/src/screens/student/RequestLessonScreen.tsx` | Non importé ; doublon fonctionnel de `BookLessonScreen.tsx`. |
-| `mobile-app/src/screens/student/ExamsListScreen.tsx` | Non importé, aucun appel réseau. |
-| `services/student/src/repositories/profile.service.ts` | Fichier **vide** (0 octet), mal placé (`services/profile.service.ts` est le vrai). |
 | `services/*/src/middleware/auth.middleware.ts` × 6 | Même code copié (lesson/exam/payment/notification/student identiques au byte près ; school = variante cosmétique). |
 | `nginx/proxy_params.conf` | Jamais inclus. |
-| `mobile-app/src/app.ts` | Copie égarée du `app.ts` **Express de student-service** (importe `express`, `helmet`, `./routes/enrollment.routes`…) dans le projet mobile. Non importé, mais inclus par `tsconfig` (`**/*.ts`) → fait échouer `npx tsc --noEmit` du mobile. |
 | `mobile-app/babel.config.js` plugin `module:react-native-dotenv` (+ dépendance `react-native-dotenv`) | Plus aucun import `@env` depuis 0.4 (l'URL vient de `expo-constants` / `EXPO_PUBLIC_*`) ; à retirer en 6.1. |
-| `mobile-app/MOBILE_APP_COMPLETE.md`, `mobile-app/MINIMAL_DESIGN_GUIDE.md` | Docs de statut hors racine, hors périmètre du ménage de cette session. |
-| Racine : `full-workflow-test.ps1`, `run-tests.ps1`, `test-all-services.ps1`, `test-comprehensive.ps1`, `test-login.html`, `setup-fresh-mobile.sh`, `start-expo-tunnel.bat`, `diagnose-network.ps1` | Scripts de test manuel / réseau d'une session passée ; supprimés en tâche 0.8. |
+| `mobile-app/MINIMAL_DESIGN_GUIDE.md` | Doc de statut hors racine (`MOBILE_APP_COMPLETE.md` supprimé en 0.8) ; à trancher en 6.1. |
 | `.env.example` racine | Décrit `STRIPE_*`, `SENDGRID_*`, `TWILIO_*` : lus par compose, mais les intégrations réelles ne sont pas vérifiées dans cette session. |
+
+Supprimés en 0.8 : les 8 scripts de test manuel de la racine, `scripts/test-api.sh` (et la cible `make api-test`), `mobile-app/src/app.ts`, les trois écrans injoignables, `mobile-app/MOBILE_APP_COMPLETE.md`, `services/student/src/repositories/profile.service.ts`.

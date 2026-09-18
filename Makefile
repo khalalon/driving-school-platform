@@ -171,9 +171,6 @@ update: ## Update all services (pull, install, build, restart)
 quick-start: ## Quick start using the quick-start script
 	@./scripts/quick-start.sh
 
-api-test: ## Run API tests
-	@./scripts/test-api.sh
-
 coverage: ## Run tests with coverage for all services
 	@echo "📊 Running tests with coverage..."
 	@cd services/auth && npm test -- --coverage

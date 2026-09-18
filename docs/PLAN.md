@@ -76,7 +76,7 @@ test "$(grep -c 'tsc --noEmit' .github/workflows/ci-cd.yml)" -ge 8 && grep -q 's
 ```
 **Hors périmètre** : job mobile (6.1) ; jobs deploy.
 
-### - [ ] 0.8 — Suppression des fichiers morts : scripts racine, copie égarée, écrans morts
+### - [x] 0.8 — Suppression des fichiers morts : scripts racine, copie égarée, écrans morts
 **Objectif** : la racine ne contient plus que la config du dépôt, les compose, le Makefile, les docs et les dossiers de code ; le mobile ne contient plus le serveur Express égaré ni les écrans injoignables (D-13) ; `app.json` → `expo.extra.API_BASE_URL` prend la valeur neutre `http://10.0.2.2:80` (hôte vu de l'émulateur Android, D-38) à la place de l'IP LAN de l'auteur.
 **Fichiers** : supprimer `full-workflow-test.ps1`, `run-tests.ps1`, `test-all-services.ps1`, `test-comprehensive.ps1`, `test-login.html`, `setup-fresh-mobile.sh`, `start-expo-tunnel.bat`, `diagnose-network.ps1`, `scripts/test-api.sh` ; `mobile-app/src/app.ts` ; `mobile-app/src/screens/student/{StudentDashboardScreen,RequestLessonScreen,ExamsListScreen}.tsx` ; `mobile-app/MOBILE_APP_COMPLETE.md` ; `services/student/src/repositories/profile.service.ts` (vide) ; `mobile-app/app.json`.
 **Critère de validation** :
@@ -414,7 +414,7 @@ test "$(grep -cE '^\| [A-Z]+[0-9]+ .*\*\*(MANQUE|DIVERGE)\*\*' docs/API_CONTRACT
 
 ### - [ ] 6.1 — Hygiène mobile : services homogènes, erreurs, vocabulaire, §9, typecheck, CI
 **Objectif** : tous les `*Service.ts` renvoient `response.data` ; les `catch` affichent `error.response?.data?.message ?? error.response?.data?.error` (D-27) ; enums `LessonType` = `CODE | Manœuvre | Parc`, `ExamType` = `theory | practical`, `ExamResult` = `passed | failed` (D-18), avec libellés d'affichage ; `BookLessonScreen` ajoute la date souhaitée (`requestedDate`, D-21), un sélecteur à 3 types, et rend l'instructeur **facultatif** (préférence, D-32) ; `MyLessonsScreen` et `MyExamsScreen` affichent l'état de paiement (`paid`, `amount`) ; suppression de `SchoolCodeService.ts`, des chemins du §9 et du plugin Babel `react-native-dotenv` (plus aucun import `@env` depuis 0.4) ; `npx tsc --noEmit` passe ; job CI mobile (typecheck + jest).
-**Fichiers** : `mobile-app/src/services/api/*.ts`, `src/config/api.config.ts`, `src/models/*.ts`, `src/screens/student/BookLessonScreen.tsx`, `.github/workflows/ci-cd.yml`.
+**Fichiers** : `mobile-app/src/services/api/*.ts`, `src/config/api.config.ts`, `src/models/*.ts`, `src/screens/student/BookLessonScreen.tsx`, `src/context/AuthContext.tsx` et les écrans encore en erreur `tsc` après 0.8 (`TodayExamsScreen`, `ExamRequestsScreen`, `SchoolDetailScreen`, `MyEnrollmentRequestsScreen` — 9 erreurs hors `services/api` au 18/09), `.github/workflows/ci-cd.yml`.
 **Critère de validation** :
 ```bash
 cd mobile-app && npx tsc --noEmit && test "$(grep -rc 'return await apiClient' src/services/api | grep -v ':0' | wc -l)" -eq 0 && ! test -e src/services/api/SchoolCodeService.ts && ! grep -rq "'PRACTICAL'\|'THEORY'\|'PASS'\|'FAIL'" src && grep -q 'mobile-app' ../.github/workflows/ci-cd.yml && npx jest --silent && echo OK
