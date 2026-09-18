@@ -34,6 +34,17 @@ Repartir d'une base vierge : `docker compose down -v && docker compose up -d`.
 
 Toutes les autres commandes (API seule, typecheck, lint, tests, tests de bout en bout, migrations) sont dans `CLAUDE.md` et dans le `Makefile` (`make help`).
 
+## Onboarding d'une école
+
+Pas d'écran ni de route d'administration en v1 (D-17) : chaque école est créée par script, avec sa grille tarifaire et un code d'inscription instructeur à lui transmettre. Un instructeur s'inscrit ensuite dans l'app avec ce code (`schoolCode` de `POST /api/auth/register`).
+
+```bash
+./scripts/onboard-school.sh "Auto-École Nord" "5 av. Habib Bourguiba, Sfax" "+21674000000" "contact@nord.tn"
+# → affiche le code, ex. INST-AUTOECOL-7K2Q
+```
+
+Options par variables d'environnement : `PRICE_CODE`, `PRICE_MANOEUVRE`, `PRICE_PARC` (défaut 20 / 35 / 40), `DURATION_MINUTES` (60), `CODE_MAX_USES` (illimité), `CODE_EXPIRES_AT` (jamais), ex. `CODE_MAX_USES=5 CODE_EXPIRES_AT=2026-12-31 ./scripts/onboard-school.sh …`. Relancer le script avec le même email ne crée ni doublon ni second code : il réaffiche le code actif.
+
 ## Documentation
 
 | Fichier | Contenu |
@@ -51,7 +62,7 @@ Toutes les autres commandes (API seule, typecheck, lint, tests, tests de bout en
 services/api/       l'application (src/modules/{auth,school,student,lesson,exam,payment},
                     routes → controllers → services → repositories)
 migrations/         SQL numéroté, appliqué dans l'ordre, jamais modifié après commit
-scripts/migrate.sh  applique les migrations en attente (table schema_migrations)
+scripts/            migrate.sh (migrations en attente), onboard-school.sh (école + tarifs + code)
 nginx/              passerelle (:80 → api:3000)
 mobile-app/         Expo (src/screens, src/services/api, src/config/api.config.ts)
 web-frontend/       gelé

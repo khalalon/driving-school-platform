@@ -283,7 +283,7 @@ R1=$(curl -s -o /dev/null -w '%{http_code}' -X POST localhost/api/auth/register 
 ```
 **Hors périmètre** : création des codes par route (aucune en v1).
 
-### - [ ] 4.3 — Script d'onboarding d'une école (codes inclus)
+### - [x] 4.3 — Script d'onboarding d'une école (codes inclus)
 **Objectif** : `scripts/onboard-school.sh <nom> <adresse> <tél> <email>` insère l'école, sa grille `pricing` (3 types, montants passés en option) et un code instructeur `INST-<SLUG>-<4 car.>` (`max_uses`, `expires_at` en option), et affiche le code. Idempotent sur l'email de l'école.
 **Fichiers** : `scripts/onboard-school.sh`, `README.md` (section « Onboarding d'une école »).
 **Critère de validation** :
