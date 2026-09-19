@@ -71,9 +71,9 @@ export interface LessonCompletedDTO {
   attended: boolean;
 }
 
+/** P1 / P8 : `id` = users.id (D-28) ; compteurs sur les leçons et examens planifiés ou passés. */
 export interface StudentProfile {
   id: string;
-  userId: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -81,7 +81,6 @@ export interface StudentProfile {
   address: string | null;
   dateOfBirth: Date | null;
   licenseNumber: string | null;
-  profilePhotoUrl: string | null;
   enrollmentDate: Date | null;
   emergencyContact: string | null;
   emergencyPhone: string | null;
@@ -92,31 +91,37 @@ export interface StudentProfile {
   passedExams: number;
 }
 
+/** P2 / P9 : une ligne par leçon (`lessons`, 007), planifiée, passée ou annulée. */
 export interface LessonHistory {
   id: string;
-  lessonId: string;
-  lessonType: string;
-  dateTime: Date;
-  duration: number;
-  instructorName: string | null;
+  type: LessonType;
+  status: string;
+  scheduledDate: Date | null;
+  durationMinutes: number | null;
+  instructorFirstName: string;
+  instructorLastName: string;
   attended: boolean | null;
   feedback: string | null;
   rating: number | null;
   paid: boolean;
+  price: number | null;
   amount: number | null;
   paymentDate: Date | null;
   paymentMethod: string | null;
 }
 
+/** P3 / P10 : une ligne par examen (`exams`, 008), planifié, passé ou annulé. */
 export interface ExamHistory {
   id: string;
-  examId: string;
-  examType: string;
-  dateTime: Date;
-  result: string | null;
+  type: string;
+  status: string;
+  dateTime: Date | null;
+  location: string | null;
+  result: string;
   score: number | null;
   notes: string | null;
   paid: boolean;
+  price: number | null;
   amount: number | null;
   paymentDate: Date | null;
   paymentMethod: string | null;

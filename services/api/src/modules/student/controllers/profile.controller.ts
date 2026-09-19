@@ -7,7 +7,7 @@ import { markPaidSchema, updateNotesSchema } from '../validators/student.validat
 
 /**
  * Fiches élève : vue instructeur (`/api/profiles`, P1–P7) et vue élève de sa propre fiche
- * (`/api/student-profiles/me`, P8–P11). `:studentId` = students.id aujourd'hui (5.0 → users.id).
+ * (`/api/student-profiles/me`, P8–P11). `:studentId` = users.id (D-28).
  */
 export class ProfileController {
   constructor(private readonly profileService: ProfileService) {}
@@ -70,9 +70,9 @@ export class ProfileController {
       return;
     }
     try {
-      const bookingId = uuidParam(req.params.bookingId, 'Réservation');
+      const lessonId = uuidParam(req.params.lessonId, 'Leçon');
       await this.profileService.markLessonPaid(
-        bookingId,
+        lessonId,
         parsed.value.amount,
         parsed.value.paymentMethod
       );
@@ -89,9 +89,9 @@ export class ProfileController {
       return;
     }
     try {
-      const registrationId = uuidParam(req.params.registrationId, "Inscription à l'examen");
+      const examId = uuidParam(req.params.examId, 'Examen');
       await this.profileService.markExamPaid(
-        registrationId,
+        examId,
         parsed.value.amount,
         parsed.value.paymentMethod
       );

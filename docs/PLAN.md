@@ -325,7 +325,7 @@ R=$(curl -s -X POST localhost/api/auth/login -H 'Content-Type: application/json'
 
 Chaque tâche met à jour `docs/API_CONTRACT.md` (statut → EXISTE, ou SUPPRIMÉE) **dans le même commit**. Le cloisonnement par école (D-20) est implémenté une fois en 5.1 (`assertSameSchool`) et réutilisé partout.
 
-### - [ ] 5.0 — Profils (P1–P11) : `users.id` en entrée, chemins `mark-paid` renommés
+### - [x] 5.0 — Profils (P1–P11) : `users.id` en entrée, chemins `mark-paid` renommés
 **Objectif** : toutes les routes `/api/profiles/*` et `/api/student-profiles/*` prennent `users.id` et joignent `students` sur `user_id` + `school_id` (D-28) ; `getMyProfile` fonctionne ; `mark-paid` devient `/lessons/:lessonId/mark-paid` et `/exams/:examId/mark-paid` (P6, P7) ; réponses avec `firstName`/`lastName`.
 **Fichiers** : `modules/student/{controllers,services,repositories,routes}/profile.*`, tests, `tests/e2e/profiles.e2e.test.ts` (nouveau : élève approuvé → P8 → 200 avec `totalLessons`), `docs/API_CONTRACT.md`.
 **Critère de validation** :

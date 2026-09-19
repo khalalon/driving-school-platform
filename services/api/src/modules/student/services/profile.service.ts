@@ -7,7 +7,10 @@ import {
   StudentProfile,
 } from '../types/student.types';
 
-/** Fiche élève (P1–P11). Les bornes des payloads (`notes` non vide, `amount` > 0…) sont validées par Joi. */
+/**
+ * Fiche élève (P1–P11), identifiant = users.id (D-28). Les bornes des payloads (`notes` non vide,
+ * `amount` > 0…) sont validées par Joi.
+ */
 export class ProfileService {
   constructor(private readonly profileRepository: IProfileRepository) {}
 
@@ -37,15 +40,21 @@ export class ProfileService {
     return this.profileRepository.getFinancialSummary(studentId, schoolId);
   }
 
-  updateInstructorNotes(studentId: string, notes: string): Promise<void> {
-    return this.profileRepository.updateNotes(studentId, notes);
+  async updateInstructorNotes(userId: string, notes: string): Promise<void> {
+    if (!(await this.profileRepository.updateNotes(userId, notes))) {
+      throw new HttpError(404, 'NOT_FOUND', 'Fiche élève introuvable');
+    }
   }
 
-  markLessonPaid(bookingId: string, amount: number, paymentMethod: string): Promise<void> {
-    return this.profileRepository.markLessonPaid(bookingId, amount, paymentMethod);
+  async markLessonPaid(lessonId: string, amount: number, paymentMethod: string): Promise<void> {
+    if (!(await this.profileRepository.markLessonPaid(lessonId, amount, paymentMethod))) {
+      throw new HttpError(404, 'NOT_FOUND', 'Leçon introuvable');
+    }
   }
 
-  markExamPaid(registrationId: string, amount: number, paymentMethod: string): Promise<void> {
-    return this.profileRepository.markExamPaid(registrationId, amount, paymentMethod);
+  async markExamPaid(examId: string, amount: number, paymentMethod: string): Promise<void> {
+    if (!(await this.profileRepository.markExamPaid(examId, amount, paymentMethod))) {
+      throw new HttpError(404, 'NOT_FOUND', 'Examen introuvable');
+    }
   }
 }

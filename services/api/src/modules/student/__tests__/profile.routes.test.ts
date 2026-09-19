@@ -102,20 +102,28 @@ describe('Routes /api/profiles, /api/student-profiles, /api/verification', () =>
     const auth = bearerFor('instructor');
 
     await request(app)
-      .put(`${staff}/bookings/${UUID.booking}/mark-paid`)
+      .put(`${staff}/lessons/${UUID.booking}/mark-paid`)
       .set('Authorization', auth)
       .send({ amount: 40, paymentMethod: 'cash' })
       .expect(204);
     expect(profileService.markLessonPaid).toHaveBeenCalledWith(UUID.booking, 40, 'cash');
 
     await request(app)
-      .put(`${staff}/registrations/${UUID.booking}/mark-paid`)
+      .put(`${staff}/exams/${UUID.booking}/mark-paid`)
       .set('Authorization', auth)
       .send({ amount: 60, paymentMethod: 'card' })
       .expect(204);
+    expect(profileService.markExamPaid).toHaveBeenCalledWith(UUID.booking, 60, 'card');
+
+    // Anciens chemins (lesson_bookings / exam_registrations) : disparus en 5.0.
+    await request(app)
+      .put(`${staff}/bookings/${UUID.booking}/mark-paid`)
+      .set('Authorization', auth)
+      .send({ amount: 40, paymentMethod: 'cash' })
+      .expect(404);
 
     const bad = await request(app)
-      .put(`${staff}/bookings/${UUID.booking}/mark-paid`)
+      .put(`${staff}/lessons/${UUID.booking}/mark-paid`)
       .set('Authorization', auth)
       .send({ amount: -1, paymentMethod: 'cash' });
     expect(bad.status).toBe(400);

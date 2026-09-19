@@ -25,9 +25,9 @@ export function createProfileRouter(
   );
   router.put('/:studentId/notes', ...schoolStaff, controller.updateNotes);
 
-  // Chemins actuels ; renommés en `/lessons/:lessonId` et `/exams/:examId` en 5.0.
-  router.put('/bookings/:bookingId/mark-paid', ...schoolStaff, controller.markLessonPaid);
-  router.put('/registrations/:registrationId/mark-paid', ...schoolStaff, controller.markExamPaid);
+  // P6 / P7 : le paiement est porté par la leçon et par l'examen (schémas 007 / 008).
+  router.put('/lessons/:lessonId/mark-paid', ...schoolStaff, controller.markLessonPaid);
+  router.put('/exams/:examId/mark-paid', ...schoolStaff, controller.markExamPaid);
 
   return router;
 }

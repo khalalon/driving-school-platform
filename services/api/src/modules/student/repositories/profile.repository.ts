@@ -7,135 +7,127 @@ import {
 } from '../types/student.types';
 
 export interface IProfileRepository {
-  getStudentProfile(studentId: string, schoolId: string): Promise<StudentProfile | null>;
-  getStudentLessons(studentId: string, schoolId: string): Promise<LessonHistory[]>;
-  getStudentExams(studentId: string, schoolId: string): Promise<ExamHistory[]>;
-  getFinancialSummary(studentId: string, schoolId: string): Promise<FinancialSummary>;
-  updateNotes(studentId: string, notes: string): Promise<void>;
-  markLessonPaid(bookingId: string, amount: number, paymentMethod: string): Promise<void>;
-  markExamPaid(registrationId: string, amount: number, paymentMethod: string): Promise<void>;
+  getStudentProfile(userId: string, schoolId: string): Promise<StudentProfile | null>;
+  getStudentLessons(userId: string, schoolId: string): Promise<LessonHistory[]>;
+  getStudentExams(userId: string, schoolId: string): Promise<ExamHistory[]>;
+  getFinancialSummary(userId: string, schoolId: string): Promise<FinancialSummary>;
+  /** `false` si aucune fiche `students` pour cet utilisateur. */
+  updateNotes(userId: string, notes: string): Promise<boolean>;
+  /** `false` si la leçon n'existe pas. */
+  markLessonPaid(lessonId: string, amount: number, paymentMethod: string): Promise<boolean>;
+  /** `false` si l'examen n'existe pas. */
+  markExamPaid(examId: string, amount: number, paymentMethod: string): Promise<boolean>;
 }
 
-type ProfileRow = Omit<StudentProfile, 'totalLessons' | 'totalExams' | 'passedExams'>;
-
-/** `:studentId` = students.id aujourd'hui ; passe à users.id en 5.0 (D-28). */
+/**
+ * Fiche élève (P1–P11). `userId` = users.id partout (D-28) : la ligne `students` est résolue par
+ * `user_id` + `school_id`. Leçons et examens viennent de `lessons` / `exams` (schémas 007 / 008) ;
+ * seules les leçons et examens planifiés ou passés comptent (les demandes en attente, refusées
+ * ou annulées ne sont pas des leçons suivies).
+ */
 export class ProfileRepository implements IProfileRepository {
   constructor(private readonly db: Pool) {}
 
-  async getStudentProfile(studentId: string, schoolId: string): Promise<StudentProfile | null> {
-    const profile = await this.db.query<ProfileRow>(
-      `SELECT s.id, s.user_id AS "userId", u.first_name AS "firstName", u.last_name AS "lastName",
-              u.email, s.phone, s.address,
-              s.date_of_birth AS "dateOfBirth", s.license_number AS "licenseNumber",
-              s.profile_photo_url AS "profilePhotoUrl", s.enrollment_date AS "enrollmentDate",
+  async getStudentProfile(userId: string, schoolId: string): Promise<StudentProfile | null> {
+    const result = await this.db.query<StudentProfile>(
+      `SELECT u.id, u.first_name AS "firstName", u.last_name AS "lastName", u.email,
+              s.phone, s.address, s.date_of_birth AS "dateOfBirth",
+              s.license_number AS "licenseNumber", s.enrollment_date AS "enrollmentDate",
               s.emergency_contact AS "emergencyContact", s.emergency_phone AS "emergencyPhone",
-              s.notes, COALESCE(sls.completed_lessons, 0)::int AS "completedLessons"
+              s.notes,
+              (SELECT count(*) FROM lessons l
+                WHERE l.student_id = s.id AND l.status IN ('scheduled', 'completed'))::int
+                AS "totalLessons",
+              COALESCE(sls.completed_lessons, 0)::int AS "completedLessons",
+              (SELECT count(*) FROM exams e
+                WHERE e.student_id = s.id AND e.status IN ('scheduled', 'completed'))::int
+                AS "totalExams",
+              (SELECT count(*) FROM exams e
+                WHERE e.student_id = s.id AND e.result = 'passed')::int AS "passedExams"
        FROM students s
-       LEFT JOIN users u ON s.user_id = u.id
-       LEFT JOIN student_lesson_stats sls ON s.id = sls.student_id AND sls.school_id = $2
-       WHERE s.id = $1 AND s.school_id = $2`,
-      [studentId, schoolId]
+       JOIN users u ON u.id = s.user_id
+       LEFT JOIN student_lesson_stats sls ON sls.student_id = s.id AND sls.school_id = s.school_id
+       WHERE s.user_id = $1 AND s.school_id = $2`,
+      [userId, schoolId]
     );
-    const student = profile.rows[0];
-    if (!student) {
-      return null;
-    }
-
-    const [lessonCount, examStats] = await Promise.all([
-      this.db.query<{ total: string }>(
-        `SELECT COUNT(*) AS total
-         FROM lesson_bookings lb
-         JOIN lessons l ON lb.lesson_id = l.id
-         WHERE lb.student_id = $1 AND l.school_id = $2`,
-        [studentId, schoolId]
-      ),
-      this.db.query<{ total: string; passed: string }>(
-        `SELECT COUNT(*) AS total, COUNT(CASE WHEN result = 'passed' THEN 1 END) AS passed
-         FROM exam_registrations er
-         JOIN exams e ON er.exam_id = e.id
-         WHERE er.student_id = $1 AND e.school_id = $2`,
-        [studentId, schoolId]
-      ),
-    ]);
-
-    return {
-      ...student,
-      totalLessons: Number(lessonCount.rows[0].total),
-      totalExams: Number(examStats.rows[0].total),
-      passedExams: Number(examStats.rows[0].passed),
-    };
+    return result.rows[0] ?? null;
   }
 
-  async getStudentLessons(studentId: string, schoolId: string): Promise<LessonHistory[]> {
+  async getStudentLessons(userId: string, schoolId: string): Promise<LessonHistory[]> {
     const result = await this.db.query<LessonHistory>(
-      `SELECT lb.id, l.id AS "lessonId", l.type AS "lessonType", l.scheduled_date AS "dateTime",
-              l.duration_minutes AS duration,
-              COALESCE(NULLIF(trim(concat_ws(' ', iu.first_name, iu.last_name)), ''), i.name) AS "instructorName",
-              lb.attended, lb.feedback,
-              lb.rating, COALESCE(lb.paid, false) AS paid, lb.amount::float8 AS amount,
-              lb.payment_date AS "paymentDate", lb.payment_method AS "paymentMethod"
-       FROM lesson_bookings lb
-       JOIN lessons l ON lb.lesson_id = l.id
-       LEFT JOIN instructors i ON l.instructor_id = i.id
-       LEFT JOIN users iu ON i.user_id = iu.id
-       WHERE lb.student_id = $1 AND l.school_id = $2
-       ORDER BY l.scheduled_date DESC`,
-      [studentId, schoolId]
+      `SELECT l.id, l.type, l.status, l.scheduled_date AS "scheduledDate",
+              l.duration_minutes AS "durationMinutes",
+              COALESCE(iu.first_name, '') AS "instructorFirstName",
+              COALESCE(iu.last_name, '') AS "instructorLastName",
+              l.attended, l.feedback, l.rating, l.paid, l.price::float8 AS price,
+              l.amount::float8 AS amount, l.payment_date AS "paymentDate",
+              l.payment_method AS "paymentMethod"
+       FROM lessons l
+       JOIN students s ON s.id = l.student_id
+       LEFT JOIN instructors i ON i.id = l.instructor_id
+       LEFT JOIN users iu ON iu.id = i.user_id
+       WHERE s.user_id = $1 AND l.school_id = $2
+         AND l.status IN ('scheduled', 'completed', 'cancelled')
+       ORDER BY l.scheduled_date DESC NULLS LAST, l.created_at DESC`,
+      [userId, schoolId]
     );
     return result.rows;
   }
 
-  async getStudentExams(studentId: string, schoolId: string): Promise<ExamHistory[]> {
+  async getStudentExams(userId: string, schoolId: string): Promise<ExamHistory[]> {
     const result = await this.db.query<ExamHistory>(
-      `SELECT er.id, e.id AS "examId", e.type AS "examType", e.date_time AS "dateTime", er.result,
-              er.score, er.notes, COALESCE(er.paid, false) AS paid, er.amount::float8 AS amount,
-              er.payment_date AS "paymentDate", er.payment_method AS "paymentMethod"
-       FROM exam_registrations er
-       JOIN exams e ON er.exam_id = e.id
-       WHERE er.student_id = $1 AND e.school_id = $2
-       ORDER BY e.date_time DESC`,
-      [studentId, schoolId]
+      `SELECT e.id, e.type, e.status, e.date_time AS "dateTime", e.location, e.result, e.score,
+              e.notes, e.paid, e.price::float8 AS price, e.amount::float8 AS amount,
+              e.payment_date AS "paymentDate", e.payment_method AS "paymentMethod"
+       FROM exams e
+       JOIN students s ON s.id = e.student_id
+       WHERE s.user_id = $1 AND e.school_id = $2
+         AND e.status IN ('scheduled', 'completed', 'cancelled')
+       ORDER BY e.date_time DESC NULLS LAST, e.created_at DESC`,
+      [userId, schoolId]
     );
     return result.rows;
   }
 
-  async getFinancialSummary(studentId: string, schoolId: string): Promise<FinancialSummary> {
-    const [lessons, exams, lastPayment] = await Promise.all([
-      this.db.query<{ lessonsRevenue: string; lessonsPending: string }>(
-        `SELECT COALESCE(SUM(CASE WHEN lb.paid = true THEN lb.amount ELSE 0 END), 0) AS "lessonsRevenue",
-                COALESCE(SUM(CASE WHEN COALESCE(lb.paid, false) = false THEN COALESCE(lb.amount, l.price) ELSE 0 END), 0) AS "lessonsPending"
-         FROM lesson_bookings lb
-         JOIN lessons l ON lb.lesson_id = l.id
-         WHERE lb.student_id = $1 AND l.school_id = $2`,
-        [studentId, schoolId]
-      ),
-      this.db.query<{ examsRevenue: string; examsPending: string }>(
-        `SELECT COALESCE(SUM(CASE WHEN er.paid = true THEN er.amount ELSE 0 END), 0) AS "examsRevenue",
-                COALESCE(SUM(CASE WHEN COALESCE(er.paid, false) = false THEN COALESCE(er.amount, e.price) ELSE 0 END), 0) AS "examsPending"
-         FROM exam_registrations er
-         JOIN exams e ON er.exam_id = e.id
-         WHERE er.student_id = $1 AND e.school_id = $2`,
-        [studentId, schoolId]
-      ),
-      this.db.query<{ lastPaymentDate: Date | null }>(
-        `SELECT MAX(payment_date) AS "lastPaymentDate"
-         FROM (
-           SELECT lb.payment_date FROM lesson_bookings lb
-           JOIN lessons l ON lb.lesson_id = l.id
-           WHERE lb.student_id = $1 AND l.school_id = $2 AND lb.paid = true
-           UNION ALL
-           SELECT er.payment_date FROM exam_registrations er
-           JOIN exams e ON er.exam_id = e.id
-           WHERE er.student_id = $1 AND e.school_id = $2 AND er.paid = true
-         ) payments`,
-        [studentId, schoolId]
-      ),
-    ]);
-
-    const lessonsRevenue = Number(lessons.rows[0].lessonsRevenue);
-    const lessonsPending = Number(lessons.rows[0].lessonsPending);
-    const examsRevenue = Number(exams.rows[0].examsRevenue);
-    const examsPending = Number(exams.rows[0].examsPending);
+  /**
+   * Encaissé = montants des leçons / examens payés ; dû = leçons et examens planifiés ou passés
+   * non payés, au montant saisi sinon au prix. Absences (Q-18) et annulations payées (Q-17) :
+   * aucune règle particulière tant que les questions ne sont pas tranchées.
+   */
+  async getFinancialSummary(userId: string, schoolId: string): Promise<FinancialSummary> {
+    const result = await this.db.query<{
+      lessonsRevenue: string;
+      lessonsPending: string;
+      examsRevenue: string;
+      examsPending: string;
+      lastPaymentDate: Date | null;
+    }>(
+      `WITH student AS (SELECT id FROM students WHERE user_id = $1 AND school_id = $2),
+       lessons_summary AS (
+         SELECT COALESCE(SUM(CASE WHEN l.paid THEN l.amount END), 0) AS revenue,
+                COALESCE(SUM(CASE WHEN NOT l.paid AND l.status IN ('scheduled', 'completed')
+                                  THEN COALESCE(l.amount, l.price) END), 0) AS pending,
+                MAX(CASE WHEN l.paid THEN l.payment_date END) AS last_payment
+         FROM lessons l WHERE l.student_id IN (SELECT id FROM student)
+       ),
+       exams_summary AS (
+         SELECT COALESCE(SUM(CASE WHEN e.paid THEN e.amount END), 0) AS revenue,
+                COALESCE(SUM(CASE WHEN NOT e.paid AND e.status IN ('scheduled', 'completed')
+                                  THEN COALESCE(e.amount, e.price) END), 0) AS pending,
+                MAX(CASE WHEN e.paid THEN e.payment_date END) AS last_payment
+         FROM exams e WHERE e.student_id IN (SELECT id FROM student)
+       )
+       SELECT ls.revenue AS "lessonsRevenue", ls.pending AS "lessonsPending",
+              es.revenue AS "examsRevenue", es.pending AS "examsPending",
+              GREATEST(ls.last_payment, es.last_payment) AS "lastPaymentDate"
+       FROM lessons_summary ls, exams_summary es`,
+      [userId, schoolId]
+    );
+    const row = result.rows[0];
+    const lessonsRevenue = Number(row.lessonsRevenue);
+    const lessonsPending = Number(row.lessonsPending);
+    const examsRevenue = Number(row.examsRevenue);
+    const examsPending = Number(row.examsPending);
 
     return {
       totalRevenue: lessonsRevenue + examsRevenue,
@@ -145,32 +137,38 @@ export class ProfileRepository implements IProfileRepository {
       examsRevenue,
       lessonsPending,
       examsPending,
-      lastPaymentDate: lastPayment.rows[0]?.lastPaymentDate ?? null,
+      lastPaymentDate: row.lastPaymentDate ?? null,
     };
   }
 
-  async updateNotes(studentId: string, notes: string): Promise<void> {
-    await this.db.query(
-      `UPDATE students SET notes = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
-      [notes, studentId]
+  /** Une seule fiche par utilisateur (D-22, unique students.user_id) : pas d'école à préciser. */
+  async updateNotes(userId: string, notes: string): Promise<boolean> {
+    const result = await this.db.query(
+      `UPDATE students SET notes = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2`,
+      [notes, userId]
     );
+    return (result.rowCount ?? 0) > 0;
   }
 
-  async markLessonPaid(bookingId: string, amount: number, paymentMethod: string): Promise<void> {
-    await this.db.query(
-      `UPDATE lesson_bookings
-       SET paid = true, amount = $1, payment_method = $2, payment_date = CURRENT_TIMESTAMP
+  async markLessonPaid(lessonId: string, amount: number, paymentMethod: string): Promise<boolean> {
+    const result = await this.db.query(
+      `UPDATE lessons
+       SET paid = TRUE, amount = $1, payment_method = $2, payment_date = CURRENT_TIMESTAMP,
+           updated_at = CURRENT_TIMESTAMP
        WHERE id = $3`,
-      [amount, paymentMethod, bookingId]
+      [amount, paymentMethod, lessonId]
     );
+    return (result.rowCount ?? 0) > 0;
   }
 
-  async markExamPaid(registrationId: string, amount: number, paymentMethod: string): Promise<void> {
-    await this.db.query(
-      `UPDATE exam_registrations
-       SET paid = true, amount = $1, payment_method = $2, payment_date = CURRENT_TIMESTAMP
+  async markExamPaid(examId: string, amount: number, paymentMethod: string): Promise<boolean> {
+    const result = await this.db.query(
+      `UPDATE exams
+       SET paid = TRUE, amount = $1, payment_method = $2, payment_date = CURRENT_TIMESTAMP,
+           updated_at = CURRENT_TIMESTAMP
        WHERE id = $3`,
-      [amount, paymentMethod, registrationId]
+      [amount, paymentMethod, examId]
     );
+    return (result.rowCount ?? 0) > 0;
   }
 }

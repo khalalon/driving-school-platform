@@ -105,17 +105,17 @@ Deux familles montées par le module `student` de `services/api` : `/api/profile
 
 | # | Méthode | Chemin | Appelé par | Payload | Réponse (cible) | Statut | Écart / notes |
 |---|---|---|---|---|---|---|---|
-| P1 | GET | `/api/profiles/:studentId/schools/:schoolId/complete` | `StudentInfoTab` (écran `StudentProfile`, joignable après 6.6) | — (`instructor` de cette école / `admin`) | `StudentProfile` `{ id (users.id), firstName, lastName, email, phone?, address?, dateOfBirth?, licenseNumber?, enrollmentDate?, emergencyContact?, emergencyPhone?, totalLessons, completedLessons, totalExams, passedExams, notes? }` | **DIVERGE** | `firstName` / `lastName` par jointure `users` (3.1, `name` retiré) ; joignable via Nginx depuis 2.6 ; repository filtre encore sur `students.id` (D-28 → 5.0). |
-| P2 | GET | `/api/profiles/:studentId/schools/:schoolId/lessons` | `StudentLessonsTab` | — | `LessonHistory[]` `{ id (lesson), type, scheduledDate, durationMinutes, instructorFirstName, instructorLastName, attended?, feedback?, rating?, paid, amount?, paymentDate?, paymentMethod? }` | **DIVERGE** | Idem P1 ; après 3.3 la source est `lessons` (plus `lesson_bookings` pour l'individuel). |
-| P3 | GET | `/api/profiles/:studentId/schools/:schoolId/exams` | `StudentExamsTab` | — | `ExamHistory[]` `{ id (exam), type, dateTime, result, score?, notes?, paid, amount?, paymentDate?, paymentMethod? }` | **DIVERGE** | Idem P1 ; après 3.4 la source est `exams`. |
-| P4 | GET | `/api/profiles/:studentId/schools/:schoolId/financial` | `StudentInfoTab` | — | `FinancialSummary` `{ totalRevenue, totalPending, totalDue, lessonsRevenue, examsRevenue, lessonsPending, examsPending, lastPaymentDate? }` | **DIVERGE** | Idem P1. |
-| P5 | PUT | `/api/profiles/:studentId/notes` | `StudentInfoTab` | `{ notes }` — note privée instructeur, portée à l'école de l'appelant | 204 | **DIVERGE** | Idem P1 (`students.notes` résolu via `user_id` + école de l'instructeur). |
-| P6 | PUT | `/api/profiles/lessons/:lessonId/mark-paid` | `StudentLessonsTab` | `{ amount, paymentMethod ∈ cash\|card\|bank_transfer }` | 204 | **DIVERGE** | Chemin actuel `/bookings/:bookingId/mark-paid` sur `lesson_bookings` ; après 3.3 le paiement est porté par `lessons` (individuel) → chemin renommé. Tâche 5.0. |
-| P7 | PUT | `/api/profiles/exams/:examId/mark-paid` | `StudentExamsTab` | `{ amount, paymentMethod }` | 204 | **DIVERGE** | Chemin actuel `/registrations/:registrationId/mark-paid` ; après 3.4 porté par `exams` → renommé. Tâche 5.0. |
-| P8 | GET | `/api/student-profiles/me/schools/:schoolId/profile` | `MyProgressTab` (écran `MyProfile`, joignable après 6.6) | — (`student`) | `MyProfile` (= P1 sans `notes`) | **DIVERGE** | Non routé ; controller passe `users.id` à une requête `students.id` — corrigé par D-28 (5.0). |
-| P9 | GET | `/api/student-profiles/me/schools/:schoolId/lessons` | `MyLessonsPaymentTab` | — | `LessonHistory[]` (sans `feedback` privé si décidé plus tard) | **DIVERGE** | Idem P8. |
-| P10 | GET | `/api/student-profiles/me/schools/:schoolId/exams` | `MyExamsPaymentTab` | — | `ExamHistory[]` | **DIVERGE** | Idem P8. |
-| P11 | GET | `/api/student-profiles/me/schools/:schoolId/financial` | `MyProgressTab` | — | `FinancialSummary` | **DIVERGE** | Idem P8. |
+| P1 | GET | `/api/profiles/:studentId/schools/:schoolId/complete` | `StudentInfoTab` (écran `StudentProfile`, joignable après 6.6) | — (`instructor` de cette école / `admin`) | `StudentProfile` `{ id (users.id), firstName, lastName, email, phone?, address?, dateOfBirth?, licenseNumber?, enrollmentDate?, emergencyContact?, emergencyPhone?, totalLessons, completedLessons, totalExams, passedExams, notes? }` | **EXISTE** | `users.id` en entrée, fiche résolue par `user_id` + `school_id` (D-28, 5.0) ; `totalLessons` / `totalExams` = leçons / examens planifiés ou passés (les demandes en attente, refusées ou annulées ne comptent pas) ; `completedLessons` = `student_lesson_stats` (L7). 404 sans fiche dans cette école. |
+| P2 | GET | `/api/profiles/:studentId/schools/:schoolId/lessons` | `StudentLessonsTab` | — | `LessonHistory[]` `{ id (lesson), type, status, scheduledDate, durationMinutes, instructorFirstName, instructorLastName, attended?, feedback?, rating?, paid, price?, amount?, paymentDate?, paymentMethod? }` | **EXISTE** | Source `lessons` (007) : leçons `scheduled`, `completed` et `cancelled` de l'élève dans l'école, les plus récentes d'abord ; `status` et `price` ajoutés (5.0). |
+| P3 | GET | `/api/profiles/:studentId/schools/:schoolId/exams` | `StudentExamsTab` | — | `ExamHistory[]` `{ id (exam), type, status, dateTime, location?, result, score?, notes?, paid, price?, amount?, paymentDate?, paymentMethod? }` | **EXISTE** | Source `exams` (008) : examens `scheduled`, `completed` et `cancelled` ; `status`, `location`, `price` ajoutés (5.0). |
+| P4 | GET | `/api/profiles/:studentId/schools/:schoolId/financial` | `StudentInfoTab` | — | `FinancialSummary` `{ totalRevenue, totalPending, totalDue, lessonsRevenue, examsRevenue, lessonsPending, examsPending, lastPaymentDate? }` | **EXISTE** | Encaissé = montants payés ; dû = leçons / examens `scheduled` ou `completed` non payés, au montant saisi sinon au prix de la leçon (5.0). **Q-18** (absence non payée) et **Q-17** (annulation payée) : aucune règle particulière tant qu'elles ne sont pas tranchées — une absence est traitée comme toute leçon `completed`, une annulation payée reste encaissée. |
+| P5 | PUT | `/api/profiles/:studentId/notes` | `StudentInfoTab` | `{ notes }` — note privée instructeur, portée à l'école de l'appelant | 204 | **EXISTE** | `students.notes` résolu par `user_id` (une seule fiche par élève, D-22) ; 404 sans fiche. Cloisonnement à l'école de l'appelant : 5.1. |
+| P6 | PUT | `/api/profiles/lessons/:lessonId/mark-paid` | `StudentLessonsTab` | `{ amount, paymentMethod ∈ cash\|card\|bank_transfer }` | 204 | **EXISTE** | `lessons.paid / amount / payment_method / payment_date` (5.0) ; 404 si la leçon n'existe pas. L'ancien chemin `/bookings/:bookingId/mark-paid` a disparu. |
+| P7 | PUT | `/api/profiles/exams/:examId/mark-paid` | `StudentExamsTab` | `{ amount, paymentMethod }` | 204 | **EXISTE** | `exams.paid / amount / payment_method / payment_date` (5.0) ; 404 si l'examen n'existe pas. L'ancien chemin `/registrations/:registrationId/mark-paid` a disparu. |
+| P8 | GET | `/api/student-profiles/me/schools/:schoolId/profile` | `MyProgressTab` (écran `MyProfile`, joignable après 6.6) | — (`student`) | `MyProfile` (= P1 sans `notes`) | **EXISTE** | `users.id` du jeton (D-28, 5.0) ; 404 si l'élève n'a pas de fiche dans cette école. |
+| P9 | GET | `/api/student-profiles/me/schools/:schoolId/lessons` | `MyLessonsPaymentTab` | — | `LessonHistory[]` (sans `feedback` privé si décidé plus tard) | **EXISTE** | Idem P2 (5.0). |
+| P10 | GET | `/api/student-profiles/me/schools/:schoolId/exams` | `MyExamsPaymentTab` | — | `ExamHistory[]` | **EXISTE** | Idem P3 (5.0). |
+| P11 | GET | `/api/student-profiles/me/schools/:schoolId/financial` | `MyProgressTab` | — | `FinancialSummary` | **EXISTE** | Idem P4 (5.0). |
 
 ## 7. Notifications
 
@@ -149,8 +149,8 @@ Elles existent aujourd'hui, ne sont appelées par aucun écran, et sont **retir�
 
 | Statut | Nombre | Lignes |
 |---|---|---|
-| EXISTE | 13 | A1, A2, A4, A5, S1, S2, S3, S4, E1, E2, E3, E5, E6 |
-| DIVERGE | 18 | A3, E4, L1, L2, L3, L7, P1–P11 |
+| EXISTE | 24 | A1, A2, A4, A5, S1, S2, S3, S4, E1, E2, E3, E5, E6, P1–P11 |
+| DIVERGE | 7 | A3, E4, L1, L2, L3, L7 |
 | MANQUE | 9 | S6, L4, L5, L6, X1–X5 |
 | SUPPRIMÉE | 2 | S5, L8 |
 

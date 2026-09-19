@@ -132,25 +132,25 @@ describe('StatsRepository', () => {
 });
 
 describe('ProfileRepository', () => {
-  it('getStudentProfile : agrège fiche, compte de leçons et statistiques d’examens', async () => {
-    const query = jest
-      .fn()
-      .mockResolvedValueOnce({
-        rows: [{ id: UUID.student, firstName: 'Élève', lastName: 'Test', completedLessons: 2 }],
-      })
-      .mockResolvedValueOnce({ rows: [{ total: '3' }] })
-      .mockResolvedValueOnce({ rows: [{ total: '2', passed: '1' }] });
-    const repo = new ProfileRepository({ query } as unknown as import('pg').Pool);
-
-    await expect(repo.getStudentProfile(UUID.student, UUID.school)).resolves.toEqual({
-      id: UUID.student,
+  it('getStudentProfile : une requête, fiche résolue par users.id + école (D-28), compteurs en sous-requêtes', async () => {
+    const row = {
+      id: 'user-1',
       firstName: 'Élève',
       lastName: 'Test',
-      completedLessons: 2,
       totalLessons: 3,
-      totalExams: 2,
-      passedExams: 1,
-    });
+      completedLessons: 2,
+    };
+    const { pool, query } = fakePool([row]);
+
+    await expect(
+      new ProfileRepository(pool).getStudentProfile('user-1', UUID.school)
+    ).resolves.toEqual(row);
+
+    const [sql, params] = query.mock.calls[0] as [string, unknown[]];
+    expect(sql).toMatch(/WHERE s\.user_id = \$1 AND s\.school_id = \$2/);
+    expect(sql).toMatch(/l\.status IN \('scheduled', 'completed'\)/);
+    expect(sql).toMatch(/e\.result = 'passed'/);
+    expect(params).toEqual(['user-1', UUID.school]);
   });
 
   it('getStudentProfile : null si la fiche n’existe pas (une seule requête)', async () => {
@@ -161,13 +161,17 @@ describe('ProfileRepository', () => {
     expect(query).toHaveBeenCalledTimes(1);
   });
 
-  it('getFinancialSummary : convertit les DECIMAL en nombres et additionne', async () => {
-    const query = jest
-      .fn()
-      .mockResolvedValueOnce({ rows: [{ lessonsRevenue: '80.00', lessonsPending: '40.00' }] })
-      .mockResolvedValueOnce({ rows: [{ examsRevenue: '60.00', examsPending: '0' }] })
-      .mockResolvedValueOnce({ rows: [{ lastPaymentDate: null }] });
-    const repo = new ProfileRepository({ query } as unknown as import('pg').Pool);
+  it('getFinancialSummary : une requête sur lessons + exams, DECIMAL convertis et additionnés', async () => {
+    const { pool, query } = fakePool([
+      {
+        lessonsRevenue: '80.00',
+        lessonsPending: '40.00',
+        examsRevenue: '60.00',
+        examsPending: '0',
+        lastPaymentDate: null,
+      },
+    ]);
+    const repo = new ProfileRepository(pool);
 
     await expect(repo.getFinancialSummary(UUID.student, UUID.school)).resolves.toEqual({
       totalRevenue: 140,
@@ -179,21 +183,38 @@ describe('ProfileRepository', () => {
       examsPending: 0,
       lastPaymentDate: null,
     });
+    const [sql] = query.mock.calls[0] as [string, unknown[]];
+    expect(sql).toMatch(/FROM lessons l WHERE l\.student_id IN/);
+    expect(sql).toMatch(/FROM exams e WHERE e\.student_id IN/);
   });
 
-  it('écritures : paramètres dans l’ordre attendu par le SQL', async () => {
-    const { pool, query } = fakePool([]);
-    const repo = new ProfileRepository(pool);
+  it('écritures : paramètres dans l’ordre du SQL, vrai si une ligne est touchée ; lectures sur lessons / exams', async () => {
+    const query = jest.fn().mockResolvedValue({ rows: [], rowCount: 1 });
+    const repo = new ProfileRepository({ query } as unknown as import('pg').Pool);
 
-    await repo.updateNotes(UUID.student, 'Bon élève');
-    await repo.markLessonPaid(UUID.booking, 40, 'cash');
-    await repo.markExamPaid(UUID.booking, 60, 'card');
-    await repo.getStudentLessons(UUID.student, UUID.school);
-    await repo.getStudentExams(UUID.student, UUID.school);
+    await expect(repo.updateNotes('user-1', 'Bon élève')).resolves.toBe(true);
+    await expect(repo.markLessonPaid(UUID.booking, 40, 'cash')).resolves.toBe(true);
+    await expect(repo.markExamPaid(UUID.booking, 60, 'card')).resolves.toBe(true);
+    await repo.getStudentLessons('user-1', UUID.school);
+    await repo.getStudentExams('user-1', UUID.school);
 
-    expect((query.mock.calls[0] as [string, unknown[]])[1]).toEqual(['Bon élève', UUID.student]);
-    expect((query.mock.calls[1] as [string, unknown[]])[1]).toEqual([40, 'cash', UUID.booking]);
-    expect((query.mock.calls[2] as [string, unknown[]])[1]).toEqual([60, 'card', UUID.booking]);
-    expect(query).toHaveBeenCalledTimes(5);
+    const calls = query.mock.calls as [string, unknown[]][];
+    expect(calls[0][0]).toMatch(
+      /UPDATE students SET notes = \$1, updated_at = CURRENT_TIMESTAMP WHERE user_id = \$2/
+    );
+    expect(calls[0][1]).toEqual(['Bon élève', 'user-1']);
+    expect(calls[1][0]).toMatch(/UPDATE lessons/);
+    expect(calls[1][1]).toEqual([40, 'cash', UUID.booking]);
+    expect(calls[2][0]).toMatch(/UPDATE exams/);
+    expect(calls[2][1]).toEqual([60, 'card', UUID.booking]);
+    expect(calls[3][0]).toMatch(/FROM lessons l\s+JOIN students s ON s\.id = l\.student_id/);
+    expect(calls[3][0]).toMatch(/LEFT JOIN users iu ON iu\.id = i\.user_id/);
+    expect(calls[3][1]).toEqual(['user-1', UUID.school]);
+    expect(calls[4][0]).toMatch(/FROM exams e\s+JOIN students s ON s\.id = e\.student_id/);
+
+    const none = new ProfileRepository(fakePool([]).pool);
+    await expect(none.updateNotes('ghost', 'x')).resolves.toBe(false);
+    await expect(none.markLessonPaid('ghost', 1, 'cash')).resolves.toBe(false);
+    await expect(none.markExamPaid('ghost', 1, 'cash')).resolves.toBe(false);
   });
 });

@@ -4,8 +4,7 @@ import { ProfileService } from '../profile.service';
 
 describe('ProfileService', () => {
   const profile: StudentProfile = {
-    id: 'student-1',
-    userId: 'user-1',
+    id: 'user-1',
     firstName: 'Élève',
     lastName: 'Test',
     email: 'eleve@x.io',
@@ -13,7 +12,6 @@ describe('ProfileService', () => {
     address: null,
     dateOfBirth: null,
     licenseNumber: null,
-    profilePhotoUrl: null,
     enrollmentDate: null,
     emergencyContact: null,
     emergencyPhone: null,
@@ -57,10 +55,10 @@ describe('ProfileService', () => {
   it('getOwnProfile : la vue élève ne contient pas les notes privées', async () => {
     repository.getStudentProfile.mockResolvedValue(profile);
 
-    const own = await service.getOwnProfile('student-1', 'school-1');
+    const own = await service.getOwnProfile('user-1', 'school-1');
 
     expect(own).not.toHaveProperty('notes');
-    expect(own).toMatchObject({ id: 'student-1', completedLessons: 2 });
+    expect(own).toMatchObject({ id: 'user-1', completedLessons: 2 });
   });
 
   it('les lectures (leçons, examens, finances) délèguent au repository', async () => {
@@ -87,17 +85,36 @@ describe('ProfileService', () => {
     expect(repository.getFinancialSummary).toHaveBeenCalledWith('student-1', 'school-1');
   });
 
-  it('les écritures délèguent au repository avec les mêmes arguments', async () => {
-    repository.updateNotes.mockResolvedValue();
-    repository.markLessonPaid.mockResolvedValue();
-    repository.markExamPaid.mockResolvedValue();
+  it('les écritures délèguent au repository avec les mêmes arguments (users.id, lessons.id, exams.id)', async () => {
+    repository.updateNotes.mockResolvedValue(true);
+    repository.markLessonPaid.mockResolvedValue(true);
+    repository.markExamPaid.mockResolvedValue(true);
 
-    await service.updateInstructorNotes('student-1', 'Bon élève');
-    await service.markLessonPaid('booking-1', 40, 'cash');
-    await service.markExamPaid('reg-1', 60, 'card');
+    await service.updateInstructorNotes('user-1', 'Bon élève');
+    await service.markLessonPaid('lesson-1', 40, 'cash');
+    await service.markExamPaid('exam-1', 60, 'card');
 
-    expect(repository.updateNotes).toHaveBeenCalledWith('student-1', 'Bon élève');
-    expect(repository.markLessonPaid).toHaveBeenCalledWith('booking-1', 40, 'cash');
-    expect(repository.markExamPaid).toHaveBeenCalledWith('reg-1', 60, 'card');
+    expect(repository.updateNotes).toHaveBeenCalledWith('user-1', 'Bon élève');
+    expect(repository.markLessonPaid).toHaveBeenCalledWith('lesson-1', 40, 'cash');
+    expect(repository.markExamPaid).toHaveBeenCalledWith('exam-1', 60, 'card');
+  });
+
+  it('les écritures répondent 404 NOT_FOUND quand aucune ligne n’est touchée', async () => {
+    repository.updateNotes.mockResolvedValue(false);
+    repository.markLessonPaid.mockResolvedValue(false);
+    repository.markExamPaid.mockResolvedValue(false);
+
+    await expect(service.updateInstructorNotes('ghost', 'x')).rejects.toMatchObject({
+      status: 404,
+      message: 'Fiche élève introuvable',
+    });
+    await expect(service.markLessonPaid('ghost', 40, 'cash')).rejects.toMatchObject({
+      status: 404,
+      message: 'Leçon introuvable',
+    });
+    await expect(service.markExamPaid('ghost', 60, 'card')).rejects.toMatchObject({
+      status: 404,
+      message: 'Examen introuvable',
+    });
   });
 });
