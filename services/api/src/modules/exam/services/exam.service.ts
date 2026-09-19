@@ -1,20 +1,69 @@
+import { SchoolGuard } from '../../../http/authz';
 import { HttpError } from '../../../http/errors';
+import { AuthUser, UserRole } from '../../../types/auth';
 import { IExamRepository } from '../repositories/exam.repository';
-import { CreateExamDTO, Exam, ExamFilters, UpdateExamDTO } from '../types/exam.types';
+import { Exam, ExamFilters, ExamScope, RequestExamDTO } from '../types/exam.types';
+
+/** Ce que le module attend du module student : la fiche `students` d'un compte (unique, D-22). */
+export interface StudentLookup {
+  findByUserId(
+    userId: string
+  ): Promise<{ id: string; schoolId: string; authorized: boolean } | null>;
+}
+
+/** Ce que le module attend du module school : l'école d'un instructeur. */
+export interface InstructorLookup {
+  findByUserId(userId: string): Promise<{ id: string; schoolId: string } | null>;
+}
 
 /**
- * Anciennes routes de sessions sur le schéma 008 (un examen = un élève), conservées jusqu'à leur
- * remplacement par X1–X5 (5.5–5.6) : l'examen naîtra d'une demande de l'élève (D-01).
+ * Examens selon D-01 / D-33 : l'élève demande (X2), toute l'école voit et agit (pas
+ * d'instructeur attitré), sans règle d'éligibilité (D-26). Cloisonnement D-20.
  */
 export class ExamService {
-  constructor(private readonly examRepository: IExamRepository) {}
+  constructor(
+    private readonly examRepository: IExamRepository,
+    private readonly students: StudentLookup,
+    private readonly instructors: InstructorLookup,
+    private readonly schoolGuard: SchoolGuard
+  ) {}
 
-  async createExam(dto: CreateExamDTO): Promise<Exam> {
-    this.assertFuture(dto.dateTime);
-    return await this.examRepository.create(dto);
+  /** X2 : école résolue depuis l'inscription approuvée de l'élève ; 403 NOT_ENROLLED sinon. */
+  async requestExam(caller: AuthUser, dto: RequestExamDTO): Promise<Exam> {
+    const student = await this.students.findByUserId(caller.userId);
+    if (!student?.authorized) {
+      throw new HttpError(
+        403,
+        'NOT_ENROLLED',
+        'Vous devez être inscrit et approuvé dans une école pour demander un examen'
+      );
+    }
+    return this.examRepository.createRequest({
+      ...dto,
+      studentRowId: student.id,
+      schoolId: student.schoolId,
+    });
   }
 
-  async getExamById(id: string): Promise<Exam> {
+  /** X1 : les examens de l'appelant (élève : les siens ; instructeur : tous ceux de son école). */
+  async listExams(caller: AuthUser, filters: ExamFilters): Promise<Exam[]> {
+    return this.examRepository.findAll(await this.resolveScope(caller), filters);
+  }
+
+  /** `GET /:id` : son propre examen pour un élève, ceux de son école pour un instructeur. */
+  async getExam(caller: AuthUser, id: string): Promise<Exam> {
+    const exam = await this.requireExam(id);
+    if (caller.role === UserRole.STUDENT) {
+      if (exam.studentId !== caller.userId) {
+        throw new HttpError(403, 'FORBIDDEN', "Cet examen n'est pas le vôtre");
+      }
+      return exam;
+    }
+    await this.schoolGuard.assertSameSchool(caller, exam.schoolId);
+    return exam;
+  }
+
+  private async requireExam(id: string): Promise<Exam> {
     const exam = await this.examRepository.findById(id);
     if (!exam) {
       throw new HttpError(404, 'NOT_FOUND', 'Examen introuvable');
@@ -22,26 +71,26 @@ export class ExamService {
     return exam;
   }
 
-  getExams(filters: ExamFilters): Promise<Exam[]> {
-    return this.examRepository.findAll(filters);
-  }
-
-  async updateExam(id: string, dto: UpdateExamDTO): Promise<Exam> {
-    await this.getExamById(id);
-    if (dto.dateTime) {
-      this.assertFuture(dto.dateTime);
+  private async resolveScope(caller: AuthUser): Promise<ExamScope> {
+    if (caller.role === UserRole.STUDENT) {
+      const student = await this.students.findByUserId(caller.userId);
+      // Sans fiche students, l'élève n'a aucun examen : identifiant impossible → liste vide.
+      return {
+        kind: 'student',
+        studentRowId: student?.id ?? '00000000-0000-0000-0000-000000000000',
+      };
     }
-    return this.examRepository.update(id, dto);
-  }
-
-  async deleteExam(id: string): Promise<void> {
-    await this.getExamById(id);
-    await this.examRepository.delete(id);
-  }
-
-  private assertFuture(date: Date): void {
-    if (date.getTime() < Date.now()) {
-      throw new HttpError(400, 'VALIDATION_ERROR', "La date de l'examen doit être dans le futur");
+    if (caller.role === UserRole.INSTRUCTOR) {
+      const instructor = await this.instructors.findByUserId(caller.userId);
+      if (!instructor) {
+        throw new HttpError(
+          403,
+          'FORBIDDEN_SCHOOL',
+          'Aucune école rattachée à ce compte instructeur'
+        );
+      }
+      return { kind: 'school', schoolId: instructor.schoolId };
     }
+    return { kind: 'all' };
   }
 }

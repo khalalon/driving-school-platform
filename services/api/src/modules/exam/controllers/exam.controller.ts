@@ -1,67 +1,45 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { sendCaughtError, sendValidationError } from '../../../http/errors';
 import { uuidParam, validate } from '../../../http/validation';
+import { AuthRequest, getAuthUser } from '../../../middleware/auth.middleware';
 import { ExamService } from '../services/exam.service';
-import {
-  createExamSchema,
-  examFiltersSchema,
-  updateExamSchema,
-} from '../validators/exam.validator';
+import { examFiltersSchema, requestExamSchema } from '../validators/exam.validator';
 
 export class ExamController {
   constructor(private readonly examService: ExamService) {}
 
-  createExam = async (req: Request, res: Response): Promise<void> => {
-    const parsed = validate(createExamSchema, req.body);
+  /** X2 */
+  requestExam = async (req: AuthRequest, res: Response): Promise<void> => {
+    const parsed = validate(requestExamSchema, req.body);
     if (!parsed.ok) {
       sendValidationError(res, parsed.detail);
       return;
     }
     try {
-      res.status(201).json(await this.examService.createExam(parsed.value));
+      res.status(201).json(await this.examService.requestExam(getAuthUser(req), parsed.value));
     } catch (err) {
       sendCaughtError(res, err);
     }
   };
 
-  getExams = async (req: Request, res: Response): Promise<void> => {
+  /** X1 */
+  listMyExams = async (req: AuthRequest, res: Response): Promise<void> => {
     const parsed = validate(examFiltersSchema, req.query);
     if (!parsed.ok) {
       sendValidationError(res, parsed.detail);
       return;
     }
     try {
-      res.json(await this.examService.getExams(parsed.value));
+      res.json(await this.examService.listExams(getAuthUser(req), parsed.value));
     } catch (err) {
       sendCaughtError(res, err);
     }
   };
 
-  getExam = async (req: Request, res: Response): Promise<void> => {
+  getExam = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-      res.json(await this.examService.getExamById(uuidParam(req.params.id, 'Examen')));
-    } catch (err) {
-      sendCaughtError(res, err);
-    }
-  };
-
-  updateExam = async (req: Request, res: Response): Promise<void> => {
-    const parsed = validate(updateExamSchema, req.body);
-    if (!parsed.ok) {
-      sendValidationError(res, parsed.detail);
-      return;
-    }
-    try {
-      res.json(await this.examService.updateExam(uuidParam(req.params.id, 'Examen'), parsed.value));
-    } catch (err) {
-      sendCaughtError(res, err);
-    }
-  };
-
-  deleteExam = async (req: Request, res: Response): Promise<void> => {
-    try {
-      await this.examService.deleteExam(uuidParam(req.params.id, 'Examen'));
-      res.status(204).send();
+      const id = uuidParam(req.params.id, 'Examen');
+      res.json(await this.examService.getExam(getAuthUser(req), id));
     } catch (err) {
       sendCaughtError(res, err);
     }

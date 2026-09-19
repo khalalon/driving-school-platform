@@ -1,6 +1,5 @@
 import Joi, { CustomHelpers } from 'joi';
 import {
-  CreateExamDTO,
   EXAM_STATUSES,
   EXAM_TYPES,
   ExamFilters,
@@ -10,15 +9,13 @@ import {
   RejectExamDTO,
   RequestExamDTO,
   ScheduleExamDTO,
-  UpdateExamDTO,
 } from '../types/exam.types';
 
-const uuid = Joi.string().uuid();
 const examType = Joi.string().valid(...EXAM_TYPES);
 const futureDate = Joi.date().iso().greater('now');
 const location = Joi.string().min(2).max(255);
 
-/** X2 (5.5). */
+/** X2. */
 export const requestExamSchema = Joi.object<RequestExamDTO>({
   examType: examType.required(),
   preferredDate: futureDate.required(),
@@ -43,28 +40,6 @@ export const recordResultSchema = Joi.object<RecordResultDTO>({
   notes: Joi.string().max(1000).optional(),
 });
 
-/** Ancienne route `POST /api/exams` (jusqu'en 5.5) : un examen planifié pour un élève donné. */
-export const createExamSchema = Joi.object<CreateExamDTO>({
-  schoolId: uuid.required(),
-  studentId: uuid.required(),
-  type: examType.required(),
-  dateTime: futureDate.required(),
-  location: location.optional(),
-  examinerId: uuid.optional(),
-  price: Joi.number().positive().required(),
-});
-
-/** Ancienne route `PUT /api/exams/:id` (jusqu'en 5.5). */
-export const updateExamSchema = Joi.object<UpdateExamDTO>({
-  dateTime: futureDate.optional(),
-  location: location.optional(),
-  examinerId: uuid.optional(),
-  price: Joi.number().positive().optional(),
-  status: Joi.string()
-    .valid(...EXAM_STATUSES)
-    .optional(),
-}).min(1);
-
 /** `status=pending,scheduled` (X1) → tableau de statuts connus. */
 const statusList = Joi.custom((value: unknown, helpers: CustomHelpers): ExamStatus[] => {
   const raw: unknown[] = Array.isArray(value) ? value : String(value).split(',');
@@ -78,11 +53,7 @@ const statusList = Joi.custom((value: unknown, helpers: CustomHelpers): ExamStat
   return statuses as ExamStatus[];
 }, 'liste de statuts');
 
+/** X1. */
 export const examFiltersSchema = Joi.object<ExamFilters>({
   status: statusList.optional(),
-  schoolId: uuid.optional(),
-  studentId: uuid.optional(),
-  type: examType.optional(),
-  dateFrom: Joi.date().iso().optional(),
-  dateTo: Joi.date().iso().optional(),
 });

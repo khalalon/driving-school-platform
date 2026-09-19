@@ -24,9 +24,9 @@ export const EXAM_RESULTS: readonly ExamResult[] = Object.values(ExamResult);
 export const EXAM_STATUSES: readonly ExamStatus[] = Object.values(ExamStatus);
 
 /**
- * Un examen = un élève (schéma 008) ; `studentId` = students.id en base (users.id dans l'API à
- * partir de 5.5, D-28). `dateTime` et `location` sont fixés à la planification (X3).
- * `studentFirstName` / `studentLastName` / `studentCompletedLessons` : jointures (contrat §5).
+ * Objet `Exam` du contrat (§5). Un examen = un élève (schéma 008) ; `studentId` = users.id
+ * (D-28), identité et leçons effectuées de l'élève par jointure ; pas d'instructeur attitré
+ * (D-33). `dateTime` et `location` sont fixés à la planification (X3).
  */
 export interface Exam {
   id: string;
@@ -50,16 +50,22 @@ export interface Exam {
   amount: number | null;
   paymentDate: Date | null;
   paymentMethod: string | null;
-  examinerId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
-/** X2 (5.5) : demande de l'élève, adressée à l'école. */
+/** X2 : demande de l'élève, adressée à l'école. */
 export interface RequestExamDTO {
   examType: ExamType;
   preferredDate: Date;
   message?: string;
+}
+
+/** Ce que le repository écrit pour une demande (élève et école résolus par le service). */
+export interface NewExamRequest extends RequestExamDTO {
+  /** students.id */
+  studentRowId: string;
+  schoolId: string;
 }
 
 /** X3 (5.6). */
@@ -80,35 +86,13 @@ export interface RecordResultDTO {
   notes?: string;
 }
 
-/**
- * Ancienne route `POST /api/exams` (session créée par l'école), conservée jusqu'en 5.5 : depuis
- * 008 un examen a toujours son élève, d'où `studentId` (students.id) ; il naît `scheduled`.
- */
-export interface CreateExamDTO {
-  schoolId: string;
-  studentId: string;
-  type: ExamType;
-  dateTime: Date;
-  location?: string;
-  examinerId?: string;
-  price: number;
-}
-
-/** Ancienne route `PUT /api/exams/:id`, conservée jusqu'en 5.5. */
-export interface UpdateExamDTO {
-  dateTime?: Date;
-  location?: string;
-  examinerId?: string;
-  price?: number;
-  status?: ExamStatus;
-}
-
-/** Filtres de X1 (`status`) et de l'ancienne liste publique (jusqu'en 5.5). */
+/** Filtres de X1. */
 export interface ExamFilters {
   status?: ExamStatus[];
-  schoolId?: string;
-  studentId?: string;
-  type?: ExamType;
-  dateFrom?: Date;
-  dateTo?: Date;
 }
+
+/** Portée résolue par le service à partir de l'appelant : ses examens, ceux de son école, tout. */
+export type ExamScope =
+  | { kind: 'student'; studentRowId: string }
+  | { kind: 'school'; schoolId: string }
+  | { kind: 'all' };

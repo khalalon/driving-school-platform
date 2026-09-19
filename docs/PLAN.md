@@ -372,7 +372,7 @@ ITOK=$(curl -s -X POST localhost/api/auth/login -H 'Content-Type: application/js
 **Hors périmètre** : examens.
 **Dépend de** : Q-18 (une absence entre-t-elle dans `totalDue` ? — implémenter la présence sans attendre, la règle financière est appliquée en 5.0/P4 quand Q-18 est tranchée).
 
-### - [ ] 5.5 — Examens : demande (X2) et liste de l'appelant (X1)
+### - [x] 5.5 — Examens : demande (X2) et liste de l'appelant (X1)
 **Objectif** : `POST /api/exams/request { examType, preferredDate, message? }` (élève autorisé, école résolue) → `pending`, **sans** règle d'éligibilité (D-26) ; `GET /api/exams/my-exams` scoped. Anciennes routes de sessions retirées.
 **Fichiers** : `modules/exam/**`, tests, `tests/e2e/exams.e2e.test.ts` (nouveau), `docs/API_CONTRACT.md` (X1, X2, §8).
 **Critère de validation** :

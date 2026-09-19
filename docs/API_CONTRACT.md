@@ -93,8 +93,8 @@ Objet `Exam` (cible) : `{ id, schoolId, studentId (users.id), studentFirstName, 
 
 | # | Méthode | Chemin | Appelé par | Payload (cible) | Réponse (cible) | Statut | Écart / notes |
 |---|---|---|---|---|---|---|---|
-| X1 | GET | `/api/exams/my-exams` | `MyExamsScreen` (élève), `ExamRequestsScreen`, `TodayExamsScreen` (instructeur) | query optionnelle `status` | `Exam[]` **de l'appelant** : élève → les siens (avec `paid`, `amount`) ; instructeur → **tous ceux de son école** (pas d'instructeur attitré), avec `studentCompletedLessons` | **MANQUE** | Aujourd'hui tombe sur `GET /:id` avec `id = "my-exams"` → erreur UUID. Schéma 008 et validateur `status` prêts (3.4). Mobile actuel : `THEORY`/`PRACTICAL`, `PASS`/`FAIL` (6.1). Tâche 5.5. |
-| X2 | POST | `/api/exams/request` | `RequestExamScreen` (élève) | `{ examType ∈ theory\|practical, preferredDate (ISO, futur), message? }` (`student` ; **refusé 403 `NOT_ENROLLED` si l'élève n'a pas d'inscription `approved`**, même règle que L2 ; école résolue depuis cette inscription, D-22) | 201 `Exam` (`pending`) | **MANQUE** | Tâche 5.5. |
+| X1 | GET | `/api/exams/my-exams` | `MyExamsScreen` (élève), `ExamRequestsScreen`, `TodayExamsScreen` (instructeur) | query optionnelle `status` | `Exam[]` **de l'appelant** : élève → les siens (avec `paid`, `amount`) ; instructeur → **tous ceux de son école** (pas d'instructeur attitré), avec `studentCompletedLessons` | **EXISTE** | Conforme (5.5) : élève → ses examens ; instructeur → tous ceux de son école (`studentFirstName`, `studentLastName`, `studentCompletedLessons` joints) ; admin → tout ; `status` accepte plusieurs valeurs séparées par des virgules. Mobile actuel : `THEORY`/`PRACTICAL`, `PASS`/`FAIL` (6.1). |
+| X2 | POST | `/api/exams/request` | `RequestExamScreen` (élève) | `{ examType ∈ theory\|practical, preferredDate (ISO, futur), message? }` (`student` ; **refusé 403 `NOT_ENROLLED` si l'élève n'a pas d'inscription `approved`**, même règle que L2 ; école résolue depuis cette inscription, D-22) | 201 `Exam` (`pending`) | **EXISTE** | Conforme (5.5) : 403 `NOT_ENROLLED` sans fiche `students` autorisée, école résolue depuis cette fiche (D-22), aucune règle d'éligibilité (D-26). |
 | X3 | PUT | `/api/exams/:id/schedule` | `ExamRequestsScreen` — **stub** | `{ dateTime (ISO, futur), location }` — instructeur de l'école | `Exam` (`scheduled`) | **MANQUE** | Colonne `location` et `scheduleExamSchema` prêts (3.4). Tâches 5.6, 6.5. **Suspendu à Q-19** pour le libellé (« planifier » vs « enregistrer la date de session ») ; le payload ne change pas. |
 | X4 | PUT | `/api/exams/:id/reject` | `ExamRequestsScreen` — **stub** | `{ reason }` (10–500 car.) | `Exam` (**`rejected`**, `rejectionReason`) | **MANQUE** | Tâches 5.6, 6.5. Libellé écran selon Q-19 (« refuser » ou « dossier pas prêt »). |
 | X5 | PUT | `/api/exams/:id/result` | `TodayExamsScreen` — **stub** | `{ result ∈ passed\|failed, score? (0–100, **facultatif** : un examen de conduite est admis/ajourné sans note, seul le code donne un score), notes? }` — **instructeur** de l'école (D-20) | `Exam` (`completed`) | **MANQUE** | Backend actuel : `PUT /registrations/:id/result` admin uniquement, par identifiant de registration. Mobile actuel : `PASS`/`FAIL` (6.1). Tâches 5.6, 6.5. |
@@ -128,7 +128,7 @@ Elles existent aujourd'hui, ne sont appelées par aucun écran, et sont **retir�
 - `/api/verification/*` (module `student`, **public dans l'application**, bloqué par Nginx depuis 2.6 ; `/students/:studentId/eligibility` retirée en 3.4, D-26) : supprimé en 5.7 (`student_lesson_stats` est mis à jour directement par L7).
 - `/api/schools` : `POST /`, `PUT /:id`, `DELETE /:id`, `POST /:schoolId/instructors`, `GET /instructors/:id`, `PUT|DELETE /instructors/:id`, `POST /:schoolId/pricing`, `DELETE /pricing/:id` — **conservées, `admin` uniquement** (onboarding des écoles par script + ces routes).
 - `/api/lessons` : `GET /:id` (conservée : sa propre leçon pour un élève, 403 `FORBIDDEN` sinon ; leçons de son école pour un instructeur, D-20 ; tout pour un admin). **Retirées en 5.2** avec les anciennes routes de créneaux (`lesson_bookings` n'est plus lue) : `GET /:id/availability`, `PUT /:id`, `DELETE /:id`, `POST /:lessonId/book`, `GET /bookings/:id`, `GET /:lessonId/bookings`, `GET /students/:studentId/bookings`, `DELETE /bookings/:bookingId`, ancien `POST /` admin (remplacé par L2).
-- `/api/exams` : `POST /` (depuis 3.4 : `{ schoolId, studentId (students.id), type, dateTime, location?, examinerId?, price }` → examen `scheduled`), `GET /` (filtres `status` multiple, `schoolId`, `studentId`, `type`, `dateFrom`, `dateTo`), `GET /:id` (conservée, scoping), `PUT /:id` (`dateTime`, `location`, `examinerId`, `price`, `status`), `DELETE /:id` — retirées ou verrouillées en 5.5 / 5.7. **Retirées en 3.4** avec la table `exam_registrations` (D-26) : `GET /:id/availability`, `POST /:examId/register`, `GET /registrations/:id`, `GET /:examId/registrations`, `GET /students/:studentId/registrations`, `GET /students/:studentId/eligibility`, `PUT /registrations/:id/result`, `DELETE /registrations/:id`.
+- `/api/exams` : `GET /:id` (conservée : son propre examen pour un élève, 403 `FORBIDDEN` sinon ; examens de son école pour un instructeur, D-20 ; tout pour un admin). **Retirées en 5.5** (anciennes sessions) : `POST /`, `GET /`, `PUT /:id`, `DELETE /:id`. **Retirées en 3.4** avec la table `exam_registrations` (D-26) : `GET /:id/availability`, `POST /:examId/register`, `GET /registrations/:id`, `GET /:examId/registrations`, `GET /students/:studentId/registrations`, `GET /students/:studentId/eligibility`, `PUT /registrations/:id/result`, `DELETE /registrations/:id`.
 - `/api/payments/*` : module porté, **non monté** (D-31).
 - `/api/analytics/*` : **supprimé** (D-31).
 
@@ -149,9 +149,9 @@ Elles existent aujourd'hui, ne sont appelées par aucun écran, et sont **retir�
 
 | Statut | Nombre | Lignes |
 |---|---|---|
-| EXISTE | 34 | A1–A5, S1–S4, S6, E1–E6, L1–L7, P1–P11 |
+| EXISTE | 36 | A1–A5, S1–S4, S6, E1–E6, L1–L7, X1, X2, P1–P11 |
 | DIVERGE | 0 | — |
-| MANQUE | 5 | X1–X5 |
+| MANQUE | 3 | X3, X4, X5 |
 | SUPPRIMÉE | 2 | S5, L8 |
 
 Suspendu : L3 (Q-17, sort d'une leçon payée annulée) ; L7 (Q-18, facturation d'une absence) ; X3, X4 libellés (Q-19, procédure ATTT).
