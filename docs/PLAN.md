@@ -421,7 +421,7 @@ cd mobile-app && npx tsc --noEmit && test "$(grep -rc 'return await apiClient' s
 ```
 **Hors périmètre** : nouveaux appels.
 
-### - [ ] 6.2 — Auth mobile : `/me` après login, école de l'instructeur, inscription en une étape, logout
+### - [x] 6.2 — Auth mobile : `/me` après login, école de l'instructeur, inscription en une étape, logout
 **Objectif** : `AuthContext.login` appelle A3 et stocke `{ id, firstName, lastName, role, schoolId?, instructorId? }` ; `InstructorRegistrationScreen` devient un seul formulaire (nom, email, mot de passe, téléphone, n° de licence, code école) → A2 ; `InstructorDashboard` passe `schoolId` à `EnrollmentRequests` ; `EnrollmentRequestsScreen` valide le motif ≥ 10 caractères (D-29) ; `logout` appelle A5. Tests jest des méthodes de service (URL + payload).
 **Fichiers** : `src/context/AuthContext.tsx`, `src/screens/auth/InstructorRegistrationScreen.tsx`, `src/screens/instructor/{InstructorDashboard,EnrollmentRequestsScreen}.tsx`, `src/services/api/{AuthService,EnrollmentService}.ts` + `__tests__`.
 **Critère de validation** :

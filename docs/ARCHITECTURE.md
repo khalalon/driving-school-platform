@@ -53,7 +53,7 @@ Non portés : `notification` (D-35) et `analytics` (D-31, dont le middleware pas
 - **Un seul middleware** (`src/middleware/auth.middleware.ts`) vérifie le jeton localement et pose `req.user` ; plus aucun appel HTTP vers `/api/auth/me` (D-03). Le bug historique `req.user.userId === undefined` des anciens services n'existe plus : `POST /api/enrollment/schools/:id/request` rattache la demande au `users.id` du jeton.
 - `POST /api/auth/register` est public et accepte `role ∈ {admin, instructor, student}` : n'importe qui peut encore se créer un compte admin (4.1, 4.2).
 - `POST /api/auth/logout` répond 204 et supprime une clé Redis `user:<id>:session` que rien n'écrit. Aucune révocation de jeton n'existe (4.6).
-- Le mobile stocke la paire de jetons (`@auth_token`, `@auth_refresh_token`) ; sur 401, `ApiClient` appelle `/refresh` une seule fois (appels concurrents partagés), stocke la nouvelle paire et rejoue la requête ; si le refresh est refusé, la session locale est effacée et `AuthContext` déconnecte (4.5). Session effective = 30 j glissants.
+- Le mobile stocke la paire de jetons (`@auth_token`, `@auth_refresh_token`) ; sur 401, `ApiClient` appelle `/refresh` une seule fois (appels concurrents partagés), stocke la nouvelle paire et rejoue la requête ; si le refresh est refusé, la session locale est effacée et `AuthContext` déconnecte (4.5). Session effective = 30 j glissants. Après A1 / A2, `AuthContext` appelle A3 et stocke `{ id, email, firstName, lastName, role, schoolId?, instructorId? }` (`@auth_user`), rafraîchi au démarrage ; `logout` appelle A5 puis efface le stockage local (6.2).
 - Erreurs : partout `{ error: <code>, message: <français> }` (D-27). Codes : `VALIDATION_ERROR`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `NOT_ENROLLED`, `INTERNAL_ERROR` (+ `FORBIDDEN_SCHOOL`, `CANCEL_WINDOW_CLOSED`, `PRICE_REQUIRED`, `INVALID_SCHOOL_CODE` réservés aux phases 4–5).
 
 ## 4. Base de données
@@ -118,7 +118,7 @@ Le détail par écran est dans `API_CONTRACT.md`. Résumé des dépendances rée
 | RequestExam, MyExams | exams |
 | MyEnrollmentRequests | enrollment |
 | MyProfile (3 onglets) | student-profiles — **injoignable** : aucun écran actif n'y navigue |
-| EnrollmentRequests (instructeur) | enrollment — reçoit `schoolId` en param de route mais le dashboard n'en passe aucun → ne charge rien |
+| EnrollmentRequests (instructeur) | enrollment (E4, E5, E6 avec motif de 10 à 500 caractères) — `schoolId` passé par `InstructorDashboard` depuis A3 (6.2) |
 | LessonRequests, TodayLessons, ExamRequests, TodayExams | lessons / exams en lecture ; les boutons approuver / rejeter / planifier / résultat sont des **stubs** (`Alert('Success')` sans appel réseau) |
 | BookForStudent | lessons (L4 au format cible depuis 6.1, mais `studentId` reçoit encore l'email saisi → liste S6 en 6.4) |
 | StudentProfile (3 onglets) | profiles — **injoignable** : aucun écran n'y navigue |

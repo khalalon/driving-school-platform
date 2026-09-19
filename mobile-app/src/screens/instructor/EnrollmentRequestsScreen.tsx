@@ -25,6 +25,10 @@ import { colors, typography, spacing, shadows } from '../../theme';
 
 type FilterType = 'pending' | 'all';
 
+/** Motif de refus : 10 à 500 caractères, même règle que le backend (D-29). */
+const REJECTION_REASON_MIN = 10;
+const REJECTION_REASON_MAX = 500;
+
 const STATUS_STYLES: Record<EnrollmentStatus, { badge: object; label: string }> = {
   [EnrollmentStatus.PENDING]: { badge: { backgroundColor: colors.warning[50] }, label: 'Pending' },
   [EnrollmentStatus.APPROVED]: { badge: { backgroundColor: colors.success[50] }, label: 'Approved' },
@@ -106,15 +110,22 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
     setShowRejectModal(true);
   };
 
+  const reasonLength = rejectionReason.trim().length;
+  const reasonValid = reasonLength >= REJECTION_REASON_MIN && reasonLength <= REJECTION_REASON_MAX;
+
   const handleReject = async () => {
-    if (!selectedRequest || !rejectionReason.trim()) {
-      Alert.alert('Required', 'Please provide a rejection reason');
+    if (!selectedRequest) return;
+    if (!reasonValid) {
+      Alert.alert(
+        'Reason too short',
+        `Please explain the rejection in at least ${REJECTION_REASON_MIN} characters (the student will read it).`
+      );
       return;
     }
 
     try {
       setProcessing(true);
-      await enrollmentService.rejectRequest(selectedRequest.id, rejectionReason);
+      await enrollmentService.rejectRequest(selectedRequest.id, rejectionReason.trim());
       Alert.alert('Success', 'Enrollment request has been rejected');
       setShowRejectModal(false);
       setSelectedRequest(null);
@@ -282,8 +293,14 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
               onChangeText={setRejectionReason}
               multiline
               numberOfLines={4}
+              maxLength={REJECTION_REASON_MAX}
               textAlignVertical="top"
             />
+            <Text style={[styles.modalHint, !reasonValid && styles.modalHintWarning]}>
+              {reasonLength < REJECTION_REASON_MIN
+                ? `At least ${REJECTION_REASON_MIN} characters (${reasonLength}/${REJECTION_REASON_MIN})`
+                : `${reasonLength}/${REJECTION_REASON_MAX} characters`}
+            </Text>
 
             <View style={styles.modalActions}>
               <TouchableOpacity
@@ -300,7 +317,7 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalRejectButton]}
                 onPress={handleReject}
-                disabled={processing || !rejectionReason.trim()}
+                disabled={processing || !reasonValid}
                 activeOpacity={0.7}
               >
                 {processing ? (
@@ -525,6 +542,15 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     fontWeight: typography.weight.semibold,
     marginBottom: spacing.xs,
+  },
+  modalHint: {
+    fontSize: typography.size.xs,
+    color: colors.text.tertiary,
+    marginTop: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  modalHintWarning: {
+    color: colors.warning[600],
   },
   modalInput: {
     fontSize: typography.size.base,

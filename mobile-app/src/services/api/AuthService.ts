@@ -1,5 +1,5 @@
 /**
- * Auth Service — §1 du contrat (A1, A2, A3).
+ * Auth Service — §1 du contrat (A1, A2, A3, A5 ; A4 est joué par ApiClient).
  * Single Responsibility: Handle authentication API operations
  */
 
@@ -29,9 +29,9 @@ class AuthService {
     return response.data;
   }
 
-  /** Déconnexion : la révocation serveur (A5) est câblée en 6.2 ; le stockage local est effacé par AuthContext. */
+  /** A5 : révoque la session du jeton présenté (204) ; le stockage local est effacé par AuthContext. */
   async logout(): Promise<void> {
-    return Promise.resolve();
+    await apiClient.post(API_CONFIG.ENDPOINTS.AUTH.LOGOUT);
   }
 }
 

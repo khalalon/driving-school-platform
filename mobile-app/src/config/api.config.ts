@@ -38,6 +38,7 @@ export const API_CONFIG = {
       REGISTER: '/api/auth/register',
       REFRESH: '/api/auth/refresh',
       ME: '/api/auth/me',
+      LOGOUT: '/api/auth/logout',
     },
     // §2 Écoles (lecture publique)
     SCHOOLS: {

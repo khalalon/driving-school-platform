@@ -10,6 +10,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
@@ -21,6 +22,24 @@ export const InstructorDashboard = ({ navigation }: any) => {
   const handleLogout = async () => {
     await logout();
     // No need to navigate - AuthContext will trigger navigator rebuild
+  };
+
+  /** Écran cloisonné à l'école de l'instructeur : `schoolId` vient de A3 (D-19). */
+  const openEnrollmentRequests = () => {
+    const schoolId = user?.schoolId;
+    if (!schoolId) {
+      Alert.alert('No school', 'Your account is not linked to a school yet.');
+      return;
+    }
+    navigation.navigate('EnrollmentRequests', { schoolId });
+  };
+
+  const openRoute = (route: string) => {
+    if (route === 'EnrollmentRequests') {
+      openEnrollmentRequests();
+      return;
+    }
+    navigation.navigate(route);
   };
 
   const sections = [
@@ -121,7 +140,7 @@ export const InstructorDashboard = ({ navigation }: any) => {
                 <TouchableOpacity
                   key={item.id}
                   style={styles.menuCard}
-                  onPress={() => navigation.navigate(item.route)}
+                  onPress={() => openRoute(item.route)}
                   activeOpacity={0.7}
                 >
                   <View style={[styles.menuIconContainer, { backgroundColor: item.bgColor }]}>
