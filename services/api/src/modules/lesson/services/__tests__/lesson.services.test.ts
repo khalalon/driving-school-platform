@@ -1,3 +1,4 @@
+import { ITransactionRunner, Queryable } from '../../../../db/transaction';
 import { SchoolGuard } from '../../../../http/authz';
 import { AuthUser, UserRole } from '../../../../types/auth';
 import { LessonType } from '../../../../types/domain';
@@ -48,7 +49,10 @@ describe('LessonService (D-21 / D-32 : demande L2, liste L1, lecture scoped)', (
   let students: { findByUserId: jest.Mock };
   let instructors: { findById: jest.Mock; findByUserId: jest.Mock };
   let pricing: { getPricingByType: jest.Mock };
+  let stats: { incrementLessonCount: jest.Mock };
   let service: LessonService;
+  // Client de transaction factice (L7 : leçon + compteur dans une même transaction).
+  const tx: Queryable = { query: jest.fn() };
 
   beforeEach(() => {
     repository = {
@@ -58,8 +62,13 @@ describe('LessonService (D-21 / D-32 : demande L2, liste L1, lecture scoped)', (
       approve: jest.fn(),
       reject: jest.fn(),
       cancel: jest.fn(),
+      createScheduled: jest.fn(),
+      markAttendance: jest.fn(),
     };
     pricing = { getPricingByType: jest.fn() };
+    stats = { incrementLessonCount: jest.fn() };
+    const run = jest.fn((work: (client: Queryable) => Promise<unknown>) => work(tx));
+    const transactions = { run } as unknown as jest.Mocked<ITransactionRunner>;
     students = { findByUserId: jest.fn() };
     instructors = { findById: jest.fn(), findByUserId: jest.fn() };
     students.findByUserId.mockResolvedValue({
@@ -74,9 +83,133 @@ describe('LessonService (D-21 / D-32 : demande L2, liste L1, lecture scoped)', (
       students,
       instructors,
       pricing,
+      stats,
+      transactions,
       new SchoolGuard(instructors),
       24
     );
+  });
+
+  describe('bookForStudent (L4, D-25)', () => {
+    const dto = {
+      studentId: 'user-1',
+      type: LessonType.CODE,
+      scheduledDate: future,
+      durationMinutes: 60,
+      notes: 'Rattrapage',
+    };
+
+    it('élève inscrit et approuvé dans l’école de l’instructeur : leçon scheduled, prix de la grille', async () => {
+      pricing.getPricingByType.mockResolvedValue({ price: 20 });
+      repository.createScheduled.mockResolvedValue({ ...lesson, status: LessonStatus.SCHEDULED });
+
+      await expect(service.bookForStudent(instructor, dto)).resolves.toMatchObject({
+        status: 'scheduled',
+      });
+
+      expect(students.findByUserId).toHaveBeenCalledWith('user-1');
+      expect(repository.createScheduled).toHaveBeenCalledWith({
+        schoolId: 'school-1',
+        studentRowId: 'student-row-1',
+        instructorId: 'instr-1',
+        type: LessonType.CODE,
+        scheduledDate: future,
+        durationMinutes: 60,
+        price: 20,
+        notes: 'Rattrapage',
+      });
+    });
+
+    it('403 NOT_ENROLLED si l’élève n’est pas inscrit, pas autorisé, ou dans une autre école', async () => {
+      students.findByUserId.mockResolvedValue(null);
+      await expect(service.bookForStudent(instructor, dto)).rejects.toMatchObject({
+        status: 403,
+        code: 'NOT_ENROLLED',
+      });
+      students.findByUserId.mockResolvedValue({ id: 's', schoolId: 'school-2', authorized: true });
+      await expect(service.bookForStudent(instructor, dto)).rejects.toMatchObject({
+        code: 'NOT_ENROLLED',
+      });
+      expect(repository.createScheduled).not.toHaveBeenCalled();
+    });
+
+    it('sans tarif ni prix → 400 PRICE_REQUIRED ; sans fiche instructeur → 403 FORBIDDEN_SCHOOL', async () => {
+      pricing.getPricingByType.mockResolvedValue(null);
+      await expect(service.bookForStudent(instructor, dto)).rejects.toMatchObject({
+        status: 400,
+        code: 'PRICE_REQUIRED',
+      });
+
+      instructors.findByUserId.mockResolvedValue(null);
+      await expect(service.bookForStudent(instructor, dto)).rejects.toMatchObject({
+        status: 403,
+        code: 'FORBIDDEN_SCHOOL',
+      });
+    });
+  });
+
+  describe('markAttendance (L7, D-33)', () => {
+    const scheduled = {
+      ...lesson,
+      status: LessonStatus.SCHEDULED,
+      instructorId: 'instr-1',
+      instructor: { id: 'instr-1', firstName: 'Seed', lastName: 'Instructor' },
+    };
+
+    it('présent : completed et compteur de leçons effectuées incrémenté dans la transaction', async () => {
+      repository.findById.mockResolvedValue(scheduled);
+      repository.markAttendance.mockResolvedValue({
+        lesson: { ...scheduled, status: LessonStatus.COMPLETED, attended: true },
+        studentRowId: 'student-row-1',
+      });
+
+      await expect(
+        service.markAttendance(instructor, 'lesson-1', { attended: true, rating: 5 })
+      ).resolves.toMatchObject({ status: 'completed', attended: true });
+
+      expect(repository.markAttendance).toHaveBeenCalledWith(
+        'lesson-1',
+        { attended: true, rating: 5 },
+        tx
+      );
+      expect(stats.incrementLessonCount).toHaveBeenCalledWith(
+        'student-row-1',
+        { schoolId: 'school-1', lessonType: LessonType.PARC, attended: true },
+        tx
+      );
+    });
+
+    it('absent : completed sans incrémenter le compteur (D-33 ; facturation : Q-18)', async () => {
+      repository.findById.mockResolvedValue(scheduled);
+      repository.markAttendance.mockResolvedValue({
+        lesson: { ...scheduled, status: LessonStatus.COMPLETED, attended: false },
+        studentRowId: 'student-row-1',
+      });
+
+      await expect(
+        service.markAttendance(instructor, 'lesson-1', { attended: false })
+      ).resolves.toMatchObject({ attended: false });
+      expect(stats.incrementLessonCount).not.toHaveBeenCalled();
+    });
+
+    it('403 FORBIDDEN si l’appelant n’est pas l’instructeur de la leçon ; 409 si pas scheduled ; 409 si le statut change', async () => {
+      repository.findById.mockResolvedValue({ ...scheduled, instructorId: 'instr-2' });
+      await expect(
+        service.markAttendance(instructor, 'lesson-1', { attended: true })
+      ).rejects.toMatchObject({ status: 403, code: 'FORBIDDEN' });
+
+      repository.findById.mockResolvedValue(lesson);
+      await expect(
+        service.markAttendance(instructor, 'lesson-1', { attended: true })
+      ).rejects.toMatchObject({ status: 409 });
+
+      repository.findById.mockResolvedValue(scheduled);
+      repository.markAttendance.mockResolvedValue(null);
+      await expect(
+        service.markAttendance(instructor, 'lesson-1', { attended: true })
+      ).rejects.toMatchObject({ status: 409 });
+      expect(stats.incrementLessonCount).not.toHaveBeenCalled();
+    });
   });
 
   describe('approveLesson (L5, D-30 / D-32)', () => {

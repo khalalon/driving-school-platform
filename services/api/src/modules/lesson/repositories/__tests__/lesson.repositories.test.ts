@@ -155,6 +155,64 @@ describe('LessonRepository (schéma 007, objet Lesson du contrat)', () => {
     expect(cancelParams).toEqual([UUID.booking, null, 'user-1']);
   });
 
+  it('createScheduled (L4) et markAttendance (L7) : INSERT scheduled ; UPDATE conditionné, students.id renvoyé', async () => {
+    const query = jest
+      .fn()
+      .mockResolvedValueOnce({ rows: [{ id: UUID.booking }] })
+      .mockResolvedValueOnce({ rows: [{ ...row, status: 'scheduled' }] })
+      .mockResolvedValueOnce({ rows: [{ id: UUID.booking, studentRowId: UUID.student }] })
+      .mockResolvedValueOnce({ rows: [{ ...row, status: 'completed', attended: true }] })
+      .mockResolvedValueOnce({ rows: [] });
+    const repo = new LessonRepository({ query } as unknown as Pool);
+    const scheduledDate = new Date('2026-10-02T09:00:00Z');
+
+    await expect(
+      repo.createScheduled({
+        schoolId: UUID.school,
+        studentRowId: UUID.student,
+        instructorId: UUID.instructor,
+        type: LessonType.CODE,
+        scheduledDate,
+        durationMinutes: 60,
+        price: 20,
+      })
+    ).resolves.toMatchObject({ status: 'scheduled' });
+    const [insertSql, insertParams] = query.mock.calls[0] as [string, unknown[]];
+    expect(insertSql).toMatch(
+      /INSERT INTO lessons \(school_id, student_id, instructor_id, type, status, scheduled_date/
+    );
+    expect(insertSql).toMatch(/'scheduled'/);
+    expect(insertParams).toEqual([
+      UUID.school,
+      UUID.student,
+      UUID.instructor,
+      'CODE',
+      scheduledDate,
+      60,
+      20,
+      null,
+    ]);
+
+    const txQuery = jest.fn().mockResolvedValue({ rows: [] });
+    await expect(repo.markAttendance(UUID.booking, { attended: true, rating: 4 })).resolves.toEqual(
+      {
+        lesson: { ...row, status: 'completed', attended: true },
+        studentRowId: UUID.student,
+      }
+    );
+    const [updateSql, updateParams] = query.mock.calls[2] as [string, unknown[]];
+    expect(updateSql).toMatch(
+      /SET status = 'completed', attended = \$2, feedback = \$3, rating = \$4/
+    );
+    expect(updateSql).toMatch(/WHERE id = \$1 AND status = 'scheduled'/);
+    expect(updateSql).toMatch(/RETURNING id, student_id AS "studentRowId"/);
+    expect(updateParams).toEqual([UUID.booking, true, null, 4]);
+
+    await expect(repo.markAttendance(UUID.booking, { attended: false })).resolves.toBeNull();
+    await repo.markAttendance(UUID.booking, { attended: false }, { query: txQuery });
+    expect(txQuery).toHaveBeenCalledTimes(1);
+  });
+
   it('findAll : portée admin sans condition ; findById null sans ligne', async () => {
     const { pool, query } = fakePool([]);
     const repo = new LessonRepository(pool);

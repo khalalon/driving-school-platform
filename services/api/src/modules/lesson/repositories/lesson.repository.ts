@@ -1,15 +1,18 @@
 import { Pool } from 'pg';
+import { Queryable } from '../../../db/transaction';
 import {
   Lesson,
   LessonApproval,
   LessonFilters,
   LessonScope,
+  MarkAttendanceDTO,
   NewLessonRequest,
+  NewScheduledLesson,
 } from '../types/lesson.types';
 
 export interface ILessonRepository {
   createRequest(data: NewLessonRequest): Promise<Lesson>;
-  findById(id: string): Promise<Lesson | null>;
+  findById(id: string, executor?: Queryable): Promise<Lesson | null>;
   findAll(scope: LessonScope, filters: LessonFilters): Promise<Lesson[]>;
   /** L5 : `pending` → `scheduled` ; `null` si la leçon n'est plus `pending` (course entre instructeurs). */
   approve(id: string, approval: LessonApproval): Promise<Lesson | null>;
@@ -17,6 +20,17 @@ export interface ILessonRepository {
   reject(id: string, reason: string): Promise<Lesson | null>;
   /** L3 : `pending` ou `scheduled` → `cancelled` ; `null` si le statut a changé entre-temps. */
   cancel(id: string, cancelledBy: string, reason?: string): Promise<Lesson | null>;
+  /** L4 : leçon `scheduled` créée par l'instructeur pour un élève inscrit. */
+  createScheduled(data: NewScheduledLesson): Promise<Lesson>;
+  /**
+   * L7 : `scheduled` → `completed` avec présence, retour et note ; `null` si la leçon n'est plus
+   * `scheduled`. Renvoie aussi students.id pour les compteurs (D-33).
+   */
+  markAttendance(
+    id: string,
+    dto: MarkAttendanceDTO,
+    executor?: Queryable
+  ): Promise<{ lesson: Lesson; studentRowId: string } | null>;
 }
 
 /**
@@ -69,8 +83,8 @@ export class LessonRepository implements ILessonRepository {
     return this.requireById(inserted.rows[0].id);
   }
 
-  async findById(id: string): Promise<Lesson | null> {
-    const result = await this.db.query<Lesson>(
+  async findById(id: string, executor: Queryable = this.db): Promise<Lesson | null> {
+    const result = await executor.query<Lesson>(
       `SELECT ${LESSON_COLUMNS} ${LESSON_FROM} WHERE l.id = $1`,
       [id]
     );
@@ -164,9 +178,49 @@ export class LessonRepository implements ILessonRepository {
     return result.rows[0] ? this.requireById(id) : null;
   }
 
+  async createScheduled(data: NewScheduledLesson): Promise<Lesson> {
+    const inserted = await this.db.query<{ id: string }>(
+      `INSERT INTO lessons (school_id, student_id, instructor_id, type, status, scheduled_date,
+         duration_minutes, price, notes, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, 'scheduled', $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+       RETURNING id`,
+      [
+        data.schoolId,
+        data.studentRowId,
+        data.instructorId,
+        data.type,
+        data.scheduledDate,
+        data.durationMinutes,
+        data.price,
+        data.notes ?? null,
+      ]
+    );
+    return this.requireById(inserted.rows[0].id);
+  }
+
+  async markAttendance(
+    id: string,
+    dto: MarkAttendanceDTO,
+    executor: Queryable = this.db
+  ): Promise<{ lesson: Lesson; studentRowId: string } | null> {
+    const result = await executor.query<{ id: string; studentRowId: string }>(
+      `UPDATE lessons
+       SET status = 'completed', attended = $2, feedback = $3, rating = $4,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1 AND status = 'scheduled'
+       RETURNING id, student_id AS "studentRowId"`,
+      [id, dto.attended, dto.feedback ?? null, dto.rating ?? null]
+    );
+    const row = result.rows[0];
+    if (!row) {
+      return null;
+    }
+    return { lesson: await this.requireById(id, executor), studentRowId: row.studentRowId };
+  }
+
   /** Relecture avec les jointures après une écriture (RETURNING ne peut pas joindre). */
-  protected async requireById(id: string): Promise<Lesson> {
-    const lesson = await this.findById(id);
+  protected async requireById(id: string, executor: Queryable = this.db): Promise<Lesson> {
+    const lesson = await this.findById(id, executor);
     if (!lesson) {
       throw new Error(`Leçon ${id} introuvable après écriture`);
     }

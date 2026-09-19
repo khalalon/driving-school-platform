@@ -108,6 +108,19 @@ export interface LessonApproval {
   adminNotes?: string;
 }
 
+/** Ce que le repository écrit pour L4 : leçon directement planifiée par l'instructeur appelant. */
+export interface NewScheduledLesson {
+  schoolId: string;
+  /** students.id */
+  studentRowId: string;
+  instructorId: string;
+  type: LessonType;
+  scheduledDate: Date;
+  durationMinutes: number;
+  price: number;
+  notes?: string;
+}
+
 /** L7 : présence par identifiant de leçon (une leçon = un élève). */
 export interface MarkAttendanceDTO {
   attended: boolean;

@@ -5,8 +5,10 @@ import { AuthRequest, getAuthUser } from '../../../middleware/auth.middleware';
 import { LessonService } from '../services/lesson.service';
 import {
   approveLessonSchema,
+  bookForStudentSchema,
   cancelLessonSchema,
   lessonFiltersSchema,
+  markAttendanceSchema,
   rejectLessonSchema,
   requestLessonSchema,
 } from '../validators/lesson.validator';
@@ -76,6 +78,35 @@ export class LessonController {
     try {
       const id = uuidParam(req.params.id, 'Leçon');
       res.json(await this.lessonService.rejectLesson(getAuthUser(req), id, parsed.value));
+    } catch (err) {
+      sendCaughtError(res, err);
+    }
+  };
+
+  /** L4 */
+  bookForStudent = async (req: AuthRequest, res: Response): Promise<void> => {
+    const parsed = validate(bookForStudentSchema, req.body);
+    if (!parsed.ok) {
+      sendValidationError(res, parsed.detail);
+      return;
+    }
+    try {
+      res.status(201).json(await this.lessonService.bookForStudent(getAuthUser(req), parsed.value));
+    } catch (err) {
+      sendCaughtError(res, err);
+    }
+  };
+
+  /** L7 */
+  markAttendance = async (req: AuthRequest, res: Response): Promise<void> => {
+    const parsed = validate(markAttendanceSchema, req.body);
+    if (!parsed.ok) {
+      sendValidationError(res, parsed.detail);
+      return;
+    }
+    try {
+      const id = uuidParam(req.params.id, 'Leçon');
+      res.json(await this.lessonService.markAttendance(getAuthUser(req), id, parsed.value));
     } catch (err) {
       sendCaughtError(res, err);
     }

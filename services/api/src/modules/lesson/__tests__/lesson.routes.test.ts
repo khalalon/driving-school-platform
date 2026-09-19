@@ -14,6 +14,8 @@ describe('Routes /api/lessons (L1, L2, GET /:id)', () => {
     approveLesson: jest.fn(),
     rejectLesson: jest.fn(),
     cancelLesson: jest.fn(),
+    bookForStudent: jest.fn(),
+    markAttendance: jest.fn(),
   };
   const app = createApp({
     auth: createLessonRouter(
@@ -182,6 +184,80 @@ describe('Routes /api/lessons (L1, L2, GET /:id)', () => {
     const closed = await request(app).post(url).set('Authorization', bearerFor('student'));
     expect(closed.status).toBe(403);
     expect(closed.body).toEqual({ error: 'CANCEL_WINDOW_CLOSED', message: 'Trop tard' });
+  });
+
+  it('L4 POST /book-for-student : instructeur seulement ; payload validé ; NOT_ENROLLED relayé', async () => {
+    const url = `${base}/book-for-student`;
+    const body = {
+      studentId: UUID.student,
+      type: 'CODE',
+      scheduledDate: future,
+      durationMinutes: 60,
+    };
+    await request(app).post(url).set('Authorization', bearerFor('student')).send(body).expect(403);
+    await request(app)
+      .post(url)
+      .set('Authorization', bearerFor('instructor'))
+      .send({ ...body, studentId: 'not-a-uuid' })
+      .expect(400);
+
+    lessonService.bookForStudent.mockResolvedValue({ id: lessonId, status: 'scheduled' });
+    const ok = await request(app)
+      .post(url)
+      .set('Authorization', bearerFor('instructor'))
+      .send(body);
+    expect(ok.status).toBe(201);
+    expect(lessonService.bookForStudent).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: TEST_USERS.instructor.userId }),
+      {
+        studentId: UUID.student,
+        type: 'CODE',
+        scheduledDate: new Date(future),
+        durationMinutes: 60,
+      }
+    );
+
+    lessonService.bookForStudent.mockRejectedValue(
+      new HttpError(403, 'NOT_ENROLLED', 'Élève non inscrit')
+    );
+    const notEnrolled = await request(app)
+      .post(url)
+      .set('Authorization', bearerFor('instructor'))
+      .send(body);
+    expect(notEnrolled.status).toBe(403);
+    expect(notEnrolled.body).toEqual({ error: 'NOT_ENROLLED', message: 'Élève non inscrit' });
+  });
+
+  it('L7 PUT /:id/attendance : instructeur seulement ; attended requis, rating 1–5', async () => {
+    const url = `${base}/${lessonId}/attendance`;
+    await request(app)
+      .put(url)
+      .set('Authorization', bearerFor('student'))
+      .send({ attended: true })
+      .expect(403);
+    await request(app)
+      .put(url)
+      .set('Authorization', bearerFor('admin'))
+      .send({ attended: true })
+      .expect(403);
+    await request(app).put(url).set('Authorization', bearerFor('instructor')).send({}).expect(400);
+    await request(app)
+      .put(url)
+      .set('Authorization', bearerFor('instructor'))
+      .send({ attended: true, rating: 9 })
+      .expect(400);
+
+    lessonService.markAttendance.mockResolvedValue({ id: lessonId, status: 'completed' });
+    await request(app)
+      .put(url)
+      .set('Authorization', bearerFor('instructor'))
+      .send({ attended: true, rating: 5, feedback: 'Bien' })
+      .expect(200, { id: lessonId, status: 'completed' });
+    expect(lessonService.markAttendance).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: TEST_USERS.instructor.userId }),
+      lessonId,
+      { attended: true, rating: 5, feedback: 'Bien' }
+    );
   });
 
   it('anciennes routes de créneaux et de réservation disparues (5.2)', async () => {

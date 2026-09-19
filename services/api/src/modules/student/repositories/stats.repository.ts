@@ -1,10 +1,16 @@
 import { Pool } from 'pg';
+import { Queryable } from '../../../db/transaction';
 import { LessonType } from '../../../types/domain';
 import { LessonCompletedDTO, StudentLessonStats } from '../types/student.types';
 
 export interface IStatsRepository {
   findByStudentAndSchool(studentId: string, schoolId: string): Promise<StudentLessonStats | null>;
-  incrementLessonCount(studentId: string, data: LessonCompletedDTO): Promise<StudentLessonStats>;
+  /** `executor` : client d'une transaction en cours (L7, 5.4), le pool sinon. */
+  incrementLessonCount(
+    studentId: string,
+    data: LessonCompletedDTO,
+    executor?: Queryable
+  ): Promise<StudentLessonStats>;
 }
 
 const STATS_COLUMNS = `id, student_id AS "studentId", school_id AS "schoolId",
@@ -29,11 +35,12 @@ export class StatsRepository implements IStatsRepository {
 
   async incrementLessonCount(
     studentId: string,
-    data: LessonCompletedDTO
+    data: LessonCompletedDTO,
+    executor: Queryable = this.db
   ): Promise<StudentLessonStats> {
     const isTheory = data.lessonType === LessonType.CODE ? 1 : 0;
     const isPractical = data.lessonType === LessonType.CODE ? 0 : 1;
-    const result = await this.db.query<StudentLessonStats>(
+    const result = await executor.query<StudentLessonStats>(
       `INSERT INTO student_lesson_stats (
          student_id, school_id, completed_lessons, completed_theory_lessons,
          completed_practical_lessons, last_lesson_date, updated_at)

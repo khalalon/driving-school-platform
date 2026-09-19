@@ -362,7 +362,7 @@ ITOK=$(curl -s -X POST localhost/api/auth/login -H 'Content-Type: application/js
 **Hors périmètre** : présence (5.4).
 **Dépend de** : Q-17 — la tâche couvre l'annulation des leçons **non payées** ; le cas « leçon déjà payée » n'est pas implémenté (ni accepté, ni refusé, ni inventé) tant que Q-17 n'est pas tranchée : le dire dans le commit et laisser la ligne L3 du contrat marquée « Q-17 ».
 
-### - [ ] 5.4 — Leçons : présence (L7) et réservation directe (L4)
+### - [x] 5.4 — Leçons : présence (L7) et réservation directe (L4)
 **Objectif** : `PUT /:id/attendance` par identifiant de leçon, **réservé à `instructor_id` de la leçon** → `completed`, `student_lesson_stats.completed_lessons` incrémenté **seulement si `attended = true`** (D-33) ; `POST /api/lessons/book-for-student { studentId, type, scheduledDate, durationMinutes, price?, notes? }` → `scheduled`, `instructor_id` = appelant, prix de la grille ou du payload. Traitement financier d'une absence : Q-18.
 **Fichiers** : `modules/lesson/**`, `modules/student/**` (stats), tests, `docs/API_CONTRACT.md` (L4, L7).
 **Critère de validation** :

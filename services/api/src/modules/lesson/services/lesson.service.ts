@@ -1,3 +1,4 @@
+import { ITransactionRunner, Queryable } from '../../../db/transaction';
 import { SchoolGuard } from '../../../http/authz';
 import { HttpError } from '../../../http/errors';
 import { AuthUser, UserRole } from '../../../types/auth';
@@ -5,11 +6,13 @@ import { LessonType } from '../../../types/domain';
 import { ILessonRepository } from '../repositories/lesson.repository';
 import {
   ApproveLessonDTO,
+  BookForStudentDTO,
   CancelLessonDTO,
   Lesson,
   LessonFilters,
   LessonScope,
   LessonStatus,
+  MarkAttendanceDTO,
   RejectLessonDTO,
   RequestLessonDTO,
 } from '../types/lesson.types';
@@ -32,6 +35,15 @@ export interface PricingLookup {
   getPricingByType(schoolId: string, lessonType: LessonType): Promise<{ price: number } | null>;
 }
 
+/** Ce que L7 attend du module student : les compteurs de leçons effectuées (D-33). */
+export interface LessonStatsSink {
+  incrementLessonCount(
+    studentRowId: string,
+    data: { schoolId: string; lessonType: LessonType; attended: boolean },
+    executor?: Queryable
+  ): Promise<unknown>;
+}
+
 /**
  * Leçons selon D-01 / D-21 / D-32 : l'élève demande (L2), l'école voit la file partagée et
  * l'instructeur qui approuve devient l'instructeur de la leçon (L5). Cloisonnement D-20.
@@ -42,6 +54,8 @@ export class LessonService {
     private readonly students: StudentLookup,
     private readonly instructors: InstructorLookup,
     private readonly pricing: PricingLookup,
+    private readonly stats: LessonStatsSink,
+    private readonly transactions: ITransactionRunner,
     private readonly schoolGuard: SchoolGuard,
     /** Fenêtre d'annulation par l'élève d'une leçon planifiée, en heures (D-24). */
     private readonly cancelWindowHours: number
@@ -96,28 +110,12 @@ export class LessonService {
    */
   async approveLesson(caller: AuthUser, id: string, dto: ApproveLessonDTO): Promise<Lesson> {
     const lesson = await this.requireLesson(id);
-    const instructor = await this.instructors.findByUserId(caller.userId);
-    if (!instructor) {
-      throw new HttpError(
-        403,
-        'FORBIDDEN_SCHOOL',
-        'Aucune école rattachée à ce compte instructeur'
-      );
-    }
+    const instructor = await this.requireInstructor(caller);
     if (instructor.schoolId !== lesson.schoolId) {
       throw new HttpError(403, 'FORBIDDEN_SCHOOL', "Cette leçon n'appartient pas à votre école");
     }
     this.assertPending(lesson, 'approuvée');
-
-    const grid = await this.pricing.getPricingByType(lesson.schoolId, lesson.type);
-    const price = grid?.price ?? dto.price;
-    if (price === undefined) {
-      throw new HttpError(
-        400,
-        'PRICE_REQUIRED',
-        `Aucun tarif ${lesson.type} dans la grille de l'école : indiquez un prix`
-      );
-    }
+    const price = await this.resolvePrice(lesson.schoolId, lesson.type, dto.price);
 
     const approved = await this.lessonRepository.approve(id, {
       instructorId: instructor.id,
@@ -174,6 +172,98 @@ export class LessonService {
       throw new HttpError(409, 'CONFLICT', 'Le statut de cette leçon vient de changer');
     }
     return cancelled;
+  }
+
+  /**
+   * L4 : l'instructeur planifie directement une leçon pour un élève inscrit et approuvé dans son
+   * école (403 NOT_ENROLLED sinon) ; prix figé comme en L5 (D-30).
+   */
+  async bookForStudent(caller: AuthUser, dto: BookForStudentDTO): Promise<Lesson> {
+    const instructor = await this.requireInstructor(caller);
+    const student = await this.students.findByUserId(dto.studentId);
+    if (!student?.authorized || student.schoolId !== instructor.schoolId) {
+      throw new HttpError(
+        403,
+        'NOT_ENROLLED',
+        "Cet élève n'a pas d'inscription approuvée dans votre école"
+      );
+    }
+    const price = await this.resolvePrice(instructor.schoolId, dto.type, dto.price);
+    return this.lessonRepository.createScheduled({
+      schoolId: instructor.schoolId,
+      studentRowId: student.id,
+      instructorId: instructor.id,
+      type: dto.type,
+      scheduledDate: dto.scheduledDate,
+      durationMinutes: dto.durationMinutes,
+      price,
+      notes: dto.notes,
+    });
+  }
+
+  /**
+   * L7 : uniquement l'instructeur de la leçon ; `scheduled` → `completed`. Le compteur de leçons
+   * effectuées n'augmente que si l'élève était présent (D-33), dans la même transaction.
+   * Facturation d'une absence : Q-18 — aucune règle ici.
+   */
+  async markAttendance(caller: AuthUser, id: string, dto: MarkAttendanceDTO): Promise<Lesson> {
+    const lesson = await this.requireLesson(id);
+    if (lesson.status !== LessonStatus.SCHEDULED) {
+      throw new HttpError(409, 'CONFLICT', 'Seule une leçon planifiée peut être pointée');
+    }
+    const instructor = await this.requireInstructor(caller);
+    if (lesson.instructorId !== instructor.id) {
+      throw new HttpError(
+        403,
+        'FORBIDDEN',
+        "Seul l'instructeur de la leçon peut pointer la présence"
+      );
+    }
+
+    return this.transactions.run(async (tx) => {
+      const marked = await this.lessonRepository.markAttendance(id, dto, tx);
+      if (!marked) {
+        throw new HttpError(409, 'CONFLICT', 'Le statut de cette leçon vient de changer');
+      }
+      if (dto.attended) {
+        await this.stats.incrementLessonCount(
+          marked.studentRowId,
+          { schoolId: lesson.schoolId, lessonType: lesson.type, attended: true },
+          tx
+        );
+      }
+      return marked.lesson;
+    });
+  }
+
+  /** Prix figé (D-30) : la grille de l'école prime, sinon le prix saisi, sinon 400 PRICE_REQUIRED. */
+  private async resolvePrice(
+    schoolId: string,
+    type: LessonType,
+    requested: number | undefined
+  ): Promise<number> {
+    const grid = await this.pricing.getPricingByType(schoolId, type);
+    const price = grid?.price ?? requested;
+    if (price === undefined) {
+      throw new HttpError(
+        400,
+        'PRICE_REQUIRED',
+        `Aucun tarif ${type} dans la grille de l'école : indiquez un prix`
+      );
+    }
+    return price;
+  }
+
+  private async requireInstructor(caller: AuthUser): Promise<{ id: string; schoolId: string }> {
+    const instructor = await this.instructors.findByUserId(caller.userId);
+    if (!instructor) {
+      throw new HttpError(
+        403,
+        'FORBIDDEN_SCHOOL',
+        'Aucune école rattachée à ce compte instructeur'
+      );
+    }
+    return instructor;
   }
 
   private assertCancelWindowOpen(lesson: Lesson): void {

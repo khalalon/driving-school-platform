@@ -14,10 +14,24 @@ export function createLessonRouter(
 
   router.post('/', requireAuth, authorize(UserRole.STUDENT), controller.requestLesson);
   router.get('/', requireAuth, controller.listLessons);
+  // L4 : déclarée avant `/:id` ; l'instructeur planifie pour un élève de son école.
+  router.post(
+    '/book-for-student',
+    requireAuth,
+    authorize(UserRole.INSTRUCTOR),
+    controller.bookForStudent
+  );
   router.get('/:id', requireAuth, controller.getLesson);
   // L5 : un instructeur seulement — il devient l'instructeur de la leçon (D-32).
   router.put('/:id/approve', requireAuth, authorize(UserRole.INSTRUCTOR), controller.approveLesson);
   router.put('/:id/reject', ...schoolStaff, controller.rejectLesson);
+  // L7 : uniquement l'instructeur de la leçon (vérifié dans le service).
+  router.put(
+    '/:id/attendance',
+    requireAuth,
+    authorize(UserRole.INSTRUCTOR),
+    controller.markAttendance
+  );
   // L3 : élève (sa leçon, fenêtre D-24) ou école (D-20) — départagés dans le service.
   router.post('/:id/cancel', requireAuth, controller.cancelLesson);
 

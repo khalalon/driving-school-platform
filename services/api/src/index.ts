@@ -37,6 +37,7 @@ async function bootstrap(): Promise<void> {
     students: student.studentRepository,
     instructors: instructorRepository,
     pricing: school.pricingService,
+    stats: student.statsRepository,
     schoolGuard,
     cancelWindowHours: env.LESSON_CANCEL_HOURS,
   });
