@@ -39,6 +39,9 @@ export const LESSON_STATUS_LABELS: Record<LessonStatus, string> = {
   [LessonStatus.REJECTED]: 'Rejected',
 };
 
+/** Fenêtre d'annulation par l'élève (D-24) : jusqu'à 24 h avant `scheduledDate`. */
+export const LESSON_CANCEL_HOURS = 24;
+
 /** Identité jointe depuis `users` (D-16). */
 export interface PersonSummary {
   id: string;
@@ -82,6 +85,19 @@ export interface Lesson {
   createdAt: string;
   updatedAt: string;
 }
+
+/**
+ * L'élève peut-il annuler cette leçon (D-24) ? `pending` : toujours ; `scheduled` : seulement si
+ * `scheduledDate − now ≥ LESSON_CANCEL_HOURS`. Le contrôle serveur (403 `CANCEL_WINDOW_CLOSED`)
+ * est la règle ; ceci ne sert qu'à masquer le bouton. Une leçon déjà payée s'annule comme les
+ * autres tant que Q-17 n'est pas tranchée (comportement actuel du serveur).
+ */
+export const canStudentCancel = (lesson: Lesson, now: Date = new Date()): boolean => {
+  if (lesson.status === LessonStatus.PENDING) return true;
+  if (lesson.status !== LessonStatus.SCHEDULED || !lesson.scheduledDate) return false;
+  const scheduled = new Date(lesson.scheduledDate).getTime();
+  return scheduled - now.getTime() >= LESSON_CANCEL_HOURS * 60 * 60 * 1000;
+};
 
 /** L2 : demande de l'élève, adressée à l'école ; l'instructeur n'est qu'une préférence (D-32). */
 export interface RequestLessonData {

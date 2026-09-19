@@ -8,6 +8,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../models/User';
+import { AppStackParamList } from './types';
 
 // Auth Screens
 import { LoginScreen } from '../screens/auth/LoginScreen';
@@ -37,7 +38,7 @@ import { ExamRequestsScreen } from '../screens/instructor/ExamRequestsScreen';
 import { EnrollmentRequestsScreen } from '../screens/instructor/EnrollmentRequestsScreen';
 import { StudentProfileScreen } from '../screens/instructor/student-profile/StudentProfileScreen';
 
-const Stack = createStackNavigator();
+const Stack = createStackNavigator<AppStackParamList>();
 
 export const AppNavigator = () => {
   const { user, isLoading } = useAuth();

@@ -108,6 +108,15 @@ export const BookForStudentScreen = ({ navigation }: any) => {
     );
   }, [students, search]);
 
+  /** Fiche élève (P1–P7) depuis la liste S6 : `studentId` = users.id (D-28). */
+  const openStudentProfile = (student: SchoolStudent) => {
+    navigation.navigate('StudentProfile', {
+      studentId: student.studentId,
+      schoolId,
+      studentName: formatPersonName(student, student.email),
+    });
+  };
+
   const handleDateChange = (_event: unknown, selected?: Date) => {
     setShowDatePicker(false);
     if (selected) {
@@ -214,6 +223,14 @@ export const BookForStudentScreen = ({ navigation }: any) => {
                 </Text>
               </View>
               <TouchableOpacity
+                onPress={() => openStudentProfile(selectedStudent)}
+                style={styles.clearButton}
+                activeOpacity={0.7}
+                accessibilityLabel="View student profile"
+              >
+                <Ionicons name="person-circle-outline" size={24} color={colors.primary[600]} />
+              </TouchableOpacity>
+              <TouchableOpacity
                 onPress={() => setSelectedStudent(null)}
                 style={styles.clearButton}
                 activeOpacity={0.7}
@@ -271,7 +288,18 @@ export const BookForStudentScreen = ({ navigation }: any) => {
                           {student.email} · {student.completedLessons} lessons completed
                         </Text>
                       </View>
-                      <Ionicons name="chevron-forward" size={20} color={colors.neutral[400]} />
+                      <TouchableOpacity
+                        onPress={() => openStudentProfile(student)}
+                        style={styles.clearButton}
+                        activeOpacity={0.7}
+                        accessibilityLabel="View student profile"
+                      >
+                        <Ionicons
+                          name="person-circle-outline"
+                          size={24}
+                          color={colors.primary[600]}
+                        />
+                      </TouchableOpacity>
                     </TouchableOpacity>
                   ))
                 )}

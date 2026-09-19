@@ -114,15 +114,15 @@ Le détail par écran est dans `API_CONTRACT.md`. Résumé des dépendances rée
 | Login / Register / InstructorRegistration | auth (A1, A2 avec `schoolCode` en une étape depuis 6.1) |
 | StudentDashboard, InstructorDashboard | aucun (menus) |
 | SchoolsList, SchoolDetail | schools, enrollment (bouton « Request Lesson » sans instructeur, ou « Request » depuis un instructeur = préférence D-32) |
-| BookLesson, MyLessons | lessons (L2 `{ type, requestedDate, preferredInstructorId?, notes? }`, L1, L3), enrollment (E1) |
+| BookLesson, MyLessons | lessons (L2 `{ type, requestedDate, preferredInstructorId?, notes? }`, L1, L3 — bouton « Cancel » masqué hors fenêtre D-24 par `canStudentCancel`, `CANCEL_WINDOW_CLOSED` géré), enrollment (E1) |
 | RequestExam, MyExams | exams |
 | MyEnrollmentRequests | enrollment |
-| MyProfile (3 onglets) | student-profiles — **injoignable** : aucun écran actif n'y navigue |
+| MyProfile (3 onglets) | student-profiles (P8–P11) — joint depuis `StudentDashboard` (« My Profile ») avec le `schoolId` de l'inscription approuvée (E3, rechargée à chaque retour sur le tableau de bord) — 6.6 |
 | EnrollmentRequests (instructeur) | enrollment (E4, E5, E6 avec motif de 10 à 500 caractères) — `schoolId` passé par `InstructorDashboard` depuis A3 (6.2) |
 | LessonRequests, TodayLessons | lessons (L1 `?status=pending&scope=school` + S3 / S4 pour la préférence et la grille, L5, L6 ; L1 `?status=scheduled,completed&scope=mine&date=`, L7) — câblés en 6.3 |
 | ExamRequests, TodayExams | exams (X1 `?status=pending`, X3, X4 ; X1 `?status=scheduled,completed` filtré sur le jour local, X5 score facultatif) — câblés en 6.5, libellés « Schedule » / « Reject » en attente de Q-19 |
 | BookForStudent | schools (S6 liste des élèves, S4 grille), lessons (L4 `{ studentId (users.id), type, scheduledDate, durationMinutes, price?, notes? }`) — câblé en 6.4 |
-| StudentProfile (3 onglets) | profiles — **injoignable** : aucun écran n'y navigue |
+| StudentProfile (3 onglets) | profiles (P1–P7) — joint depuis `EnrollmentRequests` (demande approuvée → « View student profile ») et `BookForStudent` (icône profil sur chaque élève de S6), avec `{ studentId (users.id), schoolId, studentName }` — 6.6 |
 
 Config : l'URL de base vient de `app.json` → `expo.extra.API_BASE_URL` (valeur neutre `http://10.0.2.2:80`, l'hôte vu de l'émulateur Android — D-38), surchargeable par `EXPO_PUBLIC_API_BASE_URL` (fichier `mobile-app/.env`, ignoré ; modèle `.env.example`), résolue dans `mobile-app/src/config/api.config.ts` via `expo-constants` (déclaré en dépendance directe depuis 0.4). `api.config.ts` ne définit que les chemins du contrat (§1–6) ; le plugin Babel `react-native-dotenv` a été retiré en 6.1.
 

@@ -138,6 +138,18 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
     }
   };
 
+  /** Fiche élève (P1–P7) : `studentId` = users.id de la demande, école de l'écran (D-28). */
+  const openStudentProfile = (request: EnrollmentRequest) => {
+    navigation.navigate('StudentProfile', {
+      studentId: request.studentId,
+      schoolId,
+      studentName: formatPersonName(
+        { firstName: request.studentFirstName, lastName: request.studentLastName },
+        request.studentEmail ?? 'Student'
+      ),
+    });
+  };
+
   const renderRequest = ({ item }: { item: EnrollmentRequest }) => (
     <View style={styles.requestCard}>
       <View style={styles.requestHeader}>
@@ -171,6 +183,18 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
           <Text style={styles.rejectionLabel}>Rejection Reason:</Text>
           <Text style={styles.rejectionText}>{item.rejectionReason}</Text>
         </View>
+      )}
+
+      {item.status === EnrollmentStatus.APPROVED && (
+        <TouchableOpacity
+          style={styles.profileButton}
+          onPress={() => openStudentProfile(item)}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="person-circle-outline" size={20} color={colors.primary[600]} />
+          <Text style={styles.profileButtonText}>View student profile</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.primary[600]} />
+        </TouchableOpacity>
       )}
 
       {item.status === EnrollmentStatus.PENDING && (
@@ -475,6 +499,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginTop: spacing.md,
     gap: spacing.sm,
+  },
+  profileButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 8,
+    backgroundColor: colors.primary[50],
+  },
+  profileButtonText: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
+    color: colors.primary[600],
   },
   actionButton: {
     flex: 1,

@@ -1,26 +1,88 @@
 /**
  * Student Dashboard - Minimal & Elegant
  * Single Responsibility: Main dashboard for students
+ *
+ * La fiche « My Profile » (P8–P11) est celle de l'école de l'inscription approuvée (une seule
+ * inscription active, D-22), retrouvée par E3 à chaque retour sur le tableau de bord.
  */
 
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
+import { enrollmentService } from '../../services/api/EnrollmentService';
+import { getApiErrorMessage } from '../../services/api/ApiError';
+import { EnrollmentStatus } from '../../models/Enrollment';
 import { colors, typography, spacing, shadows } from '../../theme';
 
 export const StudentDashboard = ({ navigation }: any) => {
   const { user, logout } = useAuth();
+  // `undefined` = pas encore chargé, `null` = aucune inscription approuvée
+  const [activeSchoolId, setActiveSchoolId] = useState<string | null | undefined>(undefined);
+
+  const loadActiveEnrollment = useCallback(async (): Promise<string | null> => {
+    try {
+      // E3 : l'inscription approuvée donne l'école de la fiche élève
+      const requests = await enrollmentService.getMyRequests();
+      const approved = requests.find((r) => r.status === EnrollmentStatus.APPROVED);
+      const schoolId = approved?.schoolId ?? null;
+      setActiveSchoolId(schoolId);
+      return schoolId;
+    } catch {
+      // Hors réseau : on retentera au prochain retour sur l'écran
+      return activeSchoolId ?? null;
+    }
+  }, [activeSchoolId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadActiveEnrollment();
+    }, [])
+  );
 
   const handleLogout = async () => {
     await logout();
     // No need to navigate - AuthContext will trigger navigator rebuild
+  };
+
+  const openMyProfile = async () => {
+    let schoolId = activeSchoolId;
+    if (schoolId === undefined) {
+      try {
+        schoolId = await loadActiveEnrollment();
+      } catch (error) {
+        Alert.alert('Error', getApiErrorMessage(error, 'Failed to load your enrollment'));
+        return;
+      }
+    }
+    if (!schoolId) {
+      Alert.alert(
+        'Not enrolled yet',
+        'Your profile is available once a school has approved your enrollment.',
+        [
+          { text: 'Browse schools', onPress: () => navigation.navigate('SchoolsList') },
+          { text: 'OK', style: 'cancel' },
+        ]
+      );
+      return;
+    }
+    navigation.navigate('MyProfile', { schoolId });
+  };
+
+  const openRoute = (route: string) => {
+    if (route === 'MyProfile') {
+      openMyProfile();
+      return;
+    }
+    navigation.navigate(route);
   };
 
   const menuItems = [
@@ -69,6 +131,15 @@ export const StudentDashboard = ({ navigation }: any) => {
       bgColor: colors.primary[50],
       route: 'MyExams',
     },
+    {
+      id: '6',
+      title: 'My Profile',
+      description: 'Progress and payments',
+      icon: 'person-outline',
+      color: colors.success[600],
+      bgColor: colors.success[50],
+      route: 'MyProfile',
+    },
   ];
 
   return (
@@ -95,7 +166,7 @@ export const StudentDashboard = ({ navigation }: any) => {
             <TouchableOpacity
               key={item.id}
               style={styles.menuCard}
-              onPress={() => navigation.navigate(item.route)}
+              onPress={() => openRoute(item.route)}
               activeOpacity={0.7}
             >
               <View style={[styles.menuIconContainer, { backgroundColor: item.bgColor }]}>

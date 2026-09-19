@@ -19,12 +19,14 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { lessonService } from '../../services/api/LessonService';
-import { getApiErrorMessage } from '../../services/api/ApiError';
+import { getApiErrorCode, getApiErrorMessage } from '../../services/api/ApiError';
 import {
+  LESSON_CANCEL_HOURS,
   LESSON_STATUS_LABELS,
   LESSON_TYPE_LABELS,
   Lesson,
   LessonStatus,
+  canStudentCancel,
 } from '../../models/Lesson';
 import { formatAmount, formatPersonName, formatTime } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
@@ -96,7 +98,18 @@ export const MyLessonsScreen = ({ navigation }: any) => {
       Alert.alert('Success', 'Lesson cancelled successfully');
       loadLessons();
     } catch (error) {
-      // Fenêtre de 24 h (D-24) contrôlée par le serveur : le message français explique le refus
+      // Fenêtre de 24 h (D-24) contrôlée par le serveur : le bouton n'est qu'un confort
+      if (getApiErrorCode(error) === 'CANCEL_WINDOW_CLOSED') {
+        Alert.alert(
+          'Too late to cancel',
+          getApiErrorMessage(
+            error,
+            `A lesson can only be cancelled up to ${LESSON_CANCEL_HOURS} hours before it starts. Please contact your instructor.`
+          )
+        );
+        loadLessons();
+        return;
+      }
       Alert.alert('Error', getApiErrorMessage(error, 'Failed to cancel lesson'));
     }
   };
@@ -122,7 +135,8 @@ export const MyLessonsScreen = ({ navigation }: any) => {
     const statusConfig = getStatusConfig(item.status);
     const lessonDate = lessonDateOf(item);
     const isPending = item.status === LessonStatus.PENDING;
-    const canCancel = isPending || item.status === LessonStatus.SCHEDULED;
+    // D-24 : demande pending toujours ; leçon planifiée jusqu'à 24 h avant (masquage de confort)
+    const canCancel = canStudentCancel(item);
 
     return (
       <View style={styles.lessonCard}>
@@ -192,7 +206,7 @@ export const MyLessonsScreen = ({ navigation }: any) => {
           </View>
         )}
 
-        {canCancel && (
+        {canCancel ? (
           <TouchableOpacity
             style={styles.cancelButton}
             onPress={() => handleCancelLesson(item)}
@@ -203,6 +217,13 @@ export const MyLessonsScreen = ({ navigation }: any) => {
               {isPending ? 'Withdraw Request' : 'Cancel Lesson'}
             </Text>
           </TouchableOpacity>
+        ) : (
+          item.status === LessonStatus.SCHEDULED && (
+            <Text style={styles.cancelHint}>
+              Cancellation closed (less than {LESSON_CANCEL_HOURS} h before the lesson) — contact
+              your instructor
+            </Text>
+          )
         )}
       </View>
     );
@@ -484,6 +505,12 @@ const styles = StyleSheet.create({
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold,
     color: colors.error[600],
+  },
+  cancelHint: {
+    fontSize: typography.size.xs,
+    color: colors.text.tertiary,
+    fontStyle: 'italic',
+    marginTop: spacing.xs,
   },
   emptyContainer: {
     flex: 1,

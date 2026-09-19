@@ -458,7 +458,7 @@ cd mobile-app && test "$(grep -c 'API call to' src/screens/instructor/ExamReques
 **Hors périmètre** : —
 **Dépend de** : Q-19 (libellés « Planifier / Refuser » vs « Enregistrer la convocation / Dossier pas prêt » sur `ExamRequestsScreen` et `MyExamsScreen` ; le câblage des appels peut se faire avant, les libellés sont posés une fois Q-19 tranchée). *Livré le 19/09 : appels câblés, libellés « Schedule » / « Reject » d'origine conservés — à poser quand Q-19 sera tranchée.*
 
-### - [ ] 6.6 — Fiches élève joignables, annulation élève
+### - [x] 6.6 — Fiches élève joignables, annulation élève
 **Objectif** : `EnrollmentRequestsScreen` (demandes approuvées) et `BookForStudentScreen` (liste S6) naviguent vers `StudentProfile` avec `{ studentId (users.id), schoolId, studentName }` ; `StudentDashboard` navigue vers `MyProfile` avec le `schoolId` de l'inscription active (E3) ; `MyLessonsScreen` n'affiche « Annuler » que si `pending` ou `scheduledDate − now ≥ 24 h` (D-24) et gère 403 `CANCEL_WINDOW_CLOSED`.
 **Fichiers** : `src/screens/instructor/{EnrollmentRequestsScreen,BookForStudentScreen}.tsx`, `src/screens/student/{StudentDashboard,MyLessonsScreen}.tsx`, `src/navigation/{AppNavigator,types}.tsx`.
 **Critère de validation** :
@@ -466,7 +466,7 @@ cd mobile-app && test "$(grep -c 'API call to' src/screens/instructor/ExamReques
 cd mobile-app && grep -rq "navigate('StudentProfile'" src/screens/instructor && grep -q "navigate('MyProfile'" src/screens/student/StudentDashboard.tsx && grep -q 'CANCEL_WINDOW_CLOSED' src/screens/student/MyLessonsScreen.tsx && npx tsc --noEmit && npx jest --silent && echo OK
 ```
 **Hors périmètre** : —
-**Dépend de** : Q-17 (bouton « Annuler » sur une leçon payée : masqué ou non, selon la réponse).
+**Dépend de** : Q-17 (bouton « Annuler » sur une leçon payée : masqué ou non, selon la réponse). *Livré le 19/09 sans trancher Q-17 : une leçon payée garde le bouton comme les autres (comportement actuel du serveur, `canStudentCancel` dans `src/models/Lesson.ts`) — à ajuster en une ligne quand Q-17 sera tranchée.*
 
 ### - [ ] 6.7 — Approbation multiple des demandes de code (ergonomie, D-34)
 **Objectif** : sur `LessonRequestsScreen`, l'instructeur coche plusieurs demandes `pending` de type `CODE` et les approuve d'un coup pour un même créneau (« approuver ces 12 demandes pour mardi 9 h ») : un seul formulaire (date, heure, durée, prix si nécessaire), puis **un appel L5 par demande**, en séquence, avec récapitulatif des succès/échecs. Aucun changement de modèle de données ni de route.
