@@ -17,6 +17,18 @@ export interface User {
 /** Utilisateur tel qu'exposé par l'API (jamais le hash). */
 export type PublicUser = Omit<User, 'passwordHash'>;
 
+/** A3 : l'appelant, et son école s'il est instructeur (D-19). */
+export interface CurrentUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: UserRole;
+  createdAt: Date;
+  schoolId?: string;
+  instructorId?: string;
+}
+
 /** Contenu signé dans les jetons = identité posée sur req.user par le middleware. */
 export type TokenPayload = AuthUser;
 
@@ -47,13 +59,14 @@ export interface SchoolCodeConsumer {
   ): Promise<{ schoolId: string; role: UserRole.INSTRUCTOR | UserRole.STUDENT } | null>;
 }
 
-/** Ce que l'inscription attend du module school : créer la fiche instructeur. */
-export interface InstructorCreator {
+/** Ce que le module auth attend du module school : créer et retrouver la fiche instructeur. */
+export interface InstructorAccess {
   create(
     schoolId: string,
     data: { userId: string; phone: string; licenseNumber: string; specialties: string[] },
     executor?: Queryable
   ): Promise<unknown>;
+  findByUserId(userId: string): Promise<{ id: string; schoolId: string } | null>;
 }
 
 export interface LoginDTO {

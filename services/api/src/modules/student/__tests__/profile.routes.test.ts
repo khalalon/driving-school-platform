@@ -16,6 +16,9 @@ describe('Routes /api/profiles, /api/student-profiles, /api/verification', () =>
     getStudentLessons: jest.fn(),
     getStudentExams: jest.fn(),
     getFinancialSummary: jest.fn(),
+    getOwnLessons: jest.fn(),
+    getOwnExams: jest.fn(),
+    getOwnFinancialSummary: jest.fn(),
     updateInstructorNotes: jest.fn(),
     markLessonPaid: jest.fn(),
     markExamPaid: jest.fn(),
@@ -43,7 +46,11 @@ describe('Routes /api/profiles, /api/student-profiles, /api/verification', () =>
       .get(`${staff}/${UUID.student}/schools/${UUID.school}/complete`)
       .set('Authorization', bearerFor('instructor'));
     expect(res.status).toBe(200);
-    expect(profileService.getCompleteProfile).toHaveBeenCalledWith(UUID.student, UUID.school);
+    expect(profileService.getCompleteProfile).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: TEST_USERS.instructor.userId, role: 'instructor' }),
+      UUID.student,
+      UUID.school
+    );
 
     await request(app)
       .get(`${staff}/${UUID.student}/schools/${UUID.school}/complete`)
@@ -85,6 +92,7 @@ describe('Routes /api/profiles, /api/student-profiles, /api/verification', () =>
       .send({ notes: 'Progresse bien' })
       .expect(204);
     expect(profileService.updateInstructorNotes).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: TEST_USERS.instructor.userId }),
       UUID.student,
       'Progresse bien'
     );
@@ -106,14 +114,24 @@ describe('Routes /api/profiles, /api/student-profiles, /api/verification', () =>
       .set('Authorization', auth)
       .send({ amount: 40, paymentMethod: 'cash' })
       .expect(204);
-    expect(profileService.markLessonPaid).toHaveBeenCalledWith(UUID.booking, 40, 'cash');
+    expect(profileService.markLessonPaid).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: TEST_USERS.instructor.userId }),
+      UUID.booking,
+      40,
+      'cash'
+    );
 
     await request(app)
       .put(`${staff}/exams/${UUID.booking}/mark-paid`)
       .set('Authorization', auth)
       .send({ amount: 60, paymentMethod: 'card' })
       .expect(204);
-    expect(profileService.markExamPaid).toHaveBeenCalledWith(UUID.booking, 60, 'card');
+    expect(profileService.markExamPaid).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: TEST_USERS.instructor.userId }),
+      UUID.booking,
+      60,
+      'card'
+    );
 
     // Anciens chemins (lesson_bookings / exam_registrations) : disparus en 5.0.
     await request(app)
@@ -131,9 +149,9 @@ describe('Routes /api/profiles, /api/student-profiles, /api/verification', () =>
 
   it('P8–P11 : la vue élève utilise le users.id du jeton, sans les notes', async () => {
     profileService.getOwnProfile.mockResolvedValue({ id: UUID.student });
-    profileService.getStudentLessons.mockResolvedValue([]);
-    profileService.getStudentExams.mockResolvedValue([]);
-    profileService.getFinancialSummary.mockResolvedValue({ totalDue: 0 });
+    profileService.getOwnLessons.mockResolvedValue([]);
+    profileService.getOwnExams.mockResolvedValue([]);
+    profileService.getOwnFinancialSummary.mockResolvedValue({ totalDue: 0 });
     const auth = bearerFor('student');
     const prefix = `${self}/me/schools/${UUID.school}`;
 
@@ -146,6 +164,15 @@ describe('Routes /api/profiles, /api/student-profiles, /api/verification', () =>
     await request(app).get(`${prefix}/lessons`).set('Authorization', auth).expect(200);
     await request(app).get(`${prefix}/exams`).set('Authorization', auth).expect(200);
     await request(app).get(`${prefix}/financial`).set('Authorization', auth).expect(200);
+    expect(profileService.getOwnLessons).toHaveBeenCalledWith(
+      TEST_USERS.student.userId,
+      UUID.school
+    );
+    expect(profileService.getOwnExams).toHaveBeenCalledWith(TEST_USERS.student.userId, UUID.school);
+    expect(profileService.getOwnFinancialSummary).toHaveBeenCalledWith(
+      TEST_USERS.student.userId,
+      UUID.school
+    );
 
     await request(app)
       .get(`${prefix}/profile`)

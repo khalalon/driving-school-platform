@@ -27,6 +27,7 @@ describe('VerificationService', () => {
       findByUserId: jest.fn(),
       findByUserAndSchool: jest.fn(),
       findBySchool: jest.fn(),
+      listSchoolRoster: jest.fn(),
     };
     statsRepository = { findByStudentAndSchool: jest.fn(), incrementLessonCount: jest.fn() };
     service = new VerificationService(studentRepository, statsRepository);

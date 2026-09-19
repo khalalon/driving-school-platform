@@ -3,9 +3,9 @@ import { HttpError } from '../../../http/errors';
 import { IUserRepository } from '../repositories/user.repository';
 import {
   AuthTokens,
-  InstructorCreator,
+  CurrentUser,
+  InstructorAccess,
   LoginDTO,
-  PublicUser,
   RegisterDTO,
   SchoolCodeConsumer,
   User,
@@ -26,7 +26,7 @@ export class AuthService {
     private readonly tokenService: ITokenService,
     private readonly cacheService: ICacheService,
     private readonly schoolCodes: SchoolCodeConsumer,
-    private readonly instructors: InstructorCreator,
+    private readonly instructors: InstructorAccess,
     private readonly transactions: ITransactionRunner,
     /** Durée du marqueur de session révoquée : au moins la durée de vie d'un refresh token. */
     private readonly sessionRevocationTtlSeconds: number = 30 * 24 * 3600
@@ -147,13 +147,28 @@ export class AuthService {
     }
   }
 
-  async getCurrentUser(userId: string): Promise<PublicUser> {
+  /** A3 : pour un instructeur, `schoolId` et `instructorId` par jointure `instructors` (D-19). */
+  async getCurrentUser(userId: string): Promise<CurrentUser> {
     const user = await this.userRepository.findById(userId);
     if (!user) {
       throw new HttpError(404, 'NOT_FOUND', 'Utilisateur introuvable');
     }
-    const { passwordHash, ...publicUser } = user;
-    return publicUser;
+    const current: CurrentUser = {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+      createdAt: user.createdAt,
+    };
+    if (user.role === UserRole.INSTRUCTOR) {
+      const instructor = await this.instructors.findByUserId(user.id);
+      if (instructor) {
+        current.schoolId = instructor.schoolId;
+        current.instructorId = instructor.id;
+      }
+    }
+    return current;
   }
 
   /** Émet une paire et enregistre le refresh token (clé présente = utilisable une fois). */

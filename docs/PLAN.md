@@ -334,7 +334,7 @@ Chaque tâche met à jour `docs/API_CONTRACT.md` (statut → EXISTE, ou SUPPRIM�
 ```
 **Hors périmètre** : onglets mobile (6.6).
 
-### - [ ] 5.1 — `/me` avec école, liste des élèves, cloisonnement
+### - [x] 5.1 — `/me` avec école, liste des élèves, cloisonnement
 **Objectif** : A3 renvoie `schoolId` et `instructorId` pour un instructeur (D-19) ; S6 `GET /api/schools/:id/students` (D-25) ; helper `assertSameSchool(req.user, schoolId)` → 403 `FORBIDDEN_SCHOOL`, appliqué à E4, E5, E6, P1–P7 (D-20).
 **Fichiers** : `modules/auth/**`, `modules/school/**`, `modules/student/**`, `src/http/authz.ts`, tests, `docs/API_CONTRACT.md` (A3, S6, E4).
 **Critère de validation** :

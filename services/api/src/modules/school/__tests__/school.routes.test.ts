@@ -1,6 +1,6 @@
 import request from 'supertest';
 import { createApp } from '../../../app';
-import { bearerFor, testRequireAuth, UUID } from '../../../test-utils/http';
+import { bearerFor, TEST_USERS, testRequireAuth, UUID } from '../../../test-utils/http';
 import { SchoolController } from '../controllers/school.controller';
 import { createSchoolRouter } from '../routes/school.routes';
 import { InstructorService } from '../services/instructor.service';
@@ -10,6 +10,7 @@ import { SchoolService } from '../services/school.service';
 describe('Routes /api/schools (S1–S4 + administration)', () => {
   const schoolService = {
     createSchool: jest.fn(),
+    getSchoolStudents: jest.fn(),
     getSchoolById: jest.fn(),
     getAllSchools: jest.fn(),
     updateSchool: jest.fn(),
@@ -112,6 +113,25 @@ describe('Routes /api/schools (S1–S4 + administration)', () => {
       .send({})
       .expect(400);
     await request(app).delete(`${base}/${UUID.school}`).set('Authorization', auth).expect(204);
+  });
+
+  it('S6 GET /:schoolId/students : instructeur ou admin (401 sans jeton, 403 élève), liste renvoyée', async () => {
+    const roster = [{ studentId: UUID.student, firstName: 'Élève', lastName: 'Test' }];
+    schoolService.getSchoolStudents.mockResolvedValue(roster);
+
+    await request(app).get(`${base}/${UUID.school}/students`).expect(401);
+    await request(app)
+      .get(`${base}/${UUID.school}/students`)
+      .set('Authorization', bearerFor('student'))
+      .expect(403);
+    await request(app)
+      .get(`${base}/${UUID.school}/students`)
+      .set('Authorization', bearerFor('instructor'))
+      .expect(200, roster);
+    expect(schoolService.getSchoolStudents).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: TEST_USERS.instructor.userId }),
+      UUID.school
+    );
   });
 
   it('instructeurs : ajout vérifie l’école, lecture/maj/suppression par id', async () => {

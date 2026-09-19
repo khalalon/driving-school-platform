@@ -1,6 +1,7 @@
 import { RequestHandler, Router } from 'express';
 import { Pool } from 'pg';
 import { PgTransactionRunner } from '../../db/transaction';
+import { SchoolGuard } from '../../http/authz';
 import { EnrollmentController } from './controllers/enrollment.controller';
 import { ProfileController } from './controllers/profile.controller';
 import { VerificationController } from './controllers/verification.controller';
@@ -18,6 +19,7 @@ import { VerificationService } from './services/verification.service';
 export interface StudentModuleDeps {
   db: Pool;
   requireAuth: RequestHandler;
+  schoolGuard: SchoolGuard;
 }
 
 export interface StudentModule {
@@ -31,7 +33,11 @@ export interface StudentModule {
   statsRepository: StatsRepository;
 }
 
-export function buildStudentModule({ db, requireAuth }: StudentModuleDeps): StudentModule {
+export function buildStudentModule({
+  db,
+  requireAuth,
+  schoolGuard,
+}: StudentModuleDeps): StudentModule {
   const enrollmentRepository = new EnrollmentRepository(db);
   const studentRepository = new StudentRepository(db);
   const statsRepository = new StatsRepository(db);
@@ -40,9 +46,10 @@ export function buildStudentModule({ db, requireAuth }: StudentModuleDeps): Stud
   const enrollmentService = new EnrollmentService(
     enrollmentRepository,
     studentRepository,
-    new PgTransactionRunner(db)
+    new PgTransactionRunner(db),
+    schoolGuard
   );
-  const profileService = new ProfileService(profileRepository);
+  const profileService = new ProfileService(profileRepository, schoolGuard);
   const verificationService = new VerificationService(studentRepository, statsRepository);
 
   const profileController = new ProfileController(profileService);

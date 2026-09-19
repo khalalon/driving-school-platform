@@ -15,7 +15,8 @@ export function validate<T>(schema: Joi.ObjectSchema<T>, input: unknown): Valida
   return { ok: true, value: result.value };
 }
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+// Forme acceptée par le type uuid de Postgres (et par Joi.string().uuid()) : le nil UUID compris.
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Paramètre de chemin censé être un UUID : une valeur mal formée ne peut désigner aucune

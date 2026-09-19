@@ -1,6 +1,6 @@
 import { Pool } from 'pg';
 import { Queryable } from '../../../db/transaction';
-import { CreateStudentDTO, Student } from '../types/student.types';
+import { CreateStudentDTO, SchoolStudent, Student } from '../types/student.types';
 
 export interface IStudentRepository {
   /** `executor` : client d'une transaction en cours (3.2), le pool sinon. */
@@ -9,6 +9,8 @@ export interface IStudentRepository {
   findByUserId(userId: string): Promise<Student | null>;
   findByUserAndSchool(userId: string, schoolId: string): Promise<Student | null>;
   findBySchool(schoolId: string): Promise<Student[]>;
+  /** S6 : élèves autorisés de l'école, identifiés par users.id (D-25). */
+  listSchoolRoster(schoolId: string): Promise<SchoolStudent[]>;
 }
 
 const STUDENT_COLUMNS = (alias = ''): string => {
@@ -63,6 +65,21 @@ export class StudentRepository implements IStudentRepository {
        LEFT JOIN users u ON s.user_id = u.id
        WHERE s.school_id = $1
        ORDER BY s.created_at DESC`,
+      [schoolId]
+    );
+    return result.rows;
+  }
+
+  async listSchoolRoster(schoolId: string): Promise<SchoolStudent[]> {
+    const result = await this.db.query<SchoolStudent>(
+      `SELECT s.user_id AS "studentId", u.first_name AS "firstName", u.last_name AS "lastName",
+              u.email, s.phone, s.enrollment_date AS "enrollmentDate",
+              COALESCE(sls.completed_lessons, 0)::int AS "completedLessons"
+       FROM students s
+       JOIN users u ON u.id = s.user_id
+       LEFT JOIN student_lesson_stats sls ON sls.student_id = s.id AND sls.school_id = s.school_id
+       WHERE s.school_id = $1 AND s.authorized = TRUE
+       ORDER BY u.last_name, u.first_name`,
       [schoolId]
     );
     return result.rows;

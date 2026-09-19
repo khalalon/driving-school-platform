@@ -13,6 +13,17 @@ export interface Student {
   email?: string;
 }
 
+/** S6 : ligne de la liste des élèves d'une école (D-25). */
+export interface SchoolStudent {
+  studentId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string | null;
+  enrollmentDate: Date | null;
+  completedLessons: number;
+}
+
 export interface CreateStudentDTO {
   userId: string;
   schoolId: string;

@@ -79,6 +79,17 @@ export interface SetPricingDTO {
   duration: number;
 }
 
+/** S6 : élève autorisé d'une école, `studentId` = users.id (D-25). */
+export interface SchoolStudent {
+  studentId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string | null;
+  enrollmentDate: Date | null;
+  completedLessons: number;
+}
+
 /** Code d'inscription d'une école (D-17) : `role` du compte créé, quota et expiration facultatifs. */
 export interface SchoolCode {
   id: string;

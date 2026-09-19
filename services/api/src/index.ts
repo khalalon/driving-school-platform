@@ -8,6 +8,8 @@ import { buildExamModule } from './modules/exam';
 import { buildLessonModule } from './modules/lesson';
 import { buildSchoolModule } from './modules/school';
 import { buildStudentModule } from './modules/student';
+import { SchoolGuard } from './http/authz';
+import { InstructorRepository } from './modules/school/repositories/instructor.repository';
 
 dotenv.config();
 
@@ -16,9 +18,19 @@ async function bootstrap(): Promise<void> {
   const db = createPool(env.DATABASE_URL);
   const redis = await createRedisClient(env.REDIS_URL);
 
-  const auth = buildAuthModule({ db, redis, env });
-  const school = buildSchoolModule({ db, requireAuth: auth.requireAuth });
-  const student = buildStudentModule({ db, requireAuth: auth.requireAuth });
+  // Partagés entre modules : fiche instructeur (A2, A3) et cloisonnement par école (D-20).
+  const instructorRepository = new InstructorRepository(db);
+  const schoolGuard = new SchoolGuard(instructorRepository);
+
+  const auth = buildAuthModule({ db, redis, env, instructors: instructorRepository });
+  const student = buildStudentModule({ db, requireAuth: auth.requireAuth, schoolGuard });
+  const school = buildSchoolModule({
+    db,
+    requireAuth: auth.requireAuth,
+    instructorRepository,
+    roster: student.studentRepository,
+    schoolGuard,
+  });
   const lesson = buildLessonModule({
     db,
     requireAuth: auth.requireAuth,

@@ -1,3 +1,5 @@
+import { SchoolGuard } from '../../../../http/authz';
+import { AuthUser, UserRole } from '../../../../types/auth';
 import { LessonType } from '../../../../types/domain';
 import { IInstructorRepository } from '../../repositories/instructor.repository';
 import { IPricingRepository } from '../../repositories/pricing.repository';
@@ -44,6 +46,10 @@ const pricing: Pricing = {
 describe('SchoolService', () => {
   let repository: jest.Mocked<ISchoolRepository>;
   let service: SchoolService;
+  const roster = { listSchoolRoster: jest.fn() };
+  const instructorLookup = { findByUserId: jest.fn() };
+  const instructor: AuthUser = { userId: 'user-instr', email: 'i@x.io', role: UserRole.INSTRUCTOR };
+  const admin: AuthUser = { userId: 'user-admin', email: 'a@x.io', role: UserRole.ADMIN };
 
   beforeEach(() => {
     repository = {
@@ -53,7 +59,31 @@ describe('SchoolService', () => {
       update: jest.fn(),
       delete: jest.fn(),
     };
-    service = new SchoolService(repository);
+    roster.listSchoolRoster.mockReset();
+    instructorLookup.findByUserId.mockReset();
+    instructorLookup.findByUserId.mockResolvedValue({ id: 'instr-1', schoolId: 'school-1' });
+    service = new SchoolService(repository, roster, new SchoolGuard(instructorLookup));
+  });
+
+  it('S6 getSchoolStudents : élèves autorisés de l’école pour son instructeur ou un admin (D-25)', async () => {
+    repository.findById.mockResolvedValue(school);
+    const row = { studentId: 'user-1', firstName: 'Élève', lastName: 'Test', completedLessons: 2 };
+    roster.listSchoolRoster.mockResolvedValue([row]);
+
+    await expect(service.getSchoolStudents(instructor, 'school-1')).resolves.toEqual([row]);
+    await expect(service.getSchoolStudents(admin, 'school-1')).resolves.toEqual([row]);
+    expect(roster.listSchoolRoster).toHaveBeenCalledWith('school-1');
+  });
+
+  it('S6 : 403 FORBIDDEN_SCHOOL pour un instructeur d’une autre école, 404 école inconnue (D-20)', async () => {
+    await expect(service.getSchoolStudents(instructor, 'school-2')).rejects.toMatchObject({
+      status: 403,
+      code: 'FORBIDDEN_SCHOOL',
+    });
+    expect(roster.listSchoolRoster).not.toHaveBeenCalled();
+
+    repository.findById.mockResolvedValue(null);
+    await expect(service.getSchoolStudents(admin, 'ghost')).rejects.toMatchObject({ status: 404 });
   });
 
   it('getSchoolById : 404 NOT_FOUND « École introuvable »', async () => {
@@ -108,6 +138,7 @@ describe('InstructorService', () => {
     repository = {
       create: jest.fn(),
       findById: jest.fn(),
+      findByUserId: jest.fn(),
       findBySchoolId: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),

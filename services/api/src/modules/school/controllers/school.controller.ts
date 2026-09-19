@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { sendCaughtError, sendValidationError } from '../../../http/errors';
 import { uuidParam, validate } from '../../../http/validation';
+import { AuthRequest, getAuthUser } from '../../../middleware/auth.middleware';
 import { InstructorService } from '../services/instructor.service';
 import { PricingService } from '../services/pricing.service';
 import { SchoolService } from '../services/school.service';
@@ -29,6 +30,16 @@ export class SchoolController {
     }
     try {
       res.status(201).json(await this.schoolService.createSchool(parsed.value));
+    } catch (err) {
+      sendCaughtError(res, err);
+    }
+  };
+
+  /** S6 */
+  getSchoolStudents = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const schoolId = uuidParam(req.params.schoolId, 'École');
+      res.json(await this.schoolService.getSchoolStudents(getAuthUser(req), schoolId));
     } catch (err) {
       sendCaughtError(res, err);
     }

@@ -30,6 +30,7 @@ services/api/src/
   config/{env,database,redis}.ts
   http/errors.ts        # HttpError(status, code, message), sendError, sendCaughtError (500 masqué + journal), sendValidationError
   http/validation.ts    # validate(schema, input) typé, uuidParam (404 si mal formé), enumQuery (400 si hors liste)
+  http/authz.ts         # SchoolGuard : assertSameSchool(user, schoolId) → 403 FORBIDDEN_SCHOOL, requireSchool(user) (D-20, 5.1)
   middleware/auth.middleware.ts   # authenticate(verifier) : JWT vérifié localement, req.user = { userId, email, role } ; authorize(...roles) ; getAuthUser(req)
   types/{auth,domain}.ts          # UserRole, AuthUser ; LessonType (CODE / Manœuvre / Parc), statuts d'inscription
   modules/<domaine>/    # routes → controllers → services → repositories, validators, types, __tests__ ; index.ts = build<Module>()
@@ -38,9 +39,9 @@ services/api/src/
 
 | Module | Préfixes montés | Contenu (état actuel, contrat cible entre parenthèses) | Réutilisé par |
 |---|---|---|---|
-| `auth` | `/api/auth` | A1–A5 ; `register` conforme à D-17 (sans `role` ; `schoolCode` → rôle du code + fiche `instructors` en transaction, via `SchoolCodeRepository` et `InstructorRepository` du module school injectés) ; jetons D-12 (claim `type`, deux secrets, 1 h / 30 j, rotation et révocation des refresh tokens en Redis — 4.4, 4.6) ; expose `requireAuth` | tous |
-| `school` | `/api/schools` | S1–S4 publics + administration `admin` ; colonnes aliasées en camelCase ; `LessonType` D-18 | `lesson` (grille tarifaire, D-30) |
-| `student` | `/api/enrollment`, `/api/profiles`, `/api/student-profiles`, `/api/verification` | E1–E6, P1–P11 (`:studentId` = users.id, D-28 ; leçons et examens lus dans `lessons` / `exams`, paiement porté par la leçon / l'examen — 5.0), vérification (publique dans l'app, **bloquée par Nginx**, retirée en 5.7) ; `approveRequest` atomique (UPDATE + INSERT dans une transaction, 3.2) | `lesson`, `exam` (`StudentRepository`, `StatsRepository`) |
+| `auth` | `/api/auth` | A1–A5 (A3 avec `schoolId` / `instructorId` pour un instructeur, D-19) ; `register` conforme à D-17 (sans `role` ; `schoolCode` → rôle du code + fiche `instructors` en transaction, via `SchoolCodeRepository` et `InstructorRepository` du module school injectés) ; jetons D-12 (claim `type`, deux secrets, 1 h / 30 j, rotation et révocation des refresh tokens en Redis — 4.4, 4.6) ; expose `requireAuth` | tous |
+| `school` | `/api/schools` | S1–S4 publics, S6 (élèves autorisés de l'école, cloisonné) + administration `admin` ; `InstructorRepository` partagé (câblé dans `src/index.ts` pour auth, `SchoolGuard` et ce module) | `lesson` (grille tarifaire, D-30) |
+| `student` | `/api/enrollment`, `/api/profiles`, `/api/student-profiles`, `/api/verification` | E1–E6, P1–P11 (`:studentId` = users.id, D-28 ; leçons et examens lus dans `lessons` / `exams`, paiement porté par la leçon / l'examen — 5.0 ; E4–E6 et P1–P7 cloisonnées par `SchoolGuard` — 5.1), vérification (publique dans l'app, **bloquée par Nginx**, retirée en 5.7) ; `approveRequest` atomique (UPDATE + INSERT dans une transaction, 3.2) | `lesson`, `exam` (`StudentRepository`, `StatsRepository`) |
 | `lesson` | `/api/lessons` | schéma 007 (une leçon = un élève, D-21 / D-34) : types, validators L1–L7 et repository alignés (3.3) ; anciennes routes de créneaux encore montées (`POST /` exige `studentId`, `/:lessonId/book` refuse : capacité 1), remplacées par L1–L7 en 5.2–5.4 | — |
 | `exam` | `/api/exams` | schéma 008 (un examen = un élève, D-01 / D-33) : types, validators X1–X5 et repository alignés (3.4) ; anciennes routes de sessions (`POST /` exige `studentId`, `GET /`, `GET|PUT|DELETE /:id`) encore montées, remplacées par X1–X5 en 5.5–5.6 ; routes d'inscription et d'éligibilité retirées avec `exam_registrations` (D-26) | — |
 | `payment` | **non monté** | porté typé (D-31 : paiement manuel en v1) ; sa table `payments` n'a pas la colonne `metadata` que le code écrit — migration nécessaire s'il est un jour monté | — |

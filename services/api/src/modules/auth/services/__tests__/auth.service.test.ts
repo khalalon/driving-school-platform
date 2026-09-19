@@ -2,7 +2,7 @@ import { ITransactionRunner, Queryable } from '../../../../db/transaction';
 import { HttpError } from '../../../../http/errors';
 import { IUserRepository } from '../../repositories/user.repository';
 import {
-  InstructorCreator,
+  InstructorAccess,
   LoginDTO,
   RegisterDTO,
   SchoolCodeConsumer,
@@ -21,7 +21,7 @@ describe('AuthService', () => {
   let tokenService: jest.Mocked<ITokenService>;
   let cacheService: jest.Mocked<ICacheService>;
   let schoolCodes: jest.Mocked<SchoolCodeConsumer>;
-  let instructors: jest.Mocked<InstructorCreator>;
+  let instructors: jest.Mocked<InstructorAccess>;
   let transactions: jest.Mocked<ITransactionRunner>;
   // Client de transaction factice, transmis par le service à chaque écriture de l'inscription.
   const tx: Queryable = { query: jest.fn() };
@@ -61,7 +61,7 @@ describe('AuthService', () => {
     };
     cacheService = { get: jest.fn(), set: jest.fn(), take: jest.fn(), delete: jest.fn() };
     schoolCodes = { consume: jest.fn() };
-    instructors = { create: jest.fn() };
+    instructors = { create: jest.fn(), findByUserId: jest.fn() };
     const run = jest.fn((work: (client: Queryable) => Promise<unknown>) => work(tx));
     transactions = { run } as unknown as jest.Mocked<ITransactionRunner>;
     authService = new AuthService(
@@ -353,8 +353,8 @@ describe('AuthService', () => {
     });
   });
 
-  describe('getCurrentUser', () => {
-    it("renvoie l'utilisateur sans son hash de mot de passe", async () => {
+  describe('getCurrentUser (A3)', () => {
+    it("renvoie l'utilisateur au format du contrat, sans hash ; pas d'école pour un élève", async () => {
       userRepository.findById.mockResolvedValue(user);
 
       const result = await authService.getCurrentUser(user.id);
@@ -366,9 +366,24 @@ describe('AuthService', () => {
         firstName: 'Test',
         lastName: 'Élève',
         createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
       });
       expect(result).not.toHaveProperty('passwordHash');
+      expect(instructors.findByUserId).not.toHaveBeenCalled();
+    });
+
+    it('instructeur : schoolId et instructorId par la fiche instructors (D-19)', async () => {
+      userRepository.findById.mockResolvedValue({ ...user, role: UserRole.INSTRUCTOR });
+      instructors.findByUserId.mockResolvedValue({ id: 'instr-1', schoolId: 'school-1' });
+
+      await expect(authService.getCurrentUser(user.id)).resolves.toMatchObject({
+        role: UserRole.INSTRUCTOR,
+        schoolId: 'school-1',
+        instructorId: 'instr-1',
+      });
+
+      instructors.findByUserId.mockResolvedValue(null);
+      const orphan = await authService.getCurrentUser(user.id);
+      expect(orphan).not.toHaveProperty('schoolId');
     });
 
     it('répond 404 NOT_FOUND pour un identifiant inconnu', async () => {

@@ -1,5 +1,7 @@
 import { ITransactionRunner } from '../../../db/transaction';
+import { SchoolGuard } from '../../../http/authz';
 import { HttpError } from '../../../http/errors';
+import { AuthUser } from '../../../types/auth';
 import { EnrollmentRequestStatus } from '../../../types/domain';
 import { IEnrollmentRepository } from '../repositories/enrollment.repository';
 import { IStudentRepository } from '../repositories/student.repository';
@@ -8,7 +10,8 @@ import { EnrollmentRequest, EnrollmentStatus } from '../types/student.types';
 /**
  * Cycle d'inscription (D-09) : pending → approved | rejected. `studentId` = users.id.
  * L'approbation (UPDATE demande + INSERT students) est atomique (3.2). Une seule inscription
- * active par élève, toutes écoles confondues (D-22, index uniques de 009). Reste : cloisonnement (5.1).
+ * active par élève, toutes écoles confondues (D-22, index uniques de 009). E4–E6 sont cloisonnées à
+ * l'école de l'instructeur (D-20, `SchoolGuard`).
  */
 /** Code SQLSTATE 23505 (unique_violation) de node-postgres. */
 const isUniqueViolation = (err: unknown): boolean =>
@@ -18,7 +21,8 @@ export class EnrollmentService {
   constructor(
     private readonly enrollmentRepository: IEnrollmentRepository,
     private readonly studentRepository: IStudentRepository,
-    private readonly transactions: ITransactionRunner
+    private readonly transactions: ITransactionRunner,
+    private readonly schoolGuard: SchoolGuard
   ) {}
 
   async createEnrollmentRequest(
@@ -67,15 +71,21 @@ export class EnrollmentService {
     return this.enrollmentRepository.findByStudent(studentId);
   }
 
-  getSchoolRequests(
+  /** E4 : instructeur de cette école ou admin (D-20). */
+  async getSchoolRequests(
+    caller: AuthUser,
     schoolId: string,
     status?: EnrollmentRequestStatus
   ): Promise<EnrollmentRequest[]> {
+    await this.schoolGuard.assertSameSchool(caller, schoolId);
     return this.enrollmentRepository.findBySchool(schoolId, status);
   }
 
-  async approveRequest(requestId: string, processedBy: string): Promise<EnrollmentRequest> {
+  /** E5 : instructeur de l'école de la demande ou admin (D-20). */
+  async approveRequest(caller: AuthUser, requestId: string): Promise<EnrollmentRequest> {
     const request = await this.getPendingRequest(requestId);
+    await this.schoolGuard.assertSameSchool(caller, request.schoolId);
+    const processedBy = caller.userId;
 
     // Si l'INSERT échoue, le ROLLBACK laisse la demande en pending.
     return this.transactions.run(async (tx) => {
@@ -99,13 +109,15 @@ export class EnrollmentService {
     });
   }
 
+  /** E6 : instructeur de l'école de la demande ou admin (D-20). */
   async rejectRequest(
+    caller: AuthUser,
     requestId: string,
-    processedBy: string,
     reason: string
   ): Promise<EnrollmentRequest> {
-    await this.getPendingRequest(requestId);
-    return this.enrollmentRepository.updateStatus(requestId, 'rejected', processedBy, reason);
+    const request = await this.getPendingRequest(requestId);
+    await this.schoolGuard.assertSameSchool(caller, request.schoolId);
+    return this.enrollmentRepository.updateStatus(requestId, 'rejected', caller.userId, reason);
   }
 
   async getEnrollmentStatus(studentId: string, schoolId: string): Promise<EnrollmentStatus> {

@@ -47,7 +47,7 @@ export class EnrollmentController {
     try {
       const schoolId = uuidParam(req.params.schoolId, 'École');
       const status = enumQuery(req.query.status, ENROLLMENT_REQUEST_STATUSES, 'status');
-      res.json(await this.enrollmentService.getSchoolRequests(schoolId, status));
+      res.json(await this.enrollmentService.getSchoolRequests(getAuthUser(req), schoolId, status));
     } catch (err) {
       sendCaughtError(res, err);
     }
@@ -57,7 +57,7 @@ export class EnrollmentController {
   approveRequest = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const requestId = uuidParam(req.params.requestId, "Demande d'inscription");
-      res.json(await this.enrollmentService.approveRequest(requestId, getAuthUser(req).userId));
+      res.json(await this.enrollmentService.approveRequest(getAuthUser(req), requestId));
     } catch (err) {
       sendCaughtError(res, err);
     }
@@ -73,11 +73,7 @@ export class EnrollmentController {
     try {
       const requestId = uuidParam(req.params.requestId, "Demande d'inscription");
       res.json(
-        await this.enrollmentService.rejectRequest(
-          requestId,
-          getAuthUser(req).userId,
-          parsed.value.reason
-        )
+        await this.enrollmentService.rejectRequest(getAuthUser(req), requestId, parsed.value.reason)
       );
     } catch (err) {
       sendCaughtError(res, err);

@@ -7,7 +7,7 @@ import { markPaidSchema, updateNotesSchema } from '../validators/student.validat
 
 /**
  * Fiches élève : vue instructeur (`/api/profiles`, P1–P7) et vue élève de sa propre fiche
- * (`/api/student-profiles/me`, P8–P11). `:studentId` = users.id (D-28).
+ * (`/api/student-profiles/me`, P8–P11). `:studentId` = users.id (D-28) ; P1–P7 cloisonnées (D-20).
  */
 export class ProfileController {
   constructor(private readonly profileService: ProfileService) {}
@@ -15,7 +15,7 @@ export class ProfileController {
   getCompleteProfile = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const { studentId, schoolId } = this.profileParams(req);
-      res.json(await this.profileService.getCompleteProfile(studentId, schoolId));
+      res.json(await this.profileService.getCompleteProfile(getAuthUser(req), studentId, schoolId));
     } catch (err) {
       sendCaughtError(res, err);
     }
@@ -24,7 +24,7 @@ export class ProfileController {
   getStudentLessons = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const { studentId, schoolId } = this.profileParams(req);
-      res.json(await this.profileService.getStudentLessons(studentId, schoolId));
+      res.json(await this.profileService.getStudentLessons(getAuthUser(req), studentId, schoolId));
     } catch (err) {
       sendCaughtError(res, err);
     }
@@ -33,7 +33,7 @@ export class ProfileController {
   getStudentExams = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const { studentId, schoolId } = this.profileParams(req);
-      res.json(await this.profileService.getStudentExams(studentId, schoolId));
+      res.json(await this.profileService.getStudentExams(getAuthUser(req), studentId, schoolId));
     } catch (err) {
       sendCaughtError(res, err);
     }
@@ -42,7 +42,9 @@ export class ProfileController {
   getFinancialSummary = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const { studentId, schoolId } = this.profileParams(req);
-      res.json(await this.profileService.getFinancialSummary(studentId, schoolId));
+      res.json(
+        await this.profileService.getFinancialSummary(getAuthUser(req), studentId, schoolId)
+      );
     } catch (err) {
       sendCaughtError(res, err);
     }
@@ -56,7 +58,11 @@ export class ProfileController {
     }
     try {
       const studentId = uuidParam(req.params.studentId, 'Élève');
-      await this.profileService.updateInstructorNotes(studentId, parsed.value.notes);
+      await this.profileService.updateInstructorNotes(
+        getAuthUser(req),
+        studentId,
+        parsed.value.notes
+      );
       res.status(204).send();
     } catch (err) {
       sendCaughtError(res, err);
@@ -72,6 +78,7 @@ export class ProfileController {
     try {
       const lessonId = uuidParam(req.params.lessonId, 'Leçon');
       await this.profileService.markLessonPaid(
+        getAuthUser(req),
         lessonId,
         parsed.value.amount,
         parsed.value.paymentMethod
@@ -91,6 +98,7 @@ export class ProfileController {
     try {
       const examId = uuidParam(req.params.examId, 'Examen');
       await this.profileService.markExamPaid(
+        getAuthUser(req),
         examId,
         parsed.value.amount,
         parsed.value.paymentMethod
@@ -115,7 +123,7 @@ export class ProfileController {
   getMyLessons = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const schoolId = uuidParam(req.params.schoolId, 'École');
-      res.json(await this.profileService.getStudentLessons(getAuthUser(req).userId, schoolId));
+      res.json(await this.profileService.getOwnLessons(getAuthUser(req).userId, schoolId));
     } catch (err) {
       sendCaughtError(res, err);
     }
@@ -124,7 +132,7 @@ export class ProfileController {
   getMyExams = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const schoolId = uuidParam(req.params.schoolId, 'École');
-      res.json(await this.profileService.getStudentExams(getAuthUser(req).userId, schoolId));
+      res.json(await this.profileService.getOwnExams(getAuthUser(req).userId, schoolId));
     } catch (err) {
       sendCaughtError(res, err);
     }
@@ -133,7 +141,7 @@ export class ProfileController {
   getMyFinancialSummary = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const schoolId = uuidParam(req.params.schoolId, 'École');
-      res.json(await this.profileService.getFinancialSummary(getAuthUser(req).userId, schoolId));
+      res.json(await this.profileService.getOwnFinancialSummary(getAuthUser(req).userId, schoolId));
     } catch (err) {
       sendCaughtError(res, err);
     }

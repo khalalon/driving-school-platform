@@ -24,6 +24,13 @@ export function createSchoolRouter(
   router.delete('/pricing/:id', ...adminOnly, controller.deletePricing);
 
   router.get('/:schoolId/instructors', controller.getInstructorsBySchool);
+  // S6 (D-25) : instructeur de cette école ou admin (cloisonnement dans le service).
+  router.get(
+    '/:schoolId/students',
+    requireAuth,
+    authorize(UserRole.INSTRUCTOR, UserRole.ADMIN),
+    controller.getSchoolStudents
+  );
   router.post('/:schoolId/instructors', ...adminOnly, controller.addInstructor);
   router.get('/:schoolId/pricing', controller.getPricingBySchool);
   router.post('/:schoolId/pricing', ...adminOnly, controller.setPricing);

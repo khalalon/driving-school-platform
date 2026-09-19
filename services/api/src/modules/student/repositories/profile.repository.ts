@@ -11,6 +11,11 @@ export interface IProfileRepository {
   getStudentLessons(userId: string, schoolId: string): Promise<LessonHistory[]>;
   getStudentExams(userId: string, schoolId: string): Promise<ExamHistory[]>;
   getFinancialSummary(userId: string, schoolId: string): Promise<FinancialSummary>;
+  /** École de la fiche `students` de l'utilisateur (unique, D-22), pour le cloisonnement de P5. */
+  findStudentSchool(userId: string): Promise<string | null>;
+  /** École de la leçon (P6) / de l'examen (P7), pour le cloisonnement ; `null` si inconnu. */
+  findLessonSchool(lessonId: string): Promise<string | null>;
+  findExamSchool(examId: string): Promise<string | null>;
   /** `false` si aucune fiche `students` pour cet utilisateur. */
   updateNotes(userId: string, notes: string): Promise<boolean>;
   /** `false` si la leçon n'existe pas. */
@@ -141,6 +146,18 @@ export class ProfileRepository implements IProfileRepository {
     };
   }
 
+  findStudentSchool(userId: string): Promise<string | null> {
+    return this.findSchoolOf('students', 'user_id', userId);
+  }
+
+  findLessonSchool(lessonId: string): Promise<string | null> {
+    return this.findSchoolOf('lessons', 'id', lessonId);
+  }
+
+  findExamSchool(examId: string): Promise<string | null> {
+    return this.findSchoolOf('exams', 'id', examId);
+  }
+
   /** Une seule fiche par utilisateur (D-22, unique students.user_id) : pas d'école à préciser. */
   async updateNotes(userId: string, notes: string): Promise<boolean> {
     const result = await this.db.query(
@@ -170,5 +187,18 @@ export class ProfileRepository implements IProfileRepository {
       [amount, paymentMethod, examId]
     );
     return (result.rowCount ?? 0) > 0;
+  }
+
+  // Tables et colonnes fixées par les appelants ci-dessus : jamais issues d'une entrée utilisateur.
+  private async findSchoolOf(
+    table: 'students' | 'lessons' | 'exams',
+    column: 'id' | 'user_id',
+    value: string
+  ): Promise<string | null> {
+    const result = await this.db.query<{ schoolId: string }>(
+      `SELECT school_id AS "schoolId" FROM ${table} WHERE ${column} = $1 LIMIT 1`,
+      [value]
+    );
+    return result.rows[0]?.schoolId ?? null;
   }
 }

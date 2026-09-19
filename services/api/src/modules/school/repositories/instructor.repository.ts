@@ -6,6 +6,8 @@ export interface IInstructorRepository {
   /** `executor` : client d'une transaction en cours (inscription avec code, 4.2), le pool sinon. */
   create(schoolId: string, data: CreateInstructorDTO, executor?: Queryable): Promise<Instructor>;
   findById(id: string, executor?: Queryable): Promise<Instructor | null>;
+  /** Fiche instructeur d'un compte (users.id) : école de l'appelant (D-19, D-20). */
+  findByUserId(userId: string): Promise<Instructor | null>;
   findBySchoolId(schoolId: string): Promise<Instructor[]>;
   update(id: string, data: UpdateInstructorDTO): Promise<Instructor>;
   delete(id: string): Promise<void>;
@@ -42,6 +44,14 @@ export class InstructorRepository implements IInstructorRepository {
     const result = await executor.query<Instructor>(
       `SELECT ${INSTRUCTOR_COLUMNS} ${INSTRUCTOR_FROM} WHERE i.id = $1`,
       [id]
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async findByUserId(userId: string): Promise<Instructor | null> {
+    const result = await this.db.query<Instructor>(
+      `SELECT ${INSTRUCTOR_COLUMNS} ${INSTRUCTOR_FROM} WHERE i.user_id = $1 ORDER BY i.created_at LIMIT 1`,
+      [userId]
     );
     return result.rows[0] ?? null;
   }

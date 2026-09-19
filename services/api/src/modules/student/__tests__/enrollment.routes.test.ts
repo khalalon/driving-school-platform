@@ -98,7 +98,11 @@ describe('Routes /api/enrollment (E1–E6)', () => {
       .get(`${base}/schools/${UUID.school}/requests?status=pending`)
       .set('Authorization', bearerFor('instructor'))
       .expect(200);
-    expect(service.getSchoolRequests).toHaveBeenCalledWith(UUID.school, 'pending');
+    expect(service.getSchoolRequests).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: TEST_USERS.instructor.userId }),
+      UUID.school,
+      'pending'
+    );
 
     const bad = await request(app)
       .get(`${base}/schools/${UUID.school}/requests?status=nope`)
@@ -120,7 +124,10 @@ describe('Routes /api/enrollment (E1–E6)', () => {
       .put(`${base}/${UUID.request}/approve`)
       .set('Authorization', bearerFor('instructor'));
     expect(res.status).toBe(200);
-    expect(service.approveRequest).toHaveBeenCalledWith(UUID.request, TEST_USERS.instructor.userId);
+    expect(service.approveRequest).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: TEST_USERS.instructor.userId }),
+      UUID.request
+    );
 
     const bad = await request(app)
       .put(`${base}/not-a-uuid/approve`)
@@ -143,8 +150,8 @@ describe('Routes /api/enrollment (E1–E6)', () => {
       .send({ reason: 'Dossier incomplet, merci de compléter' });
     expect(ok.status).toBe(200);
     expect(service.rejectRequest).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: TEST_USERS.instructor.userId }),
       UUID.request,
-      TEST_USERS.instructor.userId,
       'Dossier incomplet, merci de compléter'
     );
   });

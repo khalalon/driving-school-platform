@@ -1,9 +1,27 @@
+import { SchoolGuard } from '../../../http/authz';
 import { HttpError } from '../../../http/errors';
+import { AuthUser } from '../../../types/auth';
 import { ISchoolRepository } from '../repositories/school.repository';
-import { CreateSchoolDTO, School, UpdateSchoolDTO } from '../types/school.types';
+import { CreateSchoolDTO, School, SchoolStudent, UpdateSchoolDTO } from '../types/school.types';
+
+/** Ce que S6 attend du module student : les élèves autorisés d'une école (D-25). */
+export interface SchoolRosterSource {
+  listSchoolRoster(schoolId: string): Promise<SchoolStudent[]>;
+}
 
 export class SchoolService {
-  constructor(private readonly schoolRepository: ISchoolRepository) {}
+  constructor(
+    private readonly schoolRepository: ISchoolRepository,
+    private readonly roster: SchoolRosterSource,
+    private readonly schoolGuard: SchoolGuard
+  ) {}
+
+  /** S6 : instructeur de cette école ou admin (D-20, D-25). */
+  async getSchoolStudents(caller: AuthUser, schoolId: string): Promise<SchoolStudent[]> {
+    await this.schoolGuard.assertSameSchool(caller, schoolId);
+    await this.getSchoolById(schoolId);
+    return this.roster.listSchoolRoster(schoolId);
+  }
 
   createSchool(dto: CreateSchoolDTO): Promise<School> {
     return this.schoolRepository.create(dto);
