@@ -23,7 +23,40 @@ export interface Tokens {
   refreshToken: string;
 }
 
-/** Client supertest sur la passerelle (une requête = un appel). */
+/**
+ * Cadence des requêtes : Nginx limite chaque IP à 10 r/s (burst 20, `nginx.conf`). Une campagne
+ * complète dépasse ce débit et reçoit des 503 : chaque requête du harnais attend donc au moins
+ * `MIN_REQUEST_INTERVAL_MS` après le départ de la précédente. Le délai est posé sur `then`, que
+ * superagent appelle au moment d'envoyer la requête (les tests font `await api().get(...)`).
+ */
+const MIN_REQUEST_INTERVAL_MS = 110;
+let lastRequestStart = 0;
+let pacing: Promise<void> = Promise.resolve();
+
+const paced = (): Promise<void> => {
+  pacing = pacing.then(async () => {
+    const wait = lastRequestStart + MIN_REQUEST_INTERVAL_MS - Date.now();
+    if (wait > 0) {
+      await new Promise((resolve) => setTimeout(resolve, wait));
+    }
+    lastRequestStart = Date.now();
+  });
+  return pacing;
+};
+
+const testPrototype = request.Test.prototype as unknown as {
+  then: (...args: unknown[]) => Promise<unknown>;
+  __paced?: boolean;
+};
+if (!testPrototype.__paced) {
+  const originalThen = testPrototype.then;
+  testPrototype.then = function pacedThen(this: unknown, ...args: unknown[]) {
+    return paced().then(() => originalThen.apply(this, args));
+  };
+  testPrototype.__paced = true;
+}
+
+/** Client supertest sur la passerelle (une requête = un appel, cadencée). */
 export const api = (): request.Agent => request(GATEWAY_URL);
 
 export const bearer = (token: string): Record<string, string> => ({
