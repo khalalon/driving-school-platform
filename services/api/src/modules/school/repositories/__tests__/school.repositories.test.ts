@@ -48,7 +48,7 @@ describe('InstructorRepository', () => {
       .fn()
       .mockResolvedValueOnce({ rows: [{ id: UUID.instructor }] })
       .mockResolvedValueOnce({
-        rows: [{ id: UUID.instructor, firstName: 'Seed', lastName: 'Instructor', name: null }],
+        rows: [{ id: UUID.instructor, firstName: 'Seed', lastName: 'Instructor' }],
       });
     const repo = new InstructorRepository({ query } as unknown as import('pg').Pool);
 

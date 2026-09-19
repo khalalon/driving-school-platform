@@ -111,19 +111,21 @@ Le détail par écran est dans `API_CONTRACT.md`. Résumé des dépendances rée
 
 | Écran mobile | Domaines appelés |
 |---|---|
-| Login / Register / InstructorRegistration | auth, schools (`school-codes/verify` — inexistant) |
+| Login / Register / InstructorRegistration | auth (A1, A2 avec `schoolCode` en une étape depuis 6.1) |
 | StudentDashboard, InstructorDashboard | aucun (menus) |
-| SchoolsList, SchoolDetail | schools, enrollment |
-| BookLesson, MyLessons | lessons, enrollment |
+| SchoolsList, SchoolDetail | schools, enrollment (bouton « Request Lesson » sans instructeur, ou « Request » depuis un instructeur = préférence D-32) |
+| BookLesson, MyLessons | lessons (L2 `{ type, requestedDate, preferredInstructorId?, notes? }`, L1, L3), enrollment (E1) |
 | RequestExam, MyExams | exams |
 | MyEnrollmentRequests | enrollment |
 | MyProfile (3 onglets) | student-profiles — **injoignable** : aucun écran actif n'y navigue |
 | EnrollmentRequests (instructeur) | enrollment — reçoit `schoolId` en param de route mais le dashboard n'en passe aucun → ne charge rien |
 | LessonRequests, TodayLessons, ExamRequests, TodayExams | lessons / exams en lecture ; les boutons approuver / rejeter / planifier / résultat sont des **stubs** (`Alert('Success')` sans appel réseau) |
-| BookForStudent | lessons (`/book-for-student` — inexistant ; envoie l'email de l'élève comme `studentId`) |
+| BookForStudent | lessons (L4 au format cible depuis 6.1, mais `studentId` reçoit encore l'email saisi → liste S6 en 6.4) |
 | StudentProfile (3 onglets) | profiles — **injoignable** : aucun écran n'y navigue |
 
-Config : l'URL de base vient de `app.json` → `expo.extra.API_BASE_URL` (valeur neutre `http://10.0.2.2:80`, l'hôte vu de l'émulateur Android — D-38), surchargeable par `EXPO_PUBLIC_API_BASE_URL` (fichier `mobile-app/.env`, ignoré ; modèle `.env.example`), résolue dans `mobile-app/src/config/api.config.ts` via `expo-constants` (déclaré en dépendance directe depuis 0.4). Le plugin Babel `react-native-dotenv` (module `@env`) reste configuré mais plus rien ne l'importe (6.1).
+Config : l'URL de base vient de `app.json` → `expo.extra.API_BASE_URL` (valeur neutre `http://10.0.2.2:80`, l'hôte vu de l'émulateur Android — D-38), surchargeable par `EXPO_PUBLIC_API_BASE_URL` (fichier `mobile-app/.env`, ignoré ; modèle `.env.example`), résolue dans `mobile-app/src/config/api.config.ts` via `expo-constants` (déclaré en dépendance directe depuis 0.4). `api.config.ts` ne définit que les chemins du contrat (§1–6) ; le plugin Babel `react-native-dotenv` a été retiré en 6.1.
+
+Conventions mobile (6.1) : les `*Service.ts` renvoient `response.data` (`ApiClient.get<T>` / `post<T>` / `put<T>` typés) ; les objets échangés sont définis une seule fois dans `src/models/` (`Lesson`, `Exam`, `Enrollment`, `School`, `Profile`, `User`) au format du contrat, avec les enums D-18 et leurs libellés d'affichage ; tout `catch` d'écran affiche `getApiErrorMessage(error, secours)` (`src/services/api/ApiError.ts` : `message` du backend, repli `error`, repli texte) ; montants et dates par `src/utils/format.ts` (symbole monétaire : Q-20).
 
 ### Backend → backend
 Aucun appel HTTP : les modules se parlent en mémoire (`buildXModule()` reçoit les services et repositories dont il dépend) et partagent la base.
@@ -135,7 +137,7 @@ Aucun appel HTTP : les modules se parlent en mémoire (`buildXModule()` reçoit 
 
 - **Docker** : `services/api/Dockerfile` multi-stage (builder `npm ci` + `tsc` sans fallback, runtime `npm ci --omit=dev`, user `nodejs`, `curl` pour le healthcheck). Trois compose : `docker-compose.yml` (postgres, redis, api, nginx), `docker-compose.dev.yml` (API en `ts-node-dev` sur les sources), `docker-compose.prod.yml` (limites de ressources, journaux, pas de port direct sur l'API).
 - **Makefile** : `install / typecheck / lint / test / format / build` sur `services/api`, `dev / prod / stop / clean / logs / restart / health / migrate / shell-postgres / shell-redis / backup-db / restore-db / db-status / redis-*`. `make` n'est pas installé sur toutes les machines : chaque cible est une commande directe documentée dans `CLAUDE.md`.
-- **CI** (`.github/workflows/ci-cd.yml`) : job `api` (lint, `tsc --noEmit`, tests avec couverture, build) sur Node 20, déclenché sur `services/api/**`, puis `build-images` (image `api`) et deploy staging/prod (coquilles vides). `pr-check.yml` : titre et commits conventionnels, typecheck de `services/api` et de `tests/`, détection de secrets. `e2e.yml` monte la stack complète, lance `npm run test:e2e` (**bloquant depuis 5.8** : chemin critique, profils, examens, harnais) et publie `report.json` + un résumé par test. Pas de job mobile (6.1) ; en local, `mobile-app` a `npm test` (jest-expo) depuis 4.5.
+- **CI** (`.github/workflows/ci-cd.yml`) : job `api` (lint, `tsc --noEmit`, tests avec couverture, build) sur Node 20, déclenché sur `services/api/**` ; job `mobile` (`npm ci`, `tsc --noEmit` strict, jest-expo) déclenché sur `mobile-app/**` (6.1) ; puis `build-images` (image `api`, `permissions: packages: write`) et deploy staging/prod (coquilles vides). `pr-check.yml` : titre et commits conventionnels, typecheck de `services/api` et de `tests/`, détection de secrets. `e2e.yml` monte la stack complète (secrets JWT jetables au niveau du job), lance `npm run test:e2e` (**bloquant depuis 5.8** : chemin critique, profils, examens, harnais) et publie `report.json` + un résumé par test.
 - **Hooks git** : `.husky/pre-commit` lance `lint-staged --config package.json` (Prettier `--write` sur `services/*/src/**/*.ts`) ; `.husky/commit-msg` lance commitlint (scopes : `api`, les 8 domaines, `mobile`, `docs`, `infra`, `e2e`, `docker`, `ci`, `deps`). Husky s'active par `npm install` racine ; sans lui, aucun hook ne tourne.
 - **Tests** : `services/api` — 169 tests Jest (services avec mocks d'interfaces, routes HTTP via supertest sur `createApp`, repositories sur `Pool` factice), seuils de couverture = couverture mesurée (D-37, 87/85/93/87 au 18/09). `tests/` — paquet npm autonome (jest + ts-jest + supertest + pg) qui cible `GATEWAY_URL` (défaut `http://localhost`), attend `/health`, applique `tests/fixtures/seed.sql` (école `Seed Driving School`, instructeur `instructor@seed.io`, grille tarifaire, code `INST-SEED`) puis lance `*.e2e.test.ts` en série ; `npm run test:e2e` à la racine ; il lit `POSTGRES_*` dans l'environnement puis dans le `.env` racine. `e2e/critical-path.e2e.test.ts` (D-15, routes cibles du contrat) **échoue dès A2** (`register` exige `role`) : attendu jusqu'à 5.8.
 - **Git** : `.gitignore` racine (`node_modules/`, `dist/`, `coverage/`, `.env`, `.env.*.local`, `.DS_Store`, `*.log`, `.expo/`), `.gitattributes` (`* text=auto eol=lf`). Un `.env.example` à la racine (toutes les variables lues par les compose), dans `services/api/`, `mobile-app/` et `web-frontend/`.
@@ -144,8 +146,7 @@ Aucun appel HTTP : les modules se parlent en mémoire (`buildXModule()` reçoit 
 
 | Fichier | Constat |
 |---|---|
-| `mobile-app/babel.config.js` plugin `module:react-native-dotenv` (+ dépendance `react-native-dotenv`) | Plus aucun import `@env` depuis 0.4 (l'URL vient de `expo-constants` / `EXPO_PUBLIC_*`) ; à retirer en 6.1. |
-| `mobile-app/MINIMAL_DESIGN_GUIDE.md` | Doc de statut hors racine (`MOBILE_APP_COMPLETE.md` supprimé en 0.8) ; à trancher en 6.1. |
+| `mobile-app/MINIMAL_DESIGN_GUIDE.md` | Conservé (6.1) : c'est la référence du système de design des écrans (composants, couleurs, espacements), pas un document de statut. |
 | `.commitlintrc.json` scopes `auth`…`analytics` | Conservés comme scopes de module ; `notification` et `analytics` ne désignent plus rien dans le code. |
 
-Supprimés en 2.7 : `services/{auth,school,student,lesson,exam,payment,notification,analytics}`, `scripts/quick-start.sh` (contenait une copie du schéma SQL hors migrations) et `scripts/docker-*.{sh,ps1}` (doublons cassés des cibles `make`, `-f docker compose.yml`). Supprimés en 0.8 : les 8 scripts de test manuel de la racine, `scripts/test-api.sh`, `mobile-app/src/app.ts`, les trois écrans injoignables, `mobile-app/MOBILE_APP_COMPLETE.md`, `services/student/src/repositories/profile.service.ts`.
+Supprimés en 2.7 : `services/{auth,school,student,lesson,exam,payment,notification,analytics}`, `scripts/quick-start.sh` (contenait une copie du schéma SQL hors migrations) et `scripts/docker-*.{sh,ps1}` (doublons cassés des cibles `make`, `-f docker compose.yml`). Supprimés en 0.8 : les 8 scripts de test manuel de la racine, `scripts/test-api.sh`, `mobile-app/src/app.ts`, les trois écrans injoignables, `mobile-app/MOBILE_APP_COMPLETE.md`, `services/student/src/repositories/profile.service.ts`. Supprimés en 6.1 : `mobile-app/src/services/api/SchoolCodeService.ts`, le plugin Babel `react-native-dotenv` et sa dépendance, les chemins du §9 du contrat.

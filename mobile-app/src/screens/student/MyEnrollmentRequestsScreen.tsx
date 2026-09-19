@@ -16,7 +16,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { enrollmentService } from '../../services/api/EnrollmentService';
+import { getApiErrorMessage } from '../../services/api/ApiError';
 import { EnrollmentRequest, EnrollmentStatus } from '../../models/Enrollment';
+import { formatDate } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
 
 export const MyEnrollmentRequestsScreen = ({ navigation }: any) => {
@@ -33,9 +35,8 @@ export const MyEnrollmentRequestsScreen = ({ navigation }: any) => {
       setLoading(true);
       const data = await enrollmentService.getMyRequests();
       setRequests(data);
-    } catch (error: any) {
-      Alert.alert('Error', 'Failed to load enrollment requests');
-      console.error('Load requests error:', error);
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load enrollment requests'));
     } finally {
       setLoading(false);
     }
@@ -114,13 +115,7 @@ export const MyEnrollmentRequestsScreen = ({ navigation }: any) => {
         )}
 
         <View style={styles.cardFooter}>
-          <Text style={styles.dateText}>
-            {new Date(item.createdAt).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-            })}
-          </Text>
+          <Text style={styles.dateText}>{formatDate(item.createdAt)}</Text>
           <TouchableOpacity
             style={styles.viewButton}
             onPress={() => navigation.navigate('SchoolDetail', { schoolId: item.schoolId })}

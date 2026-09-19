@@ -1,6 +1,5 @@
 /**
- * User Model
- * Single Responsibility: Define user data structure
+ * User Model — identité de l'appelant (A3) et payloads A1 / A2 du contrat.
  */
 
 export enum UserRole {
@@ -9,15 +8,16 @@ export enum UserRole {
   ADMIN = 'admin',
 }
 
+/** Réponse de A3 (`/api/auth/me`) : `schoolId` et `instructorId` seulement pour un instructeur (D-19). */
 export interface User {
   id: string;
   email: string;
   firstName: string;
   lastName: string;
   role: UserRole;
-  schoolId?: string; // For instructors
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt?: string;
+  schoolId?: string;
+  instructorId?: string;
 }
 
 export interface LoginRequest {
@@ -25,18 +25,22 @@ export interface LoginRequest {
   password: string;
 }
 
+/**
+ * A2 (D-17) : sans `schoolCode` → compte `student` ; avec un code valide → rôle du code,
+ * `phone` et `licenseNumber` requis. Le champ `role` n'est plus accepté par le backend.
+ */
 export interface RegisterRequest {
   email: string;
   password: string;
   firstName: string;
   lastName: string;
-  role: UserRole;
+  schoolCode?: string;
+  phone?: string;
+  licenseNumber?: string;
 }
 
-/** Réponse réelle de A1 / A2 (contrat) : une paire de jetons. `token` / `user` : anciens champs, retirés en 6.2. */
+/** Réponse de A1 / A2 : une paire de jetons (D-12). */
 export interface AuthResponse {
   accessToken: string;
   refreshToken: string;
-  token?: string;
-  user?: User;
 }

@@ -18,11 +18,13 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { examService } from '../../services/api/ExamService';
+import { getApiErrorMessage } from '../../services/api/ApiError';
+import { EXAM_TYPE_LABELS, ExamType } from '../../models/Exam';
 import { colors, typography, spacing, shadows } from '../../theme';
 
 export const RequestExamScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(false);
-  const [examType, setExamType] = useState<'THEORY' | 'PRACTICAL'>('THEORY');
+  const [examType, setExamType] = useState<ExamType>(ExamType.THEORY);
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [time, setTime] = useState(new Date());
@@ -57,8 +59,9 @@ export const RequestExamScreen = ({ navigation }: any) => {
       preferredDateTime.setHours(time.getHours());
       preferredDateTime.setMinutes(time.getMinutes());
 
+      // X2 : vocabulaire du backend (theory | practical, D-18)
       await examService.requestExam({
-        examType: examType, // Now properly typed as 'THEORY' | 'PRACTICAL'
+        examType,
         preferredDate: preferredDateTime.toISOString(),
         message: message.trim(),
       });
@@ -68,8 +71,8 @@ export const RequestExamScreen = ({ navigation }: any) => {
         'Your exam request has been submitted. The instructor will review and schedule it for you.',
         [{ text: 'OK', onPress: () => navigation.navigate('MyExams') }]
       );
-    } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'Failed to submit request');
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to submit request'));
     } finally {
       setLoading(false);
     }
@@ -107,46 +110,50 @@ export const RequestExamScreen = ({ navigation }: any) => {
             <TouchableOpacity
               style={[
                 styles.typeButton,
-                examType === 'THEORY' && styles.typeButtonActive,
+                examType === ExamType.THEORY && styles.typeButtonActive,
               ]}
-              onPress={() => setExamType('THEORY')}
+              onPress={() => setExamType(ExamType.THEORY)}
               activeOpacity={0.7}
             >
               <Ionicons
                 name="book-outline"
                 size={24}
-                color={examType === 'THEORY' ? colors.text.inverse : colors.text.secondary}
+                color={
+                  examType === ExamType.THEORY ? colors.text.inverse : colors.text.secondary
+                }
               />
               <Text
                 style={[
                   styles.typeButtonText,
-                  examType === 'THEORY' && styles.typeButtonTextActive,
+                  examType === ExamType.THEORY && styles.typeButtonTextActive,
                 ]}
               >
-                Theory
+                {EXAM_TYPE_LABELS[ExamType.THEORY]}
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[
                 styles.typeButton,
-                examType === 'PRACTICAL' && styles.typeButtonActive,
+                examType === ExamType.PRACTICAL && styles.typeButtonActive,
               ]}
-              onPress={() => setExamType('PRACTICAL')}
+              onPress={() => setExamType(ExamType.PRACTICAL)}
               activeOpacity={0.7}
             >
               <Ionicons
                 name="car-sport-outline"
                 size={24}
-                color={examType === 'PRACTICAL' ? colors.text.inverse : colors.text.secondary}
+                color={
+                  examType === ExamType.PRACTICAL ? colors.text.inverse : colors.text.secondary
+                }
               />
               <Text
                 style={[
                   styles.typeButtonText,
-                  examType === 'PRACTICAL' && styles.typeButtonTextActive,
+                  examType === ExamType.PRACTICAL && styles.typeButtonTextActive,
                 ]}
               >
-                Practical
+                {EXAM_TYPE_LABELS[ExamType.PRACTICAL]}
               </Text>
             </TouchableOpacity>
           </View>

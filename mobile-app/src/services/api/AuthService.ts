@@ -1,60 +1,37 @@
 /**
- * Auth Service
+ * Auth Service — §1 du contrat (A1, A2, A3).
  * Single Responsibility: Handle authentication API operations
- * Interface Segregation: Only auth-related methods
  */
 
 import { apiClient } from './ApiClient';
 import { API_CONFIG } from '../../config/api.config';
-import { LoginRequest, RegisterRequest, AuthResponse } from '../../models/User';
+import { AuthResponse, LoginRequest, RegisterRequest, User } from '../../models/User';
 
 class AuthService {
-  /**
-   * Login user
-   */
+  /** A1. */
   async login(data: LoginRequest): Promise<AuthResponse> {
-    const response = await apiClient.post(
-      API_CONFIG.ENDPOINTS.AUTH.LOGIN,
+    const response = await apiClient.post<AuthResponse>(API_CONFIG.ENDPOINTS.AUTH.LOGIN, data);
+    return response.data;
+  }
+
+  /** A2 : le payload part tel quel (`firstName` / `lastName` exigés, `schoolCode` facultatif, jamais de `role`). */
+  async register(data: RegisterRequest): Promise<AuthResponse> {
+    const response = await apiClient.post<AuthResponse>(
+      API_CONFIG.ENDPOINTS.AUTH.REGISTER,
       data
     );
     return response.data;
   }
 
-  /**
-   * Register new user
-   * Note: Backend only accepts email, password, and role (firstName/lastName are ignored)
-   */
-  async register(data: RegisterRequest): Promise<AuthResponse> {
-    // Only send fields that backend accepts
-    const registerData = {
-      email: data.email,
-      password: data.password,
-      role: data.role,
-    };
-
-    const response = await apiClient.post(
-      API_CONFIG.ENDPOINTS.AUTH.REGISTER,
-      registerData
-    );
+  /** A3 : l'appelant, avec `schoolId` / `instructorId` pour un instructeur (D-19). */
+  async getCurrentUser(): Promise<User> {
+    const response = await apiClient.get<User>(API_CONFIG.ENDPOINTS.AUTH.ME);
     return response.data;
   }
 
-  /**
-   * Logout user (client-side, clears token)
-   */
+  /** Déconnexion : la révocation serveur (A5) est câblée en 6.2 ; le stockage local est effacé par AuthContext. */
   async logout(): Promise<void> {
-    // Token clearing is handled in AuthContext
     return Promise.resolve();
-  }
-
-  /**
-   * Get current user profile
-   */
-  async getCurrentUser(): Promise<AuthResponse['user']> {
-    const response = await apiClient.get(
-      API_CONFIG.ENDPOINTS.AUTH.ME
-    );
-    return response.data;
   }
 }
 

@@ -92,6 +92,15 @@ L7 permet de marquer `attended = false`. Le compteur de leçons effectuées n'au
 
 Bloque : 5.4 (calcul de `totalDue` en P4/P11), 6.3.
 
+### Q-20 — Quel symbole monétaire afficher sur le mobile ?
+Le backend ne porte aucune devise (`price`, `amount` sont des nombres nus) ; les écrans existants affichaient tantôt `€`, tantôt `$`. Depuis 6.1 le symbole est défini en un seul endroit (`CURRENCY_SYMBOL` dans `mobile-app/src/utils/format.ts`, valeur `€` conservée par défaut). La réponse change une ligne.
+- **(a)** `DT` (usage courant en Tunisie, ex. « 40 DT »).
+- **(b)** `TND` (code ISO, ex. « 40 TND »).
+- **(c)** `€` (statu quo).
+- **(d)** Une devise par école (nouvelle colonne `schools.currency`, hors v1).
+
+Bloque : rien (affichage seulement) ; à trancher avant la recette.
+
 ### Q-19 — Procédure d'examen en Tunisie : date choisie par l'école, ou imposée par la session ATTT ?
 Le formulaire X3 (`dateTime`, `location`) et le refus X4 sont les mêmes dans les deux cas ; ce qui change, c'est le sens des actions et les libellés des écrans instructeur et élève.
 - **(a)** L'école choisit la date : « Planifier » = fixer un rendez-vous ; « Refuser » = l'école ne présente pas l'élève. Libellés actuels du mobile conservés.

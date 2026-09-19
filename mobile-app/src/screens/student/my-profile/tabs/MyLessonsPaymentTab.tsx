@@ -13,13 +13,17 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { studentSelfProfileService, MyLessonHistory } from '../../../../services/api/StudentSelfProfileService';
+import { studentSelfProfileService } from '../../../../services/api/StudentSelfProfileService';
+import { getApiErrorMessage } from '../../../../services/api/ApiError';
+import { LessonHistory } from '../../../../models/Profile';
+import { LESSON_TYPE_LABELS } from '../../../../models/Lesson';
+import { formatAmount, formatDate, formatDateTime } from '../../../../utils/format';
 import { colors, typography, spacing } from '../../../../theme';
 
 export const MyLessonsPaymentTab = ({ route }: any) => {
   const { schoolId } = route.params;
   const [loading, setLoading] = useState(true);
-  const [lessons, setLessons] = useState<MyLessonHistory[]>([]);
+  const [lessons, setLessons] = useState<LessonHistory[]>([]);
 
   useEffect(() => {
     loadLessons();
@@ -30,28 +34,25 @@ export const MyLessonsPaymentTab = ({ route }: any) => {
       setLoading(true);
       const data = await studentSelfProfileService.getMyLessons(schoolId);
       setLessons(data);
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to load lessons');
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load lessons'));
     } finally {
       setLoading(false);
     }
   };
 
-  const renderLesson = ({ item }: { item: MyLessonHistory }) => (
+  const renderLesson = ({ item }: { item: LessonHistory }) => (
     <View style={styles.lessonCard}>
       {/* Header */}
       <View style={styles.lessonHeader}>
         <View style={styles.lessonInfo}>
-          <Text style={styles.lessonType}>{item.lessonType}</Text>
-          <Text style={styles.lessonDate}>
-            {new Date(item.dateTime).toLocaleDateString()} at{' '}
-            {new Date(item.dateTime).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
+          <Text style={styles.lessonType}>
+            {LESSON_TYPE_LABELS[item.type] ?? item.type}
+            {item.status === 'cancelled' ? ' · Cancelled' : ''}
           </Text>
+          <Text style={styles.lessonDate}>{formatDateTime(item.scheduledDate)}</Text>
         </View>
-        {item.attended !== undefined && (
+        {item.attended !== null && (
           <View
             style={[
               styles.statusBadge,
@@ -69,11 +70,13 @@ export const MyLessonsPaymentTab = ({ route }: any) => {
       <View style={styles.lessonDetails}>
         <View style={styles.detailRow}>
           <Ionicons name="person-outline" size={16} color={colors.text.secondary} />
-          <Text style={styles.detailText}>{item.instructorName}</Text>
+          <Text style={styles.detailText}>
+            {`${item.instructorFirstName} ${item.instructorLastName}`.trim() || '—'}
+          </Text>
         </View>
         <View style={styles.detailRow}>
           <Ionicons name="time-outline" size={16} color={colors.text.secondary} />
-          <Text style={styles.detailText}>{item.duration} minutes</Text>
+          <Text style={styles.detailText}>{item.durationMinutes ?? '—'} minutes</Text>
         </View>
       </View>
 
@@ -110,21 +113,19 @@ export const MyLessonsPaymentTab = ({ route }: any) => {
               {item.paid ? 'Paid' : 'Pending Payment'}
             </Text>
           </View>
-          {item.amount && (
+          {(item.amount !== null || item.price !== null) && (
             <Text
               style={[
                 styles.paymentAmount,
                 { color: item.paid ? colors.success[500] : colors.warning[500] },
               ]}
             >
-              ${item.amount.toFixed(2)}
+              {formatAmount(item.amount ?? item.price)}
             </Text>
           )}
         </View>
         {item.paid && item.paymentDate && (
-          <Text style={styles.paymentDate}>
-            Paid on {new Date(item.paymentDate).toLocaleDateString()}
-          </Text>
+          <Text style={styles.paymentDate}>Paid on {formatDate(item.paymentDate)}</Text>
         )}
       </View>
     </View>

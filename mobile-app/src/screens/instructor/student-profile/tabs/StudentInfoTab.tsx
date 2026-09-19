@@ -15,11 +15,10 @@ import {
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import {
-  studentProfileService,
-  StudentProfile,
-  FinancialSummary,
-} from '../../../../services/api/StudentProfileService';
+import { studentProfileService } from '../../../../services/api/StudentProfileService';
+import { getApiErrorMessage } from '../../../../services/api/ApiError';
+import { FinancialSummary, StudentProfile } from '../../../../models/Profile';
+import { formatAmount, formatDate, formatPersonName } from '../../../../utils/format';
 import { colors, typography, spacing, shadows } from '../../../../theme';
 
 export const StudentInfoTab = ({ route }: any) => {
@@ -46,9 +45,8 @@ export const StudentInfoTab = ({ route }: any) => {
       setProfile(profileData);
       setFinancial(financialData);
       setNotes(profileData.notes || '');
-    } catch (error: any) {
-      Alert.alert('Error', 'Failed to load student profile');
-      console.error(error);
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load student profile'));
     } finally {
       setLoading(false);
     }
@@ -61,8 +59,8 @@ export const StudentInfoTab = ({ route }: any) => {
       Alert.alert('Success', 'Notes updated successfully');
       setShowNotesModal(false);
       loadData();
-    } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.error || 'Failed to update notes');
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to update notes'));
     } finally {
       setSavingNotes(false);
     }
@@ -94,6 +92,11 @@ export const StudentInfoTab = ({ route }: any) => {
         </View>
 
         <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Name</Text>
+          <Text style={styles.infoValue}>{formatPersonName(profile)}</Text>
+        </View>
+
+        <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Email</Text>
           <Text style={styles.infoValue}>{profile.email}</Text>
         </View>
@@ -115,9 +118,7 @@ export const StudentInfoTab = ({ route }: any) => {
         {profile.dateOfBirth && (
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Date of Birth</Text>
-            <Text style={styles.infoValue}>
-              {new Date(profile.dateOfBirth).toLocaleDateString()}
-            </Text>
+            <Text style={styles.infoValue}>{formatDate(profile.dateOfBirth)}</Text>
           </View>
         )}
 
@@ -131,9 +132,7 @@ export const StudentInfoTab = ({ route }: any) => {
         {profile.enrollmentDate && (
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Enrollment Date</Text>
-            <Text style={styles.infoValue}>
-              {new Date(profile.enrollmentDate).toLocaleDateString()}
-            </Text>
+            <Text style={styles.infoValue}>{formatDate(profile.enrollmentDate)}</Text>
           </View>
         )}
       </View>
@@ -203,14 +202,14 @@ export const StudentInfoTab = ({ route }: any) => {
         <View style={styles.financialRow}>
           <Text style={styles.financialLabel}>Total Revenue</Text>
           <Text style={[styles.financialValue, { color: colors.success[600] }]}>
-            €{financial.totalRevenue.toFixed(2)}
+            {formatAmount(financial.totalRevenue)}
           </Text>
         </View>
 
         <View style={styles.financialRow}>
           <Text style={styles.financialLabel}>Pending Payment</Text>
           <Text style={[styles.financialValue, { color: colors.warning[600] }]}>
-            €{financial.totalPending.toFixed(2)}
+            {formatAmount(financial.totalPending)}
           </Text>
         </View>
 
@@ -218,28 +217,28 @@ export const StudentInfoTab = ({ route }: any) => {
 
         <View style={styles.financialRow}>
           <Text style={styles.financialLabel}>Lessons Revenue</Text>
-          <Text style={styles.financialValue}>€{financial.lessonsRevenue.toFixed(2)}</Text>
+          <Text style={styles.financialValue}>{formatAmount(financial.lessonsRevenue)}</Text>
         </View>
 
         <View style={styles.financialRow}>
           <Text style={styles.financialLabel}>Lessons Pending</Text>
-          <Text style={styles.financialValue}>€{financial.lessonsPending.toFixed(2)}</Text>
+          <Text style={styles.financialValue}>{formatAmount(financial.lessonsPending)}</Text>
         </View>
 
         <View style={styles.financialRow}>
           <Text style={styles.financialLabel}>Exams Revenue</Text>
-          <Text style={styles.financialValue}>€{financial.examsRevenue.toFixed(2)}</Text>
+          <Text style={styles.financialValue}>{formatAmount(financial.examsRevenue)}</Text>
         </View>
 
         <View style={styles.financialRow}>
           <Text style={styles.financialLabel}>Exams Pending</Text>
-          <Text style={styles.financialValue}>€{financial.examsPending.toFixed(2)}</Text>
+          <Text style={styles.financialValue}>{formatAmount(financial.examsPending)}</Text>
         </View>
 
         {financial.lastPaymentDate && (
           <View style={styles.lastPayment}>
             <Text style={styles.lastPaymentText}>
-              Last payment: {new Date(financial.lastPaymentDate).toLocaleDateString()}
+              Last payment: {formatDate(financial.lastPaymentDate)}
             </Text>
           </View>
         )}

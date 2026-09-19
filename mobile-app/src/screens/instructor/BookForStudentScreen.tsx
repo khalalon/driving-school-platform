@@ -19,12 +19,14 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import { lessonService } from '../../services/api/LessonService';
+import { getApiErrorMessage } from '../../services/api/ApiError';
+import { LESSON_TYPE_LABELS, LESSON_TYPES, LessonType } from '../../models/Lesson';
 import { colors, typography, spacing, shadows } from '../../theme';
 
 export const BookForStudentScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(false);
   const [studentEmail, setStudentEmail] = useState('');
-  const [lessonType, setLessonType] = useState<'theory' | 'practical'>('practical');
+  const [lessonType, setLessonType] = useState<LessonType>(LessonType.CODE);
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [startTime, setStartTime] = useState(new Date());
@@ -80,20 +82,21 @@ export const BookForStudentScreen = ({ navigation }: any) => {
       endDateTime.setHours(endTime.getHours());
       endDateTime.setMinutes(endTime.getMinutes());
 
-      // Call the correct method with proper data structure
+      // L4 : `studentId` doit être un users.id choisi dans la liste S6 (6.4) ; l'email saisi ici
+      // est refusé par le backend tant que cet écran n'est pas réécrit.
       await lessonService.bookLessonForStudent({
-        studentId: studentEmail, // Note: Backend should handle email-to-ID lookup
+        studentId: studentEmail.trim(),
         type: lessonType,
-        startTime: startDateTime.toISOString(),
-        endTime: endDateTime.toISOString(),
-        notes,
+        scheduledDate: startDateTime.toISOString(),
+        durationMinutes: Math.round((endDateTime.getTime() - startDateTime.getTime()) / 60000),
+        notes: notes.trim() || undefined,
       });
 
       Alert.alert('Success', 'Lesson booked successfully!', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
-    } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'Failed to book lesson');
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to book lesson'));
     } finally {
       setLoading(false);
     }
@@ -149,8 +152,9 @@ export const BookForStudentScreen = ({ navigation }: any) => {
               onValueChange={(value) => setLessonType(value)}
               style={styles.picker}
             >
-              <Picker.Item label="Practical Driving" value="practical" />
-              <Picker.Item label="Theory" value="theory" />
+              {LESSON_TYPES.map((type) => (
+                <Picker.Item key={type} label={LESSON_TYPE_LABELS[type]} value={type} />
+              ))}
             </Picker>
           </View>
         </View>

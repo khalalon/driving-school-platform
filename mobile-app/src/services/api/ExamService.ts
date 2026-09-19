@@ -1,94 +1,48 @@
 /**
- * Exam Service
+ * Exam Service — §5 du contrat (X1–X5).
  * Single Responsibility: Handle exam-related API operations
  */
 
 import { apiClient } from './ApiClient';
-import { API_CONFIG } from '../../config/api.config';
-import { Exam } from '../../models/Exam';
-
-export interface RequestExamData {
-  examType: 'THEORY' | 'PRACTICAL';
-  preferredDate: string;
-  message?: string;
-}
-
-export interface RecordExamResultData {
-  result: 'PASS' | 'FAIL';
-  score: number;
-  notes?: string;
-}
+import { API_CONFIG, replaceUrlParams } from '../../config/api.config';
+import {
+  Exam,
+  RecordExamResultData,
+  RequestExamData,
+  ScheduleExamData,
+} from '../../models/Exam';
 
 class ExamService {
-  /**
-   * Student: Get all available exams
-   */
+  /** X1 : les examens de l'appelant (élève : les siens ; instructeur : tous ceux de son école). */
   async getMyExams(): Promise<Exam[]> {
-    const response = await apiClient.get(API_CONFIG.ENDPOINTS.EXAMS.LIST);
+    const response = await apiClient.get<Exam[]>(API_CONFIG.ENDPOINTS.EXAMS.LIST);
     return response.data;
   }
 
-  /**
-   * Student: Request an exam
-   */
+  /** X2 (élève) : demande adressée à l'école (403 `NOT_ENROLLED` sans inscription approuvée). */
   async requestExam(data: RequestExamData): Promise<Exam> {
-    const response = await apiClient.post(
-      API_CONFIG.ENDPOINTS.EXAMS.REQUEST,
-      data
-    );
+    const response = await apiClient.post<Exam>(API_CONFIG.ENDPOINTS.EXAMS.REQUEST, data);
     return response.data;
   }
 
-  /**
-   * Instructor: Get exam requests pending approval
-   */
-  async getExamRequests(): Promise<Exam[]> {
-    const response = await apiClient.get(
-      API_CONFIG.ENDPOINTS.EXAMS.REQUESTS
-    );
+  /** X3 (instructeur de l'école). */
+  async scheduleExam(examId: string, data: ScheduleExamData): Promise<Exam> {
+    const url = replaceUrlParams(API_CONFIG.ENDPOINTS.EXAMS.SCHEDULE, { id: examId });
+    const response = await apiClient.put<Exam>(url, data);
     return response.data;
   }
 
-  /**
-   * Instructor: Schedule an exam (approve request)
-   */
-  async scheduleExam(
-    examId: string,
-    data: { dateTime: string; location: string }
-  ): Promise<Exam> {
-    const url = API_CONFIG.ENDPOINTS.EXAMS.SCHEDULE.replace(':id', examId);
-    const response = await apiClient.put(url, data);
-    return response.data;
-  }
-
-  /**
-   * Instructor: Reject exam request
-   */
+  /** X4 (instructeur de l'école) : motif de 10 à 500 caractères. */
   async rejectExamRequest(examId: string, reason: string): Promise<Exam> {
-    const url = API_CONFIG.ENDPOINTS.EXAMS.REJECT.replace(':id', examId);
-    const response = await apiClient.put(url, { reason });
+    const url = replaceUrlParams(API_CONFIG.ENDPOINTS.EXAMS.REJECT, { id: examId });
+    const response = await apiClient.put<Exam>(url, { reason });
     return response.data;
   }
 
-  /**
-   * Instructor: Record exam result
-   */
-  async recordExamResult(
-    examId: string,
-    data: RecordExamResultData
-  ): Promise<Exam> {
-    const url = API_CONFIG.ENDPOINTS.EXAMS.RESULT.replace(':id', examId);
-    const response = await apiClient.put(url, data);
-    return response.data;
-  }
-
-  /**
-   * Instructor: Get today's scheduled exams
-   */
-  async getTodayExams(): Promise<Exam[]> {
-    const response = await apiClient.get(
-      API_CONFIG.ENDPOINTS.EXAMS.TODAY
-    );
+  /** X5 (instructeur de l'école) : `score` facultatif (D-33). */
+  async recordExamResult(examId: string, data: RecordExamResultData): Promise<Exam> {
+    const url = replaceUrlParams(API_CONFIG.ENDPOINTS.EXAMS.RESULT, { id: examId });
+    const response = await apiClient.put<Exam>(url, data);
     return response.data;
   }
 }

@@ -16,14 +16,13 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import {
-  schoolService,
-  School,
-  SchoolInstructor,
-  SchoolPricing,
-} from '../../services/api/SchoolService';
+import { schoolService } from '../../services/api/SchoolService';
 import { enrollmentService } from '../../services/api/EnrollmentService';
+import { getApiErrorMessage } from '../../services/api/ApiError';
+import { School, SchoolInstructor, SchoolPricing } from '../../models/School';
 import { EnrollmentStatusInfo, EnrollmentStatus } from '../../models/Enrollment';
+import { LESSON_TYPE_LABELS } from '../../models/Lesson';
+import { formatAmount, formatPersonName } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
 
 export const SchoolDetailScreen = ({ navigation, route }: any) => {
@@ -56,9 +55,8 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
       setInstructors(instructorsData);
       setPricing(pricingData);
       setEnrollmentStatus(statusData);
-    } catch (error: any) {
-      Alert.alert('Error', 'Failed to load school details');
-      console.error('Load school details error:', error);
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load school details'));
     } finally {
       setLoading(false);
     }
@@ -91,8 +89,8 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
           },
         ]
       );
-    } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'Failed to send enrollment request');
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to send enrollment request'));
     } finally {
       setEnrolling(false);
     }
@@ -110,19 +108,20 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
     }
   };
 
-  const handleBookWithInstructor = (instructor: SchoolInstructor) => {
+  /** L2 : la demande est adressée à l'école ; l'instructeur choisi n'est qu'une préférence (D-32). */
+  const handleRequestLesson = (instructor?: SchoolInstructor) => {
     if (!enrollmentStatus?.canBook) {
       Alert.alert(
         'Enrollment Required',
-        'You must be enrolled in this school before booking lessons.'
+        'You must be enrolled in this school before requesting lessons.'
       );
       return;
     }
 
     navigation.navigate('BookLesson', {
       schoolId,
-      instructorId: instructor.id,
-      instructorName: instructor.name,
+      preferredInstructorId: instructor?.id,
+      instructorName: instructor ? formatPersonName(instructor, 'Instructor') : undefined,
     });
   };
 
@@ -134,6 +133,16 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
         <View style={[styles.banner, styles.enrolledBanner]}>
           <Ionicons name="checkmark-circle" size={20} color={colors.success[600]} />
           <Text style={styles.bannerText}>You are enrolled</Text>
+          {enrollmentStatus.canBook && (
+            <TouchableOpacity
+              style={styles.requestLessonButton}
+              onPress={() => handleRequestLesson()}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="add-circle-outline" size={16} color={colors.text.inverse} />
+              <Text style={styles.requestLessonButtonText}>Request Lesson</Text>
+            </TouchableOpacity>
+          )}
         </View>
       );
     }
@@ -263,12 +272,6 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
                 <Text style={[styles.infoText, styles.linkText]}>{school.email}</Text>
               </TouchableOpacity>
 
-              {school.description && (
-                <View style={styles.descriptionBox}>
-                  <Text style={styles.sectionLabel}>About</Text>
-                  <Text style={styles.description}>{school.description}</Text>
-                </View>
-              )}
             </View>
           )}
 
@@ -280,12 +283,13 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
                 instructors.map((instructor) => (
                   <View key={instructor.id} style={styles.instructorCard}>
                     <View style={styles.instructorInfo}>
-                      <Text style={styles.instructorName}>{instructor.name}</Text>
-                      {instructor.rating && (
-                        <View style={styles.ratingRow}>
-                          <Ionicons name="star" size={16} color={colors.warning[500]} />
-                          <Text style={styles.ratingText}>{instructor.rating.toFixed(1)}</Text>
-                        </View>
+                      <Text style={styles.instructorName}>
+                        {formatPersonName(instructor, 'Instructor')}
+                      </Text>
+                      {instructor.specialties.length > 0 && (
+                        <Text style={styles.instructorSpecialties}>
+                          {instructor.specialties.join(', ')}
+                        </Text>
                       )}
                     </View>
                     <TouchableOpacity
@@ -293,11 +297,11 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
                         styles.bookButton,
                         !enrollmentStatus?.canBook && styles.disabledButton,
                       ]}
-                      onPress={() => handleBookWithInstructor(instructor)}
+                      onPress={() => handleRequestLesson(instructor)}
                       disabled={!enrollmentStatus?.canBook}
                       activeOpacity={0.7}
                     >
-                      <Text style={styles.bookButtonText}>Book</Text>
+                      <Text style={styles.bookButtonText}>Request</Text>
                     </TouchableOpacity>
                   </View>
                 ))
@@ -313,10 +317,12 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
                 pricing.map((price) => (
                   <View key={price.id} style={styles.pricingCard}>
                     <View>
-                      <Text style={styles.lessonType}>{price.lessonType}</Text>
+                      <Text style={styles.lessonType}>
+                        {LESSON_TYPE_LABELS[price.lessonType] ?? price.lessonType}
+                      </Text>
                       <Text style={styles.duration}>{price.duration} min</Text>
                     </View>
-                    <Text style={styles.price}>{price.price} €</Text>
+                    <Text style={styles.price}>{formatAmount(price.price)}</Text>
                   </View>
                 ))
               )}
@@ -463,6 +469,20 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: colors.background.primary,
   },
+  requestLessonButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.sm,
+    borderRadius: 8,
+    backgroundColor: colors.primary[600],
+  },
+  requestLessonButtonText: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
+    color: colors.text.inverse,
+  },
   retryButtonText: {
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold,
@@ -526,24 +546,6 @@ const styles = StyleSheet.create({
   linkText: {
     color: colors.primary[600],
   },
-  descriptionBox: {
-    backgroundColor: colors.background.primary,
-    padding: spacing.lg,
-    borderRadius: 12,
-    marginTop: spacing.md,
-  },
-  sectionLabel: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.secondary,
-    textTransform: 'uppercase',
-    marginBottom: spacing.sm,
-  },
-  description: {
-    fontSize: typography.size.base,
-    color: colors.text.primary,
-    lineHeight: typography.size.base * typography.lineHeight.normal,
-  },
   emptyText: {
     textAlign: 'center',
     fontSize: typography.size.base,
@@ -567,12 +569,7 @@ const styles = StyleSheet.create({
     fontWeight: typography.weight.semibold,
     color: colors.text.primary,
   },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  ratingText: {
+  instructorSpecialties: {
     fontSize: typography.size.sm,
     color: colors.text.secondary,
   },

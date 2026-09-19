@@ -13,13 +13,17 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { studentSelfProfileService, MyExamHistory } from '../../../../services/api/StudentSelfProfileService';
+import { studentSelfProfileService } from '../../../../services/api/StudentSelfProfileService';
+import { getApiErrorMessage } from '../../../../services/api/ApiError';
+import { ExamHistory } from '../../../../models/Profile';
+import { EXAM_RESULT_LABELS, EXAM_TYPE_LABELS, ExamResult, ExamType } from '../../../../models/Exam';
+import { formatAmount, formatDate, formatDateTime } from '../../../../utils/format';
 import { colors, typography, spacing } from '../../../../theme';
 
 export const MyExamsPaymentTab = ({ route }: any) => {
   const { schoolId } = route.params;
   const [loading, setLoading] = useState(true);
-  const [exams, setExams] = useState<MyExamHistory[]>([]);
+  const [exams, setExams] = useState<ExamHistory[]>([]);
 
   useEffect(() => {
     loadExams();
@@ -30,55 +34,53 @@ export const MyExamsPaymentTab = ({ route }: any) => {
       setLoading(true);
       const data = await studentSelfProfileService.getMyExams(schoolId);
       setExams(data);
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to load exams');
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load exams'));
     } finally {
       setLoading(false);
     }
   };
 
-  const getResultColor = (result?: string) => {
-    if (!result) return colors.text.secondary;
-    switch (result.toLowerCase()) {
-      case 'passed':
+  const getResultColor = (result: string) => {
+    switch (result) {
+      case ExamResult.PASSED:
         return colors.success[500];
-      case 'failed':
+      case ExamResult.FAILED:
         return colors.error[500];
       default:
         return colors.warning[500];
     }
   };
 
-  const getResultIcon = (result?: string) => {
-    if (!result) return 'help-circle-outline';
-    switch (result.toLowerCase()) {
-      case 'passed':
+  const getResultIcon = (result: string) => {
+    switch (result) {
+      case ExamResult.PASSED:
         return 'checkmark-circle';
-      case 'failed':
+      case ExamResult.FAILED:
         return 'close-circle';
       default:
         return 'help-circle';
     }
   };
 
-  const renderExam = ({ item }: { item: MyExamHistory }) => (
+  const renderExam = ({ item }: { item: ExamHistory }) => (
     <View style={styles.examCard}>
       {/* Header */}
       <View style={styles.examHeader}>
         <View style={styles.examInfo}>
-          <Text style={styles.examType}>{item.examType}</Text>
+          <Text style={styles.examType}>
+            {EXAM_TYPE_LABELS[item.type as ExamType] ?? item.type} Exam
+            {item.status === 'cancelled' ? ' · Cancelled' : ''}
+          </Text>
           <Text style={styles.examDate}>
-            {new Date(item.dateTime).toLocaleDateString()} at{' '}
-            {new Date(item.dateTime).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
+            {formatDateTime(item.dateTime)}
+            {item.location ? ` · ${item.location}` : ''}
           </Text>
         </View>
       </View>
 
       {/* Result Section */}
-      {item.result && (
+      {item.result !== ExamResult.PENDING && (
         <View style={styles.resultSection}>
           <View style={styles.resultRow}>
             <Ionicons
@@ -88,9 +90,9 @@ export const MyExamsPaymentTab = ({ route }: any) => {
             />
             <View style={styles.resultInfo}>
               <Text style={[styles.resultText, { color: getResultColor(item.result) }]}>
-                {item.result.toUpperCase()}
+                {EXAM_RESULT_LABELS[item.result as ExamResult] ?? item.result}
               </Text>
-              {item.score !== undefined && (
+              {item.score !== null && (
                 <Text style={styles.scoreText}>Score: {item.score}%</Text>
               )}
             </View>
@@ -119,21 +121,19 @@ export const MyExamsPaymentTab = ({ route }: any) => {
               {item.paid ? 'Paid' : 'Pending Payment'}
             </Text>
           </View>
-          {item.amount && (
+          {(item.amount !== null || item.price !== null) && (
             <Text
               style={[
                 styles.paymentAmount,
                 { color: item.paid ? colors.success[500] : colors.warning[500] },
               ]}
             >
-              ${item.amount.toFixed(2)}
+              {formatAmount(item.amount ?? item.price)}
             </Text>
           )}
         </View>
         {item.paid && item.paymentDate && (
-          <Text style={styles.paymentDate}>
-            Paid on {new Date(item.paymentDate).toLocaleDateString()}
-          </Text>
+          <Text style={styles.paymentDate}>Paid on {formatDate(item.paymentDate)}</Text>
         )}
       </View>
     </View>

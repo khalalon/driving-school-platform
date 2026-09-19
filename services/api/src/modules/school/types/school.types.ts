@@ -29,9 +29,9 @@ export interface UpdateSchoolDTO {
 }
 
 /**
- * `firstName` / `lastName` viennent de `users` (D-16, 3.1 ; vides sans compte lié).
- * `name` : dérivé (`users` puis repli `instructors.name`), transitoire pour le mobile actuel,
- * retiré du contrat S3 en 6.1.
+ * `firstName` / `lastName` viennent de `users` (D-16, 3.1 ; vides sans compte lié). La colonne
+ * héritée `instructors.name` n'est plus exposée (contrat S3, 6.1) ; elle reste écrite par les
+ * routes admin du §8.
  */
 export interface Instructor {
   id: string;
@@ -39,7 +39,6 @@ export interface Instructor {
   userId: string | null;
   firstName: string;
   lastName: string;
-  name: string | null;
   phone: string;
   licenseNumber: string;
   specialties: string[];

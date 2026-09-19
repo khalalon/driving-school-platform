@@ -8,23 +8,30 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiClient, TOKEN_KEY, USER_KEY } from '../services/api/ApiClient';
 import { authService } from '../services/api/AuthService';
-import { User, UserRole } from '../models/User';
+import { AuthResponse, RegisterRequest, User } from '../models/User';
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
+  register: (data: RegisterRequest) => Promise<void>;
 }
 
-interface RegisterData {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-  role: UserRole; // Changed from string to UserRole
-}
+/**
+ * Identité minimale lue dans l'access token (claims `userId`, `email`, `role`). Les noms et
+ * l'école de l'instructeur viennent de A3 (`/api/auth/me`), câblé en 6.2.
+ */
+const userFromToken = (accessToken: string): User => {
+  const decodedToken = JSON.parse(atob(accessToken.split('.')[1]));
+  return {
+    id: decodedToken.userId,
+    email: decodedToken.email,
+    role: decodedToken.role,
+    firstName: '',
+    lastName: '',
+  };
+};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -61,68 +68,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const login = async (email: string, password: string) => {
-    try {
-      const response = await authService.login({ email, password });
-
-      // Backend returns { accessToken, refreshToken } (contrat A1 / A2)
-      // We need to decode the token to get user info
-      const token = response.accessToken;
-
-      // Decode JWT to get user info (simple decode)
-      const decodedToken = JSON.parse(atob(token.split('.')[1]));
-
-      // Create user object from token
-      const userData: User = {
-        id: decodedToken.userId,
-        email: decodedToken.email,
-        role: decodedToken.role,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      // Save both tokens (refresh utilisé par ApiClient sur 401) and user data
-      await Promise.all([
-        apiClient.storeTokens({ accessToken: token, refreshToken: response.refreshToken }),
-        AsyncStorage.setItem(USER_KEY, JSON.stringify(userData)),
-      ]);
-
-      setUser(userData);
-    } catch (error) {
-      throw error;
-    }
+  /** Stocke la paire de jetons (refresh utilisé par ApiClient sur 401) et l'utilisateur. */
+  const openSession = async (tokens: AuthResponse) => {
+    const userData = userFromToken(tokens.accessToken);
+    await Promise.all([
+      apiClient.storeTokens({
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+      }),
+      AsyncStorage.setItem(USER_KEY, JSON.stringify(userData)),
+    ]);
+    setUser(userData);
   };
 
-  const register = async (data: RegisterData) => {
-    try {
-      const response = await authService.register(data);
+  /** A1 : `{ accessToken, refreshToken }`. */
+  const login = async (email: string, password: string) => {
+    const response = await authService.login({ email, password });
+    await openSession(response);
+  };
 
-      // Backend returns { accessToken, refreshToken } (contrat A1 / A2)
-      // We need to decode the token to get user info
-      const token = response.accessToken;
-
-      // Decode JWT to get user info (simple decode)
-      const decodedToken = JSON.parse(atob(token.split('.')[1]));
-
-      // Create user object from token
-      const userData: User = {
-        id: decodedToken.userId,
-        email: decodedToken.email,
-        role: decodedToken.role,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      // Save both tokens (refresh utilisé par ApiClient sur 401) and user data
-      await Promise.all([
-        apiClient.storeTokens({ accessToken: token, refreshToken: response.refreshToken }),
-        AsyncStorage.setItem(USER_KEY, JSON.stringify(userData)),
-      ]);
-
-      setUser(userData);
-    } catch (error) {
-      throw error;
-    }
+  /** A2 : même réponse que A1 ; sans `schoolCode` le compte est un élève (D-17). */
+  const register = async (data: RegisterRequest) => {
+    const response = await authService.register(data);
+    await openSession(response);
   };
 
   const logout = async () => {

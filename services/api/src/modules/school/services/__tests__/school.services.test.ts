@@ -26,7 +26,6 @@ const instructor: Instructor = {
   userId: 'user-instr',
   firstName: 'Seed',
   lastName: 'Instructor',
-  name: 'Seed Instructor',
   phone: '+21600000001',
   licenseNumber: 'LIC-SEED-001',
   specialties: ['Parc'],

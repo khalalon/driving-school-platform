@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
+import { getApiErrorMessage } from '../../services/api/ApiError';
 import { colors, typography, spacing, shadows } from '../../theme';
 
 export const LoginScreen = ({ navigation }: any) => {
@@ -34,9 +35,9 @@ export const LoginScreen = ({ navigation }: any) => {
 
     try {
       setLoading(true);
-      await login(email, password);
-    } catch (error: any) {
-      Alert.alert('Login Failed', error.response?.data?.message || 'Invalid credentials');
+      await login(email.trim(), password);
+    } catch (error) {
+      Alert.alert('Login Failed', getApiErrorMessage(error, 'Invalid credentials'));
     } finally {
       setLoading(false);
     }

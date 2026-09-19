@@ -8,9 +8,15 @@
  * échoue, la session locale est effacée et `onSessionExpired` est prévenu (AuthContext déconnecte).
  */
 
-import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import axios, {
+  AxiosError,
+  AxiosInstance,
+  AxiosRequestConfig,
+  AxiosResponse,
+  InternalAxiosRequestConfig,
+} from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_CONFIG } from '../../config/api.config';
+import { API_CONFIG, API_TIMEOUT } from '../../config/api.config';
 
 export const TOKEN_KEY = '@auth_token';
 export const REFRESH_TOKEN_KEY = '@auth_refresh_token';
@@ -32,13 +38,13 @@ export class ApiClient {
   constructor(
     client: AxiosInstance = axios.create({
       baseURL: API_CONFIG.BASE_URL,
-      timeout: 10000,
+      timeout: API_TIMEOUT,
       headers: { 'Content-Type': 'application/json' },
     }),
     // Instance nue pour le refresh : sans intercepteurs, donc jamais de refresh en cascade.
     refreshClient: AxiosInstance = axios.create({
       baseURL: API_CONFIG.BASE_URL,
-      timeout: 10000,
+      timeout: API_TIMEOUT,
       headers: { 'Content-Type': 'application/json' },
     })
   ) {
@@ -138,25 +144,32 @@ export class ApiClient {
     this.sessionExpiredHandler?.();
   }
 
-  public get client_instance(): AxiosInstance {
-    return this.client;
+  /**
+   * Méthodes de commodité, typées par la réponse attendue. Les `*Service.ts` renvoient
+   * `response.data` (D-13), jamais l'`AxiosResponse` entière.
+   */
+  get<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    return this.client.get<T>(url, config);
   }
 
-  // Convenience methods
-  async get(url: string, config = {}) {
-    return this.client.get(url, config);
+  post<T = unknown>(
+    url: string,
+    data?: unknown,
+    config?: AxiosRequestConfig
+  ): Promise<AxiosResponse<T>> {
+    return this.client.post<T>(url, data, config);
   }
 
-  async post(url: string, data = {}, config = {}) {
-    return this.client.post(url, data, config);
+  put<T = unknown>(
+    url: string,
+    data?: unknown,
+    config?: AxiosRequestConfig
+  ): Promise<AxiosResponse<T>> {
+    return this.client.put<T>(url, data, config);
   }
 
-  async put(url: string, data = {}, config = {}) {
-    return this.client.put(url, data, config);
-  }
-
-  async delete(url: string, config = {}) {
-    return this.client.delete(url, config);
+  delete<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    return this.client.delete<T>(url, config);
   }
 }
 

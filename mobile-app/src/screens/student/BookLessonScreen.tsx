@@ -1,6 +1,9 @@
 /**
  * Book Lesson Screen - Minimal & Elegant
- * Single Responsibility: Student requests lesson booking with enrollment check
+ * Single Responsibility: Student requests a lesson from the school (L2)
+ *
+ * La demande est adressée à l'école (D-32) : l'instructeur n'est qu'une préférence facultative,
+ * la date souhaitée est obligatoire (D-21) et le type est l'un des trois de D-18.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -13,22 +16,42 @@ import {
   ActivityIndicator,
   Alert,
   TextInput,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { lessonService } from '../../services/api/LessonService';
 import { enrollmentService } from '../../services/api/EnrollmentService';
-import { LessonType } from '../../models/Lesson';
+import { getApiErrorMessage } from '../../services/api/ApiError';
+import { LESSON_TYPE_LABELS, LESSON_TYPES, LessonType } from '../../models/Lesson';
 import { colors, typography, spacing, shadows } from '../../theme';
 
+const LESSON_TYPE_ICONS: Record<LessonType, keyof typeof Ionicons.glyphMap> = {
+  [LessonType.CODE]: 'book-outline',
+  [LessonType.MANOEUVRE]: 'car-outline',
+  [LessonType.PARC]: 'car-sport-outline',
+};
+
+/** Demain à 9 h : premier créneau proposé, dans le futur (exigé par L2). */
+const defaultRequestedDate = (): Date => {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  date.setHours(9, 0, 0, 0);
+  return date;
+};
+
 export const BookLessonScreen = ({ navigation, route }: any) => {
-  const { schoolId, instructorId, instructorName } = route.params;
-  
+  const { schoolId, preferredInstructorId, instructorName } = route.params;
+
   const [loading, setLoading] = useState(false);
   const [checkingEnrollment, setCheckingEnrollment] = useState(true);
   const [canBook, setCanBook] = useState(false);
-  
-  const [lessonType, setLessonType] = useState<LessonType>(LessonType.PRACTICAL);
+
+  const [lessonType, setLessonType] = useState<LessonType>(LessonType.CODE);
+  const [instructorId, setInstructorId] = useState<string | undefined>(preferredInstructorId);
+  const [requestedDate, setRequestedDate] = useState<Date>(defaultRequestedDate);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const [notes, setNotes] = useState('');
 
   useEffect(() => {
@@ -39,7 +62,7 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
     try {
       setCheckingEnrollment(true);
       const status = await enrollmentService.checkEnrollmentStatus(schoolId);
-      
+
       if (!status.canBook) {
         Alert.alert(
           'Enrollment Required',
@@ -47,34 +70,58 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
           [{ text: 'OK', onPress: () => navigation.goBack() }]
         );
       }
-      
+
       setCanBook(status.canBook);
-    } catch (error: any) {
-      Alert.alert('Error', 'Failed to check enrollment status');
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to check enrollment status'));
       navigation.goBack();
     } finally {
       setCheckingEnrollment(false);
     }
   };
 
+  const handleDateChange = (_event: unknown, selected?: Date) => {
+    setShowDatePicker(false);
+    if (selected) {
+      const next = new Date(requestedDate);
+      next.setFullYear(selected.getFullYear(), selected.getMonth(), selected.getDate());
+      setRequestedDate(next);
+    }
+  };
+
+  const handleTimeChange = (_event: unknown, selected?: Date) => {
+    setShowTimePicker(false);
+    if (selected) {
+      const next = new Date(requestedDate);
+      next.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
+      setRequestedDate(next);
+    }
+  };
+
   const handleRequestLesson = async () => {
+    if (requestedDate.getTime() <= Date.now()) {
+      Alert.alert('Invalid Date', 'The requested date must be in the future');
+      return;
+    }
+
     try {
       setLoading(true);
 
-      // Student requests a lesson - instructor will approve and schedule later
+      // L2 : la demande part à l'école, l'instructeur qui l'approuvera fixera la date définitive
       await lessonService.requestLesson({
-        instructorId,
         type: lessonType,
+        requestedDate: requestedDate.toISOString(),
+        preferredInstructorId: instructorId,
         notes: notes.trim() || undefined,
       });
 
       Alert.alert(
         'Request Sent!',
-        'Your lesson request has been submitted. The instructor will review and schedule it soon.',
+        'Your lesson request has been submitted. An instructor will review and schedule it soon.',
         [{ text: 'OK', onPress: () => navigation.navigate('MyLessons') }]
       );
-    } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'Failed to request lesson');
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to request lesson'));
     } finally {
       setLoading(false);
     }
@@ -113,37 +160,118 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
           <View style={styles.infoContent}>
             <Text style={styles.infoTitle}>How it works</Text>
             <Text style={styles.infoText}>
-              Submit your lesson request. The instructor will review, approve, and schedule a specific date and time for you.
+              Choose a lesson type and the date you would like. Your request goes to the school:
+              the instructor who approves it confirms the final date and time.
             </Text>
           </View>
         </View>
 
-        {/* Instructor Info */}
-        {instructorName && (
-          <View style={styles.instructorCard}>
-            <View style={styles.instructorIconContainer}>
-              <Ionicons name="person-outline" size={28} color={colors.primary[600]} />
-            </View>
-            <View>
-              <Text style={styles.instructorLabel}>Instructor</Text>
-              <Text style={styles.instructorName}>{instructorName}</Text>
-            </View>
-          </View>
-        )}
-
         {/* Lesson Type */}
         <View style={styles.section}>
           <Text style={styles.label}>Lesson Type</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={lessonType}
-              onValueChange={(value) => setLessonType(value)}
-              style={styles.picker}
-            >
-              <Picker.Item label="Practical Driving" value={LessonType.PRACTICAL} />
-              <Picker.Item label="Theory" value={LessonType.THEORY} />
-            </Picker>
+          <View style={styles.typeContainer}>
+            {LESSON_TYPES.map((type) => {
+              const active = lessonType === type;
+              return (
+                <TouchableOpacity
+                  key={type}
+                  style={[styles.typeButton, active && styles.typeButtonActive]}
+                  onPress={() => setLessonType(type)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={LESSON_TYPE_ICONS[type]}
+                    size={22}
+                    color={active ? colors.text.inverse : colors.text.secondary}
+                  />
+                  <Text style={[styles.typeButtonText, active && styles.typeButtonTextActive]}>
+                    {LESSON_TYPE_LABELS[type]}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
+        </View>
+
+        {/* Requested Date */}
+        <View style={styles.section}>
+          <Text style={styles.label}>Requested Date</Text>
+          <View style={styles.dateRow}>
+            <TouchableOpacity
+              style={[styles.dateButton, styles.dateButtonGrow]}
+              onPress={() => setShowDatePicker(true)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="calendar-outline" size={20} color={colors.text.secondary} />
+              <Text style={styles.dateText}>{requestedDate.toLocaleDateString()}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.dateButton}
+              onPress={() => setShowTimePicker(true)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="time-outline" size={20} color={colors.text.secondary} />
+              <Text style={styles.dateText}>
+                {requestedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          {showDatePicker && (
+            <DateTimePicker
+              value={requestedDate}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={handleDateChange}
+              minimumDate={new Date()}
+            />
+          )}
+          {showTimePicker && (
+            <DateTimePicker
+              value={requestedDate}
+              mode="time"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={handleTimeChange}
+            />
+          )}
+          <Text style={styles.helperText}>
+            This is the date you would like — the instructor confirms the actual schedule
+          </Text>
+        </View>
+
+        {/* Preferred Instructor (optional) */}
+        <View style={styles.section}>
+          <Text style={styles.label}>Preferred Instructor (Optional)</Text>
+          {instructorId ? (
+            <View style={styles.instructorCard}>
+              <View style={styles.instructorIconContainer}>
+                <Ionicons name="person-outline" size={24} color={colors.primary[600]} />
+              </View>
+              <View style={styles.instructorInfo}>
+                <Text style={styles.instructorName}>{instructorName || 'Instructor'}</Text>
+                <Text style={styles.instructorHint}>Preference only, any instructor may approve</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setInstructorId(undefined)}
+                style={styles.clearButton}
+                activeOpacity={0.7}
+                accessibilityLabel="Remove preferred instructor"
+              >
+                <Ionicons name="close-circle" size={22} color={colors.neutral[400]} />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.instructorCard}>
+              <View style={styles.instructorIconContainer}>
+                <Ionicons name="people-outline" size={24} color={colors.text.tertiary} />
+              </View>
+              <View style={styles.instructorInfo}>
+                <Text style={styles.instructorName}>No preference</Text>
+                <Text style={styles.instructorHint}>
+                  Pick an instructor from the school page to set one
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Notes */}
@@ -159,9 +287,6 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
             numberOfLines={4}
             textAlignVertical="top"
           />
-          <Text style={styles.helperText}>
-            The instructor will contact you to confirm the date and time
-          </Text>
         </View>
 
         {/* Submit Button */}
@@ -248,35 +373,6 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     lineHeight: typography.size.sm * typography.lineHeight.normal,
   },
-  instructorCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background.primary,
-    padding: spacing.lg,
-    borderRadius: 12,
-    gap: spacing.md,
-    marginBottom: spacing.xl,
-    ...shadows.sm,
-  },
-  instructorIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary[50],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  instructorLabel: {
-    fontSize: typography.size.xs,
-    color: colors.text.tertiary,
-    textTransform: 'uppercase',
-    marginBottom: spacing.xs,
-  },
-  instructorName: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.primary,
-  },
   section: {
     marginBottom: spacing.xl,
   },
@@ -286,14 +382,89 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     marginBottom: spacing.sm,
   },
-  pickerContainer: {
+  typeContainer: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  typeButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: colors.background.primary,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border.default,
+    paddingVertical: spacing.md,
+    gap: spacing.xs,
   },
-  picker: {
+  typeButtonActive: {
+    backgroundColor: colors.primary[600],
+    borderColor: colors.primary[600],
+  },
+  typeButtonText: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.medium,
+    color: colors.text.secondary,
+  },
+  typeButtonTextActive: {
+    color: colors.text.inverse,
+  },
+  dateRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background.primary,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+    paddingHorizontal: spacing.base,
     height: 52,
+    gap: spacing.sm,
+  },
+  dateButtonGrow: {
+    flex: 1,
+  },
+  dateText: {
+    fontSize: typography.size.base,
+    color: colors.text.primary,
+  },
+  instructorCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background.primary,
+    padding: spacing.base,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+    gap: spacing.md,
+  },
+  instructorIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.primary[50],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  instructorInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  instructorName: {
+    fontSize: typography.size.base,
+    fontWeight: typography.weight.semibold,
+    color: colors.text.primary,
+  },
+  instructorHint: {
+    fontSize: typography.size.xs,
+    color: colors.text.tertiary,
+  },
+  clearButton: {
+    padding: spacing.xs,
   },
   notesInput: {
     backgroundColor: colors.background.primary,

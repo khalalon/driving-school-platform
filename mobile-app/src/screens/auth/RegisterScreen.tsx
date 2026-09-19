@@ -18,7 +18,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
-import { UserRole } from '../../models/User';
+import { getApiErrorMessage } from '../../services/api/ApiError';
 import { colors, typography, spacing, shadows } from '../../theme';
 
 export const RegisterScreen = ({ navigation }: any) => {
@@ -51,15 +51,10 @@ export const RegisterScreen = ({ navigation }: any) => {
 
     try {
       setLoading(true);
-      await register({
-        email,
-        password,
-        firstName,
-        lastName,
-        role: UserRole.STUDENT,
-      });
-    } catch (error: any) {
-      Alert.alert('Registration Failed', error.response?.data?.message || 'Please try again');
+      // A2 sans schoolCode : le compte créé est un élève (D-17)
+      await register({ email: email.trim(), password, firstName, lastName });
+    } catch (error) {
+      Alert.alert('Registration Failed', getApiErrorMessage(error, 'Please try again'));
     } finally {
       setLoading(false);
     }

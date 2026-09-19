@@ -69,7 +69,7 @@ Si le port 5432 est déjà pris sur la machine : `POSTGRES_PORT=5433 docker comp
 cd mobile-app
 npm install
 npm start              # expo start ; scanner le QR avec Expo Go (même Wi-Fi que le backend)
-npx tsc --noEmit       # typecheck (strict: true) ; erreurs restantes dans src/services/api et quelques écrans (6.1)
+npx tsc --noEmit       # typecheck (strict: true), vert depuis 6.1 ; job CI `mobile` = typecheck + jest
 npm test               # jest-expo (ApiClient : refresh sur 401)
 ```
 Tests unitaires : `npm test` (jest-expo, `src/**/__tests__/*.test.ts`, AsyncStorage mocké via `jest.setup.js`) ; pas de lint. L'URL du backend vient de `app.json` → `expo.extra.API_BASE_URL`, surchargeable par `EXPO_PUBLIC_API_BASE_URL` dans `mobile-app/.env` (ignoré par git, modèle dans `mobile-app/.env.example`) ; `src/config/api.config.ts` ne contient aucune URL.
@@ -119,10 +119,9 @@ Ces règles priment sur toute autre instruction, y compris une demande directe d
 ## Pièges connus (lire avant de coder)
 
 - Deux identifiants « élève » coexistent : `users.id` (JWT, `enrollment_requests.student_id`) et `students.id` (ligne par couple élève × école, utilisée par `lessons.student_id` (007), `exams.student_id` (008), `payments`). Toujours préciser lequel on manipule. Dans `services/api`, le `StudentRepository` du module `student` est le seul à lire `students` : les modules `lesson` et `exam` le reçoivent par injection.
-- Le chemin critique e2e (A2 → L7) passe intégralement depuis 5.4 ; chaque étape se lance seule avec `-t '<étape>'` (prérequis rejoués par `tests/helpers/flow.ts`). Le mobile actuel envoie `role` et jette les noms : son inscription répond 400 jusqu'à 6.2.
-- Les services `SchoolService` et `LessonService` du mobile renvoient l'`AxiosResponse` brute ; les autres renvoient `.data`. Les écrans qui les consomment reçoivent donc un objet au lieu d'un tableau.
-- Le backend renvoie partout `{ error: <code>, message: <français> }` (D-27) ; le mobile lit `error.response.data.message` mais affiche parfois `error` — harmonisé en 6.1.
-- Vocabulaire métier : le backend fait foi (`CODE` / `Manœuvre` / `Parc`, `theory` / `practical`, `passed` / `failed`, D-18) ; le mobile actuel utilise `THEORY` / `PRACTICAL` / `PASS` / `FAIL` et sera réécrit en 6.1.
+- Le chemin critique e2e (A2 → L7) passe intégralement depuis 5.4 ; chaque étape se lance seule avec `-t '<étape>'` (prérequis rejoués par `tests/helpers/flow.ts`).
+- Mobile (depuis 6.1) : tous les `*Service.ts` renvoient `response.data` ; les objets échangés sont définis une seule fois dans `src/models/` au format du contrat (enums D-18 + libellés d'affichage) ; tout `catch` d'écran passe par `getApiErrorMessage` (`src/services/api/ApiError.ts`, D-27) ; montants / dates / noms par `src/utils/format.ts`. Ne pas réintroduire d'interface locale dans un service ni d'`error.response?.data` dans un écran.
+- Les écrans instructeur `LessonRequests`, `TodayLessons`, `ExamRequests`, `TodayExams` contiennent encore des stubs (`// API call to …`) jusqu'à 6.3 / 6.5 ; `BookForStudentScreen` envoie encore un email dans `studentId` jusqu'à 6.4 ; `AuthContext` décode le JWT (noms vides) jusqu'à 6.2 (A3).
 - Cloisonnement par école (D-20) : toute action d'un instructeur est limitée à son école, vérifiée dans la couche service avec `SchoolGuard.assertSameSchool(user, schoolId)` (`src/http/authz.ts`, 403 `FORBIDDEN_SCHOOL` ; l'admin passe). Appliqué à E4–E6, S6, P1–P7 ; à appliquer aux routes leçons / examens (5.2–5.6).
 - Trois questions restent ouvertes au 17/09 : Q-17 (leçon payée annulée), Q-18 (absence facturée), Q-19 (procédure d'examen ATTT). Les tâches qui en dépendent sont marquées dans le plan.
 - Nginx (2.6) : un seul upstream `api:3000`, résolu à la requête ; toute route inconnue répond 404 JSON par l'application. Les routes exposées sont exactement celles des §1–7 du contrat plus les routes `admin` de son §8 (5.7).

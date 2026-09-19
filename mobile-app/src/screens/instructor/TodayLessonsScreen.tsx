@@ -16,7 +16,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { lessonService } from '../../services/api/LessonService';
-import { Lesson, LessonStatus } from '../../models/Lesson';
+import { getApiErrorMessage } from '../../services/api/ApiError';
+import { LESSON_TYPE_LABELS, Lesson, LessonStatus } from '../../models/Lesson';
+import { formatPersonName, formatTime } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
 
 type FilterType = 'upcoming' | 'completed';
@@ -43,14 +45,14 @@ export const TodayLessonsScreen = ({ navigation }: any) => {
       tomorrow.setDate(tomorrow.getDate() + 1);
 
       const todayLessons = allLessons.filter((lesson) => {
-        const lessonDate = new Date(lesson.startTime);
+        if (!lesson.scheduledDate) return false;
+        const lessonDate = new Date(lesson.scheduledDate);
         return lessonDate >= today && lessonDate < tomorrow;
       });
 
       setLessons(todayLessons);
-    } catch (error: any) {
-      Alert.alert('Error', 'Failed to load lessons');
-      console.error('Load lessons error:', error);
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load lessons'));
     } finally {
       setLoading(false);
     }
@@ -65,7 +67,7 @@ export const TodayLessonsScreen = ({ navigation }: any) => {
   const handleMarkComplete = (lesson: Lesson) => {
     Alert.alert(
       'Mark Complete',
-      `Mark lesson with ${lesson.instructor?.firstName} as completed?`,
+      `Mark lesson with ${formatPersonName(lesson.student, 'this student')} as completed?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -81,8 +83,8 @@ export const TodayLessonsScreen = ({ navigation }: any) => {
       // Call API to mark as complete
       Alert.alert('Success', 'Lesson marked as completed');
       loadTodayLessons();
-    } catch (error: any) {
-      Alert.alert('Error', 'Failed to mark lesson as complete');
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to mark lesson as complete'));
     }
   };
 
@@ -100,7 +102,6 @@ export const TodayLessonsScreen = ({ navigation }: any) => {
   };
 
   const renderLessonCard = ({ item }: { item: Lesson }) => {
-    const lessonTime = new Date(item.startTime);
     const isCompleted = item.status === LessonStatus.COMPLETED;
 
     return (
@@ -108,23 +109,18 @@ export const TodayLessonsScreen = ({ navigation }: any) => {
         <View style={styles.cardHeader}>
           <View style={styles.timeBox}>
             <Ionicons name="time-outline" size={24} color={colors.primary[600]} />
-            <Text style={styles.timeText}>
-              {lessonTime.toLocaleTimeString('en-US', {
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </Text>
+            <Text style={styles.timeText}>{formatTime(item.scheduledDate)}</Text>
           </View>
 
           <View style={styles.lessonInfo}>
-            <Text style={styles.studentName}>Student Name</Text>
+            <Text style={styles.studentName}>{formatPersonName(item.student, 'Student')}</Text>
             <View style={styles.detailRow}>
               <Ionicons name="car-outline" size={16} color={colors.text.tertiary} />
-              <Text style={styles.detailText}>{item.type}</Text>
+              <Text style={styles.detailText}>{LESSON_TYPE_LABELS[item.type] ?? item.type}</Text>
             </View>
             <View style={styles.detailRow}>
               <Ionicons name="time-outline" size={16} color={colors.text.tertiary} />
-              <Text style={styles.detailText}>{item.duration} min</Text>
+              <Text style={styles.detailText}>{item.durationMinutes ?? '—'} min</Text>
             </View>
           </View>
 

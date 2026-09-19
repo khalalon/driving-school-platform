@@ -15,7 +15,9 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { schoolService, School } from '../../services/api/SchoolService';
+import { schoolService } from '../../services/api/SchoolService';
+import { getApiErrorMessage } from '../../services/api/ApiError';
+import { School } from '../../models/School';
 import { colors, typography, spacing, shadows } from '../../theme';
 
 export const SchoolsListScreen = ({ navigation }: any) => {
@@ -32,9 +34,8 @@ export const SchoolsListScreen = ({ navigation }: any) => {
       setLoading(true);
       const data = await schoolService.getAllSchools();
       setSchools(data);
-    } catch (error: any) {
-      Alert.alert('Error', 'Failed to load schools');
-      console.error('Load schools error:', error);
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load schools'));
     } finally {
       setLoading(false);
     }
@@ -72,18 +73,10 @@ export const SchoolsListScreen = ({ navigation }: any) => {
         </View>
 
         <View style={styles.statsRow}>
-          {item.rating && (
-            <View style={styles.statItem}>
-              <Ionicons name="star" size={16} color={colors.warning[500]} />
-              <Text style={styles.statText}>{item.rating.toFixed(1)}</Text>
-            </View>
-          )}
-          {item.totalStudents !== undefined && (
-            <View style={styles.statItem}>
-              <Ionicons name="people-outline" size={16} color={colors.text.tertiary} />
-              <Text style={styles.statText}>{item.totalStudents} students</Text>
-            </View>
-          )}
+          <View style={styles.statItem}>
+            <Ionicons name="call-outline" size={16} color={colors.text.tertiary} />
+            <Text style={styles.statText}>{item.phone}</Text>
+          </View>
         </View>
       </View>
 

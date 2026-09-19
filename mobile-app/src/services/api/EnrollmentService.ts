@@ -1,79 +1,65 @@
 /**
- * Enrollment Service - API calls for enrollment management
+ * Enrollment Service — §3 du contrat (E1–E6).
  * Single Responsibility: Handle enrollment-related API requests
  */
 
 import { apiClient } from './ApiClient';
 import { API_CONFIG, replaceUrlParams } from '../../config/api.config';
-
-export interface EnrollmentRequest {
-  id: string;
-  studentId: string;
-  schoolId: string;
-  status: 'pending' | 'approved' | 'rejected';
-  message?: string;
-  rejectionReason?: string;
-  processedBy?: string;
-  processedAt?: Date;
-  createdAt: Date;
-  updatedAt: Date;
-  studentEmail?: string;
-  schoolName?: string;
-}
-
-export interface EnrollmentStatusInfo {
-  isEnrolled: boolean;
-  requestStatus?: 'pending' | 'approved' | 'rejected';
-  enrollmentDate?: Date;
-  canBook: boolean;
-}
-
-export interface CreateEnrollmentRequestDTO {
-  schoolId: string;
-  message?: string;
-}
+import {
+  CreateEnrollmentRequestData,
+  EnrollmentRequest,
+  EnrollmentStatus,
+  EnrollmentStatusInfo,
+} from '../../models/Enrollment';
 
 class EnrollmentService {
-  // Student: Request enrollment in a school
-  async requestEnrollment(data: CreateEnrollmentRequestDTO): Promise<EnrollmentRequest> {
+  /** E2 (élève) : demande d'inscription dans une école. */
+  async requestEnrollment(data: CreateEnrollmentRequestData): Promise<EnrollmentRequest> {
     const url = replaceUrlParams(API_CONFIG.ENDPOINTS.ENROLLMENT.REQUEST_ENROLLMENT, {
       schoolId: data.schoolId,
     });
-    const response = await apiClient.post(url, { message: data.message });
+    const response = await apiClient.post<EnrollmentRequest>(url, { message: data.message });
     return response.data;
   }
 
-  // Student: Get my enrollment requests
+  /** E3 (élève) : mes demandes, avec `schoolName`. */
   async getMyRequests(): Promise<EnrollmentRequest[]> {
-    const response = await apiClient.get(API_CONFIG.ENDPOINTS.ENROLLMENT.MY_REQUESTS);
+    const response = await apiClient.get<EnrollmentRequest[]>(
+      API_CONFIG.ENDPOINTS.ENROLLMENT.MY_REQUESTS
+    );
     return response.data;
   }
 
-  // Student: Check enrollment status in a school
+  /** E1 (élève) : état de mon inscription dans une école. */
   async checkEnrollmentStatus(schoolId: string): Promise<EnrollmentStatusInfo> {
     const url = replaceUrlParams(API_CONFIG.ENDPOINTS.ENROLLMENT.CHECK_STATUS, { schoolId });
-    const response = await apiClient.get(url);
+    const response = await apiClient.get<EnrollmentStatusInfo>(url);
     return response.data;
   }
 
-  // Instructor/Admin: Get school's enrollment requests
-  async getSchoolRequests(schoolId: string, status?: string): Promise<EnrollmentRequest[]> {
+  /** E4 (instructeur de l'école) : demandes de l'école, filtrables par statut. */
+  async getSchoolRequests(
+    schoolId: string,
+    status?: EnrollmentStatus
+  ): Promise<EnrollmentRequest[]> {
     const url = replaceUrlParams(API_CONFIG.ENDPOINTS.ENROLLMENT.SCHOOL_REQUESTS, { schoolId });
-    const response = await apiClient.get(url, { params: { status } });
+    const response = await apiClient.get<EnrollmentRequest[]>(url, {
+      params: status ? { status } : undefined,
+    });
     return response.data;
   }
 
-  // Instructor/Admin: Approve enrollment request
+  /** E5 (instructeur de l'école). */
   async approveRequest(requestId: string): Promise<EnrollmentRequest> {
     const url = replaceUrlParams(API_CONFIG.ENDPOINTS.ENROLLMENT.APPROVE, { requestId });
-    const response = await apiClient.put(url);
+    const response = await apiClient.put<EnrollmentRequest>(url);
     return response.data;
   }
 
-  // Instructor/Admin: Reject enrollment request
+  /** E6 (instructeur de l'école) : motif de 10 à 500 caractères (D-29). */
   async rejectRequest(requestId: string, reason: string): Promise<EnrollmentRequest> {
     const url = replaceUrlParams(API_CONFIG.ENDPOINTS.ENROLLMENT.REJECT, { requestId });
-    const response = await apiClient.put(url, { reason });
+    const response = await apiClient.put<EnrollmentRequest>(url, { reason });
     return response.data;
   }
 }

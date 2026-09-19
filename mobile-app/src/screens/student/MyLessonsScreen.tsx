@@ -1,6 +1,9 @@
 /**
  * My Lessons Screen - Minimal & Elegant
- * Single Responsibility: Display student's lessons
+ * Single Responsibility: Display student's lessons (L1) and let them cancel (L3)
+ *
+ * Une leçon naît d'une demande (`pending`, date souhaitée), est planifiée par l'instructeur
+ * (`scheduled`, date confirmée), puis passe `completed` ; l'élève voit l'état de paiement (D-32).
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -16,10 +19,30 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { lessonService } from '../../services/api/LessonService';
-import { Lesson, LessonStatus } from '../../models/Lesson';
+import { getApiErrorMessage } from '../../services/api/ApiError';
+import {
+  LESSON_STATUS_LABELS,
+  LESSON_TYPE_LABELS,
+  Lesson,
+  LessonStatus,
+} from '../../models/Lesson';
+import { formatAmount, formatPersonName, formatTime } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
 
-type FilterType = 'upcoming' | 'completed' | 'cancelled';
+type FilterType = 'pending' | 'upcoming' | 'completed' | 'closed';
+
+const FILTERS: { key: FilterType; label: string; statuses: LessonStatus[] }[] = [
+  { key: 'pending', label: 'Pending', statuses: [LessonStatus.PENDING] },
+  { key: 'upcoming', label: 'Upcoming', statuses: [LessonStatus.SCHEDULED] },
+  { key: 'completed', label: 'Completed', statuses: [LessonStatus.COMPLETED] },
+  { key: 'closed', label: 'Closed', statuses: [LessonStatus.CANCELLED, LessonStatus.REJECTED] },
+];
+
+/** Date affichée : celle confirmée par l'instructeur, sinon celle souhaitée par l'élève. */
+const lessonDateOf = (lesson: Lesson): Date | null => {
+  const iso = lesson.scheduledDate ?? lesson.requestedDate;
+  return iso ? new Date(iso) : null;
+};
 
 export const MyLessonsScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(true);
@@ -36,9 +59,8 @@ export const MyLessonsScreen = ({ navigation }: any) => {
       setLoading(true);
       const data = await lessonService.getMyLessons();
       setLessons(data);
-    } catch (error: any) {
-      Alert.alert('Error', 'Failed to load lessons');
-      console.error('Load lessons error:', error);
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load lessons'));
     } finally {
       setLoading(false);
     }
@@ -51,9 +73,12 @@ export const MyLessonsScreen = ({ navigation }: any) => {
   }, []);
 
   const handleCancelLesson = (lesson: Lesson) => {
+    const isRequest = lesson.status === LessonStatus.PENDING;
     Alert.alert(
-      'Cancel Lesson',
-      'Are you sure you want to cancel this lesson?',
+      isRequest ? 'Cancel Request' : 'Cancel Lesson',
+      isRequest
+        ? 'Are you sure you want to withdraw this lesson request?'
+        : 'Are you sure you want to cancel this lesson?',
       [
         { text: 'No', style: 'cancel' },
         {
@@ -70,92 +95,113 @@ export const MyLessonsScreen = ({ navigation }: any) => {
       await lessonService.cancelLesson(lessonId);
       Alert.alert('Success', 'Lesson cancelled successfully');
       loadLessons();
-    } catch (error: any) {
-      Alert.alert('Error', 'Failed to cancel lesson');
+    } catch (error) {
+      // Fenêtre de 24 h (D-24) contrôlée par le serveur : le message français explique le refus
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to cancel lesson'));
     }
   };
 
-  const getFilteredLessons = () => {
-    return lessons.filter((lesson) => {
-      switch (filter) {
-        case 'upcoming':
-          return lesson.status === LessonStatus.SCHEDULED;
-        case 'completed':
-          return lesson.status === LessonStatus.COMPLETED;
-        case 'cancelled':
-          return lesson.status === LessonStatus.CANCELLED;
-        default:
-          return true;
-      }
-    });
-  };
+  const activeFilter = FILTERS.find((f) => f.key === filter) ?? FILTERS[0];
+  const filteredLessons = lessons.filter((lesson) => activeFilter.statuses.includes(lesson.status));
 
   const getStatusConfig = (status: LessonStatus) => {
     switch (status) {
+      case LessonStatus.PENDING:
+        return { color: colors.warning[500], bg: colors.warning[50] };
       case LessonStatus.SCHEDULED:
-        return { color: colors.warning[500], bg: colors.warning[50], text: 'Scheduled' };
+        return { color: colors.primary[600], bg: colors.primary[50] };
       case LessonStatus.COMPLETED:
-        return { color: colors.success[500], bg: colors.success[50], text: 'Completed' };
+        return { color: colors.success[500], bg: colors.success[50] };
       case LessonStatus.CANCELLED:
-        return { color: colors.error[500], bg: colors.error[50], text: 'Cancelled' };
+      case LessonStatus.REJECTED:
+        return { color: colors.error[500], bg: colors.error[50] };
     }
   };
 
   const renderLessonCard = ({ item }: { item: Lesson }) => {
     const statusConfig = getStatusConfig(item.status);
-    const lessonDate = new Date(item.startTime);
+    const lessonDate = lessonDateOf(item);
+    const isPending = item.status === LessonStatus.PENDING;
+    const canCancel = isPending || item.status === LessonStatus.SCHEDULED;
 
     return (
       <View style={styles.lessonCard}>
         <View style={styles.cardHeader}>
           <View style={styles.dateBox}>
             <Text style={styles.dateMonth}>
-              {lessonDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}
+              {lessonDate
+                ? lessonDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()
+                : '—'}
             </Text>
-            <Text style={styles.dateDay}>{lessonDate.getDate()}</Text>
+            <Text style={styles.dateDay}>{lessonDate ? lessonDate.getDate() : '?'}</Text>
           </View>
 
           <View style={styles.lessonInfo}>
-            <Text style={styles.lessonType}>{item.type}</Text>
+            <Text style={styles.lessonType}>{LESSON_TYPE_LABELS[item.type] ?? item.type}</Text>
             <View style={styles.instructorRow}>
               <Ionicons name="person-outline" size={16} color={colors.text.tertiary} />
               <Text style={styles.instructorText}>
-                {item.instructor?.firstName || 'Instructor'}
+                {item.instructor
+                  ? formatPersonName(item.instructor, 'Instructor')
+                  : isPending
+                    ? 'Awaiting an instructor'
+                    : 'No instructor'}
               </Text>
             </View>
             <View style={styles.timeRow}>
               <Ionicons name="time-outline" size={16} color={colors.text.tertiary} />
               <Text style={styles.timeText}>
-                {lessonDate.toLocaleTimeString('en-US', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
+                {isPending ? 'Requested: ' : ''}
+                {formatTime(item.scheduledDate ?? item.requestedDate)}
+                {item.durationMinutes ? ` · ${item.durationMinutes} min` : ''}
               </Text>
             </View>
           </View>
 
           <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
             <Text style={[styles.statusText, { color: statusConfig.color }]}>
-              {statusConfig.text}
+              {LESSON_STATUS_LABELS[item.status]}
             </Text>
           </View>
         </View>
 
-        {item.price && (
+        {/* Prix et état de paiement (D-32) */}
+        {(item.price !== null || item.paid) && (
           <View style={styles.priceRow}>
             <Ionicons name="cash-outline" size={16} color={colors.text.secondary} />
-            <Text style={styles.priceText}>{item.price} €</Text>
+            <Text style={styles.priceText}>{formatAmount(item.amount ?? item.price)}</Text>
+            <View style={[styles.paidBadge, item.paid ? styles.paidBadgeOn : styles.paidBadgeOff]}>
+              <Text style={[styles.paidText, item.paid ? styles.paidTextOn : styles.paidTextOff]}>
+                {item.paid ? 'Paid' : 'Unpaid'}
+              </Text>
+            </View>
           </View>
         )}
 
-        {item.status === LessonStatus.SCHEDULED && (
+        {item.status === LessonStatus.REJECTED && item.rejectionReason && (
+          <View style={styles.reasonBox}>
+            <Ionicons name="information-circle-outline" size={18} color={colors.error[600]} />
+            <Text style={styles.reasonText}>{item.rejectionReason}</Text>
+          </View>
+        )}
+
+        {item.status === LessonStatus.CANCELLED && item.cancellationReason && (
+          <View style={styles.reasonBox}>
+            <Ionicons name="information-circle-outline" size={18} color={colors.error[600]} />
+            <Text style={styles.reasonText}>{item.cancellationReason}</Text>
+          </View>
+        )}
+
+        {canCancel && (
           <TouchableOpacity
             style={styles.cancelButton}
             onPress={() => handleCancelLesson(item)}
             activeOpacity={0.7}
           >
             <Ionicons name="close-circle-outline" size={20} color={colors.error[600]} />
-            <Text style={styles.cancelButtonText}>Cancel Lesson</Text>
+            <Text style={styles.cancelButtonText}>
+              {isPending ? 'Withdraw Request' : 'Cancel Lesson'}
+            </Text>
           </TouchableOpacity>
         )}
       </View>
@@ -167,26 +213,24 @@ export const MyLessonsScreen = ({ navigation }: any) => {
       <View style={styles.emptyIconContainer}>
         <Ionicons name="calendar-outline" size={64} color={colors.neutral[300]} />
       </View>
-      <Text style={styles.emptyTitle}>No {filter} lessons</Text>
+      <Text style={styles.emptyTitle}>No {activeFilter.label.toLowerCase()} lessons</Text>
       <Text style={styles.emptyText}>
-        {filter === 'upcoming'
-          ? 'Book your first lesson to get started'
-          : `You don't have any ${filter} lessons yet`}
+        {filter === 'upcoming' || filter === 'pending'
+          ? 'Request a lesson from your school to get started'
+          : `You don't have any ${activeFilter.label.toLowerCase()} lessons yet`}
       </Text>
-      {filter === 'upcoming' && (
+      {(filter === 'upcoming' || filter === 'pending') && (
         <TouchableOpacity
           style={styles.bookButton}
           onPress={() => navigation.navigate('SchoolsList')}
           activeOpacity={0.8}
         >
           <Ionicons name="add-circle-outline" size={20} color={colors.text.inverse} />
-          <Text style={styles.bookButtonText}>Book Lesson</Text>
+          <Text style={styles.bookButtonText}>Request Lesson</Text>
         </TouchableOpacity>
       )}
     </View>
   );
-
-  const filteredLessons = getFilteredLessons();
 
   if (loading) {
     return (
@@ -212,15 +256,17 @@ export const MyLessonsScreen = ({ navigation }: any) => {
 
       {/* Filter Tabs */}
       <View style={styles.filterContainer}>
-        {(['upcoming', 'completed', 'cancelled'] as FilterType[]).map((tab) => (
+        {FILTERS.map((tab) => (
           <TouchableOpacity
-            key={tab}
-            style={[styles.filterTab, filter === tab && styles.filterTabActive]}
-            onPress={() => setFilter(tab)}
+            key={tab.key}
+            style={[styles.filterTab, filter === tab.key && styles.filterTabActive]}
+            onPress={() => setFilter(tab.key)}
             activeOpacity={0.7}
           >
-            <Text style={[styles.filterTabText, filter === tab && styles.filterTabTextActive]}>
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            <Text
+              style={[styles.filterTabText, filter === tab.key && styles.filterTabTextActive]}
+            >
+              {tab.label}
             </Text>
           </TouchableOpacity>
         ))}
@@ -289,6 +335,7 @@ const styles = StyleSheet.create({
   filterTab: {
     flex: 1,
     paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
     borderRadius: 8,
     alignItems: 'center',
     backgroundColor: colors.background.tertiary,
@@ -297,7 +344,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary[600],
   },
   filterTabText: {
-    fontSize: typography.size.sm,
+    fontSize: typography.size.xs,
     fontWeight: typography.weight.medium,
     color: colors.text.secondary,
   },
@@ -386,6 +433,41 @@ const styles = StyleSheet.create({
   priceText: {
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold,
+    color: colors.text.secondary,
+  },
+  paidBadge: {
+    marginLeft: 'auto',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  paidBadgeOn: {
+    backgroundColor: colors.success[50],
+  },
+  paidBadgeOff: {
+    backgroundColor: colors.warning[50],
+  },
+  paidText: {
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.semibold,
+  },
+  paidTextOn: {
+    color: colors.success[600],
+  },
+  paidTextOff: {
+    color: colors.warning[600],
+  },
+  reasonBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    backgroundColor: colors.error[50],
+    padding: spacing.md,
+    borderRadius: 8,
+  },
+  reasonText: {
+    flex: 1,
+    fontSize: typography.size.sm,
     color: colors.text.secondary,
   },
   cancelButton: {

@@ -20,7 +20,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { examService } from '../../services/api/ExamService';
-import { Exam } from '../../models/Exam';
+import { getApiErrorMessage } from '../../services/api/ApiError';
+import { EXAM_TYPE_LABELS, Exam, ExamType } from '../../models/Exam';
+import { formatDate, formatPersonName } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
 
 export const ExamRequestsScreen = ({ navigation }: any) => {
@@ -52,9 +54,8 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
       const data = await examService.getMyExams();
       // Filter for pending requests
       setRequests(data);
-    } catch (error: any) {
-      Alert.alert('Error', 'Failed to load exam requests');
-      console.error('Load requests error:', error);
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load exam requests'));
     } finally {
       setLoading(false);
     }
@@ -113,8 +114,8 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
       setLocation('');
       setSelectedRequest(null);
       loadRequests();
-    } catch (error: any) {
-      Alert.alert('Error', 'Failed to schedule exam');
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to schedule exam'));
     } finally {
       setProcessing(false);
     }
@@ -136,16 +137,14 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
       setRejectionReason('');
       setSelectedRequest(null);
       loadRequests();
-    } catch (error: any) {
-      Alert.alert('Error', 'Failed to reject request');
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to reject request'));
     } finally {
       setProcessing(false);
     }
   };
 
   const renderRequestCard = ({ item }: { item: Exam }) => {
-    const requestDate = new Date(item.dateTime);
-
     return (
       <View style={styles.requestCard}>
         <View style={styles.cardHeader}>
@@ -153,18 +152,22 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
             <Ionicons
               name="clipboard-outline"
               size={28}
-              color={item.type === 'THEORY' ? colors.primary[600] : colors.warning[600]}
+              color={item.type === ExamType.THEORY ? colors.primary[600] : colors.warning[600]}
             />
           </View>
 
           <View style={styles.requestInfo}>
-            <Text style={styles.examType}>{item.type} Exam</Text>
-            <Text style={styles.studentName}>Student Name</Text>
+            <Text style={styles.examType}>{EXAM_TYPE_LABELS[item.type] ?? item.type} Exam</Text>
+            <Text style={styles.studentName}>
+              {formatPersonName(
+                { firstName: item.studentFirstName, lastName: item.studentLastName },
+                'Student'
+              )}
+              {` · ${item.studentCompletedLessons} lessons completed`}
+            </Text>
             <View style={styles.detailRow}>
               <Ionicons name="calendar-outline" size={16} color={colors.text.tertiary} />
-              <Text style={styles.detailText}>
-                Requested: {requestDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              </Text>
+              <Text style={styles.detailText}>Preferred: {formatDate(item.preferredDate)}</Text>
             </View>
           </View>
         </View>

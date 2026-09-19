@@ -18,7 +18,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { examService } from '../../services/api/ExamService';
-import { Exam, ExamStatus } from '../../models/Exam';
+import { getApiErrorMessage } from '../../services/api/ApiError';
+import { EXAM_TYPE_LABELS, Exam, ExamResult, ExamStatus, ExamType } from '../../models/Exam';
+import { formatPersonName, formatTime } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
 
 export const TodayExamsScreen = ({ navigation }: any) => {
@@ -30,7 +32,9 @@ export const TodayExamsScreen = ({ navigation }: any) => {
   // Record result modal
   const [showResultModal, setShowResultModal] = useState(false);
   const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
-  const [result, setResult] = useState<'PASS' | 'FAIL'>('PASS');
+  const [result, setResult] = useState<ExamResult.PASSED | ExamResult.FAILED>(
+    ExamResult.PASSED
+  );
   const [score, setScore] = useState('');
   const [notes, setNotes] = useState('');
 
@@ -50,14 +54,14 @@ export const TodayExamsScreen = ({ navigation }: any) => {
       tomorrow.setDate(tomorrow.getDate() + 1);
 
       const todayExams = allExams.filter((exam) => {
+        if (!exam.dateTime) return false;
         const examDate = new Date(exam.dateTime);
         return examDate >= today && examDate < tomorrow;
       });
 
       setExams(todayExams);
-    } catch (error: any) {
-      Alert.alert('Error', 'Failed to load exams');
-      console.error('Load exams error:', error);
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load exams'));
     } finally {
       setLoading(false);
     }
@@ -93,20 +97,19 @@ export const TodayExamsScreen = ({ navigation }: any) => {
       // API call to record exam result
       Alert.alert('Success', 'Exam result recorded successfully');
       setShowResultModal(false);
-      setResult('PASS');
+      setResult(ExamResult.PASSED);
       setScore('');
       setNotes('');
       setSelectedExam(null);
       loadTodayExams();
-    } catch (error: any) {
-      Alert.alert('Error', 'Failed to record result');
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to record result'));
     } finally {
       setProcessing(false);
     }
   };
 
   const renderExamCard = ({ item }: { item: Exam }) => {
-    const examTime = new Date(item.dateTime);
     const isCompleted = item.status === ExamStatus.COMPLETED;
 
     return (
@@ -116,20 +119,21 @@ export const TodayExamsScreen = ({ navigation }: any) => {
             <Ionicons
               name="clipboard-outline"
               size={28}
-              color={item.type === 'THEORY' ? colors.primary[600] : colors.warning[600]}
+              color={item.type === ExamType.THEORY ? colors.primary[600] : colors.warning[600]}
             />
           </View>
 
           <View style={styles.examInfo}>
-            <Text style={styles.examType}>{item.type} Exam</Text>
+            <Text style={styles.examType}>{EXAM_TYPE_LABELS[item.type] ?? item.type} Exam</Text>
+            <Text style={styles.studentName}>
+              {formatPersonName(
+                { firstName: item.studentFirstName, lastName: item.studentLastName },
+                'Student'
+              )}
+            </Text>
             <View style={styles.detailRow}>
               <Ionicons name="time-outline" size={16} color={colors.text.tertiary} />
-              <Text style={styles.detailText}>
-                {examTime.toLocaleTimeString('en-US', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </Text>
+              <Text style={styles.detailText}>{formatTime(item.dateTime)}</Text>
             </View>
             {item.location && (
               <View style={styles.detailRow}>
@@ -139,20 +143,20 @@ export const TodayExamsScreen = ({ navigation }: any) => {
             )}
           </View>
 
-          {isCompleted && item.result && (
+          {isCompleted && item.result !== ExamResult.PENDING && (
             <View
               style={[
                 styles.resultBadge,
                 {
                   backgroundColor:
-                    item.result === 'PASS' ? colors.success[50] : colors.error[50],
+                    item.result === ExamResult.PASSED ? colors.success[50] : colors.error[50],
                 },
               ]}
             >
               <Ionicons
-                name={item.result === 'PASS' ? 'checkmark-circle' : 'close-circle'}
+                name={item.result === ExamResult.PASSED ? 'checkmark-circle' : 'close-circle'}
                 size={24}
-                color={item.result === 'PASS' ? colors.success[500] : colors.error[500]}
+                color={item.result === ExamResult.PASSED ? colors.success[500] : colors.error[500]}
               />
             </View>
           )}
@@ -169,7 +173,7 @@ export const TodayExamsScreen = ({ navigation }: any) => {
           </TouchableOpacity>
         )}
 
-        {isCompleted && item.score !== undefined && (
+        {isCompleted && item.score !== null && (
           <View style={styles.scoreBox}>
             <Text style={styles.scoreLabel}>Score</Text>
             <Text style={styles.scoreValue}>{item.score}/100</Text>
@@ -242,7 +246,7 @@ export const TodayExamsScreen = ({ navigation }: any) => {
               <TouchableOpacity
                 onPress={() => {
                   setShowResultModal(false);
-                  setResult('PASS');
+                  setResult(ExamResult.PASSED);
                   setScore('');
                   setNotes('');
                   setSelectedExam(null);
@@ -258,45 +262,47 @@ export const TodayExamsScreen = ({ navigation }: any) => {
                 <TouchableOpacity
                   style={[
                     styles.resultButton,
-                    result === 'PASS' && styles.resultButtonPass,
+                    result === ExamResult.PASSED && styles.resultButtonPass,
                   ]}
-                  onPress={() => setResult('PASS')}
+                  onPress={() => setResult(ExamResult.PASSED)}
                   activeOpacity={0.7}
                 >
                   <Ionicons
                     name="checkmark-circle"
                     size={24}
-                    color={result === 'PASS' ? colors.success[600] : colors.text.tertiary}
+                    color={
+                      result === ExamResult.PASSED ? colors.success[600] : colors.text.tertiary
+                    }
                   />
                   <Text
                     style={[
                       styles.resultButtonText,
-                      result === 'PASS' && styles.resultButtonTextActive,
+                      result === ExamResult.PASSED && styles.resultButtonTextActive,
                     ]}
                   >
-                    Pass
+                    Passed
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[
                     styles.resultButton,
-                    result === 'FAIL' && styles.resultButtonFail,
+                    result === ExamResult.FAILED && styles.resultButtonFail,
                   ]}
-                  onPress={() => setResult('FAIL')}
+                  onPress={() => setResult(ExamResult.FAILED)}
                   activeOpacity={0.7}
                 >
                   <Ionicons
                     name="close-circle"
                     size={24}
-                    color={result === 'FAIL' ? colors.error[600] : colors.text.tertiary}
+                    color={result === ExamResult.FAILED ? colors.error[600] : colors.text.tertiary}
                   />
                   <Text
                     style={[
                       styles.resultButtonText,
-                      result === 'FAIL' && styles.resultButtonTextActive,
+                      result === ExamResult.FAILED && styles.resultButtonTextActive,
                     ]}
                   >
-                    Fail
+                    Failed
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -333,7 +339,7 @@ export const TodayExamsScreen = ({ navigation }: any) => {
                 style={[styles.modalButton, styles.modalCancelButton]}
                 onPress={() => {
                   setShowResultModal(false);
-                  setResult('PASS');
+                  setResult(ExamResult.PASSED);
                   setScore('');
                   setNotes('');
                   setSelectedExam(null);
@@ -434,6 +440,11 @@ const styles = StyleSheet.create({
     fontSize: typography.size.base,
     fontWeight: typography.weight.semibold,
     color: colors.text.primary,
+  },
+  studentName: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.medium,
+    color: colors.text.secondary,
   },
   detailRow: {
     flexDirection: 'row',

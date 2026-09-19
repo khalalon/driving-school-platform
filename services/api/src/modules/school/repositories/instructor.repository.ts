@@ -13,11 +13,10 @@ export interface IInstructorRepository {
   delete(id: string): Promise<void>;
 }
 
-// Identité portée par users depuis 3.1 (D-16). `name` : dérivé, transitoire pour le mobile
-// actuel (SchoolDetailScreen), repli sur instructors.name pour les lignes sans compte.
+// Identité portée par users depuis 3.1 (D-16) ; la colonne héritée instructors.name n'est
+// plus lue (contrat S3, 6.1).
 const INSTRUCTOR_COLUMNS = `i.id, i.school_id AS "schoolId", i.user_id AS "userId",
   COALESCE(u.first_name, '') AS "firstName", COALESCE(u.last_name, '') AS "lastName",
-  COALESCE(NULLIF(trim(concat_ws(' ', u.first_name, u.last_name)), ''), i.name) AS name,
   i.phone, i.license_number AS "licenseNumber", i.specialties,
   i.created_at AS "createdAt", i.updated_at AS "updatedAt"`;
 

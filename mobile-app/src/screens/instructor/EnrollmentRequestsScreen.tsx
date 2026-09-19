@@ -17,14 +17,21 @@ import {
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { enrollmentService, EnrollmentRequest } from '../../services/api/EnrollmentService';
+import { enrollmentService } from '../../services/api/EnrollmentService';
+import { getApiErrorMessage } from '../../services/api/ApiError';
+import { EnrollmentRequest, EnrollmentStatus } from '../../models/Enrollment';
+import { formatDate, formatPersonName } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
-import { useAuth } from '../../context/AuthContext';
 
 type FilterType = 'pending' | 'all';
 
+const STATUS_STYLES: Record<EnrollmentStatus, { badge: object; label: string }> = {
+  [EnrollmentStatus.PENDING]: { badge: { backgroundColor: colors.warning[50] }, label: 'Pending' },
+  [EnrollmentStatus.APPROVED]: { badge: { backgroundColor: colors.success[50] }, label: 'Approved' },
+  [EnrollmentStatus.REJECTED]: { badge: { backgroundColor: colors.error[50] }, label: 'Rejected' },
+};
+
 export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
-  const { user } = useAuth();
   const { schoolId } = route.params || {};
   
   const [loading, setLoading] = useState(true);
@@ -50,12 +57,11 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
   const loadRequests = async () => {
     try {
       setLoading(true);
-      const statusFilter = filter === 'pending' ? 'pending' : undefined;
+      const statusFilter = filter === 'pending' ? EnrollmentStatus.PENDING : undefined;
       const data = await enrollmentService.getSchoolRequests(schoolId, statusFilter);
       setRequests(data);
-    } catch (error: any) {
-      Alert.alert('Error', 'Failed to load enrollment requests');
-      console.error('Load requests error:', error);
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load enrollment requests'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -70,7 +76,10 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
   const handleApprove = async (request: EnrollmentRequest) => {
     Alert.alert(
       'Approve Enrollment',
-      `Approve enrollment for ${request.studentEmail}?`,
+      `Approve enrollment for ${formatPersonName(
+        { firstName: request.studentFirstName, lastName: request.studentLastName },
+        request.studentEmail ?? 'this student'
+      )}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -81,8 +90,8 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
               await enrollmentService.approveRequest(request.id);
               Alert.alert('Success', 'Student enrollment has been approved');
               loadRequests();
-            } catch (error: any) {
-              Alert.alert('Error', error.response?.data?.error || 'Failed to approve request');
+            } catch (error) {
+              Alert.alert('Error', getApiErrorMessage(error, 'Failed to approve request'));
             } finally {
               setProcessing(false);
             }
@@ -111,8 +120,8 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
       setSelectedRequest(null);
       setRejectionReason('');
       loadRequests();
-    } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.error || 'Failed to reject request');
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to reject request'));
     } finally {
       setProcessing(false);
     }
@@ -124,14 +133,18 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
         <View style={styles.studentInfo}>
           <Ionicons name="person-circle-outline" size={40} color={colors.primary[600]} />
           <View style={styles.studentDetails}>
-            <Text style={styles.studentEmail}>{item.studentEmail}</Text>
-            <Text style={styles.requestDate}>
-              {new Date(item.createdAt).toLocaleDateString()}
+            <Text style={styles.studentName}>
+              {formatPersonName(
+                { firstName: item.studentFirstName, lastName: item.studentLastName },
+                'Student'
+              )}
             </Text>
+            <Text style={styles.studentEmail}>{item.studentEmail}</Text>
+            <Text style={styles.requestDate}>{formatDate(item.createdAt)}</Text>
           </View>
         </View>
-        <View style={[styles.statusBadge, styles[`status_${item.status}`]]}>
-          <Text style={styles.statusText}>{item.status}</Text>
+        <View style={[styles.statusBadge, STATUS_STYLES[item.status].badge]}>
+          <Text style={styles.statusText}>{STATUS_STYLES[item.status].label}</Text>
         </View>
       </View>
 
@@ -142,14 +155,14 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
         </View>
       )}
 
-      {item.status === 'rejected' && item.rejectionReason && (
+      {item.status === EnrollmentStatus.REJECTED && item.rejectionReason && (
         <View style={styles.rejectionContainer}>
           <Text style={styles.rejectionLabel}>Rejection Reason:</Text>
           <Text style={styles.rejectionText}>{item.rejectionReason}</Text>
         </View>
       )}
 
-      {item.status === 'pending' && (
+      {item.status === EnrollmentStatus.PENDING && (
         <View style={styles.actionsContainer}>
           <TouchableOpacity
             style={[styles.actionButton, styles.approveButton]}
@@ -384,10 +397,14 @@ const styles = StyleSheet.create({
     marginLeft: spacing.sm,
     flex: 1,
   },
-  studentEmail: {
+  studentName: {
     fontSize: typography.size.base,
     color: colors.text.primary,
     fontWeight: typography.weight.semibold,
+  },
+  studentEmail: {
+    fontSize: typography.size.sm,
+    color: colors.text.secondary,
   },
   requestDate: {
     fontSize: typography.size.sm,
@@ -399,19 +416,9 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 6,
   },
-  status_pending: {
-    backgroundColor: colors.warning[50],
-  },
-  status_approved: {
-    backgroundColor: colors.success[50],
-  },
-  status_rejected: {
-    backgroundColor: colors.error[50],
-  },
   statusText: {
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold,
-    textTransform: 'capitalize',
   },
   messageContainer: {
     marginTop: spacing.sm,

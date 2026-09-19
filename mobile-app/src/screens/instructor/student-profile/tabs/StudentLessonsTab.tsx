@@ -15,10 +15,16 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { studentProfileService } from '../../../../services/api/StudentProfileService';
+import { getApiErrorMessage } from '../../../../services/api/ApiError';
 import {
-  studentProfileService,
   LessonHistory,
-} from '../../../../services/api/StudentProfileService';
+  PAYMENT_METHOD_LABELS,
+  PAYMENT_METHODS,
+  PaymentMethod,
+} from '../../../../models/Profile';
+import { LESSON_TYPE_LABELS, LessonType } from '../../../../models/Lesson';
+import { CURRENCY_SYMBOL, formatAmount, formatDateTime } from '../../../../utils/format';
 import { colors, typography, spacing, shadows } from '../../../../theme';
 
 export const StudentLessonsTab = ({ route }: any) => {
@@ -29,7 +35,7 @@ export const StudentLessonsTab = ({ route }: any) => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedLesson, setSelectedLesson] = useState<LessonHistory | null>(null);
   const [amount, setAmount] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
@@ -41,9 +47,8 @@ export const StudentLessonsTab = ({ route }: any) => {
       setLoading(true);
       const data = await studentProfileService.getStudentLessons(studentId, schoolId);
       setLessons(data);
-    } catch (error: any) {
-      Alert.alert('Error', 'Failed to load lessons');
-      console.error(error);
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load lessons'));
     } finally {
       setLoading(false);
     }
@@ -51,7 +56,8 @@ export const StudentLessonsTab = ({ route }: any) => {
 
   const handleMarkPaid = (lesson: LessonHistory) => {
     setSelectedLesson(lesson);
-    setAmount(lesson.amount?.toString() || '');
+    // Montant proposé : celui déjà saisi, sinon le prix figé sur la leçon (D-30)
+    setAmount((lesson.amount ?? lesson.price)?.toString() || '');
     setShowPaymentModal(true);
   };
 
@@ -73,20 +79,20 @@ export const StudentLessonsTab = ({ route }: any) => {
       setSelectedLesson(null);
       setAmount('');
       loadLessons();
-    } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.error || 'Failed to mark as paid');
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to mark as paid'));
     } finally {
       setProcessing(false);
     }
   };
 
-  const getLessonTypeColor = (type: string) => {
+  const getLessonTypeColor = (type: LessonType) => {
     switch (type) {
-      case 'CODE':
+      case LessonType.CODE:
         return colors.primary[600];
-      case 'Manœuvre':
+      case LessonType.MANOEUVRE:
         return colors.warning[600];
-      case 'Parc':
+      case LessonType.PARC:
         return colors.success[600];
       default:
         return colors.neutral[600];
@@ -96,9 +102,10 @@ export const StudentLessonsTab = ({ route }: any) => {
   const renderLesson = ({ item }: { item: LessonHistory }) => (
     <View style={styles.lessonCard}>
       <View style={styles.lessonHeader}>
-        <View style={[styles.typeBadge, { backgroundColor: `${getLessonTypeColor(item.lessonType)}20` }]}>
-          <Text style={[styles.typeText, { color: getLessonTypeColor(item.lessonType) }]}>
-            {item.lessonType}
+        <View style={[styles.typeBadge, { backgroundColor: `${getLessonTypeColor(item.type)}20` }]}>
+          <Text style={[styles.typeText, { color: getLessonTypeColor(item.type) }]}>
+            {LESSON_TYPE_LABELS[item.type] ?? item.type}
+            {item.status === 'cancelled' ? ' · Cancelled' : ''}
           </Text>
         </View>
         <View style={[styles.statusBadge, item.paid ? styles.paidBadge : styles.unpaidBadge]}>
@@ -116,23 +123,19 @@ export const StudentLessonsTab = ({ route }: any) => {
       <View style={styles.lessonDetails}>
         <View style={styles.detailRow}>
           <Ionicons name="calendar-outline" size={16} color={colors.text.secondary} />
-          <Text style={styles.detailText}>
-            {new Date(item.dateTime).toLocaleDateString()} at{' '}
-            {new Date(item.dateTime).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
-          </Text>
+          <Text style={styles.detailText}>{formatDateTime(item.scheduledDate)}</Text>
         </View>
 
         <View style={styles.detailRow}>
           <Ionicons name="person-outline" size={16} color={colors.text.secondary} />
-          <Text style={styles.detailText}>{item.instructorName}</Text>
+          <Text style={styles.detailText}>
+            {`${item.instructorFirstName} ${item.instructorLastName}`.trim() || '—'}
+          </Text>
         </View>
 
         <View style={styles.detailRow}>
           <Ionicons name="time-outline" size={16} color={colors.text.secondary} />
-          <Text style={styles.detailText}>{item.duration} minutes</Text>
+          <Text style={styles.detailText}>{item.durationMinutes ?? '—'} minutes</Text>
         </View>
 
         {item.attended !== null && item.attended !== undefined && (
@@ -153,10 +156,10 @@ export const StudentLessonsTab = ({ route }: any) => {
           </View>
         )}
 
-        {item.amount && (
+        {(item.amount !== null || item.price !== null) && (
           <View style={styles.detailRow}>
             <Ionicons name="cash-outline" size={16} color={colors.text.secondary} />
-            <Text style={styles.detailText}>€{item.amount.toFixed(2)}</Text>
+            <Text style={styles.detailText}>{formatAmount(item.amount ?? item.price)}</Text>
           </View>
         )}
       </View>
@@ -248,7 +251,7 @@ export const StudentLessonsTab = ({ route }: any) => {
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.inputLabel}>Amount (€)</Text>
+            <Text style={styles.inputLabel}>Amount ({CURRENCY_SYMBOL})</Text>
             <TextInput
               style={styles.input}
               placeholder="0.00"
@@ -260,7 +263,7 @@ export const StudentLessonsTab = ({ route }: any) => {
 
             <Text style={styles.inputLabel}>Payment Method</Text>
             <View style={styles.methodButtons}>
-              {['cash', 'card', 'bank_transfer', 'online'].map((method) => (
+              {PAYMENT_METHODS.map((method) => (
                 <TouchableOpacity
                   key={method}
                   style={[
@@ -276,7 +279,7 @@ export const StudentLessonsTab = ({ route }: any) => {
                       paymentMethod === method && styles.methodTextActive,
                     ]}
                   >
-                    {method.replace('_', ' ').toUpperCase()}
+                    {PAYMENT_METHOD_LABELS[method]}
                   </Text>
                 </TouchableOpacity>
               ))}

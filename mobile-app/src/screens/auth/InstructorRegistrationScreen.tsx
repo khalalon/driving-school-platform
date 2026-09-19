@@ -1,6 +1,9 @@
 /**
  * Instructor Registration - Minimal & Elegant
  * Single Responsibility: Register instructor with school code
+ *
+ * Un seul formulaire → A2 avec `schoolCode` (D-17) : le rôle et l'école sont déduits du code,
+ * `phone` et `licenseNumber` sont exigés, la fiche instructeur est créée par le backend.
  */
 
 import React, { useState } from 'react';
@@ -17,29 +20,35 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { authService } from '../../services/api/AuthService';
-import { schoolCodeService } from '../../services/api/SchoolCodeService';
-import { UserRole } from '../../models/User';
+import { useAuth } from '../../context/AuthContext';
+import { getApiErrorMessage } from '../../services/api/ApiError';
 import { colors, typography, spacing, shadows } from '../../theme';
 
 export const InstructorRegistrationScreen = ({ navigation }: any) => {
-  const [step, setStep] = useState<1 | 2>(1);
+  const { register } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Step 1
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-
-  // Step 2
+  const [phone, setPhone] = useState('');
+  const [licenseNumber, setLicenseNumber] = useState('');
   const [schoolCode, setSchoolCode] = useState('');
 
-  const handleCreateAccount = async () => {
-    if (!email || !password || !firstName || !lastName) {
+  const handleRegister = async () => {
+    if (
+      !email.trim() ||
+      !password ||
+      !firstName.trim() ||
+      !lastName.trim() ||
+      !phone.trim() ||
+      !licenseNumber.trim() ||
+      !schoolCode.trim()
+    ) {
       Alert.alert('Required', 'Please fill in all fields');
       return;
     }
@@ -56,254 +65,25 @@ export const InstructorRegistrationScreen = ({ navigation }: any) => {
 
     try {
       setLoading(true);
-      await authService.register({
-        email,
+      // A2 avec schoolCode : rôle et école déduits du code, session ouverte directement
+      await register({
+        email: email.trim(),
         password,
-        firstName,
-        lastName,
-        role: UserRole.INSTRUCTOR,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        phone: phone.trim(),
+        licenseNumber: licenseNumber.trim(),
+        schoolCode: schoolCode.trim(),
       });
-      setStep(2);
-    } catch (error: any) {
-      Alert.alert('Registration Failed', error.response?.data?.message || 'Please try again');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyCode = async () => {
-    if (!schoolCode.trim()) {
-      Alert.alert('Required', 'Please enter school code');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const result = await schoolCodeService.verifyCode(schoolCode);
+    } catch (error) {
       Alert.alert(
-        'Success!',
-        `You've been registered with ${result.schoolName}. Please log in to continue.`,
-        [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
+        'Registration Failed',
+        getApiErrorMessage(error, 'Please check your details and school code')
       );
-    } catch (error: any) {
-      Alert.alert('Invalid Code', error.response?.data?.message || 'Please check your code');
     } finally {
       setLoading(false);
     }
   };
-
-  const renderStep1 = () => (
-    <View style={styles.stepContent}>
-      <View style={styles.stepIndicator}>
-        <View style={styles.stepDot} />
-        <View style={[styles.stepDot, styles.stepDotInactive]} />
-      </View>
-
-      <View style={styles.titleContainer}>
-        <Text style={styles.title}>Create Account</Text>
-        <Text style={styles.subtitle}>Step 1 of 2</Text>
-      </View>
-
-      <View style={styles.form}>
-        {/* Name Row */}
-        <View style={styles.row}>
-          <View style={[styles.inputGroup, styles.halfWidth]}>
-            <Text style={styles.label}>First Name</Text>
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.input}
-                placeholder="John"
-                placeholderTextColor={colors.neutral[400]}
-                value={firstName}
-                onChangeText={setFirstName}
-                autoCapitalize="words"
-              />
-            </View>
-          </View>
-
-          <View style={[styles.inputGroup, styles.halfWidth]}>
-            <Text style={styles.label}>Last Name</Text>
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.input}
-                placeholder="Doe"
-                placeholderTextColor={colors.neutral[400]}
-                value={lastName}
-                onChangeText={setLastName}
-                autoCapitalize="words"
-              />
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Email</Text>
-          <View style={styles.inputContainer}>
-            <Ionicons
-              name="mail-outline"
-              size={20}
-              color={colors.neutral[400]}
-              style={styles.inputIcon}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="your@email.com"
-              placeholderTextColor={colors.neutral[400]}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
-        </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Password</Text>
-          <View style={styles.inputContainer}>
-            <Ionicons
-              name="lock-closed-outline"
-              size={20}
-              color={colors.neutral[400]}
-              style={styles.inputIcon}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Min. 6 characters"
-              placeholderTextColor={colors.neutral[400]}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-            />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
-              <Ionicons
-                name={showPassword ? 'eye-outline' : 'eye-off-outline'}
-                size={20}
-                color={colors.neutral[400]}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Confirm Password</Text>
-          <View style={styles.inputContainer}>
-            <Ionicons
-              name="lock-closed-outline"
-              size={20}
-              color={colors.neutral[400]}
-              style={styles.inputIcon}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Re-enter password"
-              placeholderTextColor={colors.neutral[400]}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry={!showConfirmPassword}
-            />
-            <TouchableOpacity
-              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-              style={styles.eyeIcon}
-            >
-              <Ionicons
-                name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'}
-                size={20}
-                color={colors.neutral[400]}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.button, loading && styles.disabledButton]}
-          onPress={handleCreateAccount}
-          disabled={loading}
-          activeOpacity={0.8}
-        >
-          {loading ? (
-            <ActivityIndicator size="small" color={colors.text.inverse} />
-          ) : (
-            <>
-              <Text style={styles.buttonText}>Continue</Text>
-              <Ionicons name="arrow-forward" size={20} color={colors.text.inverse} />
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-
-  const renderStep2 = () => (
-    <View style={styles.stepContent}>
-      <View style={styles.stepIndicator}>
-        <View style={[styles.stepDot, styles.stepDotComplete]}>
-          <Ionicons name="checkmark" size={16} color={colors.text.inverse} />
-        </View>
-        <View style={styles.stepDot} />
-      </View>
-
-      <View style={styles.successIconContainer}>
-        <Ionicons name="checkmark-circle-outline" size={64} color={colors.success[500]} />
-      </View>
-
-      <View style={styles.titleContainer}>
-        <Text style={styles.title}>Join Your School</Text>
-        <Text style={styles.subtitle}>Step 2 of 2</Text>
-      </View>
-
-      <View style={styles.infoBox}>
-        <Ionicons name="information-circle-outline" size={24} color={colors.primary[600]} />
-        <Text style={styles.infoText}>
-          Enter the school code provided by your administrator to complete registration
-        </Text>
-      </View>
-
-      <View style={styles.form}>
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>School Code</Text>
-          <View style={styles.inputContainer}>
-            <Ionicons
-              name="key-outline"
-              size={20}
-              color={colors.neutral[400]}
-              style={styles.inputIcon}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="INST-ABC123"
-              placeholderTextColor={colors.neutral[400]}
-              value={schoolCode}
-              onChangeText={setSchoolCode}
-              autoCapitalize="characters"
-            />
-          </View>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.button, loading && styles.disabledButton]}
-          onPress={handleVerifyCode}
-          disabled={loading}
-          activeOpacity={0.8}
-        >
-          {loading ? (
-            <ActivityIndicator size="small" color={colors.text.inverse} />
-          ) : (
-            <>
-              <Text style={styles.buttonText}>Complete Registration</Text>
-              <Ionicons name="checkmark" size={20} color={colors.text.inverse} />
-            </>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => navigation.navigate('Login')}
-          style={styles.skipLink}
-        >
-          <Text style={styles.skipLinkText}>Skip for now</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
 
   return (
     <KeyboardAvoidingView
@@ -314,10 +94,7 @@ export const InstructorRegistrationScreen = ({ navigation }: any) => {
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => {
-              if (step === 2) setStep(1);
-              else navigation.goBack();
-            }}
+            onPress={() => navigation.goBack()}
             activeOpacity={0.7}
           >
             <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
@@ -325,7 +102,215 @@ export const InstructorRegistrationScreen = ({ navigation }: any) => {
         </View>
 
         <View style={styles.content}>
-          {step === 1 ? renderStep1() : renderStep2()}
+          <View style={styles.titleContainer}>
+            <Text style={styles.title}>Join Your School</Text>
+            <Text style={styles.subtitle}>Instructor account</Text>
+          </View>
+
+          <View style={styles.infoBox}>
+            <Ionicons name="information-circle-outline" size={24} color={colors.primary[600]} />
+            <Text style={styles.infoText}>
+              Enter the school code provided by your school: it links your account to the school
+              and gives you instructor access.
+            </Text>
+          </View>
+
+          <View style={styles.form}>
+            {/* Name Row */}
+            <View style={styles.row}>
+              <View style={[styles.inputGroup, styles.halfWidth]}>
+                <Text style={styles.label}>First Name</Text>
+                <View style={styles.inputContainer}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="John"
+                    placeholderTextColor={colors.neutral[400]}
+                    value={firstName}
+                    onChangeText={setFirstName}
+                    autoCapitalize="words"
+                  />
+                </View>
+              </View>
+
+              <View style={[styles.inputGroup, styles.halfWidth]}>
+                <Text style={styles.label}>Last Name</Text>
+                <View style={styles.inputContainer}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Doe"
+                    placeholderTextColor={colors.neutral[400]}
+                    value={lastName}
+                    onChangeText={setLastName}
+                    autoCapitalize="words"
+                  />
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Email</Text>
+              <View style={styles.inputContainer}>
+                <Ionicons
+                  name="mail-outline"
+                  size={20}
+                  color={colors.neutral[400]}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="your@email.com"
+                  placeholderTextColor={colors.neutral[400]}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Password</Text>
+              <View style={styles.inputContainer}>
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={20}
+                  color={colors.neutral[400]}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Min. 6 characters"
+                  placeholderTextColor={colors.neutral[400]}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeIcon}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                    size={20}
+                    color={colors.neutral[400]}
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Confirm Password</Text>
+              <View style={styles.inputContainer}>
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={20}
+                  color={colors.neutral[400]}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Re-enter password"
+                  placeholderTextColor={colors.neutral[400]}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showConfirmPassword}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  style={styles.eyeIcon}
+                >
+                  <Ionicons
+                    name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'}
+                    size={20}
+                    color={colors.neutral[400]}
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Phone</Text>
+              <View style={styles.inputContainer}>
+                <Ionicons
+                  name="call-outline"
+                  size={20}
+                  color={colors.neutral[400]}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="+216 00 000 000"
+                  placeholderTextColor={colors.neutral[400]}
+                  value={phone}
+                  onChangeText={setPhone}
+                  keyboardType="phone-pad"
+                />
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>License Number</Text>
+              <View style={styles.inputContainer}>
+                <Ionicons
+                  name="card-outline"
+                  size={20}
+                  color={colors.neutral[400]}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Instructor license number"
+                  placeholderTextColor={colors.neutral[400]}
+                  value={licenseNumber}
+                  onChangeText={setLicenseNumber}
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                />
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>School Code</Text>
+              <View style={styles.inputContainer}>
+                <Ionicons
+                  name="key-outline"
+                  size={20}
+                  color={colors.neutral[400]}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="INST-ABC123"
+                  placeholderTextColor={colors.neutral[400]}
+                  value={schoolCode}
+                  onChangeText={setSchoolCode}
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                />
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.button, loading && styles.disabledButton]}
+              onPress={handleRegister}
+              disabled={loading}
+              activeOpacity={0.8}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color={colors.text.inverse} />
+              ) : (
+                <>
+                  <Text style={styles.buttonText}>Create Instructor Account</Text>
+                  <Ionicons name="checkmark" size={20} color={colors.text.inverse} />
+                </>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.skipLink}>
+              <Text style={styles.skipLinkText}>Already have an account? Sign in</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -354,34 +339,6 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: spacing.xl,
     paddingBottom: spacing['4xl'],
-  },
-  stepContent: {
-    width: '100%',
-  },
-  stepIndicator: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing['2xl'],
-  },
-  stepDot: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.primary[600],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepDotInactive: {
-    backgroundColor: colors.neutral[200],
-  },
-  stepDotComplete: {
-    backgroundColor: colors.success[500],
-  },
-  successIconContainer: {
-    alignItems: 'center',
-    marginBottom: spacing.xl,
   },
   titleContainer: {
     marginBottom: spacing.xl,

@@ -15,10 +15,16 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { studentProfileService } from '../../../../services/api/StudentProfileService';
+import { getApiErrorMessage } from '../../../../services/api/ApiError';
 import {
-  studentProfileService,
   ExamHistory,
-} from '../../../../services/api/StudentProfileService';
+  PAYMENT_METHOD_LABELS,
+  PAYMENT_METHODS,
+  PaymentMethod,
+} from '../../../../models/Profile';
+import { EXAM_RESULT_LABELS, ExamResult, ExamType } from '../../../../models/Exam';
+import { CURRENCY_SYMBOL, formatAmount, formatDateTime } from '../../../../utils/format';
 import { colors, typography, spacing, shadows } from '../../../../theme';
 
 export const StudentExamsTab = ({ route }: any) => {
@@ -29,7 +35,7 @@ export const StudentExamsTab = ({ route }: any) => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedExam, setSelectedExam] = useState<ExamHistory | null>(null);
   const [amount, setAmount] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
@@ -41,9 +47,8 @@ export const StudentExamsTab = ({ route }: any) => {
       setLoading(true);
       const data = await studentProfileService.getStudentExams(studentId, schoolId);
       setExams(data);
-    } catch (error: any) {
-      Alert.alert('Error', 'Failed to load exams');
-      console.error(error);
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load exams'));
     } finally {
       setLoading(false);
     }
@@ -51,7 +56,7 @@ export const StudentExamsTab = ({ route }: any) => {
 
   const handleMarkPaid = (exam: ExamHistory) => {
     setSelectedExam(exam);
-    setAmount(exam.amount?.toString() || '');
+    setAmount((exam.amount ?? exam.price)?.toString() || '');
     setShowPaymentModal(true);
   };
 
@@ -73,46 +78,50 @@ export const StudentExamsTab = ({ route }: any) => {
       setSelectedExam(null);
       setAmount('');
       loadExams();
-    } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.error || 'Failed to mark as paid');
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to mark as paid'));
     } finally {
       setProcessing(false);
     }
   };
 
-  const getResultColor = (result?: string) => {
+  const getResultColor = (result: string) => {
     switch (result) {
-      case 'passed':
+      case ExamResult.PASSED:
         return colors.success[600];
-      case 'failed':
+      case ExamResult.FAILED:
         return colors.error[600];
       default:
         return colors.warning[600];
     }
   };
 
-  const getResultIcon = (result?: string) => {
+  const getResultIcon = (result: string) => {
     switch (result) {
-      case 'passed':
+      case ExamResult.PASSED:
         return 'checkmark-circle';
-      case 'failed':
+      case ExamResult.FAILED:
         return 'close-circle';
       default:
         return 'time-outline';
     }
   };
 
+  const getResultLabel = (result: string) =>
+    EXAM_RESULT_LABELS[result as ExamResult] ?? result;
+
   const renderExam = ({ item }: { item: ExamHistory }) => (
     <View style={styles.examCard}>
       <View style={styles.examHeader}>
         <View style={styles.typeContainer}>
           <Ionicons
-            name={item.examType === 'theory' ? 'book-outline' : 'car-outline'}
+            name={item.type === ExamType.THEORY ? 'book-outline' : 'car-outline'}
             size={24}
             color={colors.primary[600]}
           />
           <Text style={styles.examType}>
-            {item.examType === 'theory' ? 'Theory Exam' : 'Practical Exam'}
+            {item.type === ExamType.THEORY ? 'Theory Exam' : 'Practical Exam'}
+            {item.status === 'cancelled' ? ' · Cancelled' : ''}
           </Text>
         </View>
         <View style={[styles.statusBadge, item.paid ? styles.paidBadge : styles.unpaidBadge]}>
@@ -131,15 +140,12 @@ export const StudentExamsTab = ({ route }: any) => {
         <View style={styles.detailRow}>
           <Ionicons name="calendar-outline" size={16} color={colors.text.secondary} />
           <Text style={styles.detailText}>
-            {new Date(item.dateTime).toLocaleDateString()} at{' '}
-            {new Date(item.dateTime).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
+            {formatDateTime(item.dateTime)}
+            {item.location ? ` · ${item.location}` : ''}
           </Text>
         </View>
 
-        {item.result && (
+        {item.result !== ExamResult.PENDING && (
           <View style={styles.resultContainer}>
             <Ionicons
               name={getResultIcon(item.result)}
@@ -147,7 +153,7 @@ export const StudentExamsTab = ({ route }: any) => {
               color={getResultColor(item.result)}
             />
             <Text style={[styles.resultText, { color: getResultColor(item.result) }]}>
-              {item.result.toUpperCase()}
+              {getResultLabel(item.result)}
             </Text>
             {item.score !== null && item.score !== undefined && (
               <Text style={styles.scoreText}>Score: {item.score}/100</Text>
@@ -155,10 +161,10 @@ export const StudentExamsTab = ({ route }: any) => {
           </View>
         )}
 
-        {item.amount && (
+        {(item.amount !== null || item.price !== null) && (
           <View style={styles.detailRow}>
             <Ionicons name="cash-outline" size={16} color={colors.text.secondary} />
-            <Text style={styles.detailText}>€{item.amount.toFixed(2)}</Text>
+            <Text style={styles.detailText}>{formatAmount(item.amount ?? item.price)}</Text>
           </View>
         )}
       </View>
@@ -237,7 +243,7 @@ export const StudentExamsTab = ({ route }: any) => {
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.inputLabel}>Amount (€)</Text>
+            <Text style={styles.inputLabel}>Amount ({CURRENCY_SYMBOL})</Text>
             <TextInput
               style={styles.input}
               placeholder="0.00"
@@ -249,7 +255,7 @@ export const StudentExamsTab = ({ route }: any) => {
 
             <Text style={styles.inputLabel}>Payment Method</Text>
             <View style={styles.methodButtons}>
-              {['cash', 'card', 'bank_transfer', 'online'].map((method) => (
+              {PAYMENT_METHODS.map((method) => (
                 <TouchableOpacity
                   key={method}
                   style={[
@@ -265,7 +271,7 @@ export const StudentExamsTab = ({ route }: any) => {
                       paymentMethod === method && styles.methodTextActive,
                     ]}
                   >
-                    {method.replace('_', ' ').toUpperCase()}
+                    {PAYMENT_METHOD_LABELS[method]}
                   </Text>
                 </TouchableOpacity>
               ))}

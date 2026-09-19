@@ -1,90 +1,40 @@
 /**
- * Student Self-Profile Service - Students viewing their own data
+ * Student Self-Profile Service — §6 du contrat, vue élève (P8–P11) : l'élève du jeton,
+ * dans l'école `:schoolId` (son inscription active, D-22).
  */
 
 import { apiClient } from './ApiClient';
 import { API_CONFIG, replaceUrlParams } from '../../config/api.config';
-
-export interface MyProfile {
-  id: string;
-  userId: string;
-  name: string;
-  email: string;
-  phone?: string;
-  address?: string;
-  dateOfBirth?: Date;
-  licenseNumber?: string;
-  profilePhotoUrl?: string;
-  enrollmentDate?: Date;
-  emergencyContact?: string;
-  emergencyPhone?: string;
-  totalLessons: number;
-  completedLessons: number;
-  totalExams: number;
-  passedExams: number;
-}
-
-export interface MyLessonHistory {
-  id: string;
-  lessonId: string;
-  lessonType: string;
-  dateTime: Date;
-  duration: number;
-  instructorName: string;
-  attended?: boolean;
-  feedback?: string;
-  rating?: number;
-  paid: boolean;
-  amount?: number;
-  paymentDate?: Date;
-}
-
-export interface MyExamHistory {
-  id: string;
-  examId: string;
-  examType: string;
-  dateTime: Date;
-  result?: string;
-  score?: number;
-  notes?: string;
-  paid: boolean;
-  amount?: number;
-  paymentDate?: Date;
-}
-
-export interface MyFinancialSummary {
-  totalRevenue: number;
-  totalPending: number;
-  totalDue: number;
-  lessonsRevenue: number;
-  examsRevenue: number;
-  lessonsPending: number;
-  examsPending: number;
-  lastPaymentDate?: Date;
-}
+import { ExamHistory, FinancialSummary, LessonHistory, MyProfile } from '../../models/Profile';
 
 class StudentSelfProfileService {
+  /** P8. */
   async getMyProfile(schoolId: string): Promise<MyProfile> {
     const url = replaceUrlParams(API_CONFIG.ENDPOINTS.STUDENT_PROFILES.MY_PROFILE, { schoolId });
-    const response = await apiClient.get(url);
+    const response = await apiClient.get<MyProfile>(url);
     return response.data;
   }
 
-  async getMyLessons(schoolId: string): Promise<MyLessonHistory[]> {
+  /** P9. */
+  async getMyLessons(schoolId: string): Promise<LessonHistory[]> {
     const url = replaceUrlParams(API_CONFIG.ENDPOINTS.STUDENT_PROFILES.MY_LESSONS, { schoolId });
-    const response = await apiClient.get(url);
+    const response = await apiClient.get<LessonHistory[]>(url);
     return response.data;
   }
 
-  async getMyExams(schoolId: string): Promise<MyExamHistory[]> {
+  /** P10. */
+  async getMyExams(schoolId: string): Promise<ExamHistory[]> {
     const url = replaceUrlParams(API_CONFIG.ENDPOINTS.STUDENT_PROFILES.MY_EXAMS, { schoolId });
-    const response = await apiClient.get(url);
+    const response = await apiClient.get<ExamHistory[]>(url);
     return response.data;
   }
 
-  async getMyFinancialSummary(schoolId: string): Promise<MyFinancialSummary> {
-    const url = replaceUrlParams(API_CONFIG.ENDPOINTS.STUDENT_PROFILES.MY_FINANCIAL, { schoolId });
-    const response = await apiClient.get(url);
+  /** P11. */
+  async getMyFinancialSummary(schoolId: string): Promise<FinancialSummary> {
+    const url = replaceUrlParams(API_CONFIG.ENDPOINTS.STUDENT_PROFILES.MY_FINANCIAL, {
+      schoolId,
+    });
+    const response = await apiClient.get<FinancialSummary>(url);
     return response.data;
   }
 }

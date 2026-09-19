@@ -18,7 +18,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { lessonService } from '../../services/api/LessonService';
-import { Lesson } from '../../models/Lesson';
+import { getApiErrorMessage } from '../../services/api/ApiError';
+import { LESSON_TYPE_LABELS, Lesson } from '../../models/Lesson';
+import { formatDateTime, formatPersonName } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
 
 export const LessonRequestsScreen = ({ navigation }: any) => {
@@ -43,9 +45,8 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
       const data = await lessonService.getMyLessons();
       // Filter for pending requests (status could be 'pending' if you add that status)
       setRequests(data);
-    } catch (error: any) {
-      Alert.alert('Error', 'Failed to load lesson requests');
-      console.error('Load requests error:', error);
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load lesson requests'));
     } finally {
       setLoading(false);
     }
@@ -77,8 +78,8 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
       // API call to approve lesson
       Alert.alert('Success', 'Lesson approved successfully');
       loadRequests();
-    } catch (error: any) {
-      Alert.alert('Error', 'Failed to approve lesson');
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to approve lesson'));
     } finally {
       setProcessing(false);
     }
@@ -105,16 +106,14 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
       setRejectionReason('');
       setSelectedRequest(null);
       loadRequests();
-    } catch (error: any) {
-      Alert.alert('Error', 'Failed to reject lesson');
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to reject lesson'));
     } finally {
       setProcessing(false);
     }
   };
 
   const renderRequestCard = ({ item }: { item: Lesson }) => {
-    const lessonDate = new Date(item.startTime);
-
     return (
       <View style={styles.requestCard}>
         <View style={styles.cardHeader}>
@@ -123,21 +122,16 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
           </View>
 
           <View style={styles.requestInfo}>
-            <Text style={styles.studentName}>Student Name</Text>
+            <Text style={styles.studentName}>{formatPersonName(item.student, 'Student')}</Text>
             <View style={styles.detailRow}>
               <Ionicons name="calendar-outline" size={16} color={colors.text.tertiary} />
               <Text style={styles.detailText}>
-                {lessonDate.toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
+                Requested: {formatDateTime(item.requestedDate ?? item.scheduledDate)}
               </Text>
             </View>
             <View style={styles.detailRow}>
               <Ionicons name="car-outline" size={16} color={colors.text.tertiary} />
-              <Text style={styles.detailText}>{item.type}</Text>
+              <Text style={styles.detailText}>{LESSON_TYPE_LABELS[item.type] ?? item.type}</Text>
             </View>
           </View>
         </View>

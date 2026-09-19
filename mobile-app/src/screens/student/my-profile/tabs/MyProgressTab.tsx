@@ -13,14 +13,17 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { studentSelfProfileService, MyProfile, MyFinancialSummary } from '../../../../services/api/StudentSelfProfileService';
+import { studentSelfProfileService } from '../../../../services/api/StudentSelfProfileService';
+import { getApiErrorMessage } from '../../../../services/api/ApiError';
+import { FinancialSummary, MyProfile } from '../../../../models/Profile';
+import { formatDate, formatPersonName } from '../../../../utils/format';
 import { colors, typography, spacing } from '../../../../theme';
 
 export const MyProgressTab = ({ route }: any) => {
   const { schoolId } = route.params;
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<MyProfile | null>(null);
-  const [financial, setFinancial] = useState<MyFinancialSummary | null>(null);
+  const [financial, setFinancial] = useState<FinancialSummary | null>(null);
 
   useEffect(() => {
     loadData();
@@ -35,8 +38,8 @@ export const MyProgressTab = ({ route }: any) => {
       ]);
       setProfile(profileData);
       setFinancial(financialData);
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to load profile data');
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load profile data'));
     } finally {
       setLoading(false);
     }
@@ -76,17 +79,14 @@ export const MyProgressTab = ({ route }: any) => {
           <Text style={styles.cardTitle}>Personal Information</Text>
         </View>
         <View style={styles.cardContent}>
-          <InfoRow label="Name" value={profile.name} />
+          <InfoRow label="Name" value={formatPersonName(profile)} />
           <InfoRow label="Email" value={profile.email} />
           {profile.phone && <InfoRow label="Phone" value={profile.phone} />}
           {profile.licenseNumber && (
             <InfoRow label="License Number" value={profile.licenseNumber} />
           )}
           {profile.enrollmentDate && (
-            <InfoRow
-              label="Enrolled Since"
-              value={new Date(profile.enrollmentDate).toLocaleDateString()}
-            />
+            <InfoRow label="Enrolled Since" value={formatDate(profile.enrollmentDate)} />
           )}
         </View>
       </View>

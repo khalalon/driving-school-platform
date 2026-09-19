@@ -1,6 +1,9 @@
 /**
  * My Exams Screen - Minimal & Elegant
- * Single Responsibility: Display student's exams and results
+ * Single Responsibility: Display student's exam requests, schedule and results (X1)
+ *
+ * Un examen est une demande (`pending`) que l'école planifie (`scheduled`, date et centre),
+ * refuse (`rejected`) ou clôt avec un résultat (`completed`) ; l'élève voit l'état de paiement.
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -16,10 +19,27 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { examService } from '../../services/api/ExamService';
-import { Exam, ExamStatus } from '../../models/Exam';
+import { getApiErrorMessage } from '../../services/api/ApiError';
+import {
+  EXAM_RESULT_LABELS,
+  EXAM_STATUS_LABELS,
+  EXAM_TYPE_LABELS,
+  Exam,
+  ExamResult,
+  ExamStatus,
+  ExamType,
+} from '../../models/Exam';
+import { formatAmount, formatDate, formatTime } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
 
-type FilterType = 'pending' | 'scheduled' | 'completed';
+type FilterType = 'pending' | 'scheduled' | 'completed' | 'closed';
+
+const FILTERS: { key: FilterType; label: string; statuses: ExamStatus[] }[] = [
+  { key: 'pending', label: 'Pending', statuses: [ExamStatus.PENDING] },
+  { key: 'scheduled', label: 'Scheduled', statuses: [ExamStatus.SCHEDULED] },
+  { key: 'completed', label: 'Completed', statuses: [ExamStatus.COMPLETED] },
+  { key: 'closed', label: 'Closed', statuses: [ExamStatus.CANCELLED, ExamStatus.REJECTED] },
+];
 
 export const MyExamsScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(true);
@@ -36,9 +56,8 @@ export const MyExamsScreen = ({ navigation }: any) => {
       setLoading(true);
       const data = await examService.getMyExams();
       setExams(data);
-    } catch (error: any) {
-      Alert.alert('Error', 'Failed to load exams');
-      console.error('Load exams error:', error);
+    } catch (error) {
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load exams'));
     } finally {
       setLoading(false);
     }
@@ -50,116 +69,58 @@ export const MyExamsScreen = ({ navigation }: any) => {
     setRefreshing(false);
   }, []);
 
-  const getFilteredExams = () => {
-    return exams.filter((exam) => {
-      switch (filter) {
-        case 'pending':
-          return exam.status === ExamStatus.PENDING;
-        case 'scheduled':
-          return exam.status === ExamStatus.SCHEDULED;
-        case 'completed':
-          return exam.status === ExamStatus.COMPLETED;
-        default:
-          return true;
-      }
-    });
-  };
+  const activeFilter = FILTERS.find((f) => f.key === filter) ?? FILTERS[0];
+  const filteredExams = exams.filter((exam) => activeFilter.statuses.includes(exam.status));
 
   const getStatusConfig = (status: ExamStatus) => {
     switch (status) {
       case ExamStatus.PENDING:
-        return {
-          icon: 'time-outline',
-          color: colors.warning[500],
-          bg: colors.warning[50],
-          text: 'Pending Review',
-        };
+        return { icon: 'time-outline', color: colors.warning[500], bg: colors.warning[50] };
       case ExamStatus.SCHEDULED:
-        return {
-          icon: 'calendar-outline',
-          color: colors.primary[600],
-          bg: colors.primary[50],
-          text: 'Scheduled',
-        };
+        return { icon: 'calendar-outline', color: colors.primary[600], bg: colors.primary[50] };
       case ExamStatus.COMPLETED:
-        return {
-          icon: 'checkmark-circle',
-          color: colors.success[500],
-          bg: colors.success[50],
-          text: 'Completed',
-        };
+        return { icon: 'checkmark-circle', color: colors.success[500], bg: colors.success[50] };
       case ExamStatus.CANCELLED:
-        return {
-          icon: 'close-circle',
-          color: colors.error[500],
-          bg: colors.error[50],
-          text: 'Cancelled',
-        };
+      case ExamStatus.REJECTED:
+        return { icon: 'close-circle', color: colors.error[500], bg: colors.error[50] };
     }
   };
 
-  const getResultConfig = (result?: string) => {
-    if (!result) return null;
-    if (result === 'PASS') {
-      return {
-        icon: 'checkmark-circle',
-        color: colors.success[500],
-        bg: colors.success[50],
-        text: 'Passed',
-      };
+  const getResultConfig = (result: ExamResult) => {
+    switch (result) {
+      case ExamResult.PASSED:
+        return { icon: 'checkmark-circle', color: colors.success[500], bg: colors.success[50] };
+      case ExamResult.FAILED:
+        return { icon: 'close-circle', color: colors.error[500], bg: colors.error[50] };
+      default:
+        return null;
     }
-    return {
-      icon: 'close-circle',
-      color: colors.error[500],
-      bg: colors.error[50],
-      text: 'Failed',
-    };
-  };
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'Date TBD';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
-
-  const formatTime = (dateString?: string) => {
-    if (!dateString) return 'Time TBD';
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
   };
 
   const renderExamCard = ({ item }: { item: Exam }) => {
     const statusConfig = getStatusConfig(item.status);
     const resultConfig = getResultConfig(item.result);
+    const rejected = item.status === ExamStatus.REJECTED;
 
     return (
       <View style={styles.examCard}>
         <View style={styles.cardHeader}>
           <View style={styles.iconContainer}>
             <Ionicons
-              name="clipboard-outline"
+              name={item.type === ExamType.THEORY ? 'book-outline' : 'car-sport-outline'}
               size={28}
-              color={
-                item.type === 'THEORY' ? colors.primary[600] : colors.warning[600]
-              }
+              color={item.type === ExamType.THEORY ? colors.primary[600] : colors.warning[600]}
             />
           </View>
 
           <View style={styles.examInfo}>
-            <Text style={styles.examType}>{item.type} Exam</Text>
-            
+            <Text style={styles.examType}>{EXAM_TYPE_LABELS[item.type] ?? item.type} Exam</Text>
+
             {/* Status Badge */}
             <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
               <Ionicons name={statusConfig.icon as any} size={14} color={statusConfig.color} />
               <Text style={[styles.statusText, { color: statusConfig.color }]}>
-                {statusConfig.text}
+                {EXAM_STATUS_LABELS[item.status]}
               </Text>
             </View>
           </View>
@@ -168,7 +129,7 @@ export const MyExamsScreen = ({ navigation }: any) => {
             <View style={[styles.resultBadge, { backgroundColor: resultConfig.bg }]}>
               <Ionicons name={resultConfig.icon as any} size={20} color={resultConfig.color} />
               <Text style={[styles.resultText, { color: resultConfig.color }]}>
-                {resultConfig.text}
+                {EXAM_RESULT_LABELS[item.result]}
               </Text>
             </View>
           )}
@@ -188,9 +149,7 @@ export const MyExamsScreen = ({ navigation }: any) => {
                 <Text style={styles.messageText}>{item.message}</Text>
               </View>
             )}
-            <Text style={styles.helperText}>
-              Waiting for instructor to review and schedule
-            </Text>
+            <Text style={styles.helperText}>Waiting for the school to review and schedule</Text>
           </View>
         )}
 
@@ -221,8 +180,8 @@ export const MyExamsScreen = ({ navigation }: any) => {
               <Ionicons name="calendar-outline" size={16} color={colors.text.tertiary} />
               <Text style={styles.dateText}>{formatDate(item.dateTime)}</Text>
             </View>
-            
-            {item.score !== undefined && (
+
+            {item.score !== null && (
               <View style={styles.scoreBox}>
                 <View style={styles.scoreHeader}>
                   <Text style={styles.scoreLabel}>Score</Text>
@@ -240,13 +199,28 @@ export const MyExamsScreen = ({ navigation }: any) => {
           </View>
         )}
 
-        {/* Cancelled State - Show Reason */}
-        {item.status === ExamStatus.CANCELLED && item.rejectionReason && (
+        {/* Rejected State - Show Reason */}
+        {rejected && item.rejectionReason && (
           <View style={styles.rejectionBox}>
             <Ionicons name="information-circle-outline" size={20} color={colors.error[600]} />
             <View style={styles.rejectionContent}>
               <Text style={styles.rejectionLabel}>Reason:</Text>
               <Text style={styles.rejectionText}>{item.rejectionReason}</Text>
+            </View>
+          </View>
+        )}
+
+        {/* État de paiement (D-32) : planifié ou passé */}
+        {(item.status === ExamStatus.SCHEDULED || item.status === ExamStatus.COMPLETED) && (
+          <View style={styles.paymentRow}>
+            <Ionicons name="cash-outline" size={16} color={colors.text.secondary} />
+            <Text style={styles.paymentText}>
+              {item.amount !== null ? formatAmount(item.amount) : 'Exam fee'}
+            </Text>
+            <View style={[styles.paidBadge, item.paid ? styles.paidBadgeOn : styles.paidBadgeOff]}>
+              <Text style={[styles.paidText, item.paid ? styles.paidTextOn : styles.paidTextOff]}>
+                {item.paid ? 'Paid' : 'Unpaid'}
+              </Text>
             </View>
           </View>
         )}
@@ -259,13 +233,15 @@ export const MyExamsScreen = ({ navigation }: any) => {
       <View style={styles.emptyIconContainer}>
         <Ionicons name="trophy-outline" size={64} color={colors.neutral[300]} />
       </View>
-      <Text style={styles.emptyTitle}>No {filter} exams</Text>
+      <Text style={styles.emptyTitle}>No {activeFilter.label.toLowerCase()} exams</Text>
       <Text style={styles.emptyText}>
         {filter === 'pending'
           ? 'Request your first exam to get started'
           : filter === 'scheduled'
-          ? 'No upcoming exams scheduled yet'
-          : 'Your completed exams will appear here'}
+            ? 'No upcoming exams scheduled yet'
+            : filter === 'completed'
+              ? 'Your completed exams will appear here'
+              : 'Rejected or cancelled exams will appear here'}
       </Text>
       {filter === 'pending' && (
         <TouchableOpacity
@@ -279,8 +255,6 @@ export const MyExamsScreen = ({ navigation }: any) => {
       )}
     </View>
   );
-
-  const filteredExams = getFilteredExams();
 
   if (loading) {
     return (
@@ -306,15 +280,17 @@ export const MyExamsScreen = ({ navigation }: any) => {
 
       {/* Filter Tabs */}
       <View style={styles.filterContainer}>
-        {(['pending', 'scheduled', 'completed'] as FilterType[]).map((tab) => (
+        {FILTERS.map((tab) => (
           <TouchableOpacity
-            key={tab}
-            style={[styles.filterTab, filter === tab && styles.filterTabActive]}
-            onPress={() => setFilter(tab)}
+            key={tab.key}
+            style={[styles.filterTab, filter === tab.key && styles.filterTabActive]}
+            onPress={() => setFilter(tab.key)}
             activeOpacity={0.7}
           >
-            <Text style={[styles.filterTabText, filter === tab && styles.filterTabTextActive]}>
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            <Text
+              style={[styles.filterTabText, filter === tab.key && styles.filterTabTextActive]}
+            >
+              {tab.label}
             </Text>
           </TouchableOpacity>
         ))}
@@ -383,6 +359,7 @@ const styles = StyleSheet.create({
   filterTab: {
     flex: 1,
     paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
     borderRadius: 8,
     alignItems: 'center',
     backgroundColor: colors.background.tertiary,
@@ -391,7 +368,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary[600],
   },
   filterTabText: {
-    fontSize: typography.size.sm,
+    fontSize: typography.size.xs,
     fontWeight: typography.weight.medium,
     color: colors.text.secondary,
   },
@@ -586,6 +563,38 @@ const styles = StyleSheet.create({
     fontSize: typography.size.sm,
     color: colors.error[600],
     lineHeight: typography.size.sm * typography.lineHeight.normal,
+  },
+  paymentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  paymentText: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
+    color: colors.text.secondary,
+  },
+  paidBadge: {
+    marginLeft: 'auto',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  paidBadgeOn: {
+    backgroundColor: colors.success[50],
+  },
+  paidBadgeOff: {
+    backgroundColor: colors.warning[50],
+  },
+  paidText: {
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.semibold,
+  },
+  paidTextOn: {
+    color: colors.success[600],
+  },
+  paidTextOff: {
+    color: colors.warning[600],
   },
   emptyContainer: {
     flex: 1,
