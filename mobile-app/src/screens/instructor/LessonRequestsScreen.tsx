@@ -5,6 +5,8 @@
  * File partagée (D-32) : toutes les demandes `pending` de l'école ; l'instructeur qui approuve
  * devient l'instructeur de la leçon, en fixant la date et la durée. Le prix vient de la grille
  * de l'école (S4) ; il n'est saisi que si l'école n'a pas de tarif pour ce type (D-30).
+ * Approbation multiple (D-34) : les demandes de code se cochent et se planifient d'un coup pour
+ * un même créneau — un seul formulaire, puis un appel L5 par demande, avec récapitulatif.
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -28,7 +30,7 @@ import { useAuth } from '../../context/AuthContext';
 import { lessonService } from '../../services/api/LessonService';
 import { schoolService } from '../../services/api/SchoolService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
-import { LESSON_TYPE_LABELS, Lesson, LessonStatus } from '../../models/Lesson';
+import { LESSON_TYPE_LABELS, Lesson, LessonStatus, LessonType } from '../../models/Lesson';
 import { SchoolInstructor, SchoolPricing } from '../../models/School';
 import { CURRENCY_SYMBOL, formatAmount, formatDateTime, formatPersonName } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
@@ -60,9 +62,10 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
   const [instructors, setInstructors] = useState<SchoolInstructor[]>([]);
   const [pricing, setPricing] = useState<SchoolPricing[] | null>(null);
 
-  // Approve modal
+  // Approve modal : une demande, ou plusieurs demandes de code pour le même créneau (D-34)
   const [showApproveModal, setShowApproveModal] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<Lesson | null>(null);
+  const [approveTargets, setApproveTargets] = useState<Lesson[]>([]);
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [scheduledDate, setScheduledDate] = useState<Date>(tomorrowMorning);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -72,6 +75,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
 
   // Reject modal
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<Lesson | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
 
   useEffect(() => {
@@ -88,6 +92,8 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
         scope: 'school',
       });
       setRequests(data);
+      // Une demande traitée entre-temps ne reste pas cochée
+      setCheckedIds((previous) => new Set(data.filter((l) => previous.has(l.id)).map((l) => l.id)));
     } catch (error) {
       Alert.alert('Error', getApiErrorMessage(error, 'Failed to load lesson requests'));
     } finally {
@@ -122,15 +128,34 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
     return instructor ? formatPersonName(instructor, 'an instructor') : 'an instructor';
   };
 
-  const pricingFor = (request: Lesson | null): SchoolPricing | undefined =>
-    request && pricing ? pricing.find((p) => p.lessonType === request.type) : undefined;
+  const pricingFor = (type: LessonType | undefined): SchoolPricing | undefined =>
+    type && pricing ? pricing.find((p) => p.lessonType === type) : undefined;
 
-  // ----- Approve (L5) -----
+  // ----- Sélection multiple (D-34 : demandes de code seulement) -----
 
-  const openApprove = (request: Lesson) => {
-    const rate = pricingFor(request);
-    setSelectedRequest(request);
-    setScheduledDate(request.requestedDate ? new Date(request.requestedDate) : tomorrowMorning());
+  const toggleChecked = (request: Lesson) => {
+    setCheckedIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(request.id)) next.delete(request.id);
+      else next.add(request.id);
+      return next;
+    });
+  };
+
+  const checkedRequests = requests.filter((r) => checkedIds.has(r.id));
+
+  // ----- Approve (L5, une demande ou un lot) -----
+
+  const openApprove = (targets: Lesson[]) => {
+    if (targets.length === 0) return;
+    const rate = pricingFor(targets[0].type);
+    setApproveTargets(targets);
+    // Une seule demande : sa date souhaitée ; un lot : un créneau commun à choisir
+    setScheduledDate(
+      targets.length === 1 && targets[0].requestedDate
+        ? new Date(targets[0].requestedDate)
+        : tomorrowMorning()
+    );
     setDuration(String(rate?.duration ?? DEFAULT_DURATION_MINUTES));
     setPrice('');
     setAdminNotes('');
@@ -139,7 +164,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
 
   const closeApprove = () => {
     setShowApproveModal(false);
-    setSelectedRequest(null);
+    setApproveTargets([]);
   };
 
   const handleDateChange = (_event: unknown, selected?: Date) => {
@@ -161,8 +186,9 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
   };
 
   const confirmApprove = async () => {
-    if (!selectedRequest) return;
-    const rate = pricingFor(selectedRequest);
+    if (approveTargets.length === 0) return;
+    const targetType = approveTargets[0].type;
+    const rate = pricingFor(targetType);
     const priceRequired = pricing !== null && !rate;
 
     if (scheduledDate.getTime() <= Date.now()) {
@@ -182,21 +208,42 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
     if (priceRequired && priceValue === undefined) {
       Alert.alert(
         'Price Required',
-        `The school has no rate for ${LESSON_TYPE_LABELS[selectedRequest.type]} lessons: please enter the price.`
+        `The school has no rate for ${LESSON_TYPE_LABELS[targetType]} lessons: please enter the price.`
       );
       return;
     }
 
+    const data = {
+      scheduledDate: scheduledDate.toISOString(),
+      durationMinutes,
+      price: priceValue,
+      adminNotes: adminNotes.trim() || undefined,
+    };
+
     try {
       setProcessing(true);
-      // L5 : l'appelant devient l'instructeur ; prix de la grille sinon celui saisi (D-30)
-      await lessonService.approveLesson(selectedRequest.id, {
-        scheduledDate: scheduledDate.toISOString(),
-        durationMinutes,
-        price: priceValue,
-        adminNotes: adminNotes.trim() || undefined,
-      });
-      Alert.alert('Success', 'Lesson scheduled: you are now its instructor');
+      if (approveTargets.length === 1) {
+        // L5 : l'appelant devient l'instructeur ; prix de la grille sinon celui saisi (D-30)
+        await lessonService.approveLesson(approveTargets[0].id, data);
+        Alert.alert('Success', 'Lesson scheduled: you are now its instructor');
+      } else {
+        // D-34 : un appel L5 par demande cochée, en séquence, puis récapitulatif
+        const result = await lessonService.approveLessons(
+          approveTargets.map((t) => t.id),
+          data
+        );
+        const failures = result.failed.map(({ lessonId, error }) => {
+          const request = approveTargets.find((t) => t.id === lessonId);
+          const who = request ? formatPersonName(request.student, 'Student') : lessonId;
+          return `• ${who}: ${getApiErrorMessage(error, 'request failed')}`;
+        });
+        Alert.alert(
+          failures.length === 0 ? 'Success' : 'Partially scheduled',
+          `${result.succeeded.length} of ${approveTargets.length} lesson(s) scheduled` +
+            (failures.length > 0 ? `\n\nNot scheduled:\n${failures.join('\n')}` : '')
+        );
+        setCheckedIds(new Set());
+      }
       closeApprove();
       loadRequests();
     } catch (error) {
@@ -253,14 +300,33 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
 
   const renderRequestCard = ({ item }: { item: Lesson }) => {
     const preferred = preferredInstructorLabel(item);
-    const rate = pricingFor(item);
+    const rate = pricingFor(item.type);
+    const selectable = item.type === LessonType.CODE;
+    const checked = checkedIds.has(item.id);
 
     return (
-      <View style={styles.requestCard}>
+      <View style={[styles.requestCard, checked && styles.requestCardChecked]}>
         <View style={styles.cardHeader}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="person-outline" size={28} color={colors.primary[600]} />
-          </View>
+          {selectable ? (
+            <TouchableOpacity
+              style={styles.checkbox}
+              onPress={() => toggleChecked(item)}
+              activeOpacity={0.7}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked }}
+              accessibilityLabel="Select this code request for group scheduling"
+            >
+              <Ionicons
+                name={checked ? 'checkbox' : 'square-outline'}
+                size={28}
+                color={checked ? colors.primary[600] : colors.neutral[400]}
+              />
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.iconContainer}>
+              <Ionicons name="person-outline" size={28} color={colors.primary[600]} />
+            </View>
+          )}
 
           <View style={styles.requestInfo}>
             <Text style={styles.studentName}>{formatPersonName(item.student, 'Student')}</Text>
@@ -303,7 +369,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionButton, styles.approveButton]}
-            onPress={() => openApprove(item)}
+            onPress={() => openApprove([item])}
             activeOpacity={0.7}
             disabled={processing}
           >
@@ -325,8 +391,10 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
     </View>
   );
 
-  const selectedRate = pricingFor(selectedRequest);
-  const priceRequired = pricing !== null && !selectedRate;
+  const targetType = approveTargets[0]?.type;
+  const selectedRate = pricingFor(targetType);
+  const priceRequired = pricing !== null && targetType !== undefined && !selectedRate;
+  const isBatch = approveTargets.length > 1;
 
   if (loading) {
     return (
@@ -367,6 +435,31 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
         showsVerticalScrollIndicator={false}
       />
 
+      {/* Barre d'approbation multiple (D-34) */}
+      {checkedRequests.length > 0 && (
+        <View style={styles.batchBar}>
+          <Text style={styles.batchText}>
+            {checkedRequests.length} code request{checkedRequests.length > 1 ? 's' : ''} selected
+          </Text>
+          <TouchableOpacity
+            style={styles.batchClear}
+            onPress={() => setCheckedIds(new Set())}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.batchClearText}>Clear</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.batchButton}
+            onPress={() => openApprove(checkedRequests)}
+            activeOpacity={0.8}
+            disabled={processing}
+          >
+            <Ionicons name="calendar-outline" size={18} color={colors.text.inverse} />
+            <Text style={styles.batchButtonText}>Schedule together</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Approve Modal (L5) */}
       <Modal
         visible={showApproveModal}
@@ -378,19 +471,25 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
           <View style={styles.modalContent}>
             <ScrollView showsVerticalScrollIndicator={false}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Schedule Lesson</Text>
+                <Text style={styles.modalTitle}>
+                  {isBatch ? `Schedule ${approveTargets.length} Lessons` : 'Schedule Lesson'}
+                </Text>
                 <TouchableOpacity onPress={closeApprove}>
                   <Ionicons name="close" size={24} color={colors.text.secondary} />
                 </TouchableOpacity>
               </View>
 
               <Text style={styles.modalSubtitle}>
-                {selectedRequest
-                  ? `${LESSON_TYPE_LABELS[selectedRequest.type]} lesson for ${formatPersonName(
-                      selectedRequest.student,
-                      'the student'
-                    )} — you will be the instructor`
-                  : ''}
+                {isBatch
+                  ? `One ${LESSON_TYPE_LABELS[LessonType.CODE]} lesson per student, same slot — ` +
+                    `you will be the instructor of each: ` +
+                    approveTargets.map((t) => formatPersonName(t.student, 'Student')).join(', ')
+                  : approveTargets[0]
+                    ? `${LESSON_TYPE_LABELS[approveTargets[0].type]} lesson for ${formatPersonName(
+                        approveTargets[0].student,
+                        'the student'
+                      )} — you will be the instructor`
+                    : ''}
               </Text>
 
               <View style={styles.section}>
@@ -508,7 +607,9 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
                   {processing ? (
                     <ActivityIndicator size="small" color={colors.text.inverse} />
                   ) : (
-                    <Text style={styles.modalApproveText}>Confirm</Text>
+                    <Text style={styles.modalApproveText}>
+                      {isBatch ? `Schedule ${approveTargets.length}` : 'Confirm'}
+                    </Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -627,6 +728,56 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.md,
     ...shadows.sm,
+  },
+  requestCardChecked: {
+    borderWidth: 1,
+    borderColor: colors.primary[600],
+  },
+  checkbox: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.primary[50],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  batchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.background.primary,
+    borderTopWidth: 1,
+    borderTopColor: colors.border.default,
+  },
+  batchText: {
+    flex: 1,
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.medium,
+    color: colors.text.primary,
+  },
+  batchClear: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  batchClearText: {
+    fontSize: typography.size.sm,
+    color: colors.text.secondary,
+  },
+  batchButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.sm,
+    borderRadius: 8,
+    backgroundColor: colors.primary[600],
+  },
+  batchButtonText: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
+    color: colors.text.inverse,
   },
   cardHeader: {
     flexDirection: 'row',

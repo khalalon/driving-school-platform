@@ -7,6 +7,7 @@ import { apiClient } from './ApiClient';
 import { API_CONFIG, replaceUrlParams } from '../../config/api.config';
 import {
   ApproveLessonData,
+  BatchApprovalResult,
   BookLessonForStudentData,
   Lesson,
   LessonFilters,
@@ -57,6 +58,23 @@ export class LessonService {
     const url = replaceUrlParams(API_CONFIG.ENDPOINTS.LESSONS.APPROVE, { id: lessonId });
     const response = await apiClient.put<Lesson>(url, data);
     return response.data;
+  }
+
+  /**
+   * Approbation multiple (D-34) : « approuver ces douze demandes de code pour mardi 9 h » = un
+   * appel L5 par demande, en séquence, avec les mêmes date, durée, prix et notes ; aucune route
+   * dédiée. Chaque échec est rapporté sans interrompre les autres.
+   */
+  async approveLessons(lessonIds: string[], data: ApproveLessonData): Promise<BatchApprovalResult> {
+    const result: BatchApprovalResult = { succeeded: [], failed: [] };
+    for (const lessonId of lessonIds) {
+      try {
+        result.succeeded.push(await this.approveLesson(lessonId, data));
+      } catch (error) {
+        result.failed.push({ lessonId, error });
+      }
+    }
+    return result;
   }
 
   /** L6 : motif de 10 à 500 caractères (D-29). */

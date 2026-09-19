@@ -468,7 +468,7 @@ cd mobile-app && grep -rq "navigate('StudentProfile'" src/screens/instructor && 
 **Hors périmètre** : —
 **Dépend de** : Q-17 (bouton « Annuler » sur une leçon payée : masqué ou non, selon la réponse). *Livré le 19/09 sans trancher Q-17 : une leçon payée garde le bouton comme les autres (comportement actuel du serveur, `canStudentCancel` dans `src/models/Lesson.ts`) — à ajuster en une ligne quand Q-17 sera tranchée.*
 
-### - [ ] 6.7 — Approbation multiple des demandes de code (ergonomie, D-34)
+### - [x] 6.7 — Approbation multiple des demandes de code (ergonomie, D-34)
 **Objectif** : sur `LessonRequestsScreen`, l'instructeur coche plusieurs demandes `pending` de type `CODE` et les approuve d'un coup pour un même créneau (« approuver ces 12 demandes pour mardi 9 h ») : un seul formulaire (date, heure, durée, prix si nécessaire), puis **un appel L5 par demande**, en séquence, avec récapitulatif des succès/échecs. Aucun changement de modèle de données ni de route.
 **Fichiers** : `src/screens/instructor/LessonRequestsScreen.tsx`, `src/services/api/LessonService.ts` (`approveLessons(ids, data)` = boucle sur `approveLesson`) + test.
 **Critère de validation** :

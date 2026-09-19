@@ -116,6 +116,15 @@ export interface ApproveLessonData {
   adminNotes?: string;
 }
 
+/**
+ * Approbation multiple (D-34, 6.7) : un appel L5 par demande, en séquence ; les échecs
+ * (409 déjà traitée, 400 prix requis…) n'arrêtent pas les suivantes.
+ */
+export interface BatchApprovalResult {
+  succeeded: Lesson[];
+  failed: { lessonId: string; error: unknown }[];
+}
+
 /** L4 : leçon planifiée directement par l'instructeur pour un élève (`studentId` = users.id). */
 export interface BookLessonForStudentData {
   studentId: string;

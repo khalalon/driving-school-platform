@@ -102,6 +102,27 @@ describe('LessonService', () => {
     expect(result.status).toBe('scheduled');
   });
 
+  it('approveLessons (D-34) : un PUT …/approve par demande, en séquence, échecs collectés sans arrêt', async () => {
+    const ids = ['id-1', 'id-2', 'id-3'];
+    const conflict = { response: { status: 409, data: { error: 'CONFLICT', message: 'Déjà traitée' } } };
+    api.put
+      .mockResolvedValueOnce(respond({ id: 'id-1', status: LessonStatus.SCHEDULED }))
+      .mockRejectedValueOnce(conflict)
+      .mockResolvedValueOnce(respond({ id: 'id-3', status: LessonStatus.SCHEDULED }));
+    const data = { scheduledDate: '2026-09-22T09:00:00.000Z', durationMinutes: 60 };
+
+    const result = await lessonService.approveLessons(ids, data);
+
+    expect(api.put.mock.calls.map((c) => c[0])).toEqual([
+      '/api/lessons/id-1/approve',
+      '/api/lessons/id-2/approve',
+      '/api/lessons/id-3/approve',
+    ]);
+    expect(api.put.mock.calls.every((c) => c[1] === data)).toBe(true);
+    expect(result.succeeded.map((l) => l.id)).toEqual(['id-1', 'id-3']);
+    expect(result.failed).toEqual([{ lessonId: 'id-2', error: conflict }]);
+  });
+
   it('rejectLesson (L6) : PUT /api/lessons/:id/reject { reason }', async () => {
     api.put.mockResolvedValue(respond({ ...lesson, status: LessonStatus.REJECTED }));
 
