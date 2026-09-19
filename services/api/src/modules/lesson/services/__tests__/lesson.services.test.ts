@@ -40,9 +40,13 @@ const lesson: Lesson = {
   amount: null,
   paymentDate: null,
   paymentMethod: null,
+  creditApplied: 0,
   createdAt: past,
   updatedAt: past,
 };
+
+/** Règlement sans avoir : ce que L5 / L4 écrivent quand le crédit de l'élève est nul. */
+const noSettlement = { creditApplied: 0, paid: false, amount: null, paymentMethod: null };
 
 describe('LessonService (D-21 / D-32 : demande L2, liste L1, lecture scoped)', () => {
   let repository: jest.Mocked<ILessonRepository>;
@@ -50,6 +54,7 @@ describe('LessonService (D-21 / D-32 : demande L2, liste L1, lecture scoped)', (
   let instructors: { findById: jest.Mock; findByUserId: jest.Mock };
   let pricing: { getPricingByType: jest.Mock };
   let stats: { incrementLessonCount: jest.Mock };
+  let credits: { getCreditForUpdate: jest.Mock; addCredit: jest.Mock };
   let service: LessonService;
   // Client de transaction factice (L7 : leçon + compteur dans une même transaction).
   const tx: Queryable = { query: jest.fn() };
@@ -67,6 +72,7 @@ describe('LessonService (D-21 / D-32 : demande L2, liste L1, lecture scoped)', (
     };
     pricing = { getPricingByType: jest.fn() };
     stats = { incrementLessonCount: jest.fn() };
+    credits = { getCreditForUpdate: jest.fn().mockResolvedValue(0), addCredit: jest.fn() };
     const run = jest.fn((work: (client: Queryable) => Promise<unknown>) => work(tx));
     const transactions = { run } as unknown as jest.Mocked<ITransactionRunner>;
     students = { findByUserId: jest.fn() };
@@ -86,7 +92,8 @@ describe('LessonService (D-21 / D-32 : demande L2, liste L1, lecture scoped)', (
       stats,
       transactions,
       new SchoolGuard(instructors),
-      24
+      24,
+      credits
     );
   });
 
@@ -108,16 +115,22 @@ describe('LessonService (D-21 / D-32 : demande L2, liste L1, lecture scoped)', (
       });
 
       expect(students.findByUserId).toHaveBeenCalledWith('user-1');
-      expect(repository.createScheduled).toHaveBeenCalledWith({
-        schoolId: 'school-1',
-        studentRowId: 'student-row-1',
-        instructorId: 'instr-1',
-        type: LessonType.CODE,
-        scheduledDate: future,
-        durationMinutes: 60,
-        price: 20,
-        notes: 'Rattrapage',
-      });
+      expect(credits.getCreditForUpdate).toHaveBeenCalledWith('user-1', tx);
+      expect(credits.addCredit).not.toHaveBeenCalled();
+      expect(repository.createScheduled).toHaveBeenCalledWith(
+        {
+          schoolId: 'school-1',
+          studentRowId: 'student-row-1',
+          instructorId: 'instr-1',
+          type: LessonType.CODE,
+          scheduledDate: future,
+          durationMinutes: 60,
+          price: 20,
+          notes: 'Rattrapage',
+          settlement: noSettlement,
+        },
+        tx
+      );
     });
 
     it('403 NOT_ENROLLED si l’élève n’est pas inscrit, pas autorisé, ou dans une autre école', async () => {
@@ -161,6 +174,8 @@ describe('LessonService (D-21 / D-32 : demande L2, liste L1, lecture scoped)', (
       repository.markAttendance.mockResolvedValue({
         lesson: { ...scheduled, status: LessonStatus.COMPLETED, attended: true },
         studentRowId: 'student-row-1',
+        paidAmount: 0,
+        creditApplied: 0,
       });
 
       await expect(
@@ -184,6 +199,8 @@ describe('LessonService (D-21 / D-32 : demande L2, liste L1, lecture scoped)', (
       repository.markAttendance.mockResolvedValue({
         lesson: { ...scheduled, status: LessonStatus.COMPLETED, attended: false },
         studentRowId: 'student-row-1',
+        paidAmount: 0,
+        creditApplied: 0,
       });
 
       await expect(
@@ -229,13 +246,55 @@ describe('LessonService (D-21 / D-32 : demande L2, liste L1, lecture scoped)', (
       ).resolves.toMatchObject({ status: 'scheduled', price: 40 });
 
       expect(pricing.getPricingByType).toHaveBeenCalledWith('school-1', LessonType.PARC);
-      expect(repository.approve).toHaveBeenCalledWith('lesson-1', {
-        instructorId: 'instr-1',
-        scheduledDate: future,
-        durationMinutes: 60,
-        price: 40,
-        adminNotes: undefined,
-      });
+      expect(repository.approve).toHaveBeenCalledWith(
+        'lesson-1',
+        {
+          instructorId: 'instr-1',
+          scheduledDate: future,
+          durationMinutes: 60,
+          price: 40,
+          adminNotes: undefined,
+          settlement: noSettlement,
+        },
+        tx
+      );
+    });
+
+    it('avoir couvrant le prix (D-40) : leçon payée par credit, amount 0, crédit débité dans la transaction', async () => {
+      repository.findById.mockResolvedValue(lesson);
+      pricing.getPricingByType.mockResolvedValue({ price: 40 });
+      credits.getCreditForUpdate.mockResolvedValue(55);
+      repository.approve.mockResolvedValue({ ...lesson, status: LessonStatus.SCHEDULED });
+
+      await service.approveLesson(instructor, 'lesson-1', dto);
+
+      expect(credits.getCreditForUpdate).toHaveBeenCalledWith('user-1', tx);
+      expect(credits.addCredit).toHaveBeenCalledWith('user-1', -40, tx);
+      expect(repository.approve).toHaveBeenCalledWith(
+        'lesson-1',
+        expect.objectContaining({
+          settlement: { creditApplied: 40, paid: true, amount: 0, paymentMethod: 'credit' },
+        }),
+        tx
+      );
+    });
+
+    it('avoir partiel (D-40) : crédit épuisé, reste dû en amount, leçon non payée', async () => {
+      repository.findById.mockResolvedValue(lesson);
+      pricing.getPricingByType.mockResolvedValue({ price: 40 });
+      credits.getCreditForUpdate.mockResolvedValue(25.5);
+      repository.approve.mockResolvedValue({ ...lesson, status: LessonStatus.SCHEDULED });
+
+      await service.approveLesson(instructor, 'lesson-1', dto);
+
+      expect(credits.addCredit).toHaveBeenCalledWith('user-1', -25.5, tx);
+      expect(repository.approve).toHaveBeenCalledWith(
+        'lesson-1',
+        expect.objectContaining({
+          settlement: { creditApplied: 25.5, paid: false, amount: 14.5, paymentMethod: null },
+        }),
+        tx
+      );
     });
 
     it('sans tarif dans la grille : prix saisi ; sans prix non plus → 400 PRICE_REQUIRED', async () => {
@@ -252,7 +311,8 @@ describe('LessonService (D-21 / D-32 : demande L2, liste L1, lecture scoped)', (
       ).resolves.toMatchObject({ price: 55 });
       expect(repository.approve).toHaveBeenLastCalledWith(
         'lesson-1',
-        expect.objectContaining({ price: 55 })
+        expect.objectContaining({ price: 55 }),
+        tx
       );
 
       await expect(service.approveLesson(instructor, 'lesson-1', dto)).rejects.toMatchObject({
@@ -287,15 +347,18 @@ describe('LessonService (D-21 / D-32 : demande L2, liste L1, lecture scoped)', (
       expect(repository.approve).not.toHaveBeenCalled();
     });
 
-    it('course entre deux instructeurs : le second reçoit 409 CONFLICT', async () => {
+    it('course entre deux instructeurs : le second reçoit 409 CONFLICT (le débit d’avoir part avec le ROLLBACK)', async () => {
       repository.findById.mockResolvedValue(lesson);
       pricing.getPricingByType.mockResolvedValue({ price: 40 });
+      credits.getCreditForUpdate.mockResolvedValue(40);
       repository.approve.mockResolvedValue(null);
 
       await expect(service.approveLesson(instructor, 'lesson-1', dto)).rejects.toMatchObject({
         status: 409,
         code: 'CONFLICT',
       });
+      // Le débit a été demandé sur le client de la transaction : rejeté avec elle
+      expect(credits.addCredit).toHaveBeenCalledWith('user-1', -40, tx);
     });
   });
 
@@ -335,14 +398,21 @@ describe('LessonService (D-21 / D-32 : demande L2, liste L1, lecture scoped)', (
     const in48h = new Date(Date.now() + 48 * 3600 * 1000);
     const in2h = new Date(Date.now() + 2 * 3600 * 1000);
 
+    const cancelledRefund = (paidAmount = 0, creditApplied = 0) => ({
+      lesson: { ...lesson, status: LessonStatus.CANCELLED },
+      paidAmount,
+      creditApplied,
+    });
+
     it('élève : sa demande pending à tout moment, sa leçon planifiée à plus de 24 h', async () => {
       repository.findById.mockResolvedValue(lesson);
-      repository.cancel.mockResolvedValue({ ...lesson, status: LessonStatus.CANCELLED });
+      repository.cancel.mockResolvedValue(cancelledRefund());
 
       await expect(
         service.cancelLesson(student, 'lesson-1', { reason: 'Empêchement' })
       ).resolves.toMatchObject({ status: 'cancelled' });
-      expect(repository.cancel).toHaveBeenCalledWith('lesson-1', 'user-1', 'Empêchement');
+      expect(repository.cancel).toHaveBeenCalledWith('lesson-1', 'user-1', 'Empêchement', tx);
+      expect(credits.addCredit).not.toHaveBeenCalled();
 
       repository.findById.mockResolvedValue({
         ...lesson,
@@ -376,18 +446,34 @@ describe('LessonService (D-21 / D-32 : demande L2, liste L1, lecture scoped)', (
         status: LessonStatus.SCHEDULED,
         scheduledDate: in2h,
       });
-      repository.cancel.mockResolvedValue({ ...lesson, status: LessonStatus.CANCELLED });
+      repository.cancel.mockResolvedValue(cancelledRefund());
 
       await expect(service.cancelLesson(instructor, 'lesson-1', {})).resolves.toMatchObject({
         status: 'cancelled',
       });
-      expect(repository.cancel).toHaveBeenCalledWith('lesson-1', 'user-instr', undefined);
+      expect(repository.cancel).toHaveBeenCalledWith('lesson-1', 'user-instr', undefined, tx);
 
       repository.findById.mockResolvedValue({ ...lesson, schoolId: 'school-2' });
       await expect(service.cancelLesson(instructor, 'lesson-1', {})).rejects.toMatchObject({
         status: 403,
         code: 'FORBIDDEN_SCHOOL',
       });
+    });
+
+    it('leçon payée annulée (D-40) : le versement et le crédit consommé reviennent à l’avoir, dans la transaction', async () => {
+      repository.findById.mockResolvedValue({
+        ...lesson,
+        status: LessonStatus.SCHEDULED,
+        scheduledDate: in48h,
+        paid: true,
+        amount: 15,
+        creditApplied: 25,
+      });
+      repository.cancel.mockResolvedValue(cancelledRefund(15, 25));
+
+      await service.cancelLesson(instructor, 'lesson-1', { reason: 'Voiture en panne' });
+
+      expect(credits.addCredit).toHaveBeenCalledWith('user-1', 40, tx);
     });
 
     it('409 CONFLICT pour une leçon terminée, refusée ou déjà annulée, ou si le statut change en cours', async () => {
@@ -401,6 +487,7 @@ describe('LessonService (D-21 / D-32 : demande L2, liste L1, lecture scoped)', (
       await expect(service.cancelLesson(instructor, 'lesson-1', {})).rejects.toMatchObject({
         status: 409,
       });
+      expect(credits.addCredit).not.toHaveBeenCalled();
     });
   });
 

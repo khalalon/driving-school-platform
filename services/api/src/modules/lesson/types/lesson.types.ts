@@ -49,11 +49,33 @@ export interface Lesson {
   feedback: string | null;
   rating: number | null;
   paid: boolean;
+  /** Argent effectivement versé pour la leçon (0 quand le crédit a tout couvert, D-40). */
   amount: number | null;
   paymentDate: Date | null;
+  /** `cash` / `card` / `bank_transfer` (P6) ou `credit` (avoir imputé, D-40). */
   paymentMethod: string | null;
+  /** Part du prix couverte par l'avoir de l'élève à la planification (D-40). */
+  creditApplied: number;
   createdAt: Date;
   updatedAt: Date;
+}
+
+/**
+ * Règlement d'une leçon planifiée par l'avoir de l'élève (D-40) : couverture totale → payée par
+ * `credit`, `amount` 0 ; partielle → `amount` = reste dû, non payée ; nulle → rien de changé.
+ */
+export interface LessonSettlement {
+  creditApplied: number;
+  paid: boolean;
+  amount: number | null;
+  paymentMethod: 'credit' | null;
+}
+
+/** Ce que L3 (et L7 pour une absence) restituent à l'élève : son versement et le crédit consommé. */
+export interface LessonRefund {
+  lesson: Lesson;
+  paidAmount: number;
+  creditApplied: number;
 }
 
 /** L2 : demande de l'élève, adressée à l'école. */
@@ -99,13 +121,14 @@ export interface BookForStudentDTO {
   notes?: string;
 }
 
-/** Ce que le repository écrit à l'approbation (L5) : instructeur = l'appelant (D-32), prix figé (D-30). */
+/** Ce que le repository écrit à l'approbation (L5) : instructeur = l'appelant (D-32), prix figé (D-30), avoir imputé (D-40). */
 export interface LessonApproval {
   instructorId: string;
   scheduledDate: Date;
   durationMinutes: number;
   price: number;
   adminNotes?: string;
+  settlement: LessonSettlement;
 }
 
 /** Ce que le repository écrit pour L4 : leçon directement planifiée par l'instructeur appelant. */
@@ -119,6 +142,7 @@ export interface NewScheduledLesson {
   durationMinutes: number;
   price: number;
   notes?: string;
+  settlement: LessonSettlement;
 }
 
 /** L7 : présence par identifiant de leçon (une leçon = un élève). */

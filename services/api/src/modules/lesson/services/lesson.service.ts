@@ -11,6 +11,7 @@ import {
   Lesson,
   LessonFilters,
   LessonScope,
+  LessonSettlement,
   LessonStatus,
   MarkAttendanceDTO,
   RejectLessonDTO,
@@ -35,6 +36,18 @@ export interface PricingLookup {
   getPricingByType(schoolId: string, lessonType: LessonType): Promise<{ price: number } | null>;
 }
 
+/**
+ * Ce que le module attend du module student : l'avoir de l'élève (D-40), clé = users.id (une
+ * fiche par élève, D-22). Lu sous verrou puis débité dans la transaction de la planification.
+ */
+export interface CreditLedger {
+  getCreditForUpdate(userId: string, executor?: Queryable): Promise<number>;
+  addCredit(userId: string, delta: number, executor?: Queryable): Promise<number>;
+}
+
+/** Arrondi monétaire à deux décimales (les montants sont des NUMERIC(10,2)). */
+const round2 = (value: number): number => Math.round(value * 100) / 100;
+
 /** Ce que L7 attend du module student : les compteurs de leçons effectuées (D-33). */
 export interface LessonStatsSink {
   incrementLessonCount(
@@ -58,7 +71,9 @@ export class LessonService {
     private readonly transactions: ITransactionRunner,
     private readonly schoolGuard: SchoolGuard,
     /** Fenêtre d'annulation par l'élève d'une leçon planifiée, en heures (D-24). */
-    private readonly cancelWindowHours: number
+    private readonly cancelWindowHours: number,
+    /** Avoir de l'élève (D-40). */
+    private readonly credits: CreditLedger
   ) {}
 
   /** L2 : école résolue depuis l'inscription approuvée de l'élève ; 403 NOT_ENROLLED sinon. */
@@ -106,7 +121,8 @@ export class LessonService {
 
   /**
    * L5 : tout instructeur de l'école ; il devient l'instructeur de la leçon (D-32). Prix figé
-   * (D-30) : la grille de l'école prime, sinon le prix saisi, sinon 400 PRICE_REQUIRED.
+   * (D-30) : la grille de l'école prime, sinon le prix saisi, sinon 400 PRICE_REQUIRED. L'avoir
+   * de l'élève est imputé dans la même transaction (D-40).
    */
   async approveLesson(caller: AuthUser, id: string, dto: ApproveLessonDTO): Promise<Lesson> {
     const lesson = await this.requireLesson(id);
@@ -117,17 +133,26 @@ export class LessonService {
     this.assertPending(lesson, 'approuvée');
     const price = await this.resolvePrice(lesson.schoolId, lesson.type, dto.price);
 
-    const approved = await this.lessonRepository.approve(id, {
-      instructorId: instructor.id,
-      scheduledDate: dto.scheduledDate,
-      durationMinutes: dto.durationMinutes,
-      price,
-      adminNotes: dto.adminNotes,
+    return this.transactions.run(async (tx) => {
+      const settlement = await this.settleWithCredit(lesson.studentId, price, tx);
+      const approved = await this.lessonRepository.approve(
+        id,
+        {
+          instructorId: instructor.id,
+          scheduledDate: dto.scheduledDate,
+          durationMinutes: dto.durationMinutes,
+          price,
+          adminNotes: dto.adminNotes,
+          settlement,
+        },
+        tx
+      );
+      if (!approved) {
+        // ROLLBACK : le crédit débité ci-dessus est rendu
+        throw new HttpError(409, 'CONFLICT', 'Cette demande vient d’être traitée par un collègue');
+      }
+      return approved;
     });
-    if (!approved) {
-      throw new HttpError(409, 'CONFLICT', 'Cette demande vient d’être traitée par un collègue');
-    }
-    return approved;
   }
 
   /** L6 : instructeur de l'école ou admin ; motif 10–500 caractères (D-29, validé par Joi). */
@@ -147,7 +172,8 @@ export class LessonService {
    * L3 (D-24) : l'élève annule sa demande `pending` à tout moment et sa leçon `scheduled` jusqu'à
    * `cancelWindowHours` avant `scheduledDate` (403 CANCEL_WINDOW_CLOSED après) ; un instructeur
    * annule toute leçon `pending` ou `scheduled` de son école, sans fenêtre ; l'admin aussi.
-   * Sort d'une leçon déjà payée : Q-17 — aucune règle particulière ici.
+   * Leçon déjà payée ou réglée par l'avoir (D-40) : le versement et le crédit consommé
+   * reviennent à l'avoir de l'élève, dans la même transaction.
    */
   async cancelLesson(caller: AuthUser, id: string, dto: CancelLessonDTO): Promise<Lesson> {
     const lesson = await this.requireLesson(id);
@@ -167,16 +193,24 @@ export class LessonService {
       await this.schoolGuard.assertSameSchool(caller, lesson.schoolId);
     }
 
-    const cancelled = await this.lessonRepository.cancel(id, caller.userId, dto.reason);
-    if (!cancelled) {
-      throw new HttpError(409, 'CONFLICT', 'Le statut de cette leçon vient de changer');
-    }
-    return cancelled;
+    return this.transactions.run(async (tx) => {
+      const cancelled = await this.lessonRepository.cancel(id, caller.userId, dto.reason, tx);
+      if (!cancelled) {
+        throw new HttpError(409, 'CONFLICT', 'Le statut de cette leçon vient de changer');
+      }
+      await this.refundToCredit(
+        lesson.studentId,
+        cancelled.paidAmount,
+        cancelled.creditApplied,
+        tx
+      );
+      return cancelled.lesson;
+    });
   }
 
   /**
    * L4 : l'instructeur planifie directement une leçon pour un élève inscrit et approuvé dans son
-   * école (403 NOT_ENROLLED sinon) ; prix figé comme en L5 (D-30).
+   * école (403 NOT_ENROLLED sinon) ; prix figé comme en L5 (D-30), avoir imputé comme en L5 (D-40).
    */
   async bookForStudent(caller: AuthUser, dto: BookForStudentDTO): Promise<Lesson> {
     const instructor = await this.requireInstructor(caller);
@@ -189,15 +223,22 @@ export class LessonService {
       );
     }
     const price = await this.resolvePrice(instructor.schoolId, dto.type, dto.price);
-    return this.lessonRepository.createScheduled({
-      schoolId: instructor.schoolId,
-      studentRowId: student.id,
-      instructorId: instructor.id,
-      type: dto.type,
-      scheduledDate: dto.scheduledDate,
-      durationMinutes: dto.durationMinutes,
-      price,
-      notes: dto.notes,
+    return this.transactions.run(async (tx) => {
+      const settlement = await this.settleWithCredit(dto.studentId, price, tx);
+      return this.lessonRepository.createScheduled(
+        {
+          schoolId: instructor.schoolId,
+          studentRowId: student.id,
+          instructorId: instructor.id,
+          type: dto.type,
+          scheduledDate: dto.scheduledDate,
+          durationMinutes: dto.durationMinutes,
+          price,
+          notes: dto.notes,
+          settlement,
+        },
+        tx
+      );
     });
   }
 
@@ -234,6 +275,41 @@ export class LessonService {
       }
       return marked.lesson;
     });
+  }
+
+  /**
+   * Règlement par l'avoir (D-40) : lit le crédit sous verrou, en impute le maximum sur le prix et
+   * le débite. Couverture totale → leçon payée par `credit` (`amount` 0) ; partielle → `amount`
+   * = reste dû, non payée ; sans crédit → rien.
+   */
+  private async settleWithCredit(
+    userId: string,
+    price: number,
+    tx: Queryable
+  ): Promise<LessonSettlement> {
+    const credit = await this.credits.getCreditForUpdate(userId, tx);
+    const applied = round2(Math.min(credit, price));
+    if (applied <= 0) {
+      return { creditApplied: 0, paid: false, amount: null, paymentMethod: null };
+    }
+    await this.credits.addCredit(userId, -applied, tx);
+    const remaining = round2(price - applied);
+    return remaining <= 0
+      ? { creditApplied: applied, paid: true, amount: 0, paymentMethod: 'credit' }
+      : { creditApplied: applied, paid: false, amount: remaining, paymentMethod: null };
+  }
+
+  /** Leçon non délivrée (annulée — D-40 ; absence — D-41) : versement et crédit consommé rendus. */
+  private async refundToCredit(
+    userId: string,
+    paidAmount: number,
+    creditApplied: number,
+    tx: Queryable
+  ): Promise<void> {
+    const refund = round2(paidAmount + creditApplied);
+    if (refund > 0) {
+      await this.credits.addCredit(userId, refund, tx);
+    }
   }
 
   /** Prix figé (D-30) : la grille de l'école prime, sinon le prix saisi, sinon 400 PRICE_REQUIRED. */

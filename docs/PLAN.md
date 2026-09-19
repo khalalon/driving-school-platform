@@ -492,7 +492,7 @@ Les quatre questions ouvertes sont tranchées (`DECISIONS.md`). Chaque décision
 ```
 **Hors périmètre** : conversion entre devises.
 
-### - [ ] 7.2 — Avoir sur une leçon payée annulée (D-40)
+### - [x] 7.2 — Avoir sur une leçon payée annulée (D-40)
 **Objectif** : migration `013_student_credit.sql` (`students.credit NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK (credit >= 0)`, `lessons.credit_applied NUMERIC(10,2) NOT NULL DEFAULT 0`, idempotente) ; L3 en transaction : une leçon annulée `paid` ou avec `credit_applied > 0` crédite l'élève de `amount + credit_applied` ; L5 et L4 en transaction : le crédit disponible est imputé sur la leçon planifiée (couverture totale → `paid`, `payment_method = 'credit'`, `amount = 0` ; partielle → `credit_applied`, `amount = reste`) ; `Lesson` et `LessonHistory` exposent `creditApplied` (+ `paymentMethod` sur `Lesson`) ; `FinancialSummary` expose `credit` et son encaissé ne compte que les espèces (`amount`) ; le mobile affiche le crédit (fiche élève, « My Profile ») et l'origine du paiement sur les leçons.
 **Fichiers** : `migrations/013_student_credit.sql`, `services/api/src/modules/lesson/{types,repositories,services}`, `services/api/src/modules/student/{types,repositories}` (`StudentRepository` = seul accès à `students.credit`), `services/api/src/index.ts`, `tests/e2e/credits.e2e.test.ts` (nouveau), `mobile-app/src/models/{Lesson,Profile}.ts` et les écrans concernés, `docs/API_CONTRACT.md`.
 **Critère de validation** :

@@ -45,6 +45,8 @@ export interface LessonHistory {
   amount: number | null;
   paymentDate: string | null;
   paymentMethod: string | null;
+  /** Part du prix couverte par l'avoir de l'élève (D-40). */
+  creditApplied: number;
 }
 
 /** P3 / P10 : une ligne par examen planifié, passé ou annulé ; `id` = exams.id. */
@@ -74,15 +76,22 @@ export interface FinancialSummary {
   lessonsPending: number;
   examsPending: number;
   lastPaymentDate: string | null;
+  /** Avoir disponible de l'élève (D-40), imputé sur sa prochaine leçon planifiée. */
+  credit: number;
 }
 
-/** P6 / P7. */
+/** P6 / P7 : moyens saisis par l'instructeur ; `credit` n'est posé que par le backend (D-40). */
 export type PaymentMethod = 'cash' | 'card' | 'bank_transfer';
 
 export const PAYMENT_METHODS: readonly PaymentMethod[] = ['cash', 'card', 'bank_transfer'];
 
-export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod | 'credit', string> = {
   cash: 'Cash',
   card: 'Card',
   bank_transfer: 'Bank transfer',
+  credit: 'Student credit',
 };
+
+/** Libellé d'un moyen de paiement renvoyé par le backend, tel quel s'il est inconnu. */
+export const paymentMethodLabel = (method: string | null | undefined): string =>
+  method ? (PAYMENT_METHOD_LABELS[method as PaymentMethod | 'credit'] ?? method) : '—';

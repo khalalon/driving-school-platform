@@ -47,6 +47,7 @@ describe('EnrollmentService (D-09)', () => {
     authorized: true,
     enrollmentRequestId: 'req-1',
     enrollmentDate: now,
+    credit: 0,
     createdAt: now,
     updatedAt: now,
   };
@@ -68,6 +69,8 @@ describe('EnrollmentService (D-09)', () => {
       findByUserAndSchool: jest.fn(),
       findBySchool: jest.fn(),
       listSchoolRoster: jest.fn(),
+      getCreditForUpdate: jest.fn(),
+      addCredit: jest.fn(),
     };
     // Le générique de `run` ne se mocke pas directement : le runner factice exécute le travail
     // avec le client factice, sans BEGIN/COMMIT.

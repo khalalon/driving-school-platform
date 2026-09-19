@@ -66,7 +66,7 @@ export class ProfileRepository implements IProfileRepository {
               COALESCE(iu.last_name, '') AS "instructorLastName",
               l.attended, l.feedback, l.rating, l.paid, l.price::float8 AS price,
               l.amount::float8 AS amount, l.payment_date AS "paymentDate",
-              l.payment_method AS "paymentMethod"
+              l.payment_method AS "paymentMethod", l.credit_applied::float8 AS "creditApplied"
        FROM lessons l
        JOIN students s ON s.id = l.student_id
        LEFT JOIN instructors i ON i.id = l.instructor_id
@@ -95,9 +95,9 @@ export class ProfileRepository implements IProfileRepository {
   }
 
   /**
-   * Encaissé = montants des leçons / examens payés ; dû = leçons et examens planifiés ou passés
-   * non payés, au montant saisi sinon au prix. Absences (Q-18) et annulations payées (Q-17) :
-   * aucune règle particulière tant que les questions ne sont pas tranchées.
+   * Encaissé = argent versé (`amount` des leçons / examens payés ; une leçon réglée par l'avoir
+   * vaut 0 — D-40) ; dû = leçons et examens planifiés ou passés non payés, au montant saisi
+   * (reste après avoir) sinon au prix ; `credit` = avoir disponible de l'élève (D-40).
    */
   async getFinancialSummary(userId: string, schoolId: string): Promise<FinancialSummary> {
     const result = await this.db.query<{
@@ -106,8 +106,9 @@ export class ProfileRepository implements IProfileRepository {
       examsRevenue: string;
       examsPending: string;
       lastPaymentDate: Date | null;
+      credit: string | null;
     }>(
-      `WITH student AS (SELECT id FROM students WHERE user_id = $1 AND school_id = $2),
+      `WITH student AS (SELECT id, credit FROM students WHERE user_id = $1 AND school_id = $2),
        lessons_summary AS (
          SELECT COALESCE(SUM(CASE WHEN l.paid THEN l.amount END), 0) AS revenue,
                 COALESCE(SUM(CASE WHEN NOT l.paid AND l.status IN ('scheduled', 'completed')
@@ -124,7 +125,8 @@ export class ProfileRepository implements IProfileRepository {
        )
        SELECT ls.revenue AS "lessonsRevenue", ls.pending AS "lessonsPending",
               es.revenue AS "examsRevenue", es.pending AS "examsPending",
-              GREATEST(ls.last_payment, es.last_payment) AS "lastPaymentDate"
+              GREATEST(ls.last_payment, es.last_payment) AS "lastPaymentDate",
+              (SELECT credit FROM student) AS credit
        FROM lessons_summary ls, exams_summary es`,
       [userId, schoolId]
     );
@@ -143,6 +145,7 @@ export class ProfileRepository implements IProfileRepository {
       lessonsPending,
       examsPending,
       lastPaymentDate: row.lastPaymentDate ?? null,
+      credit: Number(row.credit ?? 0),
     };
   }
 

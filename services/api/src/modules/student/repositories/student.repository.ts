@@ -11,12 +11,20 @@ export interface IStudentRepository {
   findBySchool(schoolId: string): Promise<Student[]>;
   /** S6 : élèves autorisés de l'école, identifiés par users.id (D-25). */
   listSchoolRoster(schoolId: string): Promise<SchoolStudent[]>;
+  /**
+   * Avoir de l'élève (D-40), verrouillé (`FOR UPDATE`) pour la durée de la transaction ; 0 sans
+   * fiche. `userId` = users.id (une seule fiche par élève, D-22).
+   */
+  getCreditForUpdate(userId: string, executor?: Queryable): Promise<number>;
+  /** Ajoute `delta` (négatif pour une imputation) à l'avoir ; renvoie le nouveau solde. */
+  addCredit(userId: string, delta: number, executor?: Queryable): Promise<number>;
 }
 
 const STUDENT_COLUMNS = (alias = ''): string => {
   const p = alias ? `${alias}.` : '';
   return `${p}id, ${p}user_id AS "userId", ${p}school_id AS "schoolId", ${p}authorized,
     ${p}enrollment_request_id AS "enrollmentRequestId", ${p}enrollment_date AS "enrollmentDate",
+    ${p}credit::float8 AS credit,
     ${p}created_at AS "createdAt", ${p}updated_at AS "updatedAt"`;
 };
 
@@ -83,5 +91,26 @@ export class StudentRepository implements IStudentRepository {
       [schoolId]
     );
     return result.rows;
+  }
+  async getCreditForUpdate(userId: string, executor: Queryable = this.db): Promise<number> {
+    const result = await executor.query<{ credit: number }>(
+      `SELECT credit::float8 AS credit FROM students WHERE user_id = $1 FOR UPDATE`,
+      [userId]
+    );
+    return result.rows[0]?.credit ?? 0;
+  }
+
+  async addCredit(userId: string, delta: number, executor: Queryable = this.db): Promise<number> {
+    const result = await executor.query<{ credit: number }>(
+      `UPDATE students SET credit = credit + $2, updated_at = CURRENT_TIMESTAMP
+       WHERE user_id = $1
+       RETURNING credit::float8 AS credit`,
+      [userId, delta]
+    );
+    const row = result.rows[0];
+    if (!row) {
+      throw new Error(`Fiche élève introuvable pour l'utilisateur ${userId}`);
+    }
+    return row.credit;
   }
 }

@@ -108,6 +108,7 @@ describe('ProfileService', () => {
       lessonsPending: 0,
       examsPending: 0,
       lastPaymentDate: null,
+      credit: 0,
     });
 
     await expect(service.getStudentLessons(instructor, 'user-1', 'school-1')).resolves.toEqual([]);

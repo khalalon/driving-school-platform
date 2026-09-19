@@ -110,7 +110,9 @@ describe('LessonRepository (schéma 007, objet Lesson du contrat)', () => {
       .mockResolvedValueOnce({ rows: [{ id: UUID.booking }] })
       .mockResolvedValueOnce({ rows: [{ ...row, status: 'scheduled' }] })
       .mockResolvedValueOnce({ rows: [] }) // reject : plus pending
-      .mockResolvedValueOnce({ rows: [{ id: UUID.booking }] })
+      .mockResolvedValueOnce({
+        rows: [{ studentRowId: UUID.student, paidAmount: 40, creditApplied: 0 }],
+      })
       .mockResolvedValueOnce({ rows: [{ ...row, status: 'cancelled' }] });
     const repo = new LessonRepository({ query } as unknown as Pool);
     const scheduledDate = new Date('2026-10-02T09:00:00Z');
@@ -122,11 +124,15 @@ describe('LessonRepository (schéma 007, objet Lesson du contrat)', () => {
         durationMinutes: 60,
         price: 40,
         adminNotes: 'RDV au parc',
+        settlement: { creditApplied: 40, paid: true, amount: 0, paymentMethod: 'credit' },
       })
     ).resolves.toMatchObject({ status: 'scheduled' });
     const [approveSql, approveParams] = query.mock.calls[0] as [string, unknown[]];
     expect(approveSql).toMatch(
       /SET status = 'scheduled', instructor_id = \$2, scheduled_date = \$3/
+    );
+    expect(approveSql).toMatch(
+      /credit_applied = \$7, paid = \$8, amount = \$9, payment_method = \$10/
     );
     expect(approveSql).toMatch(/WHERE id = \$1 AND status = 'pending'/);
     expect(approveParams).toEqual([
@@ -136,6 +142,10 @@ describe('LessonRepository (schéma 007, objet Lesson du contrat)', () => {
       60,
       40,
       'RDV au parc',
+      40,
+      true,
+      0,
+      'credit',
     ]);
 
     await expect(repo.reject(UUID.booking, 'Créneau indisponible')).resolves.toBeNull();
@@ -144,14 +154,19 @@ describe('LessonRepository (schéma 007, objet Lesson du contrat)', () => {
     expect(rejectSql).toMatch(/WHERE id = \$1 AND status = 'pending'/);
     expect(rejectParams).toEqual([UUID.booking, 'Créneau indisponible']);
 
-    await expect(repo.cancel(UUID.booking, 'user-1')).resolves.toMatchObject({
-      status: 'cancelled',
+    // L3 : la leçon annulée et ce que l'élève avait versé (D-40)
+    await expect(repo.cancel(UUID.booking, 'user-1')).resolves.toEqual({
+      lesson: { ...row, status: 'cancelled' },
+      paidAmount: 40,
+      creditApplied: 0,
     });
     const [cancelSql, cancelParams] = query.mock.calls[3] as [string, unknown[]];
     expect(cancelSql).toMatch(
       /SET status = 'cancelled', cancellation_reason = \$2, cancelled_by = \$3/
     );
     expect(cancelSql).toMatch(/WHERE id = \$1 AND status IN \('pending', 'scheduled'\)/);
+    expect(cancelSql).toMatch(/RETURNING student_id AS "studentRowId"/);
+    expect(cancelSql).toMatch(/CASE WHEN paid THEN COALESCE\(amount, 0\) ELSE 0 END/);
     expect(cancelParams).toEqual([UUID.booking, null, 'user-1']);
   });
 
@@ -160,7 +175,9 @@ describe('LessonRepository (schéma 007, objet Lesson du contrat)', () => {
       .fn()
       .mockResolvedValueOnce({ rows: [{ id: UUID.booking }] })
       .mockResolvedValueOnce({ rows: [{ ...row, status: 'scheduled' }] })
-      .mockResolvedValueOnce({ rows: [{ id: UUID.booking, studentRowId: UUID.student }] })
+      .mockResolvedValueOnce({
+        rows: [{ studentRowId: UUID.student, paidAmount: 0, creditApplied: 20 }],
+      })
       .mockResolvedValueOnce({ rows: [{ ...row, status: 'completed', attended: true }] })
       .mockResolvedValueOnce({ rows: [] });
     const repo = new LessonRepository({ query } as unknown as Pool);
@@ -175,6 +192,7 @@ describe('LessonRepository (schéma 007, objet Lesson du contrat)', () => {
         scheduledDate,
         durationMinutes: 60,
         price: 20,
+        settlement: { creditApplied: 5, paid: false, amount: 15, paymentMethod: null },
       })
     ).resolves.toMatchObject({ status: 'scheduled' });
     const [insertSql, insertParams] = query.mock.calls[0] as [string, unknown[]];
@@ -182,6 +200,7 @@ describe('LessonRepository (schéma 007, objet Lesson du contrat)', () => {
       /INSERT INTO lessons \(school_id, student_id, instructor_id, type, status, scheduled_date/
     );
     expect(insertSql).toMatch(/'scheduled'/);
+    expect(insertSql).toMatch(/credit_applied, paid, amount, payment_method/);
     expect(insertParams).toEqual([
       UUID.school,
       UUID.student,
@@ -191,6 +210,10 @@ describe('LessonRepository (schéma 007, objet Lesson du contrat)', () => {
       60,
       20,
       null,
+      5,
+      false,
+      15,
+      null,
     ]);
 
     const txQuery = jest.fn().mockResolvedValue({ rows: [] });
@@ -198,6 +221,8 @@ describe('LessonRepository (schéma 007, objet Lesson du contrat)', () => {
       {
         lesson: { ...row, status: 'completed', attended: true },
         studentRowId: UUID.student,
+        paidAmount: 0,
+        creditApplied: 20,
       }
     );
     const [updateSql, updateParams] = query.mock.calls[2] as [string, unknown[]];
@@ -205,7 +230,7 @@ describe('LessonRepository (schéma 007, objet Lesson du contrat)', () => {
       /SET status = 'completed', attended = \$2, feedback = \$3, rating = \$4/
     );
     expect(updateSql).toMatch(/WHERE id = \$1 AND status = 'scheduled'/);
-    expect(updateSql).toMatch(/RETURNING id, student_id AS "studentRowId"/);
+    expect(updateSql).toMatch(/RETURNING student_id AS "studentRowId"/);
     expect(updateParams).toEqual([UUID.booking, true, null, 4]);
 
     await expect(repo.markAttendance(UUID.booking, { attended: false })).resolves.toBeNull();

@@ -16,11 +16,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { studentSelfProfileService } from '../../../../services/api/StudentSelfProfileService';
 import { getApiErrorMessage } from '../../../../services/api/ApiError';
 import { FinancialSummary, MyProfile } from '../../../../models/Profile';
-import { formatDate, formatPersonName } from '../../../../utils/format';
+import { useSchoolCurrency } from '../../../../hooks/useSchoolCurrency';
+import { formatAmount, formatDate, formatPersonName } from '../../../../utils/format';
 import { colors, typography, spacing } from '../../../../theme';
 
 export const MyProgressTab = ({ route }: any) => {
   const { schoolId } = route.params;
+  const currency = useSchoolCurrency(schoolId);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<MyProfile | null>(null);
   const [financial, setFinancial] = useState<FinancialSummary | null>(null);
@@ -137,21 +139,29 @@ export const MyProgressTab = ({ route }: any) => {
           <FinancialRow
             label="Total Paid"
             amount={financial.totalRevenue}
+            currency={currency}
             icon="checkmark-circle-outline"
             iconColor={colors.success[500]}
           />
           <FinancialRow
-            label="Pending Payment"
-            amount={financial.totalPending}
-            icon="time-outline"
+            label="Amount Due"
+            amount={financial.totalDue}
+            currency={currency}
+            icon="alert-circle-outline"
             iconColor={colors.warning[500]}
           />
           <FinancialRow
-            label="Overdue"
-            amount={financial.totalDue}
-            icon="alert-circle-outline"
-            iconColor={colors.error[500]}
+            label="Credit Available"
+            amount={financial.credit}
+            currency={currency}
+            icon="gift-outline"
+            iconColor={colors.primary[600]}
           />
+          {financial.credit > 0 && (
+            <Text style={styles.creditHint}>
+              Your credit is applied automatically to your next scheduled lesson.
+            </Text>
+          )}
           {financial.lastPaymentDate && (
             <View style={styles.lastPaymentContainer}>
               <Text style={styles.lastPaymentLabel}>Last Payment:</Text>
@@ -181,6 +191,7 @@ const InfoRow: React.FC<InfoRowProps> = ({ label, value }) => (
 interface FinancialRowProps {
   label: string;
   amount: number;
+  currency: string | null;
   icon: string;
   iconColor: string;
 }
@@ -188,6 +199,7 @@ interface FinancialRowProps {
 const FinancialRow: React.FC<FinancialRowProps> = ({
   label,
   amount,
+  currency,
   icon,
   iconColor,
 }) => (
@@ -197,7 +209,7 @@ const FinancialRow: React.FC<FinancialRowProps> = ({
       <Text style={styles.financialLabelText}>{label}</Text>
     </View>
     <Text style={[styles.financialAmount, { color: iconColor }]}>
-      ${amount.toFixed(2)}
+      {formatAmount(amount, currency)}
     </Text>
   </View>
 );
@@ -303,6 +315,12 @@ const styles = StyleSheet.create({
   financialAmount: {
     fontSize: typography.size.base,
     fontWeight: typography.weight.semibold,
+  },
+  creditHint: {
+    fontSize: typography.size.xs,
+    color: colors.text.tertiary,
+    fontStyle: 'italic',
+    marginTop: spacing.xs,
   },
   lastPaymentContainer: {
     flexDirection: 'row',

@@ -22,10 +22,11 @@ import {
   PAYMENT_METHOD_LABELS,
   PAYMENT_METHODS,
   PaymentMethod,
+  paymentMethodLabel,
 } from '../../../../models/Profile';
 import { LESSON_TYPE_LABELS, LessonType } from '../../../../models/Lesson';
 import { useSchoolCurrency } from '../../../../hooks/useSchoolCurrency';
-import { formatAmount, formatDateTime } from '../../../../utils/format';
+import { formatAmount, formatDate, formatDateTime } from '../../../../utils/format';
 import { colors, typography, spacing, shadows } from '../../../../theme';
 
 export const StudentLessonsTab = ({ route }: any) => {
@@ -202,7 +203,18 @@ export const StudentLessonsTab = ({ route }: any) => {
       {item.paid && item.paymentDate && (
         <View style={styles.paymentInfo}>
           <Text style={styles.paymentInfoText}>
-            Paid on {new Date(item.paymentDate).toLocaleDateString()} via {item.paymentMethod}
+            Paid on {formatDate(item.paymentDate)} via {paymentMethodLabel(item.paymentMethod)}
+          </Text>
+        </View>
+      )}
+
+      {item.creditApplied > 0 && (
+        <View style={styles.paymentInfo}>
+          <Text style={styles.paymentInfoText}>
+            Student credit applied: {formatAmount(item.creditApplied, currency)}
+            {!item.paid && item.amount !== null
+              ? ` · remaining ${formatAmount(item.amount, currency)}`
+              : ''}
           </Text>
         </View>
       )}

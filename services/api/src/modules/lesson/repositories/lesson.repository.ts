@@ -4,6 +4,7 @@ import {
   Lesson,
   LessonApproval,
   LessonFilters,
+  LessonRefund,
   LessonScope,
   MarkAttendanceDTO,
   NewLessonRequest,
@@ -14,23 +15,35 @@ export interface ILessonRepository {
   createRequest(data: NewLessonRequest): Promise<Lesson>;
   findById(id: string, executor?: Queryable): Promise<Lesson | null>;
   findAll(scope: LessonScope, filters: LessonFilters): Promise<Lesson[]>;
-  /** L5 : `pending` → `scheduled` ; `null` si la leçon n'est plus `pending` (course entre instructeurs). */
-  approve(id: string, approval: LessonApproval): Promise<Lesson | null>;
+  /**
+   * L5 : `pending` → `scheduled`, avec le règlement par l'avoir (D-40) ; `null` si la leçon
+   * n'est plus `pending` (course entre instructeurs). `executor` : transaction du règlement.
+   */
+  approve(id: string, approval: LessonApproval, executor?: Queryable): Promise<Lesson | null>;
   /** L6 : `pending` → `rejected` ; `null` si la leçon n'est plus `pending`. */
   reject(id: string, reason: string): Promise<Lesson | null>;
-  /** L3 : `pending` ou `scheduled` → `cancelled` ; `null` si le statut a changé entre-temps. */
-  cancel(id: string, cancelledBy: string, reason?: string): Promise<Lesson | null>;
-  /** L4 : leçon `scheduled` créée par l'instructeur pour un élève inscrit. */
-  createScheduled(data: NewScheduledLesson): Promise<Lesson>;
+  /**
+   * L3 : `pending` ou `scheduled` → `cancelled` ; `null` si le statut a changé entre-temps.
+   * Renvoie ce que l'élève avait versé et le crédit consommé, à lui restituer (D-40).
+   */
+  cancel(
+    id: string,
+    cancelledBy: string,
+    reason?: string,
+    executor?: Queryable
+  ): Promise<LessonRefund | null>;
+  /** L4 : leçon `scheduled` créée par l'instructeur pour un élève inscrit, avoir imputé (D-40). */
+  createScheduled(data: NewScheduledLesson, executor?: Queryable): Promise<Lesson>;
   /**
    * L7 : `scheduled` → `completed` avec présence, retour et note ; `null` si la leçon n'est plus
-   * `scheduled`. Renvoie aussi students.id pour les compteurs (D-33).
+   * `scheduled`. Renvoie aussi students.id pour les compteurs (D-33) et les montants versés
+   * (restitués en cas d'absence, D-41).
    */
   markAttendance(
     id: string,
     dto: MarkAttendanceDTO,
     executor?: Queryable
-  ): Promise<{ lesson: Lesson; studentRowId: string } | null>;
+  ): Promise<(LessonRefund & { studentRowId: string }) | null>;
 }
 
 /**
@@ -53,7 +66,13 @@ const LESSON_COLUMNS = `l.id, l.school_id AS "schoolId", su.id AS "studentId",
   l.rejection_reason AS "rejectionReason", l.cancellation_reason AS "cancellationReason",
   l.cancelled_by AS "cancelledBy", l.attended, l.feedback, l.rating, l.paid,
   l.amount::float8 AS amount, l.payment_date AS "paymentDate", l.payment_method AS "paymentMethod",
+  l.credit_applied::float8 AS "creditApplied",
   l.created_at AS "createdAt", l.updated_at AS "updatedAt"`;
+
+/** Ce qu'une annulation ou une absence doit restituer à l'élève (D-40, D-41). */
+const REFUND_COLUMNS = `student_id AS "studentRowId",
+  CASE WHEN paid THEN COALESCE(amount, 0) ELSE 0 END::float8 AS "paidAmount",
+  credit_applied::float8 AS "creditApplied"`;
 
 const LESSON_FROM = `FROM lessons l
   JOIN students s ON s.id = l.student_id
@@ -136,11 +155,19 @@ export class LessonRepository implements ILessonRepository {
     return result.rows;
   }
 
-  async approve(id: string, approval: LessonApproval): Promise<Lesson | null> {
-    const result = await this.db.query<{ id: string }>(
+  async approve(
+    id: string,
+    approval: LessonApproval,
+    executor: Queryable = this.db
+  ): Promise<Lesson | null> {
+    const { settlement } = approval;
+    const result = await executor.query<{ id: string }>(
       `UPDATE lessons
        SET status = 'scheduled', instructor_id = $2, scheduled_date = $3, duration_minutes = $4,
-           price = $5, admin_notes = $6, updated_at = CURRENT_TIMESTAMP
+           price = $5, admin_notes = $6,
+           credit_applied = $7, paid = $8, amount = $9, payment_method = $10,
+           payment_date = CASE WHEN $8 THEN CURRENT_TIMESTAMP ELSE payment_date END,
+           updated_at = CURRENT_TIMESTAMP
        WHERE id = $1 AND status = 'pending'
        RETURNING id`,
       [
@@ -150,9 +177,13 @@ export class LessonRepository implements ILessonRepository {
         approval.durationMinutes,
         approval.price,
         approval.adminNotes ?? null,
+        settlement.creditApplied,
+        settlement.paid,
+        settlement.amount,
+        settlement.paymentMethod,
       ]
     );
-    return result.rows[0] ? this.requireById(id) : null;
+    return result.rows[0] ? this.requireById(id, executor) : null;
   }
 
   async reject(id: string, reason: string): Promise<Lesson | null> {
@@ -166,23 +197,39 @@ export class LessonRepository implements ILessonRepository {
     return result.rows[0] ? this.requireById(id) : null;
   }
 
-  async cancel(id: string, cancelledBy: string, reason?: string): Promise<Lesson | null> {
-    const result = await this.db.query<{ id: string }>(
+  async cancel(
+    id: string,
+    cancelledBy: string,
+    reason?: string,
+    executor: Queryable = this.db
+  ): Promise<LessonRefund | null> {
+    const result = await executor.query<{ paidAmount: number; creditApplied: number }>(
       `UPDATE lessons
        SET status = 'cancelled', cancellation_reason = $2, cancelled_by = $3,
            updated_at = CURRENT_TIMESTAMP
        WHERE id = $1 AND status IN ('pending', 'scheduled')
-       RETURNING id`,
+       RETURNING ${REFUND_COLUMNS}`,
       [id, reason ?? null, cancelledBy]
     );
-    return result.rows[0] ? this.requireById(id) : null;
+    const row = result.rows[0];
+    if (!row) {
+      return null;
+    }
+    return {
+      lesson: await this.requireById(id, executor),
+      paidAmount: row.paidAmount,
+      creditApplied: row.creditApplied,
+    };
   }
 
-  async createScheduled(data: NewScheduledLesson): Promise<Lesson> {
-    const inserted = await this.db.query<{ id: string }>(
+  async createScheduled(data: NewScheduledLesson, executor: Queryable = this.db): Promise<Lesson> {
+    const { settlement } = data;
+    const inserted = await executor.query<{ id: string }>(
       `INSERT INTO lessons (school_id, student_id, instructor_id, type, status, scheduled_date,
-         duration_minutes, price, notes, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, 'scheduled', $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+         duration_minutes, price, notes, credit_applied, paid, amount, payment_method,
+         payment_date, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, 'scheduled', $5, $6, $7, $8, $9, $10, $11, $12,
+               CASE WHEN $10 THEN CURRENT_TIMESTAMP END, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
        RETURNING id`,
       [
         data.schoolId,
@@ -193,29 +240,42 @@ export class LessonRepository implements ILessonRepository {
         data.durationMinutes,
         data.price,
         data.notes ?? null,
+        settlement.creditApplied,
+        settlement.paid,
+        settlement.amount,
+        settlement.paymentMethod,
       ]
     );
-    return this.requireById(inserted.rows[0].id);
+    return this.requireById(inserted.rows[0].id, executor);
   }
 
   async markAttendance(
     id: string,
     dto: MarkAttendanceDTO,
     executor: Queryable = this.db
-  ): Promise<{ lesson: Lesson; studentRowId: string } | null> {
-    const result = await executor.query<{ id: string; studentRowId: string }>(
+  ): Promise<(LessonRefund & { studentRowId: string }) | null> {
+    const result = await executor.query<{
+      studentRowId: string;
+      paidAmount: number;
+      creditApplied: number;
+    }>(
       `UPDATE lessons
        SET status = 'completed', attended = $2, feedback = $3, rating = $4,
            updated_at = CURRENT_TIMESTAMP
        WHERE id = $1 AND status = 'scheduled'
-       RETURNING id, student_id AS "studentRowId"`,
+       RETURNING ${REFUND_COLUMNS}`,
       [id, dto.attended, dto.feedback ?? null, dto.rating ?? null]
     );
     const row = result.rows[0];
     if (!row) {
       return null;
     }
-    return { lesson: await this.requireById(id, executor), studentRowId: row.studentRowId };
+    return {
+      lesson: await this.requireById(id, executor),
+      studentRowId: row.studentRowId,
+      paidAmount: row.paidAmount,
+      creditApplied: row.creditApplied,
+    };
   }
 
   /** Relecture avec les jointures après une écriture (RETURNING ne peut pas joindre). */

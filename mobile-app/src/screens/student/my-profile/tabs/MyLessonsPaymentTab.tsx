@@ -15,7 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { studentSelfProfileService } from '../../../../services/api/StudentSelfProfileService';
 import { getApiErrorMessage } from '../../../../services/api/ApiError';
-import { LessonHistory } from '../../../../models/Profile';
+import { LessonHistory, paymentMethodLabel } from '../../../../models/Profile';
 import { LESSON_TYPE_LABELS } from '../../../../models/Lesson';
 import { useSchoolCurrency } from '../../../../hooks/useSchoolCurrency';
 import { formatAmount, formatDate, formatDateTime } from '../../../../utils/format';
@@ -127,7 +127,18 @@ export const MyLessonsPaymentTab = ({ route }: any) => {
           )}
         </View>
         {item.paid && item.paymentDate && (
-          <Text style={styles.paymentDate}>Paid on {formatDate(item.paymentDate)}</Text>
+          <Text style={styles.paymentDate}>
+            Paid on {formatDate(item.paymentDate)}
+            {item.paymentMethod === 'credit' ? ' with your credit' : ''}
+            {item.paymentMethod && item.paymentMethod !== 'credit'
+              ? ` (${paymentMethodLabel(item.paymentMethod)})`
+              : ''}
+          </Text>
+        )}
+        {!item.paid && item.creditApplied > 0 && (
+          <Text style={styles.paymentDate}>
+            Credit applied: {formatAmount(item.creditApplied, currency)}
+          </Text>
         )}
       </View>
     </View>

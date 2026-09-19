@@ -80,11 +80,30 @@ export interface Lesson {
   feedback: string | null;
   rating: number | null;
   paid: boolean;
+  /** Argent versé pour la leçon (0 quand l'avoir a tout couvert, D-40). */
   amount: number | null;
   paymentDate: string | null;
+  /** `cash` / `card` / `bank_transfer`, ou `credit` = réglée par l'avoir de l'élève (D-40). */
+  paymentMethod: string | null;
+  /** Part du prix couverte par l'avoir de l'élève à la planification (D-40). */
+  creditApplied: number;
   createdAt: string;
   updatedAt: string;
 }
+
+/**
+ * Texte court sur l'état du paiement d'une leçon (D-40) : réglée par l'avoir, reste dû après
+ * avoir, versement rendu en avoir (leçon annulée ou élève absent), ou rien de particulier.
+ */
+export const paymentNote = (
+  lesson: Pick<Lesson, 'status' | 'paid' | 'paymentMethod' | 'creditApplied' | 'attended'>
+): 'paid-with-credit' | 'credit-applied' | 'refunded-as-credit' | null => {
+  const notDelivered = lesson.status === LessonStatus.CANCELLED || lesson.attended === false;
+  if (notDelivered && (lesson.paid || lesson.creditApplied > 0)) return 'refunded-as-credit';
+  if (lesson.paid && lesson.paymentMethod === 'credit') return 'paid-with-credit';
+  if (!lesson.paid && lesson.creditApplied > 0) return 'credit-applied';
+  return null;
+};
 
 /**
  * L'élève peut-il annuler cette leçon (D-24) ? `pending` : toujours ; `scheduled` : seulement si

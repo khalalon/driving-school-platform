@@ -182,10 +182,28 @@ describe('ProfileRepository', () => {
       lessonsPending: 40,
       examsPending: 0,
       lastPaymentDate: null,
+      credit: 0,
     });
     const [sql] = query.mock.calls[0] as [string, unknown[]];
     expect(sql).toMatch(/FROM lessons l WHERE l\.student_id IN/);
     expect(sql).toMatch(/FROM exams e WHERE e\.student_id IN/);
+    expect(sql).toMatch(/\(SELECT credit FROM student\) AS credit/);
+  });
+
+  it('getFinancialSummary : l’avoir de l’élève (D-40) est renvoyé converti', async () => {
+    const { pool } = fakePool([
+      {
+        lessonsRevenue: '0',
+        lessonsPending: '0',
+        examsRevenue: '0',
+        examsPending: '0',
+        lastPaymentDate: null,
+        credit: '40.00',
+      },
+    ]);
+    await expect(
+      new ProfileRepository(pool).getFinancialSummary(UUID.student, UUID.school)
+    ).resolves.toMatchObject({ credit: 40 });
   });
 
   it('écritures : paramètres dans l’ordre du SQL, vrai si une ligne est touchée ; lectures sur lessons / exams', async () => {
@@ -216,5 +234,38 @@ describe('ProfileRepository', () => {
     await expect(none.updateNotes('ghost', 'x')).resolves.toBe(false);
     await expect(none.markLessonPaid('ghost', 1, 'cash')).resolves.toBe(false);
     await expect(none.markExamPaid('ghost', 1, 'cash')).resolves.toBe(false);
+  });
+});
+
+describe('StudentRepository — avoir de l’élève (D-40)', () => {
+  it('getCreditForUpdate : SELECT … FOR UPDATE par users.id, 0 sans fiche', async () => {
+    const { pool, query } = fakePool([{ credit: 25.5 }]);
+    const repo = new StudentRepository(pool);
+
+    await expect(repo.getCreditForUpdate('user-1')).resolves.toBe(25.5);
+    const [sql, params] = query.mock.calls[0] as [string, unknown[]];
+    expect(sql).toMatch(
+      /SELECT credit::float8 AS credit FROM students WHERE user_id = \$1 FOR UPDATE/
+    );
+    expect(params).toEqual(['user-1']);
+
+    await expect(
+      new StudentRepository(fakePool([]).pool).getCreditForUpdate('ghost')
+    ).resolves.toBe(0);
+  });
+
+  it('addCredit : UPDATE credit = credit + delta sur le client fourni, nouveau solde renvoyé', async () => {
+    const txQuery = jest.fn().mockResolvedValue({ rows: [{ credit: 15 }] });
+    const { pool, query } = fakePool([]);
+    const repo = new StudentRepository(pool);
+
+    await expect(repo.addCredit('user-1', -25, { query: txQuery })).resolves.toBe(15);
+    const [sql, params] = txQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toMatch(/UPDATE students SET credit = credit \+ \$2/);
+    expect(sql).toMatch(/WHERE user_id = \$1/);
+    expect(params).toEqual(['user-1', -25]);
+    expect(query).not.toHaveBeenCalled();
+
+    await expect(repo.addCredit('ghost', 10)).rejects.toThrow(/introuvable/);
   });
 });

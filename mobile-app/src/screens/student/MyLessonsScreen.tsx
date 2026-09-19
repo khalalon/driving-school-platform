@@ -27,6 +27,7 @@ import {
   Lesson,
   LessonStatus,
   canStudentCancel,
+  paymentNote,
 } from '../../models/Lesson';
 import { useSchoolCurrency } from '../../hooks/useSchoolCurrency';
 import { formatAmount, formatPersonName, formatTime } from '../../utils/format';
@@ -182,19 +183,29 @@ export const MyLessonsScreen = ({ navigation }: any) => {
           </View>
         </View>
 
-        {/* Prix et état de paiement (D-32) */}
+        {/* Prix et état de paiement (D-32), avoir (D-40) */}
         {(item.price !== null || item.paid) && (
           <View style={styles.priceRow}>
             <Ionicons name="cash-outline" size={16} color={colors.text.secondary} />
-            <Text style={styles.priceText}>
-              {formatAmount(item.amount ?? item.price, currency)}
-            </Text>
+            <Text style={styles.priceText}>{formatAmount(item.price, currency)}</Text>
             <View style={[styles.paidBadge, item.paid ? styles.paidBadgeOn : styles.paidBadgeOff]}>
               <Text style={[styles.paidText, item.paid ? styles.paidTextOn : styles.paidTextOff]}>
                 {item.paid ? 'Paid' : 'Unpaid'}
               </Text>
             </View>
           </View>
+        )}
+        {paymentNote(item) === 'paid-with-credit' && (
+          <Text style={styles.paymentNote}>Paid with your credit</Text>
+        )}
+        {paymentNote(item) === 'credit-applied' && (
+          <Text style={styles.paymentNote}>
+            Credit applied: {formatAmount(item.creditApplied, currency)} · remaining{' '}
+            {formatAmount(item.amount, currency)}
+          </Text>
+        )}
+        {paymentNote(item) === 'refunded-as-credit' && (
+          <Text style={styles.paymentNote}>Your payment was returned to your credit</Text>
         )}
 
         {item.status === LessonStatus.REJECTED && item.rejectionReason && (
@@ -482,6 +493,11 @@ const styles = StyleSheet.create({
   },
   paidTextOff: {
     color: colors.warning[600],
+  },
+  paymentNote: {
+    fontSize: typography.size.xs,
+    color: colors.success[600],
+    fontStyle: 'italic',
   },
   reasonBox: {
     flexDirection: 'row',

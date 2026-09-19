@@ -245,6 +245,15 @@ export const StudentInfoTab = ({ route }: any) => {
           </Text>
         </View>
 
+        <View style={styles.divider} />
+
+        <View style={styles.financialRow}>
+          <Text style={styles.financialLabel}>Credit Available</Text>
+          <Text style={[styles.financialValue, { color: colors.primary[600] }]}>
+            {formatAmount(financial.credit, currency)}
+          </Text>
+        </View>
+
         {financial.lastPaymentDate && (
           <View style={styles.lastPayment}>
             <Text style={styles.lastPaymentText}>

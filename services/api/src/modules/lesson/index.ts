@@ -6,6 +6,7 @@ import { LessonController } from './controllers/lesson.controller';
 import { LessonRepository } from './repositories/lesson.repository';
 import { createLessonRouter } from './routes/lesson.routes';
 import {
+  CreditLedger,
   InstructorLookup,
   LessonService,
   LessonStatsSink,
@@ -17,7 +18,7 @@ export interface LessonModuleDeps {
   db: Pool;
   requireAuth: RequestHandler;
   /** `StudentRepository` du module student : une seule lecture de `students` dans l'application. */
-  students: StudentLookup;
+  students: StudentLookup & CreditLedger;
   /** `InstructorRepository` partagé (module school). */
   instructors: InstructorLookup;
   /** `PricingService` du module school : prix figé à l'approbation (D-30). */
@@ -52,7 +53,8 @@ export function buildLessonModule({
     stats,
     new PgTransactionRunner(db),
     schoolGuard,
-    cancelWindowHours
+    cancelWindowHours,
+    students
   );
   return {
     router: createLessonRouter(new LessonController(lessonService), requireAuth),

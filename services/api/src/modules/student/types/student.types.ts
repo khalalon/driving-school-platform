@@ -8,6 +8,8 @@ export interface Student {
   authorized: boolean;
   enrollmentRequestId: string | null;
   enrollmentDate: Date | null;
+  /** Avoir de l'élève dans la devise de l'école (D-40), imputé sur sa prochaine leçon planifiée. */
+  credit: number;
   createdAt: Date;
   updatedAt: Date;
   email?: string;
@@ -119,6 +121,8 @@ export interface LessonHistory {
   amount: number | null;
   paymentDate: Date | null;
   paymentMethod: string | null;
+  /** Part du prix couverte par l'avoir de l'élève (D-40). */
+  creditApplied: number;
 }
 
 /** P3 / P10 : une ligne par examen (`exams`, 008), planifié, passé ou annulé. */
@@ -147,6 +151,8 @@ export interface FinancialSummary {
   lessonsPending: number;
   examsPending: number;
   lastPaymentDate: Date | null;
+  /** Avoir disponible de l'élève (D-40), dette de l'école envers lui. */
+  credit: number;
 }
 
 export interface UpdateNotesDTO {
