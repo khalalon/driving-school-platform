@@ -13,16 +13,18 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      # Secrets jetables de CI (obligatoires depuis 4.4, sans valeur de repli dans le compose).
+      # Au niveau du job : chaque commande `docker compose` (up, logs, down -v) interpole le
+      # fichier compose et refuse de tourner sans ces variables.
+      JWT_ACCESS_SECRET: ci-only-access-secret-not-for-production-0123456789
+      JWT_REFRESH_SECRET: ci-only-refresh-secret-not-for-production-0123456789
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Démarrer la stack (Postgres, Redis, API, Nginx)
         run: docker compose up -d --build
-        env:
-          # Secrets jetables de CI (obligatoires depuis 4.4, sans valeur de repli dans le compose).
-          JWT_ACCESS_SECRET: ci-only-access-secret-not-for-production-0123456789
-          JWT_REFRESH_SECRET: ci-only-refresh-secret-not-for-production-0123456789
 
       - name: Attendre la passerelle
         run: |

@@ -83,6 +83,10 @@ jobs:
       github.ref == 'refs/heads/main' &&
       (needs.api.result == 'success' || needs.api.result == 'skipped')
     runs-on: ubuntu-latest
+    # Le GITHUB_TOKEN par défaut est en lecture seule : le push vers ghcr.io exige packages:write.
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - uses: actions/checkout@v4

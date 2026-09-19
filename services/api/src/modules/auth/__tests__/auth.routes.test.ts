@@ -125,6 +125,13 @@ describe('Routes /api/auth', () => {
     expect(res.body).toEqual({ error: 'CONFLICT', message: 'Un compte existe déjà' });
   });
 
+  it('POST /login : 400 VALIDATION_ERROR sans mot de passe, service jamais appelé', async () => {
+    const res = await request(app).post('/api/auth/login').send({ email: 'x@x.io' });
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({ error: 'VALIDATION_ERROR' });
+    expect(authService.login).not.toHaveBeenCalled();
+  });
+
   it('POST /login : 401 UNAUTHORIZED avec message pour de mauvais identifiants', async () => {
     authService.login.mockRejectedValue(
       new HttpError(401, 'UNAUTHORIZED', 'Identifiants invalides')
@@ -146,6 +153,13 @@ describe('Routes /api/auth', () => {
     expect(res.body).toEqual({ error: 'INTERNAL_ERROR', message: 'Erreur interne du serveur' });
     expect(consoleError).toHaveBeenCalled();
     consoleError.mockRestore();
+  });
+
+  it('POST /refresh : 400 VALIDATION_ERROR sans refreshToken, service jamais appelé', async () => {
+    const res = await request(app).post('/api/auth/refresh').send({});
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({ error: 'VALIDATION_ERROR' });
+    expect(authService.refreshToken).not.toHaveBeenCalled();
   });
 
   it('POST /refresh : 200 avec une nouvelle paire', async () => {
