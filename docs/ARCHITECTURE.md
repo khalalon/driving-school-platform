@@ -9,7 +9,6 @@ Expo Go (mobile-app)            web-frontend (gelé, D-05)
         │ HTTP :80                      │
         ▼                               ▼
    Nginx (driving-school-nginx) ── /api/* → api:3000 (résolu à la requête)
-        │                          /api/verification/* → 404, jamais transmis
         ▼
    api (services/api, driving-school-api)  :3000   ← une seule application Express
         │                      │
@@ -41,7 +40,7 @@ services/api/src/
 |---|---|---|---|
 | `auth` | `/api/auth` | A1–A5 (A3 avec `schoolId` / `instructorId` pour un instructeur, D-19) ; `register` conforme à D-17 (sans `role` ; `schoolCode` → rôle du code + fiche `instructors` en transaction, via `SchoolCodeRepository` et `InstructorRepository` du module school injectés) ; jetons D-12 (claim `type`, deux secrets, 1 h / 30 j, rotation et révocation des refresh tokens en Redis — 4.4, 4.6) ; expose `requireAuth` | tous |
 | `school` | `/api/schools` | S1–S4 publics, S6 (élèves autorisés de l'école, cloisonné) + administration `admin` ; `InstructorRepository` partagé (câblé dans `src/index.ts` pour auth, `SchoolGuard` et ce module) | `lesson` (grille tarifaire, D-30) |
-| `student` | `/api/enrollment`, `/api/profiles`, `/api/student-profiles`, `/api/verification` | E1–E6, P1–P11 (`:studentId` = users.id, D-28 ; leçons et examens lus dans `lessons` / `exams`, paiement porté par la leçon / l'examen — 5.0 ; E4–E6 et P1–P7 cloisonnées par `SchoolGuard` — 5.1), vérification (publique dans l'app, **bloquée par Nginx**, retirée en 5.7) ; `approveRequest` atomique (UPDATE + INSERT dans une transaction, 3.2) | `lesson`, `exam` (`StudentRepository`, `StatsRepository`) |
+| `student` | `/api/enrollment`, `/api/profiles`, `/api/student-profiles` | E1–E6, P1–P11 (`:studentId` = users.id, D-28 ; leçons et examens lus dans `lessons` / `exams`, paiement porté par la leçon / l'examen — 5.0 ; E4–E6 et P1–P7 cloisonnées par `SchoolGuard` — 5.1), `approveRequest` atomique (UPDATE + INSERT dans une transaction, 3.2) | `lesson`, `exam` (`StudentRepository`, `StatsRepository`) |
 | `lesson` | `/api/lessons` | modèle D-21 / D-32 : L2 (demande `pending`, école résolue depuis la fiche `students`, 403 `NOT_ENROLLED`), L1 (portée par appelant : élève, file `pending` de l'école et/ou leçons de l'instructeur, admin), `GET /:id` scoped (5.2) ; L5 (prix figé depuis la grille ou saisi, D-30 ; l'approbateur devient l'instructeur), L6, L3 (fenêtre `LESSON_CANCEL_HOURS` pour l'élève, D-24 ; motif et auteur conservés, 011) en 5.3 ; L4 (leçon planifiée par l'instructeur pour un élève inscrit) et L7 (présence par l'instructeur de la leçon, compteur `student_lesson_stats` incrémenté si présent, transaction) en 5.4 ; anciennes routes de créneaux et `lesson_bookings` abandonnées | `student` (`StudentRepository`), `school` (`InstructorRepository`, grille D-30 en 5.3), `SchoolGuard` |
 | `exam` | `/api/exams` | modèle D-01 / D-33 : X2 (demande `pending`, école résolue depuis la fiche `students`, 403 `NOT_ENROLLED`, pas d'éligibilité — D-26), X1 (élève : les siens ; instructeur : tous ceux de son école ; admin : tout), `GET /:id` scoped (5.5) ; X3 (planification : date + centre), X4 (refus), X5 (résultat sur un examen planifié, score facultatif) par l'école (5.6) ; anciennes sessions et `exam_registrations` abandonnées | `student` (`StudentRepository`), `school` (`InstructorRepository`), `SchoolGuard` |
 | `payment` | **non monté** | porté typé (D-31 : paiement manuel en v1) ; sa table `payments` n'a pas la colonne `metadata` que le code écrit — migration nécessaire s'il est un jour monté | — |
@@ -81,7 +80,7 @@ Une seule base `driving_school`, un seul schéma `public`. Les modules lisent et
 | `notifications` | `user_id` → users, `type`, `title`, `message`, `read` | personne (module non porté, D-35) | personne |
 | `school_codes` (002) | `school_id`, `code` unique, `role` ∈ instructor/student, `max_uses`, `uses_count`, `expires_at`, `is_active` | auth (`register` consomme : `uses_count + 1` sous conditions de validité, 4.2) ; insérés par script (4.3) | auth |
 | `enrollment_requests` (002) | `student_id` → **users** (pas students), **NOT NULL depuis 005**, `school_id`, `status` ∈ pending/approved/rejected, `message`, `rejection_reason`, `processed_by` → users, `processed_at` ; **index unique partiel sur `student_id` WHERE status IN (pending, approved)** depuis 009 (D-22 ; l'ancienne unique(student, school) de 002 est levée : les refus s'accumulent) | student | student |
-| `student_lesson_stats` (002) | `student_id` → students, `school_id`, compteurs de leçons effectuées | student (`/verification/.../lesson-completed`, bloqué par Nginx) | student |
+| `student_lesson_stats` (002) | `student_id` → students, `school_id`, compteurs de leçons effectuées | lesson (L7, présent seulement — D-33) | student (P1, P8, S6), exam (X1) |
 | `schema_migrations` (004) | `name` (PK, nom du fichier), `applied_at` | 004, `scripts/migrate.sh` | `scripts/migrate.sh` |
 
 ### Le double identifiant élève
@@ -100,7 +99,6 @@ Fichier : `nginx/nginx.conf` (+ `nginx/proxy_params.conf`, inclus). Depuis 2.6, 
 | Préfixe | Traitement | Rate limit |
 |---|---|---|
 | `/health` | réponse statique `healthy` | — |
-| `/api/verification/*` | **404 JSON**, jamais transmis (D-14 ; routes retirées de l'application en 5.7) | — |
 | `/api/*` | `proxy_pass` vers `api:3000`, nom résolu **à la requête** (`resolver 127.0.0.11 valid=10s`) : recréer le conteneur `api` ne casse plus la passerelle | 10 r/s par IP, burst 20 |
 | tout le reste | 404 JSON `{ error: NOT_FOUND }` | — |
 

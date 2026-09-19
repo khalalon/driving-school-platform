@@ -4,17 +4,14 @@ import { PgTransactionRunner } from '../../db/transaction';
 import { SchoolGuard } from '../../http/authz';
 import { EnrollmentController } from './controllers/enrollment.controller';
 import { ProfileController } from './controllers/profile.controller';
-import { VerificationController } from './controllers/verification.controller';
 import { EnrollmentRepository } from './repositories/enrollment.repository';
 import { ProfileRepository } from './repositories/profile.repository';
 import { StatsRepository } from './repositories/stats.repository';
 import { StudentRepository } from './repositories/student.repository';
 import { createEnrollmentRouter } from './routes/enrollment.routes';
 import { createProfileRouter, createStudentProfileRouter } from './routes/profile.routes';
-import { createVerificationRouter } from './routes/verification.routes';
 import { EnrollmentService } from './services/enrollment.service';
 import { ProfileService } from './services/profile.service';
-import { VerificationService } from './services/verification.service';
 
 export interface StudentModuleDeps {
   db: Pool;
@@ -26,7 +23,6 @@ export interface StudentModule {
   enrollmentRouter: Router;
   profileRouter: Router;
   studentProfileRouter: Router;
-  verificationRouter: Router;
   enrollmentService: EnrollmentService;
   /** Réutilisés par lesson / exam : inscription approuvée (NOT_ENROLLED) et compteurs de leçons. */
   studentRepository: StudentRepository;
@@ -50,7 +46,6 @@ export function buildStudentModule({
     schoolGuard
   );
   const profileService = new ProfileService(profileRepository, schoolGuard);
-  const verificationService = new VerificationService(studentRepository, statsRepository);
 
   const profileController = new ProfileController(profileService);
 
@@ -61,7 +56,6 @@ export function buildStudentModule({
     ),
     profileRouter: createProfileRouter(profileController, requireAuth),
     studentProfileRouter: createStudentProfileRouter(profileController, requireAuth),
-    verificationRouter: createVerificationRouter(new VerificationController(verificationService)),
     enrollmentService,
     studentRepository,
     statsRepository,

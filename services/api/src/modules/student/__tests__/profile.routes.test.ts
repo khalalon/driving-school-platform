@@ -3,13 +3,10 @@ import { createApp } from '../../../app';
 import { HttpError } from '../../../http/errors';
 import { bearerFor, TEST_USERS, testRequireAuth, UUID } from '../../../test-utils/http';
 import { ProfileController } from '../controllers/profile.controller';
-import { VerificationController } from '../controllers/verification.controller';
 import { createProfileRouter, createStudentProfileRouter } from '../routes/profile.routes';
-import { createVerificationRouter } from '../routes/verification.routes';
 import { ProfileService } from '../services/profile.service';
-import { VerificationService } from '../services/verification.service';
 
-describe('Routes /api/profiles, /api/student-profiles, /api/verification', () => {
+describe('Routes /api/profiles, /api/student-profiles', () => {
   const profileService = {
     getCompleteProfile: jest.fn(),
     getOwnProfile: jest.fn(),
@@ -23,17 +20,10 @@ describe('Routes /api/profiles, /api/student-profiles, /api/verification', () =>
     markLessonPaid: jest.fn(),
     markExamPaid: jest.fn(),
   };
-  const verificationService = {
-    verifyEnrollment: jest.fn(),
-    recordLessonCompletion: jest.fn(),
-  };
   const profileController = new ProfileController(profileService as unknown as ProfileService);
   const app = createApp({
     auth: createProfileRouter(profileController, testRequireAuth),
     profiles: createStudentProfileRouter(profileController, testRequireAuth),
-    verification: createVerificationRouter(
-      new VerificationController(verificationService as unknown as VerificationService)
-    ),
   });
   const staff = '/api/auth';
   const self = '/api/profiles';
@@ -180,30 +170,11 @@ describe('Routes /api/profiles, /api/student-profiles, /api/verification', () =>
       .expect(403);
   });
 
-  it('verification : paramètres requis, examType contrôlé, payload validé', async () => {
-    const bad = await request(app).get('/api/verification/verify-enrollment');
-    expect(bad.status).toBe(400);
-    expect(bad.body).toMatchObject({ error: 'VALIDATION_ERROR' });
-
-    verificationService.verifyEnrollment.mockResolvedValue({ isEnrolled: false, canBook: false });
-    await request(app)
-      .get(`/api/verification/verify-enrollment?userId=u&schoolId=${UUID.school}`)
-      .expect(200, { isEnrolled: false, canBook: false });
-
-    // Éligibilité retirée (D-26, 3.4) : la route n'existe plus.
-    await request(app)
-      .get(`/api/verification/students/${UUID.student}/eligibility?schoolId=${UUID.school}`)
-      .expect(404);
-
-    const badBody = await request(app)
-      .post(`/api/verification/students/${UUID.student}/lesson-completed`)
-      .send({ schoolId: UUID.school, lessonType: 'DRIVING', attended: true });
-    expect(badBody.status).toBe(400);
-
-    verificationService.recordLessonCompletion.mockResolvedValue({ completedLessons: 1 });
+  it('/api/verification/* : supprimé (5.7), 404 partout', async () => {
+    await request(app).get('/api/verification/verify-enrollment').expect(404);
     await request(app)
       .post(`/api/verification/students/${UUID.student}/lesson-completed`)
       .send({ schoolId: UUID.school, lessonType: 'Parc', attended: true })
-      .expect(200, { completedLessons: 1 });
+      .expect(404);
   });
 });

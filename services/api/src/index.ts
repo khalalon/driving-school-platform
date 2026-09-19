@@ -55,7 +55,6 @@ async function bootstrap(): Promise<void> {
     enrollment: student.enrollmentRouter,
     profiles: student.profileRouter,
     'student-profiles': student.studentProfileRouter,
-    verification: student.verificationRouter,
     lessons: lesson.router,
     exams: exam.router,
   });

@@ -156,7 +156,12 @@ describe('Routes /api/schools (S1–S4 + administration)', () => {
     expect(created.status).toBe(201);
     expect(instructorService.addInstructor).toHaveBeenCalledWith(UUID.school, body);
 
-    await request(app).get(`${base}/instructors/${UUID.instructor}`).expect(200);
+    // §8 du contrat : lecture d'une fiche instructeur réservée à l'admin (5.7).
+    await request(app).get(`${base}/instructors/${UUID.instructor}`).expect(401);
+    await request(app)
+      .get(`${base}/instructors/${UUID.instructor}`)
+      .set('Authorization', auth)
+      .expect(200);
     await request(app)
       .put(`${base}/instructors/${UUID.instructor}`)
       .set('Authorization', auth)

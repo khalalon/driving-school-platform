@@ -18,7 +18,7 @@ export function createSchoolRouter(
   router.get('/', controller.getAllSchools);
 
   // Sous-ressources déclarées avant `/:id` pour lever toute ambiguïté de lecture.
-  router.get('/instructors/:id', controller.getInstructorById);
+  router.get('/instructors/:id', ...adminOnly, controller.getInstructorById);
   router.put('/instructors/:id', ...adminOnly, controller.updateInstructor);
   router.delete('/instructors/:id', ...adminOnly, controller.deleteInstructor);
   router.delete('/pricing/:id', ...adminOnly, controller.deletePricing);

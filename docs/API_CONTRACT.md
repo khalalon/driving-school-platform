@@ -123,10 +123,10 @@ Deux familles montées par le module `student` de `services/api` : `/api/profile
 
 ## 8. Routes backend hors contrat mobile
 
-Elles existent aujourd'hui, ne sont appelées par aucun écran, et sont **retirées** (5.7) sauf mention.
+État après 5.7 : toute route absente des §1–7 est soit supprimée, soit listée ici derrière `admin`. Aucun écran ne les appelle.
 
-- `/api/verification/*` (module `student`, **public dans l'application**, bloqué par Nginx depuis 2.6 ; `/students/:studentId/eligibility` retirée en 3.4, D-26) : supprimé en 5.7 (`student_lesson_stats` est mis à jour directement par L7).
-- `/api/schools` : `POST /`, `PUT /:id`, `DELETE /:id`, `POST /:schoolId/instructors`, `GET /instructors/:id`, `PUT|DELETE /instructors/:id`, `POST /:schoolId/pricing`, `DELETE /pricing/:id` — **conservées, `admin` uniquement** (onboarding des écoles par script + ces routes).
+- `/api/verification/*` : **supprimé en 5.7** (routes, controller et service ; `student_lesson_stats` est mis à jour directement par L7). Répond 404 comme toute route inconnue.
+- `/api/schools` : `POST /`, `PUT /:id`, `DELETE /:id`, `POST /:schoolId/instructors`, `GET /instructors/:id` (verrouillée `admin` en 5.7, elle était publique), `PUT|DELETE /instructors/:id`, `POST /:schoolId/pricing`, `DELETE /pricing/:id` — **conservées, `admin` uniquement** (onboarding des écoles par script + ces routes).
 - `/api/lessons` : `GET /:id` (conservée : sa propre leçon pour un élève, 403 `FORBIDDEN` sinon ; leçons de son école pour un instructeur, D-20 ; tout pour un admin). **Retirées en 5.2** avec les anciennes routes de créneaux (`lesson_bookings` n'est plus lue) : `GET /:id/availability`, `PUT /:id`, `DELETE /:id`, `POST /:lessonId/book`, `GET /bookings/:id`, `GET /:lessonId/bookings`, `GET /students/:studentId/bookings`, `DELETE /bookings/:bookingId`, ancien `POST /` admin (remplacé par L2).
 - `/api/exams` : `GET /:id` (conservée : son propre examen pour un élève, 403 `FORBIDDEN` sinon ; examens de son école pour un instructeur, D-20 ; tout pour un admin). **Retirées en 5.5** (anciennes sessions) : `POST /`, `GET /`, `PUT /:id`, `DELETE /:id`. **Retirées en 3.4** avec la table `exam_registrations` (D-26) : `GET /:id/availability`, `POST /:examId/register`, `GET /registrations/:id`, `GET /:examId/registrations`, `GET /students/:studentId/registrations`, `GET /students/:studentId/eligibility`, `PUT /registrations/:id/result`, `DELETE /registrations/:id`.
 - `/api/payments/*` : module porté, **non monté** (D-31).

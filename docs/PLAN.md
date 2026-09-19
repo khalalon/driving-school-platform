@@ -390,7 +390,7 @@ ITOK=$(curl -s -X POST localhost/api/auth/login -H 'Content-Type: application/js
 ```
 **Hors périmètre** : —
 
-### - [ ] 5.7 — Routes hors contrat retirées ou verrouillées
+### - [x] 5.7 — Routes hors contrat retirées ou verrouillées
 **Objectif** : toute route absente des §1–7 du contrat est supprimée ou listée en §8 derrière `admin` ; `/api/verification/*` supprimé.
 **Fichiers** : `modules/*/routes/*.ts`, `docs/API_CONTRACT.md` (§8).
 **Critère de validation** :

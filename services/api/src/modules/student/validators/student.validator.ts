@@ -1,8 +1,6 @@
 import Joi from 'joi';
-import { LESSON_TYPES } from '../../../types/domain';
 import {
   CreateEnrollmentRequestDTO,
-  LessonCompletedDTO,
   MarkPaidDTO,
   RejectEnrollmentRequestDTO,
   UpdateNotesDTO,
@@ -15,14 +13,6 @@ export const createEnrollmentRequestSchema = Joi.object<CreateEnrollmentRequestD
 // Motif de refus : 10 à 500 caractères (D-29).
 export const rejectEnrollmentRequestSchema = Joi.object<RejectEnrollmentRequestDTO>({
   reason: Joi.string().min(10).max(500).required(),
-});
-
-export const lessonCompletedSchema = Joi.object<LessonCompletedDTO>({
-  schoolId: Joi.string().uuid().required(),
-  lessonType: Joi.string()
-    .valid(...LESSON_TYPES)
-    .required(),
-  attended: Joi.boolean().required(),
 });
 
 export const updateNotesSchema = Joi.object<UpdateNotesDTO>({

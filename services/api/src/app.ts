@@ -11,7 +11,6 @@ export interface AppRouters {
   enrollment?: Router;
   profiles?: Router;
   'student-profiles'?: Router;
-  verification?: Router;
   lessons?: Router;
   exams?: Router;
 }
