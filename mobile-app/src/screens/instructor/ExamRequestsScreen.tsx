@@ -5,8 +5,9 @@
  *
  * Pas d'instructeur attitré (D-33) : tout instructeur de l'école voit et traite les demandes.
  * Pas de règle d'éligibilité (D-26) : le nombre de leçons effectuées est affiché pour aider à
- * décider. Les libellés « Schedule » / « Reject » sont ceux du mobile actuel, en attente de
- * Q-19 (procédure ATTT) ; le payload ne changera pas.
+ * décider. Les libellés dépendent du type (D-42, `EXAM_PROCEDURES`) : théorie planifiée par
+ * l'école (« Schedule » / « Reject »), pratique par session ATTT (« Record convocation » /
+ * « File not ready ») ; mêmes payloads X3 / X4.
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -27,7 +28,7 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { examService } from '../../services/api/ExamService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
-import { EXAM_TYPE_LABELS, Exam, ExamStatus, ExamType } from '../../models/Exam';
+import { EXAM_PROCEDURES, EXAM_TYPE_LABELS, Exam, ExamStatus, ExamType } from '../../models/Exam';
 import { formatDate, formatPersonName } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
 
@@ -191,6 +192,7 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
   // ----- Rendering -----
 
   const renderRequestCard = ({ item }: { item: Exam }) => {
+    const procedure = EXAM_PROCEDURES[item.type];
     return (
       <View style={styles.requestCard}>
         <View style={styles.cardHeader}>
@@ -239,7 +241,7 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
             disabled={processing}
           >
             <Ionicons name="close-outline" size={20} color={colors.error[600]} />
-            <Text style={styles.rejectButtonText}>Reject</Text>
+            <Text style={styles.rejectButtonText}>{procedure.rejectAction}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionButton, styles.scheduleButton]}
@@ -248,7 +250,7 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
             disabled={processing}
           >
             <Ionicons name="calendar-outline" size={20} color={colors.text.inverse} />
-            <Text style={styles.scheduleButtonText}>Schedule</Text>
+            <Text style={styles.scheduleButtonText}>{procedure.scheduleAction}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -264,6 +266,9 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
       <Text style={styles.emptyText}>New exam requests from your school will appear here</Text>
     </View>
   );
+
+  // Libellés de la modale ouverte : ceux du type de la demande sélectionnée (D-42)
+  const selectedProcedure = EXAM_PROCEDURES[selectedRequest?.type ?? ExamType.THEORY];
 
   if (loading) {
     return (
@@ -314,7 +319,7 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Schedule Exam</Text>
+              <Text style={styles.modalTitle}>{selectedProcedure.scheduleAction}</Text>
               <TouchableOpacity onPress={closeSchedule}>
                 <Ionicons name="close" size={24} color={colors.text.secondary} />
               </TouchableOpacity>
@@ -325,12 +330,12 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
                 ? `${EXAM_TYPE_LABELS[selectedRequest.type]} exam for ${formatPersonName(
                     { firstName: selectedRequest.studentFirstName, lastName: selectedRequest.studentLastName },
                     'the student'
-                  )}: set the date, time and location`
+                  )}: ${selectedProcedure.scheduleHint}`
                 : ''}
             </Text>
 
             <View style={styles.section}>
-              <Text style={styles.label}>Date</Text>
+              <Text style={styles.label}>{selectedProcedure.dateLabel}</Text>
               <TouchableOpacity
                 style={styles.dateButton}
                 onPress={() => setShowDatePicker(true)}
@@ -373,10 +378,10 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.label}>Location</Text>
+              <Text style={styles.label}>{selectedProcedure.locationLabel}</Text>
               <TextInput
                 style={styles.locationInput}
-                placeholder="e.g., Main Driving Center"
+                placeholder={selectedProcedure.locationPlaceholder}
                 placeholderTextColor={colors.neutral[400]}
                 value={location}
                 onChangeText={setLocation}
@@ -404,7 +409,7 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
                 {processing ? (
                   <ActivityIndicator size="small" color={colors.text.inverse} />
                 ) : (
-                  <Text style={styles.modalSubmitText}>Schedule</Text>
+                  <Text style={styles.modalSubmitText}>{selectedProcedure.scheduleAction}</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -417,15 +422,13 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Reject Request</Text>
+              <Text style={styles.modalTitle}>{selectedProcedure.rejectAction}</Text>
               <TouchableOpacity onPress={closeReject}>
                 <Ionicons name="close" size={24} color={colors.text.secondary} />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.modalSubtitle}>
-              Provide a reason for rejecting this exam request
-            </Text>
+            <Text style={styles.modalSubtitle}>{selectedProcedure.rejectHint}</Text>
 
             <TextInput
               style={styles.reasonInput}
@@ -465,7 +468,7 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
                 {processing ? (
                   <ActivityIndicator size="small" color={colors.text.inverse} />
                 ) : (
-                  <Text style={styles.modalRejectText}>Reject</Text>
+                  <Text style={styles.modalRejectText}>{selectedProcedure.rejectAction}</Text>
                 )}
               </TouchableOpacity>
             </View>

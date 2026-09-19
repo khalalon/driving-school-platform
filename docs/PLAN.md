@@ -510,7 +510,7 @@ docker compose up -d --build api && (cd services/api && npx tsc --noEmit && npm 
 ```
 **Hors périmètre** : pénalité d'absence.
 
-### - [ ] 7.4 — Libellés d'examen selon le type (D-42)
+### - [x] 7.4 — Libellés d'examen selon le type (D-42)
 **Objectif** : `EXAM_PROCEDURES` dans `mobile-app/src/models/Exam.ts` (théorie : « Schedule » / « Reject », date et lieu choisis par l'école ; pratique : « Record convocation » / « File not ready », date de session et centre ATTT) ; `ExamRequestsScreen` et `MyExamsScreen` en tirent leurs actions, statuts et textes ; §5 du contrat réécrit, X3 / X4 plus suspendus.
 **Fichiers** : `mobile-app/src/models/Exam.ts`, `mobile-app/src/screens/instructor/ExamRequestsScreen.tsx`, `mobile-app/src/screens/student/MyExamsScreen.tsx`, `docs/API_CONTRACT.md`.
 **Critère de validation** :

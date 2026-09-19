@@ -4,6 +4,8 @@
  *
  * Un examen est une demande (`pending`) que l'école planifie (`scheduled`, date et centre),
  * refuse (`rejected`) ou clôt avec un résultat (`completed`) ; l'élève voit l'état de paiement.
+ * Les mots dépendent du type (D-42) : théorie planifiée par l'école, pratique convoquée par la
+ * session ATTT (`EXAM_PROCEDURES`).
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -21,13 +23,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { examService } from '../../services/api/ExamService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
 import {
+  EXAM_PROCEDURES,
   EXAM_RESULT_LABELS,
-  EXAM_STATUS_LABELS,
   EXAM_TYPE_LABELS,
   Exam,
   ExamResult,
   ExamStatus,
   ExamType,
+  examStatusLabel,
 } from '../../models/Exam';
 import { useSchoolCurrency } from '../../hooks/useSchoolCurrency';
 import { formatAmount, formatDate, formatTime } from '../../utils/format';
@@ -104,6 +107,7 @@ export const MyExamsScreen = ({ navigation }: any) => {
     const statusConfig = getStatusConfig(item.status);
     const resultConfig = getResultConfig(item.result);
     const rejected = item.status === ExamStatus.REJECTED;
+    const procedure = EXAM_PROCEDURES[item.type];
 
     return (
       <View style={styles.examCard}>
@@ -123,7 +127,7 @@ export const MyExamsScreen = ({ navigation }: any) => {
             <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
               <Ionicons name={statusConfig.icon as any} size={14} color={statusConfig.color} />
               <Text style={[styles.statusText, { color: statusConfig.color }]}>
-                {EXAM_STATUS_LABELS[item.status]}
+                {examStatusLabel(item.type, item.status)}
               </Text>
             </View>
           </View>
@@ -152,7 +156,7 @@ export const MyExamsScreen = ({ navigation }: any) => {
                 <Text style={styles.messageText}>{item.message}</Text>
               </View>
             )}
-            <Text style={styles.helperText}>Waiting for the school to review and schedule</Text>
+            <Text style={styles.helperText}>{procedure.pendingHint}</Text>
           </View>
         )}
 
@@ -202,13 +206,16 @@ export const MyExamsScreen = ({ navigation }: any) => {
           </View>
         )}
 
-        {/* Rejected State - Show Reason */}
-        {rejected && item.rejectionReason && (
+        {/* Rejected State - Show Reason (D-42 : « File not ready » pour la pratique) */}
+        {rejected && (
           <View style={styles.rejectionBox}>
             <Ionicons name="information-circle-outline" size={20} color={colors.error[600]} />
             <View style={styles.rejectionContent}>
-              <Text style={styles.rejectionLabel}>Reason:</Text>
-              <Text style={styles.rejectionText}>{item.rejectionReason}</Text>
+              <Text style={styles.rejectionLabel}>{procedure.rejectedStatus}:</Text>
+              {item.rejectionReason && (
+                <Text style={styles.rejectionText}>{item.rejectionReason}</Text>
+              )}
+              <Text style={styles.rejectionHint}>{procedure.rejectedHint}</Text>
             </View>
           </View>
         )}
@@ -566,6 +573,12 @@ const styles = StyleSheet.create({
     fontSize: typography.size.sm,
     color: colors.error[600],
     lineHeight: typography.size.sm * typography.lineHeight.normal,
+  },
+  rejectionHint: {
+    fontSize: typography.size.xs,
+    color: colors.text.tertiary,
+    fontStyle: 'italic',
+    marginTop: spacing.xs,
   },
   paymentRow: {
     flexDirection: 'row',
