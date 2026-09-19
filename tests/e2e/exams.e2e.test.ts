@@ -66,6 +66,58 @@ describe('Examens (X1–X5)', () => {
     expect(typeof mine?.studentCompletedLessons).toBe('number');
   });
 
+  step("X3 — planification de l'examen par l'instructeur : scheduled, date et centre", async () => {
+    const res = await api()
+      .put(`/api/exams/${examId}/schedule`)
+      .set(bearer(await ensureInstructorToken()))
+      .send({ dateTime: futureDate(12, 9), location: 'Centre ATTT Ariana' });
+    expectStatus(res, 200, 'X3 planification');
+    expect(res.body as Exam).toMatchObject({ status: 'scheduled', location: 'Centre ATTT Ariana' });
+    expect(typeof (res.body as Exam).dateTime).toBe('string');
+  });
+
+  step("X5 — résultat enregistré par l'instructeur : completed, admis sans score (D-33)", async () => {
+    const res = await api()
+      .put(`/api/exams/${examId}/result`)
+      .set(bearer(await ensureInstructorToken()))
+      .send({ result: 'passed', notes: 'Très bon niveau' });
+    expectStatus(res, 200, 'X5 résultat');
+    expect(res.body as Exam).toMatchObject({ status: 'completed', result: 'passed', score: null });
+
+    const again = await api()
+      .put(`/api/exams/${examId}/result`)
+      .set(bearer(await ensureInstructorToken()))
+      .send({ result: 'failed' });
+    expectStatus(again, 409, 'X5 second résultat');
+  });
+
+  step("X4 — refus d'une seconde demande (pratique) : rejected avec motif (D-33)", async () => {
+    const { token } = await ensureStudent();
+    const created = await api()
+      .post('/api/exams/request')
+      .set(bearer(token))
+      .send({ examType: 'practical', preferredDate: futureDate(20) });
+    expectStatus(created, 201, 'X2 seconde demande');
+    const res = await api()
+      .put(`/api/exams/${(created.body as Exam).id}/reject`)
+      .set(bearer(await ensureInstructorToken()))
+      .send({ reason: 'Dossier pas prêt pour cette session' });
+    expectStatus(res, 200, 'X4 refus');
+    expect(res.body).toMatchObject({
+      status: 'rejected',
+      rejectionReason: 'Dossier pas prêt pour cette session',
+    });
+  });
+
+  step("P8 — la fiche de l'élève compte l'examen passé (totalExams, passedExams)", async () => {
+    const { token } = await ensureStudent();
+    const res = await api()
+      .get(`/api/student-profiles/me/schools/${SEED.schoolId}/profile`)
+      .set(bearer(token));
+    expectStatus(res, 200, 'P8 après examen');
+    expect(res.body).toMatchObject({ totalExams: 1, passedExams: 1 });
+  });
+
   step("X2 — un élève sans inscription approuvée est refusé (403 NOT_ENROLLED)", async () => {
     const outsider = await api().post('/api/auth/register').send({
       email: `e2e-outsider-${Date.now()}@seed.io`,

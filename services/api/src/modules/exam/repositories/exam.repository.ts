@@ -1,10 +1,23 @@
 import { Pool } from 'pg';
-import { Exam, ExamFilters, ExamScope, NewExamRequest } from '../types/exam.types';
+import {
+  Exam,
+  ExamFilters,
+  ExamScope,
+  NewExamRequest,
+  RecordResultDTO,
+  ScheduleExamDTO,
+} from '../types/exam.types';
 
 export interface IExamRepository {
   createRequest(data: NewExamRequest): Promise<Exam>;
   findById(id: string): Promise<Exam | null>;
   findAll(scope: ExamScope, filters: ExamFilters): Promise<Exam[]>;
+  /** X3 : `pending` → `scheduled` ; `null` si l'examen n'est plus `pending`. */
+  schedule(id: string, dto: ScheduleExamDTO): Promise<Exam | null>;
+  /** X4 : `pending` → `rejected` ; `null` si l'examen n'est plus `pending`. */
+  reject(id: string, reason: string): Promise<Exam | null>;
+  /** X5 : `scheduled` → `completed` avec résultat ; `null` si l'examen n'est plus `scheduled`. */
+  recordResult(id: string, dto: RecordResultDTO): Promise<Exam | null>;
 }
 
 /**
@@ -69,6 +82,39 @@ export class ExamRepository implements IExamRepository {
       values
     );
     return result.rows;
+  }
+
+  async schedule(id: string, dto: ScheduleExamDTO): Promise<Exam | null> {
+    const result = await this.db.query<{ id: string }>(
+      `UPDATE exams
+       SET status = 'scheduled', date_time = $2, location = $3, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1 AND status = 'pending'
+       RETURNING id`,
+      [id, dto.dateTime, dto.location]
+    );
+    return result.rows[0] ? this.requireById(id) : null;
+  }
+
+  async reject(id: string, reason: string): Promise<Exam | null> {
+    const result = await this.db.query<{ id: string }>(
+      `UPDATE exams
+       SET status = 'rejected', rejection_reason = $2, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1 AND status = 'pending'
+       RETURNING id`,
+      [id, reason]
+    );
+    return result.rows[0] ? this.requireById(id) : null;
+  }
+
+  async recordResult(id: string, dto: RecordResultDTO): Promise<Exam | null> {
+    const result = await this.db.query<{ id: string }>(
+      `UPDATE exams
+       SET status = 'completed', result = $2, score = $3, notes = $4, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1 AND status = 'scheduled'
+       RETURNING id`,
+      [id, dto.result, dto.score ?? null, dto.notes ?? null]
+    );
+    return result.rows[0] ? this.requireById(id) : null;
   }
 
   /** Relecture avec les jointures après une écriture (RETURNING ne peut pas joindre). */

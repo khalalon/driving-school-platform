@@ -43,7 +43,14 @@ describe('ExamService (D-01 / D-33 : demande X2, liste X1, lecture scoped)', () 
   let service: ExamService;
 
   beforeEach(() => {
-    repository = { createRequest: jest.fn(), findById: jest.fn(), findAll: jest.fn() };
+    repository = {
+      createRequest: jest.fn(),
+      findById: jest.fn(),
+      findAll: jest.fn(),
+      schedule: jest.fn(),
+      reject: jest.fn(),
+      recordResult: jest.fn(),
+    };
     students = { findByUserId: jest.fn() };
     instructors = { findByUserId: jest.fn() };
     students.findByUserId.mockResolvedValue({
@@ -120,6 +127,87 @@ describe('ExamService (D-01 / D-33 : demande X2, liste X1, lecture scoped)', () 
     it('admin : tout', async () => {
       await service.listExams(admin, {});
       expect(repository.findAll).toHaveBeenLastCalledWith({ kind: 'all' }, {});
+    });
+  });
+
+  describe('scheduleExam / rejectExam / recordResult (X3–X5, D-20 / D-33)', () => {
+    const scheduleDto = { dateTime: future, location: 'Centre ATTT Ariana' };
+
+    it('X3 : instructeur de l’école (ou admin) planifie une demande pending', async () => {
+      repository.findById.mockResolvedValue(exam);
+      repository.schedule.mockResolvedValue({ ...exam, status: ExamStatus.SCHEDULED });
+
+      await expect(service.scheduleExam(instructor, 'exam-1', scheduleDto)).resolves.toMatchObject({
+        status: 'scheduled',
+      });
+      expect(repository.schedule).toHaveBeenCalledWith('exam-1', scheduleDto);
+      await expect(service.scheduleExam(admin, 'exam-1', scheduleDto)).resolves.toBeDefined();
+    });
+
+    it('X3 / X4 : 403 FORBIDDEN_SCHOOL hors de son école ; 409 si plus pending ; 404 inconnu', async () => {
+      repository.findById.mockResolvedValue({ ...exam, schoolId: 'school-2' });
+      await expect(service.scheduleExam(instructor, 'exam-1', scheduleDto)).rejects.toMatchObject({
+        status: 403,
+        code: 'FORBIDDEN_SCHOOL',
+      });
+      await expect(
+        service.rejectExam(instructor, 'exam-1', { reason: 'Dossier incomplet' })
+      ).rejects.toMatchObject({ code: 'FORBIDDEN_SCHOOL' });
+
+      repository.findById.mockResolvedValue({ ...exam, status: ExamStatus.SCHEDULED });
+      await expect(service.scheduleExam(instructor, 'exam-1', scheduleDto)).rejects.toMatchObject({
+        status: 409,
+      });
+      await expect(
+        service.rejectExam(instructor, 'exam-1', { reason: 'Dossier incomplet' })
+      ).rejects.toMatchObject({ status: 409 });
+
+      repository.findById.mockResolvedValue(null);
+      await expect(service.scheduleExam(instructor, 'ghost', scheduleDto)).rejects.toMatchObject({
+        status: 404,
+      });
+      expect(repository.schedule).not.toHaveBeenCalled();
+      expect(repository.reject).not.toHaveBeenCalled();
+    });
+
+    it('X4 : refus avec motif → rejected ; course entre collègues → 409', async () => {
+      repository.findById.mockResolvedValue(exam);
+      repository.reject.mockResolvedValue({ ...exam, status: ExamStatus.REJECTED });
+
+      await expect(
+        service.rejectExam(instructor, 'exam-1', { reason: 'Dossier incomplet' })
+      ).resolves.toMatchObject({ status: 'rejected' });
+      expect(repository.reject).toHaveBeenCalledWith('exam-1', 'Dossier incomplet');
+
+      repository.reject.mockResolvedValue(null);
+      await expect(
+        service.rejectExam(instructor, 'exam-1', { reason: 'Dossier incomplet' })
+      ).rejects.toMatchObject({ status: 409, code: 'CONFLICT' });
+    });
+
+    it('X5 : résultat sur un examen planifié → completed, score facultatif ; 409 sinon', async () => {
+      repository.findById.mockResolvedValue({ ...exam, status: ExamStatus.SCHEDULED });
+      repository.recordResult.mockResolvedValue({
+        ...exam,
+        status: ExamStatus.COMPLETED,
+        result: ExamResult.PASSED,
+      });
+
+      await expect(
+        service.recordResult(instructor, 'exam-1', { result: ExamResult.PASSED })
+      ).resolves.toMatchObject({ status: 'completed', result: 'passed' });
+      expect(repository.recordResult).toHaveBeenCalledWith('exam-1', { result: ExamResult.PASSED });
+
+      repository.findById.mockResolvedValue(exam);
+      await expect(
+        service.recordResult(instructor, 'exam-1', { result: ExamResult.FAILED, score: 8 })
+      ).rejects.toMatchObject({ status: 409 });
+
+      repository.findById.mockResolvedValue({ ...exam, status: ExamStatus.SCHEDULED });
+      repository.recordResult.mockResolvedValue(null);
+      await expect(
+        service.recordResult(instructor, 'exam-1', { result: ExamResult.FAILED })
+      ).rejects.toMatchObject({ status: 409 });
     });
   });
 

@@ -11,6 +11,9 @@ describe('Routes /api/exams (X1, X2, GET /:id)', () => {
     requestExam: jest.fn(),
     listExams: jest.fn(),
     getExam: jest.fn(),
+    scheduleExam: jest.fn(),
+    rejectExam: jest.fn(),
+    recordResult: jest.fn(),
   };
   const app = createApp({
     auth: createExamRouter(
@@ -89,6 +92,71 @@ describe('Routes /api/exams (X1, X2, GET /:id)', () => {
       .set('Authorization', bearerFor('student'))
       .expect(404);
     expect(examService.getExam).toHaveBeenCalledTimes(1);
+  });
+
+  it('X3 PUT /:id/schedule : instructeur ou admin ; dateTime future + location requis', async () => {
+    const url = `${base}/${examId}/schedule`;
+    const body = { dateTime: future, location: 'Centre ATTT Ariana' };
+    await request(app).put(url).set('Authorization', bearerFor('student')).send(body).expect(403);
+    await request(app)
+      .put(url)
+      .set('Authorization', bearerFor('instructor'))
+      .send({ dateTime: future })
+      .expect(400);
+
+    examService.scheduleExam.mockResolvedValue({ id: examId, status: 'scheduled' });
+    await request(app)
+      .put(url)
+      .set('Authorization', bearerFor('instructor'))
+      .send(body)
+      .expect(200);
+    expect(examService.scheduleExam).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: TEST_USERS.instructor.userId }),
+      examId,
+      { dateTime: new Date(future), location: 'Centre ATTT Ariana' }
+    );
+  });
+
+  it('X4 PUT /:id/reject : motif 10–500 caractères ; X5 PUT /:id/result : passed|failed, score 0–100 facultatif', async () => {
+    const auth = bearerFor('instructor');
+    await request(app)
+      .put(`${base}/${examId}/reject`)
+      .set('Authorization', auth)
+      .send({ reason: 'court' })
+      .expect(400);
+    examService.rejectExam.mockResolvedValue({ id: examId, status: 'rejected' });
+    await request(app)
+      .put(`${base}/${examId}/reject`)
+      .set('Authorization', auth)
+      .send({ reason: 'Dossier incomplet' })
+      .expect(200);
+
+    await request(app)
+      .put(`${base}/${examId}/result`)
+      .set('Authorization', auth)
+      .send({ result: 'pending' })
+      .expect(400);
+    await request(app)
+      .put(`${base}/${examId}/result`)
+      .set('Authorization', auth)
+      .send({ result: 'passed', score: 101 })
+      .expect(400);
+    examService.recordResult.mockResolvedValue({ id: examId, status: 'completed' });
+    await request(app)
+      .put(`${base}/${examId}/result`)
+      .set('Authorization', auth)
+      .send({ result: 'failed', notes: 'Créneau raté' })
+      .expect(200);
+    expect(examService.recordResult).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: TEST_USERS.instructor.userId }),
+      examId,
+      { result: 'failed', notes: 'Créneau raté' }
+    );
+    await request(app)
+      .put(`${base}/${examId}/result`)
+      .set('Authorization', bearerFor('student'))
+      .send({ result: 'passed' })
+      .expect(403);
   });
 
   it('anciennes routes de sessions disparues (5.5)', async () => {

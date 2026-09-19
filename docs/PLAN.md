@@ -381,7 +381,7 @@ ITOK=$(curl -s -X POST localhost/api/auth/login -H 'Content-Type: application/js
 ```
 **Hors périmètre** : planification.
 
-### - [ ] 5.6 — Examens : planification, refus, résultat (X3, X4, X5)
+### - [x] 5.6 — Examens : planification, refus, résultat (X3, X4, X5)
 **Objectif** : `PUT /:id/schedule { dateTime, location }` → `scheduled` ; `PUT /:id/reject { reason }` → **`rejected`** (D-33) ; `PUT /:id/result { result, score?, notes? }` (score facultatif) → `completed`, par l'**instructeur** de l'école (D-20).
 **Fichiers** : `modules/exam/**`, tests, `tests/e2e/exams.e2e.test.ts`, `docs/API_CONTRACT.md` (X3–X5).
 **Critère de validation** :

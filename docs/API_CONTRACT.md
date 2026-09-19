@@ -95,9 +95,9 @@ Objet `Exam` (cible) : `{ id, schoolId, studentId (users.id), studentFirstName, 
 |---|---|---|---|---|---|---|---|
 | X1 | GET | `/api/exams/my-exams` | `MyExamsScreen` (élève), `ExamRequestsScreen`, `TodayExamsScreen` (instructeur) | query optionnelle `status` | `Exam[]` **de l'appelant** : élève → les siens (avec `paid`, `amount`) ; instructeur → **tous ceux de son école** (pas d'instructeur attitré), avec `studentCompletedLessons` | **EXISTE** | Conforme (5.5) : élève → ses examens ; instructeur → tous ceux de son école (`studentFirstName`, `studentLastName`, `studentCompletedLessons` joints) ; admin → tout ; `status` accepte plusieurs valeurs séparées par des virgules. Mobile actuel : `THEORY`/`PRACTICAL`, `PASS`/`FAIL` (6.1). |
 | X2 | POST | `/api/exams/request` | `RequestExamScreen` (élève) | `{ examType ∈ theory\|practical, preferredDate (ISO, futur), message? }` (`student` ; **refusé 403 `NOT_ENROLLED` si l'élève n'a pas d'inscription `approved`**, même règle que L2 ; école résolue depuis cette inscription, D-22) | 201 `Exam` (`pending`) | **EXISTE** | Conforme (5.5) : 403 `NOT_ENROLLED` sans fiche `students` autorisée, école résolue depuis cette fiche (D-22), aucune règle d'éligibilité (D-26). |
-| X3 | PUT | `/api/exams/:id/schedule` | `ExamRequestsScreen` — **stub** | `{ dateTime (ISO, futur), location }` — instructeur de l'école | `Exam` (`scheduled`) | **MANQUE** | Colonne `location` et `scheduleExamSchema` prêts (3.4). Tâches 5.6, 6.5. **Suspendu à Q-19** pour le libellé (« planifier » vs « enregistrer la date de session ») ; le payload ne change pas. |
-| X4 | PUT | `/api/exams/:id/reject` | `ExamRequestsScreen` — **stub** | `{ reason }` (10–500 car.) | `Exam` (**`rejected`**, `rejectionReason`) | **MANQUE** | Tâches 5.6, 6.5. Libellé écran selon Q-19 (« refuser » ou « dossier pas prêt »). |
-| X5 | PUT | `/api/exams/:id/result` | `TodayExamsScreen` — **stub** | `{ result ∈ passed\|failed, score? (0–100, **facultatif** : un examen de conduite est admis/ajourné sans note, seul le code donne un score), notes? }` — **instructeur** de l'école (D-20) | `Exam` (`completed`) | **MANQUE** | Backend actuel : `PUT /registrations/:id/result` admin uniquement, par identifiant de registration. Mobile actuel : `PASS`/`FAIL` (6.1). Tâches 5.6, 6.5. |
+| X3 | PUT | `/api/exams/:id/schedule` | `ExamRequestsScreen` — **stub** | `{ dateTime (ISO, futur), location }` — instructeur de l'école | `Exam` (`scheduled`) | **EXISTE** | Conforme (5.6) : instructeur de l'école ou admin, 409 `CONFLICT` si la demande n'est plus `pending`. Écran : 6.5. **Suspendu à Q-19** pour le libellé (« planifier » vs « enregistrer la date de session ») ; le payload ne change pas. |
+| X4 | PUT | `/api/exams/:id/reject` | `ExamRequestsScreen` — **stub** | `{ reason }` (10–500 car.) | `Exam` (**`rejected`**, `rejectionReason`) | **EXISTE** | Conforme (5.6) : instructeur de l'école ou admin, 409 si plus `pending`. Écran : 6.5. Libellé écran selon Q-19 (« refuser » ou « dossier pas prêt »). |
+| X5 | PUT | `/api/exams/:id/result` | `TodayExamsScreen` — **stub** | `{ result ∈ passed\|failed, score? (0–100, **facultatif** : un examen de conduite est admis/ajourné sans note, seul le code donne un score), notes? }` — **instructeur** de l'école (D-20) | `Exam` (`completed`) | **EXISTE** | Conforme (5.6) : instructeur de l'école ou admin, seulement sur un examen `scheduled` (409 sinon), score facultatif. Mobile actuel : `PASS`/`FAIL` (6.1). Écran : 6.5. |
 
 ## 6. Profils (fiche élève)
 
@@ -149,9 +149,9 @@ Elles existent aujourd'hui, ne sont appelées par aucun écran, et sont **retir�
 
 | Statut | Nombre | Lignes |
 |---|---|---|
-| EXISTE | 36 | A1–A5, S1–S4, S6, E1–E6, L1–L7, X1, X2, P1–P11 |
+| EXISTE | 39 | A1–A5, S1–S4, S6, E1–E6, L1–L7, X1–X5, P1–P11 |
 | DIVERGE | 0 | — |
-| MANQUE | 3 | X3, X4, X5 |
+| MANQUE | 0 | — |
 | SUPPRIMÉE | 2 | S5, L8 |
 
 Suspendu : L3 (Q-17, sort d'une leçon payée annulée) ; L7 (Q-18, facturation d'une absence) ; X3, X4 libellés (Q-19, procédure ATTT).

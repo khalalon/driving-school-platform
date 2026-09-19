@@ -1,6 +1,6 @@
 import { Pool } from 'pg';
 import { fakePool, UUID } from '../../../../test-utils/http';
-import { ExamStatus, ExamType } from '../../types/exam.types';
+import { ExamResult, ExamStatus, ExamType } from '../../types/exam.types';
 import { ExamRepository } from '../exam.repository';
 
 describe('ExamRepository (schéma 008, objet Exam du contrat)', () => {
@@ -75,6 +75,38 @@ describe('ExamRepository (schéma 008, objet Exam du contrat)', () => {
     expect(schoolParams).toEqual([UUID.school]);
     expect(allSql).not.toMatch(/WHERE/);
     expect(allParams).toEqual([]);
+  });
+
+  it('schedule / reject / recordResult : UPDATE conditionné au statut, relecture ; null si aucune ligne', async () => {
+    const query = jest
+      .fn()
+      .mockResolvedValueOnce({ rows: [{ id: UUID.booking }] })
+      .mockResolvedValueOnce({ rows: [{ ...row, status: 'scheduled' }] })
+      .mockResolvedValueOnce({ rows: [] }) // reject : plus pending
+      .mockResolvedValueOnce({ rows: [{ id: UUID.booking }] })
+      .mockResolvedValueOnce({ rows: [{ ...row, status: 'completed', result: 'passed' }] });
+    const repo = new ExamRepository({ query } as unknown as Pool);
+    const dateTime = new Date('2026-10-20T09:00:00Z');
+
+    await expect(
+      repo.schedule(UUID.booking, { dateTime, location: 'Centre ATTT' })
+    ).resolves.toMatchObject({ status: 'scheduled' });
+    const [scheduleSql, scheduleParams] = query.mock.calls[0] as [string, unknown[]];
+    expect(scheduleSql).toMatch(/SET status = 'scheduled', date_time = \$2, location = \$3/);
+    expect(scheduleSql).toMatch(/WHERE id = \$1 AND status = 'pending'/);
+    expect(scheduleParams).toEqual([UUID.booking, dateTime, 'Centre ATTT']);
+
+    await expect(repo.reject(UUID.booking, 'Dossier incomplet')).resolves.toBeNull();
+    const [rejectSql] = query.mock.calls[2] as [string, unknown[]];
+    expect(rejectSql).toMatch(/SET status = 'rejected', rejection_reason = \$2/);
+
+    await expect(
+      repo.recordResult(UUID.booking, { result: ExamResult.PASSED })
+    ).resolves.toMatchObject({ status: 'completed' });
+    const [resultSql, resultParams] = query.mock.calls[3] as [string, unknown[]];
+    expect(resultSql).toMatch(/SET status = 'completed', result = \$2, score = \$3, notes = \$4/);
+    expect(resultSql).toMatch(/WHERE id = \$1 AND status = 'scheduled'/);
+    expect(resultParams).toEqual([UUID.booking, 'passed', null, null]);
   });
 
   it('findById : null sans ligne', async () => {
