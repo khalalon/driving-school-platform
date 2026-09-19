@@ -448,7 +448,7 @@ cd mobile-app && ! grep -q 'studentEmail' src/screens/instructor/BookForStudentS
 ```
 **Hors périmètre** : —
 
-### - [ ] 6.5 — Instructeur et élève : examens
+### - [x] 6.5 — Instructeur et élève : examens
 **Objectif** : `ExamRequestsScreen` appelle `scheduleExam` / `rejectExamRequest` (plus de stub) ; `TodayExamsScreen` appelle `recordExamResult { result: passed|failed, score, notes? }` ; `RequestExamScreen` envoie `examType: theory|practical`. Tests jest.
 **Fichiers** : `src/screens/instructor/{ExamRequestsScreen,TodayExamsScreen}.tsx`, `src/screens/student/{RequestExamScreen,MyExamsScreen}.tsx`, `src/services/api/ExamService.ts` + tests.
 **Critère de validation** :
@@ -456,7 +456,7 @@ cd mobile-app && ! grep -q 'studentEmail' src/screens/instructor/BookForStudentS
 cd mobile-app && test "$(grep -c 'API call to' src/screens/instructor/ExamRequestsScreen.tsx src/screens/instructor/TodayExamsScreen.tsx | grep -v ':0' | wc -l)" -eq 0 && npx tsc --noEmit && npx jest src/services/api --silent && echo OK
 ```
 **Hors périmètre** : —
-**Dépend de** : Q-19 (libellés « Planifier / Refuser » vs « Enregistrer la convocation / Dossier pas prêt » sur `ExamRequestsScreen` et `MyExamsScreen` ; le câblage des appels peut se faire avant, les libellés sont posés une fois Q-19 tranchée).
+**Dépend de** : Q-19 (libellés « Planifier / Refuser » vs « Enregistrer la convocation / Dossier pas prêt » sur `ExamRequestsScreen` et `MyExamsScreen` ; le câblage des appels peut se faire avant, les libellés sont posés une fois Q-19 tranchée). *Livré le 19/09 : appels câblés, libellés « Schedule » / « Reject » d'origine conservés — à poser quand Q-19 sera tranchée.*
 
 ### - [ ] 6.6 — Fiches élève joignables, annulation élève
 **Objectif** : `EnrollmentRequestsScreen` (demandes approuvées) et `BookForStudentScreen` (liste S6) naviguent vers `StudentProfile` avec `{ studentId (users.id), schoolId, studentName }` ; `StudentDashboard` navigue vers `MyProfile` avec le `schoolId` de l'inscription active (E3) ; `MyLessonsScreen` n'affiche « Annuler » que si `pending` ou `scheduledDate − now ≥ 24 h` (D-24) et gère 403 `CANCEL_WINDOW_CLOSED`.

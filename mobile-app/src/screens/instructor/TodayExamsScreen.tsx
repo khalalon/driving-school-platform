@@ -1,6 +1,11 @@
 /**
  * Today Exams Screen - Minimal & Elegant
- * Single Responsibility: Display and manage today's exams
+ * Single Responsibility: The school's exams of the day (X1 status=scheduled,completed) and
+ * their results (X5)
+ *
+ * Pas d'instructeur attitré (D-33) : tout instructeur de l'école enregistre le résultat
+ * (D-20). Le score est facultatif : un examen de conduite est admis ou ajourné sans note.
+ * X1 n'a pas de filtre de date : le jour est filtré ici, en heure locale.
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -20,8 +25,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { examService } from '../../services/api/ExamService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
 import { EXAM_TYPE_LABELS, Exam, ExamResult, ExamStatus, ExamType } from '../../models/Exam';
-import { formatPersonName, formatTime } from '../../utils/format';
+import { formatPersonName, formatTime, toLocalDateKey } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
+
+const studentOf = (exam: Exam) =>
+  formatPersonName({ firstName: exam.studentFirstName, lastName: exam.studentLastName }, 'Student');
 
 export const TodayExamsScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(true);
@@ -29,7 +37,7 @@ export const TodayExamsScreen = ({ navigation }: any) => {
   const [exams, setExams] = useState<Exam[]>([]);
   const [processing, setProcessing] = useState(false);
 
-  // Record result modal
+  // Record result modal (X5)
   const [showResultModal, setShowResultModal] = useState(false);
   const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
   const [result, setResult] = useState<ExamResult.PASSED | ExamResult.FAILED>(
@@ -45,21 +53,14 @@ export const TodayExamsScreen = ({ navigation }: any) => {
   const loadTodayExams = async () => {
     try {
       setLoading(true);
-      const allExams = await examService.getMyExams();
-      
-      // Filter for today
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-
-      const todayExams = allExams.filter((exam) => {
-        if (!exam.dateTime) return false;
-        const examDate = new Date(exam.dateTime);
-        return examDate >= today && examDate < tomorrow;
+      // X1 : examens planifiés ou passés de l'école, puis ceux d'aujourd'hui (jour local)
+      const all = await examService.getMyExams({
+        status: [ExamStatus.SCHEDULED, ExamStatus.COMPLETED],
       });
-
-      setExams(todayExams);
+      const today = toLocalDateKey();
+      setExams(
+        all.filter((exam) => exam.dateTime && toLocalDateKey(new Date(exam.dateTime)) === today)
+      );
     } catch (error) {
       Alert.alert('Error', getApiErrorMessage(error, 'Failed to load exams'));
     } finally {
@@ -73,37 +74,46 @@ export const TodayExamsScreen = ({ navigation }: any) => {
     setRefreshing(false);
   }, []);
 
-  const handleRecordResult = (exam: Exam) => {
+  const openResult = (exam: Exam) => {
     setSelectedExam(exam);
+    setResult(ExamResult.PASSED);
+    setScore('');
+    setNotes('');
     setShowResultModal(true);
   };
 
+  const closeResult = () => {
+    setShowResultModal(false);
+    setSelectedExam(null);
+  };
+
   const confirmRecordResult = async () => {
-    if (!score.trim()) {
-      Alert.alert('Required', 'Please enter a score');
-      return;
-    }
-
-    const scoreNum = parseInt(score);
-    if (isNaN(scoreNum) || scoreNum < 0 || scoreNum > 100) {
-      Alert.alert('Invalid', 'Score must be between 0 and 100');
-      return;
-    }
-
     if (!selectedExam) return;
+
+    // Score facultatif (D-33) ; s'il est saisi, entier de 0 à 100
+    let scoreValue: number | undefined;
+    if (score.trim() !== '') {
+      scoreValue = Number.parseInt(score, 10);
+      if (!Number.isInteger(scoreValue) || scoreValue < 0 || scoreValue > 100) {
+        Alert.alert('Invalid Score', 'Score must be a whole number between 0 and 100');
+        return;
+      }
+    }
 
     try {
       setProcessing(true);
-      // API call to record exam result
-      Alert.alert('Success', 'Exam result recorded successfully');
-      setShowResultModal(false);
-      setResult(ExamResult.PASSED);
-      setScore('');
-      setNotes('');
-      setSelectedExam(null);
+      // X5 : passed | failed, score et notes facultatifs → completed
+      await examService.recordExamResult(selectedExam.id, {
+        result,
+        score: scoreValue,
+        notes: notes.trim() || undefined,
+      });
+      Alert.alert('Success', 'Exam result recorded');
+      closeResult();
       loadTodayExams();
     } catch (error) {
       Alert.alert('Error', getApiErrorMessage(error, 'Failed to record result'));
+      loadTodayExams();
     } finally {
       setProcessing(false);
     }
@@ -117,7 +127,7 @@ export const TodayExamsScreen = ({ navigation }: any) => {
         <View style={styles.cardHeader}>
           <View style={styles.iconContainer}>
             <Ionicons
-              name="clipboard-outline"
+              name={item.type === ExamType.THEORY ? 'book-outline' : 'car-sport-outline'}
               size={28}
               color={item.type === ExamType.THEORY ? colors.primary[600] : colors.warning[600]}
             />
@@ -125,12 +135,7 @@ export const TodayExamsScreen = ({ navigation }: any) => {
 
           <View style={styles.examInfo}>
             <Text style={styles.examType}>{EXAM_TYPE_LABELS[item.type] ?? item.type} Exam</Text>
-            <Text style={styles.studentName}>
-              {formatPersonName(
-                { firstName: item.studentFirstName, lastName: item.studentLastName },
-                'Student'
-              )}
-            </Text>
+            <Text style={styles.studentName}>{studentOf(item)}</Text>
             <View style={styles.detailRow}>
               <Ionicons name="time-outline" size={16} color={colors.text.tertiary} />
               <Text style={styles.detailText}>{formatTime(item.dateTime)}</Text>
@@ -165,8 +170,9 @@ export const TodayExamsScreen = ({ navigation }: any) => {
         {!isCompleted && (
           <TouchableOpacity
             style={styles.recordButton}
-            onPress={() => handleRecordResult(item)}
+            onPress={() => openResult(item)}
             activeOpacity={0.7}
+            disabled={processing}
           >
             <Ionicons name="create-outline" size={20} color={colors.primary[600]} />
             <Text style={styles.recordButtonText}>Record Result</Text>
@@ -189,7 +195,7 @@ export const TodayExamsScreen = ({ navigation }: any) => {
         <Ionicons name="trophy-outline" size={64} color={colors.neutral[300]} />
       </View>
       <Text style={styles.emptyTitle}>No Exams Today</Text>
-      <Text style={styles.emptyText}>You don't have any scheduled exams today</Text>
+      <Text style={styles.emptyText}>Your school has no exams scheduled today</Text>
     </View>
   );
 
@@ -232,29 +238,23 @@ export const TodayExamsScreen = ({ navigation }: any) => {
         showsVerticalScrollIndicator={false}
       />
 
-      {/* Record Result Modal */}
-      <Modal
-        visible={showResultModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowResultModal(false)}
-      >
+      {/* Record Result Modal (X5) */}
+      <Modal visible={showResultModal} transparent animationType="fade" onRequestClose={closeResult}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Record Result</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setShowResultModal(false);
-                  setResult(ExamResult.PASSED);
-                  setScore('');
-                  setNotes('');
-                  setSelectedExam(null);
-                }}
-              >
+              <TouchableOpacity onPress={closeResult}>
                 <Ionicons name="close" size={24} color={colors.text.secondary} />
               </TouchableOpacity>
             </View>
+
+            {selectedExam && (
+              <Text style={styles.modalSubtitle}>
+                {EXAM_TYPE_LABELS[selectedExam.type]} exam of {studentOf(selectedExam)} at{' '}
+                {formatTime(selectedExam.dateTime)}
+              </Text>
+            )}
 
             <View style={styles.section}>
               <Text style={styles.label}>Result</Text>
@@ -309,14 +309,14 @@ export const TodayExamsScreen = ({ navigation }: any) => {
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.label}>Score (0-100)</Text>
+              <Text style={styles.label}>Score (0–100, optional)</Text>
               <TextInput
                 style={styles.scoreInput}
-                placeholder="85"
+                placeholder="Theory exams only"
                 placeholderTextColor={colors.neutral[400]}
                 value={score}
                 onChangeText={setScore}
-                keyboardType="numeric"
+                keyboardType="number-pad"
               />
             </View>
 
@@ -337,13 +337,7 @@ export const TodayExamsScreen = ({ navigation }: any) => {
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalCancelButton]}
-                onPress={() => {
-                  setShowResultModal(false);
-                  setResult(ExamResult.PASSED);
-                  setScore('');
-                  setNotes('');
-                  setSelectedExam(null);
-                }}
+                onPress={closeResult}
                 activeOpacity={0.7}
               >
                 <Text style={styles.modalCancelText}>Cancel</Text>
@@ -544,6 +538,11 @@ const styles = StyleSheet.create({
     fontSize: typography.size.xl,
     fontWeight: typography.weight.bold,
     color: colors.text.primary,
+  },
+  modalSubtitle: {
+    fontSize: typography.size.sm,
+    color: colors.text.secondary,
+    marginBottom: spacing.lg,
   },
   section: {
     marginBottom: spacing.lg,

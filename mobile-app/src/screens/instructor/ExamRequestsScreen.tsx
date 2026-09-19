@@ -1,6 +1,12 @@
 /**
  * Exam Requests Screen - Minimal & Elegant
- * Single Responsibility: Manage exam requests and scheduling
+ * Single Responsibility: The school's pending exam requests (X1 status=pending), scheduling
+ * (X3) and rejection (X4)
+ *
+ * Pas d'instructeur attitré (D-33) : tout instructeur de l'école voit et traite les demandes.
+ * Pas de règle d'éligibilité (D-26) : le nombre de leçons effectuées est affiché pour aider à
+ * décider. Les libellés « Schedule » / « Reject » sont ceux du mobile actuel, en attente de
+ * Q-19 (procédure ATTT) ; le payload ne changera pas.
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -21,9 +27,21 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { examService } from '../../services/api/ExamService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
-import { EXAM_TYPE_LABELS, Exam, ExamType } from '../../models/Exam';
+import { EXAM_TYPE_LABELS, Exam, ExamStatus, ExamType } from '../../models/Exam';
 import { formatDate, formatPersonName } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
+
+/** Motif de refus : 10 à 500 caractères, même règle que le backend. */
+const REASON_MIN = 10;
+const REASON_MAX = 500;
+
+/** Demain à 9 h : proposé quand la demande n'a pas de date souhaitée. */
+const tomorrowMorning = (): Date => {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  date.setHours(9, 0, 0, 0);
+  return date;
+};
 
 export const ExamRequestsScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(true);
@@ -31,16 +49,15 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
   const [requests, setRequests] = useState<Exam[]>([]);
   const [processing, setProcessing] = useState(false);
 
-  // Schedule modal
+  // Schedule modal (X3)
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<Exam | null>(null);
-  const [date, setDate] = useState(new Date());
+  const [dateTime, setDateTime] = useState<Date>(tomorrowMorning);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [time, setTime] = useState(new Date());
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [location, setLocation] = useState('');
 
-  // Reject modal
+  // Reject modal (X4)
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
 
@@ -51,8 +68,8 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
   const loadRequests = async () => {
     try {
       setLoading(true);
-      const data = await examService.getMyExams();
-      // Filter for pending requests
+      // X1 : toutes les demandes pending de l'école (instructeur)
+      const data = await examService.getMyExams({ status: [ExamStatus.PENDING] });
       setRequests(data);
     } catch (error) {
       Alert.alert('Error', getApiErrorMessage(error, 'Failed to load exam requests'));
@@ -67,82 +84,111 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
     setRefreshing(false);
   }, []);
 
-  const handleSchedule = (request: Exam) => {
+  // ----- Schedule (X3) -----
+
+  const openSchedule = (request: Exam) => {
     setSelectedRequest(request);
+    setDateTime(request.preferredDate ? new Date(request.preferredDate) : tomorrowMorning());
+    setLocation('');
     setShowScheduleModal(true);
   };
 
-  const handleReject = (request: Exam) => {
-    setSelectedRequest(request);
-    setShowRejectModal(true);
+  const closeSchedule = () => {
+    setShowScheduleModal(false);
+    setLocation('');
+    setSelectedRequest(null);
   };
 
-  const handleDateChange = (event: any, selectedDate?: Date) => {
+  const handleDateChange = (_event: unknown, selected?: Date) => {
     setShowDatePicker(false);
-    if (selectedDate) {
-      setDate(selectedDate);
+    if (selected) {
+      const next = new Date(dateTime);
+      next.setFullYear(selected.getFullYear(), selected.getMonth(), selected.getDate());
+      setDateTime(next);
     }
   };
 
-  const handleTimeChange = (event: any, selectedTime?: Date) => {
+  const handleTimeChange = (_event: unknown, selected?: Date) => {
     setShowTimePicker(false);
-    if (selectedTime) {
-      setTime(selectedTime);
+    if (selected) {
+      const next = new Date(dateTime);
+      next.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
+      setDateTime(next);
     }
   };
 
   const confirmSchedule = async () => {
+    if (!selectedRequest) return;
     if (!location.trim()) {
-      Alert.alert('Required', 'Please enter exam location');
+      Alert.alert('Required', 'Please enter the exam location');
+      return;
+    }
+    if (dateTime.getTime() <= Date.now()) {
+      Alert.alert('Invalid Date', 'The exam date must be in the future');
       return;
     }
 
-    if (!selectedRequest) return;
-
     try {
       setProcessing(true);
-
-      const dateTime = new Date(date);
-      dateTime.setHours(time.getHours());
-      dateTime.setMinutes(time.getMinutes());
-
-      // API call to schedule exam
-      Alert.alert('Success', 'Exam scheduled successfully');
-      setShowScheduleModal(false);
-      setDate(new Date());
-      setTime(new Date());
-      setLocation('');
-      setSelectedRequest(null);
+      // X3 : date et centre → scheduled
+      await examService.scheduleExam(selectedRequest.id, {
+        dateTime: dateTime.toISOString(),
+        location: location.trim(),
+      });
+      Alert.alert('Success', 'Exam scheduled');
+      closeSchedule();
       loadRequests();
     } catch (error) {
+      // 409 : un collègue a déjà traité la demande
       Alert.alert('Error', getApiErrorMessage(error, 'Failed to schedule exam'));
+      loadRequests();
     } finally {
       setProcessing(false);
     }
   };
 
+  // ----- Reject (X4) -----
+
+  const openReject = (request: Exam) => {
+    setSelectedRequest(request);
+    setRejectionReason('');
+    setShowRejectModal(true);
+  };
+
+  const closeReject = () => {
+    setShowRejectModal(false);
+    setRejectionReason('');
+    setSelectedRequest(null);
+  };
+
+  const reasonLength = rejectionReason.trim().length;
+  const reasonValid = reasonLength >= REASON_MIN && reasonLength <= REASON_MAX;
+
   const confirmReject = async () => {
-    if (!rejectionReason.trim()) {
-      Alert.alert('Required', 'Please provide a reason');
+    if (!selectedRequest) return;
+    if (!reasonValid) {
+      Alert.alert(
+        'Reason too short',
+        `Please explain the rejection in at least ${REASON_MIN} characters (the student will read it).`
+      );
       return;
     }
 
-    if (!selectedRequest) return;
-
     try {
       setProcessing(true);
-      // API call to reject exam request
+      await examService.rejectExamRequest(selectedRequest.id, rejectionReason.trim());
       Alert.alert('Success', 'Exam request rejected');
-      setShowRejectModal(false);
-      setRejectionReason('');
-      setSelectedRequest(null);
+      closeReject();
       loadRequests();
     } catch (error) {
       Alert.alert('Error', getApiErrorMessage(error, 'Failed to reject request'));
+      loadRequests();
     } finally {
       setProcessing(false);
     }
   };
+
+  // ----- Rendering -----
 
   const renderRequestCard = ({ item }: { item: Exam }) => {
     return (
@@ -150,7 +196,7 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
         <View style={styles.cardHeader}>
           <View style={styles.iconContainer}>
             <Ionicons
-              name="clipboard-outline"
+              name={item.type === ExamType.THEORY ? 'book-outline' : 'car-sport-outline'}
               size={28}
               color={item.type === ExamType.THEORY ? colors.primary[600] : colors.warning[600]}
             />
@@ -163,19 +209,32 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
                 { firstName: item.studentFirstName, lastName: item.studentLastName },
                 'Student'
               )}
-              {` · ${item.studentCompletedLessons} lessons completed`}
             </Text>
             <View style={styles.detailRow}>
-              <Ionicons name="calendar-outline" size={16} color={colors.text.tertiary} />
-              <Text style={styles.detailText}>Preferred: {formatDate(item.preferredDate)}</Text>
+              <Ionicons name="school-outline" size={16} color={colors.text.tertiary} />
+              <Text style={styles.detailText}>
+                {item.studentCompletedLessons} lesson{item.studentCompletedLessons === 1 ? '' : 's'}{' '}
+                completed
+              </Text>
             </View>
+            <View style={styles.detailRow}>
+              <Ionicons name="calendar-outline" size={16} color={colors.text.tertiary} />
+              <Text style={styles.detailText}>
+                Preferred: {formatDate(item.preferredDate, 'no date given')}
+              </Text>
+            </View>
+            {item.message && (
+              <View style={styles.messageBox}>
+                <Text style={styles.messageText}>{item.message}</Text>
+              </View>
+            )}
           </View>
         </View>
 
         <View style={styles.actionRow}>
           <TouchableOpacity
             style={[styles.actionButton, styles.rejectButton]}
-            onPress={() => handleReject(item)}
+            onPress={() => openReject(item)}
             activeOpacity={0.7}
             disabled={processing}
           >
@@ -184,7 +243,7 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionButton, styles.scheduleButton]}
-            onPress={() => handleSchedule(item)}
+            onPress={() => openSchedule(item)}
             activeOpacity={0.7}
             disabled={processing}
           >
@@ -202,7 +261,7 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
         <Ionicons name="documents-outline" size={64} color={colors.neutral[300]} />
       </View>
       <Text style={styles.emptyTitle}>No Pending Requests</Text>
-      <Text style={styles.emptyText}>New exam requests will appear here</Text>
+      <Text style={styles.emptyText}>New exam requests from your school will appear here</Text>
     </View>
   );
 
@@ -245,32 +304,29 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
         showsVerticalScrollIndicator={false}
       />
 
-      {/* Schedule Modal */}
+      {/* Schedule Modal (X3) */}
       <Modal
         visible={showScheduleModal}
         transparent
         animationType="fade"
-        onRequestClose={() => setShowScheduleModal(false)}
+        onRequestClose={closeSchedule}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Schedule Exam</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setShowScheduleModal(false);
-                  setDate(new Date());
-                  setTime(new Date());
-                  setLocation('');
-                  setSelectedRequest(null);
-                }}
-              >
+              <TouchableOpacity onPress={closeSchedule}>
                 <Ionicons name="close" size={24} color={colors.text.secondary} />
               </TouchableOpacity>
             </View>
 
             <Text style={styles.modalSubtitle}>
-              Set the date, time, and location for this exam
+              {selectedRequest
+                ? `${EXAM_TYPE_LABELS[selectedRequest.type]} exam for ${formatPersonName(
+                    { firstName: selectedRequest.studentFirstName, lastName: selectedRequest.studentLastName },
+                    'the student'
+                  )}: set the date, time and location`
+                : ''}
             </Text>
 
             <View style={styles.section}>
@@ -281,11 +337,11 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
                 activeOpacity={0.7}
               >
                 <Ionicons name="calendar-outline" size={20} color={colors.text.secondary} />
-                <Text style={styles.dateText}>{date.toLocaleDateString()}</Text>
+                <Text style={styles.dateText}>{dateTime.toLocaleDateString()}</Text>
               </TouchableOpacity>
               {showDatePicker && (
                 <DateTimePicker
-                  value={date}
+                  value={dateTime}
                   mode="date"
                   display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                   onChange={handleDateChange}
@@ -303,12 +359,12 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
               >
                 <Ionicons name="time-outline" size={20} color={colors.text.secondary} />
                 <Text style={styles.dateText}>
-                  {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {dateTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </Text>
               </TouchableOpacity>
               {showTimePicker && (
                 <DateTimePicker
-                  value={time}
+                  value={dateTime}
                   mode="time"
                   display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                   onChange={handleTimeChange}
@@ -330,13 +386,7 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalCancelButton]}
-                onPress={() => {
-                  setShowScheduleModal(false);
-                  setDate(new Date());
-                  setTime(new Date());
-                  setLocation('');
-                  setSelectedRequest(null);
-                }}
+                onPress={closeSchedule}
                 activeOpacity={0.7}
               >
                 <Text style={styles.modalCancelText}>Cancel</Text>
@@ -362,24 +412,13 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
         </View>
       </Modal>
 
-      {/* Reject Modal */}
-      <Modal
-        visible={showRejectModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowRejectModal(false)}
-      >
+      {/* Reject Modal (X4) */}
+      <Modal visible={showRejectModal} transparent animationType="fade" onRequestClose={closeReject}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Reject Request</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setShowRejectModal(false);
-                  setRejectionReason('');
-                  setSelectedRequest(null);
-                }}
-              >
+              <TouchableOpacity onPress={closeReject}>
                 <Ionicons name="close" size={24} color={colors.text.secondary} />
               </TouchableOpacity>
             </View>
@@ -396,17 +435,19 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
               onChangeText={setRejectionReason}
               multiline
               numberOfLines={4}
+              maxLength={REASON_MAX}
               textAlignVertical="top"
             />
+            <Text style={[styles.hintText, !reasonValid && styles.hintWarning]}>
+              {reasonLength < REASON_MIN
+                ? `At least ${REASON_MIN} characters (${reasonLength}/${REASON_MIN})`
+                : `${reasonLength}/${REASON_MAX} characters`}
+            </Text>
 
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalCancelButton]}
-                onPress={() => {
-                  setShowRejectModal(false);
-                  setRejectionReason('');
-                  setSelectedRequest(null);
-                }}
+                onPress={closeReject}
                 activeOpacity={0.7}
               >
                 <Text style={styles.modalCancelText}>Cancel</Text>
@@ -415,10 +456,10 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
                 style={[
                   styles.modalButton,
                   styles.modalRejectButton,
-                  processing && styles.disabledButton,
+                  (processing || !reasonValid) && styles.disabledButton,
                 ]}
                 onPress={confirmReject}
-                disabled={processing}
+                disabled={processing || !reasonValid}
                 activeOpacity={0.7}
               >
                 {processing ? (
@@ -641,7 +682,26 @@ const styles = StyleSheet.create({
     fontSize: typography.size.base,
     color: colors.text.primary,
     minHeight: 100,
+  },
+  hintText: {
+    fontSize: typography.size.xs,
+    color: colors.text.tertiary,
+    marginTop: spacing.xs,
     marginBottom: spacing.lg,
+  },
+  hintWarning: {
+    color: colors.warning[600],
+  },
+  messageBox: {
+    backgroundColor: colors.background.tertiary,
+    padding: spacing.sm,
+    borderRadius: 8,
+    marginTop: spacing.xs,
+  },
+  messageText: {
+    fontSize: typography.size.sm,
+    color: colors.text.secondary,
+    fontStyle: 'italic',
   },
   modalActions: {
     flexDirection: 'row',

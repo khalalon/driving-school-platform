@@ -7,15 +7,24 @@ import { apiClient } from './ApiClient';
 import { API_CONFIG, replaceUrlParams } from '../../config/api.config';
 import {
   Exam,
+  ExamFilters,
   RecordExamResultData,
   RequestExamData,
   ScheduleExamData,
 } from '../../models/Exam';
 
+/** Query de X1 : `status` multiple séparé par des virgules, absent si vide. */
+const toQuery = (filters?: ExamFilters): Record<string, string> | undefined =>
+  filters?.status && filters.status.length > 0 ? { status: filters.status.join(',') } : undefined;
+
 class ExamService {
   /** X1 : les examens de l'appelant (élève : les siens ; instructeur : tous ceux de son école). */
-  async getMyExams(): Promise<Exam[]> {
-    const response = await apiClient.get<Exam[]>(API_CONFIG.ENDPOINTS.EXAMS.LIST);
+  async getMyExams(filters?: ExamFilters): Promise<Exam[]> {
+    const params = toQuery(filters);
+    const response = await apiClient.get<Exam[]>(
+      API_CONFIG.ENDPOINTS.EXAMS.LIST,
+      params ? { params } : undefined
+    );
     return response.data;
   }
 

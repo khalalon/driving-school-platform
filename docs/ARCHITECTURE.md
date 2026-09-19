@@ -120,7 +120,7 @@ Le détail par écran est dans `API_CONTRACT.md`. Résumé des dépendances rée
 | MyProfile (3 onglets) | student-profiles — **injoignable** : aucun écran actif n'y navigue |
 | EnrollmentRequests (instructeur) | enrollment (E4, E5, E6 avec motif de 10 à 500 caractères) — `schoolId` passé par `InstructorDashboard` depuis A3 (6.2) |
 | LessonRequests, TodayLessons | lessons (L1 `?status=pending&scope=school` + S3 / S4 pour la préférence et la grille, L5, L6 ; L1 `?status=scheduled,completed&scope=mine&date=`, L7) — câblés en 6.3 |
-| ExamRequests, TodayExams | exams en lecture ; les boutons planifier / rejeter / résultat sont des **stubs** (`Alert('Success')` sans appel réseau) jusqu'à 6.5 |
+| ExamRequests, TodayExams | exams (X1 `?status=pending`, X3, X4 ; X1 `?status=scheduled,completed` filtré sur le jour local, X5 score facultatif) — câblés en 6.5, libellés « Schedule » / « Reject » en attente de Q-19 |
 | BookForStudent | schools (S6 liste des élèves, S4 grille), lessons (L4 `{ studentId (users.id), type, scheduledDate, durationMinutes, price?, notes? }`) — câblé en 6.4 |
 | StudentProfile (3 onglets) | profiles — **injoignable** : aucun écran n'y navigue |
 

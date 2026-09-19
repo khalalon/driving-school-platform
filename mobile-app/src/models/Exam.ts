@@ -93,3 +93,8 @@ export interface RecordExamResultData {
   score?: number;
   notes?: string;
 }
+
+/** Filtres de X1 : `status` (une ou plusieurs valeurs). */
+export interface ExamFilters {
+  status?: ExamStatus[];
+}
