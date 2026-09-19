@@ -22,4 +22,10 @@ describe('Harnais e2e', () => {
     const names = (res.body as Array<{ id: string; name: string }>).map((s) => s.name);
     expect(names).toContain(SEED.schoolName);
   });
+
+  test("l'école du seed porte sa devise (S2, D-43) : TND", async () => {
+    const res = await api().get(`/api/schools/${SEED.schoolId}`);
+    expectStatus(res, 200, 'GET /api/schools/:id');
+    expect((res.body as { currency: string }).currency).toBe(SEED.currency);
+  });
 });

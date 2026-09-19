@@ -29,6 +29,7 @@ import {
   ExamStatus,
   ExamType,
 } from '../../models/Exam';
+import { useSchoolCurrency } from '../../hooks/useSchoolCurrency';
 import { formatAmount, formatDate, formatTime } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
 
@@ -46,6 +47,8 @@ export const MyExamsScreen = ({ navigation }: any) => {
   const [refreshing, setRefreshing] = useState(false);
   const [exams, setExams] = useState<Exam[]>([]);
   const [filter, setFilter] = useState<FilterType>('pending');
+  // Une seule inscription active (D-22) : tous les examens sont dans la même école
+  const currency = useSchoolCurrency(exams[0]?.schoolId);
 
   useEffect(() => {
     loadExams();
@@ -215,7 +218,7 @@ export const MyExamsScreen = ({ navigation }: any) => {
           <View style={styles.paymentRow}>
             <Ionicons name="cash-outline" size={16} color={colors.text.secondary} />
             <Text style={styles.paymentText}>
-              {item.amount !== null ? formatAmount(item.amount) : 'Exam fee'}
+              {item.amount !== null ? formatAmount(item.amount, currency) : 'Exam fee'}
             </Text>
             <View style={[styles.paidBadge, item.paid ? styles.paidBadgeOn : styles.paidBadgeOff]}>
               <Text style={[styles.paidText, item.paid ? styles.paidTextOn : styles.paidTextOff]}>

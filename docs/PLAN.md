@@ -483,7 +483,7 @@ cd mobile-app && grep -q 'approveLessons' src/screens/instructor/LessonRequestsS
 
 Les quatre questions ouvertes sont tranchées (`DECISIONS.md`). Chaque décision = une tâche = un commit. Les critères qui touchent la base supposent la stack démarrée (`docker compose up -d --build`) ; `scripts/migrate.sh` applique les migrations 012 / 013 sur une base existante.
 
-### - [ ] 7.1 — Devise par école (D-43)
+### - [x] 7.1 — Devise par école (D-43)
 **Objectif** : migration `012_school_currency.sql` (`schools.currency CHAR(3) NOT NULL DEFAULT 'TND'`, `CHECK` ISO 4217, idempotente) ; `School` expose `currency` (S1, S2), accepté par les routes admin (`POST /`, `PUT /:id`) et par `scripts/onboard-school.sh` (`CURRENCY=`) ; le mobile lit la devise de l'école (S2, cache par école) et n'a plus aucun symbole codé en dur : `formatAmount(amount, currency)` partout où un montant s'affiche.
 **Fichiers** : `migrations/012_school_currency.sql`, `services/api/src/modules/school/{types,repositories,validators}`, `scripts/onboard-school.sh`, `tests/fixtures/seed.sql`, `tests/e2e/harness.e2e.test.ts`, `mobile-app/src/models/School.ts`, `mobile-app/src/utils/format.ts`, `mobile-app/src/hooks/useSchoolCurrency.ts` (nouveau), les écrans qui affichent un montant, `docs/API_CONTRACT.md`.
 **Critère de validation** :

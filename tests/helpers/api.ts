@@ -15,6 +15,7 @@ export const SEED = {
   },
   pricing: { CODE: 20, Manœuvre: 35, Parc: 40 } as Record<string, number>,
   lessonDurationMinutes: 60,
+  currency: 'TND',
 };
 
 export interface Tokens {

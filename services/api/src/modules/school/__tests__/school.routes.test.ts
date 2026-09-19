@@ -95,6 +95,33 @@ describe('Routes /api/schools (S1–S4 + administration)', () => {
     expect(bad.body).toMatchObject({ error: 'VALIDATION_ERROR' });
   });
 
+  it('POST/PUT école : devise ISO 4217 acceptée en majuscules, refusée sinon (D-43)', async () => {
+    schoolService.createSchool.mockResolvedValue({ ...school, currency: 'EUR' });
+    schoolService.updateSchool.mockResolvedValue({ ...school, currency: 'EUR' });
+    const auth = bearerFor('admin');
+
+    const created = await request(app)
+      .post(base)
+      .set('Authorization', auth)
+      .send({ ...validSchool, currency: 'eur' });
+    expect(created.status).toBe(201);
+    expect(schoolService.createSchool).toHaveBeenCalledWith({ ...validSchool, currency: 'EUR' });
+
+    const updated = await request(app)
+      .put(`${base}/${UUID.school}`)
+      .set('Authorization', auth)
+      .send({ currency: 'EUR' });
+    expect(updated.status).toBe(200);
+    expect(schoolService.updateSchool).toHaveBeenCalledWith(UUID.school, { currency: 'EUR' });
+
+    const bad = await request(app)
+      .put(`${base}/${UUID.school}`)
+      .set('Authorization', auth)
+      .send({ currency: 'dinars' });
+    expect(bad.status).toBe(400);
+    expect(bad.body).toMatchObject({ error: 'VALIDATION_ERROR' });
+  });
+
   it('PUT/DELETE école : mise à jour partielle, suppression 204, corps vide → 400', async () => {
     schoolService.updateSchool.mockResolvedValue({ ...school, name: 'Nouvelle' });
     schoolService.deleteSchool.mockResolvedValue(undefined);

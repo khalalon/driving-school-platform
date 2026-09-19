@@ -24,11 +24,13 @@ import {
   PaymentMethod,
 } from '../../../../models/Profile';
 import { LESSON_TYPE_LABELS, LessonType } from '../../../../models/Lesson';
-import { CURRENCY_SYMBOL, formatAmount, formatDateTime } from '../../../../utils/format';
+import { useSchoolCurrency } from '../../../../hooks/useSchoolCurrency';
+import { formatAmount, formatDateTime } from '../../../../utils/format';
 import { colors, typography, spacing, shadows } from '../../../../theme';
 
 export const StudentLessonsTab = ({ route }: any) => {
   const { studentId, schoolId } = route.params;
+  const currency = useSchoolCurrency(schoolId);
 
   const [loading, setLoading] = useState(true);
   const [lessons, setLessons] = useState<LessonHistory[]>([]);
@@ -159,7 +161,9 @@ export const StudentLessonsTab = ({ route }: any) => {
         {(item.amount !== null || item.price !== null) && (
           <View style={styles.detailRow}>
             <Ionicons name="cash-outline" size={16} color={colors.text.secondary} />
-            <Text style={styles.detailText}>{formatAmount(item.amount ?? item.price)}</Text>
+            <Text style={styles.detailText}>
+              {formatAmount(item.amount ?? item.price, currency)}
+            </Text>
           </View>
         )}
       </View>
@@ -251,7 +255,7 @@ export const StudentLessonsTab = ({ route }: any) => {
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.inputLabel}>Amount ({CURRENCY_SYMBOL})</Text>
+            <Text style={styles.inputLabel}>Amount{currency ? ` (${currency})` : ''}</Text>
             <TextInput
               style={styles.input}
               placeholder="0.00"

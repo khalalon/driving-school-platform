@@ -43,7 +43,7 @@ Pas d'écran ni de route d'administration en v1 (D-17) : chaque école est cré�
 # → affiche le code, ex. INST-AUTOECOL-7K2Q
 ```
 
-Options par variables d'environnement : `PRICE_CODE`, `PRICE_MANOEUVRE`, `PRICE_PARC` (défaut 20 / 35 / 40), `DURATION_MINUTES` (60), `CODE_MAX_USES` (illimité), `CODE_EXPIRES_AT` (jamais), ex. `CODE_MAX_USES=5 CODE_EXPIRES_AT=2026-12-31 ./scripts/onboard-school.sh …`. Relancer le script avec le même email ne crée ni doublon ni second code : il réaffiche le code actif.
+Options par variables d'environnement : `PRICE_CODE`, `PRICE_MANOEUVRE`, `PRICE_PARC` (défaut 20 / 35 / 40), `DURATION_MINUTES` (60), `CURRENCY` (code ISO 4217, défaut `TND` — D-43), `CODE_MAX_USES` (illimité), `CODE_EXPIRES_AT` (jamais), ex. `CODE_MAX_USES=5 CODE_EXPIRES_AT=2026-12-31 ./scripts/onboard-school.sh …`. Relancer le script avec le même email ne crée ni doublon ni second code : il réaffiche le code actif.
 
 ## Documentation
 

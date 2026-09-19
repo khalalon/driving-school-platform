@@ -1,6 +1,10 @@
 import { UserRole } from '../../../types/auth';
 import { LessonType } from '../../../types/domain';
 
+/** Devise d'une école à la création quand rien n'est fourni (D-43 : écoles pilotes tunisiennes). */
+export const DEFAULT_CURRENCY = 'TND';
+
+/** `currency` : code ISO 4217 (D-43) ; tous les montants de l'école sont dans cette devise. */
 export interface School {
   id: string;
   name: string;
@@ -8,6 +12,7 @@ export interface School {
   phone: string;
   email: string;
   logoUrl: string | null;
+  currency: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -18,6 +23,7 @@ export interface CreateSchoolDTO {
   phone: string;
   email: string;
   logoUrl?: string;
+  currency?: string;
 }
 
 export interface UpdateSchoolDTO {
@@ -26,6 +32,7 @@ export interface UpdateSchoolDTO {
   phone?: string;
   email?: string;
   logoUrl?: string;
+  currency?: string;
 }
 
 /**

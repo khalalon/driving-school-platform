@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import { CreateSchoolDTO, School, UpdateSchoolDTO } from '../types/school.types';
+import { CreateSchoolDTO, DEFAULT_CURRENCY, School, UpdateSchoolDTO } from '../types/school.types';
 
 export interface ISchoolRepository {
   create(data: CreateSchoolDTO): Promise<School>;
@@ -9,7 +9,7 @@ export interface ISchoolRepository {
   delete(id: string): Promise<void>;
 }
 
-const SCHOOL_COLUMNS = `id, name, address, phone, email, logo_url AS "logoUrl",
+const SCHOOL_COLUMNS = `id, name, address, phone, email, logo_url AS "logoUrl", currency,
   created_at AS "createdAt", updated_at AS "updatedAt"`;
 
 export class SchoolRepository implements ISchoolRepository {
@@ -17,10 +17,17 @@ export class SchoolRepository implements ISchoolRepository {
 
   async create(data: CreateSchoolDTO): Promise<School> {
     const result = await this.db.query<School>(
-      `INSERT INTO schools (name, address, phone, email, logo_url)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO schools (name, address, phone, email, logo_url, currency)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING ${SCHOOL_COLUMNS}`,
-      [data.name, data.address, data.phone, data.email, data.logoUrl ?? null]
+      [
+        data.name,
+        data.address,
+        data.phone,
+        data.email,
+        data.logoUrl ?? null,
+        data.currency ?? DEFAULT_CURRENCY,
+      ]
     );
     return result.rows[0];
   }
@@ -48,6 +55,7 @@ export class SchoolRepository implements ISchoolRepository {
            phone = COALESCE($4, phone),
            email = COALESCE($5, email),
            logo_url = COALESCE($6, logo_url),
+           currency = COALESCE($7, currency),
            updated_at = NOW()
        WHERE id = $1
        RETURNING ${SCHOOL_COLUMNS}`,
@@ -58,6 +66,7 @@ export class SchoolRepository implements ISchoolRepository {
         data.phone ?? null,
         data.email ?? null,
         data.logoUrl ?? null,
+        data.currency ?? null,
       ]
     );
     return result.rows[0];

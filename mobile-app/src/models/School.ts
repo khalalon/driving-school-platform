@@ -4,6 +4,7 @@
 
 import { LessonType } from './Lesson';
 
+/** `currency` : code ISO 4217 de l'école (D-43) ; tous ses montants sont dans cette devise. */
 export interface School {
   id: string;
   name: string;
@@ -11,6 +12,7 @@ export interface School {
   phone: string;
   email: string;
   logoUrl: string | null;
+  currency: string;
   createdAt: string;
 }
 

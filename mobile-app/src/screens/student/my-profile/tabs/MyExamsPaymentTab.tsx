@@ -17,11 +17,13 @@ import { studentSelfProfileService } from '../../../../services/api/StudentSelfP
 import { getApiErrorMessage } from '../../../../services/api/ApiError';
 import { ExamHistory } from '../../../../models/Profile';
 import { EXAM_RESULT_LABELS, EXAM_TYPE_LABELS, ExamResult, ExamType } from '../../../../models/Exam';
+import { useSchoolCurrency } from '../../../../hooks/useSchoolCurrency';
 import { formatAmount, formatDate, formatDateTime } from '../../../../utils/format';
 import { colors, typography, spacing } from '../../../../theme';
 
 export const MyExamsPaymentTab = ({ route }: any) => {
   const { schoolId } = route.params;
+  const currency = useSchoolCurrency(schoolId);
   const [loading, setLoading] = useState(true);
   const [exams, setExams] = useState<ExamHistory[]>([]);
 
@@ -128,7 +130,7 @@ export const MyExamsPaymentTab = ({ route }: any) => {
                 { color: item.paid ? colors.success[500] : colors.warning[500] },
               ]}
             >
-              {formatAmount(item.amount ?? item.price)}
+              {formatAmount(item.amount ?? item.price, currency)}
             </Text>
           )}
         </View>

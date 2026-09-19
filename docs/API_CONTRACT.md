@@ -31,6 +31,7 @@ Chaque ligne décrit la **cible** (ce que le mobile doit envoyer / recevoir une 
 - Cloisonnement (D-20) : toute action d'un `instructor` est limitée à son école → 403 `FORBIDDEN_SCHOOL` sinon. Non répété ligne par ligne.
 - Une seule inscription active par élève (D-22) : les routes qui prennent `:schoolId` sont conservées ; celles qui n'en prennent pas résolvent l'école depuis l'inscription active.
 - Identité de l'appelant : `req.user = { userId, email, role }` posé par le middleware unique de `services/api` (D-03). Le bug historique `req.user.userId === undefined` des anciens services a disparu avec eux (2.7).
+- Devise (D-43) : chaque école a une devise ISO 4217 (`School.currency`, `TND` par défaut) ; tous les montants d'une école (`Pricing.price`, `price` / `amount` des leçons et examens, `FinancialSummary`) sont des nombres nus dans cette devise. Le mobile la lit par S2 (cache par école) et l'affiche après le montant (« 40.00 TND »).
 
 ---
 
@@ -48,8 +49,8 @@ Chaque ligne décrit la **cible** (ce que le mobile doit envoyer / recevoir une 
 
 | # | Méthode | Chemin | Appelé par | Payload (cible) | Réponse (cible) | Statut | Écart / notes |
 |---|---|---|---|---|---|---|---|
-| S1 | GET | `/api/schools` | `SchoolsListScreen` | — (public) | `School[]` : `{ id, name, address, phone, email, logoUrl?, createdAt }` | **EXISTE** | Mobile aligné (6.1) : `School` de `src/models/School.ts` = cet objet, `SchoolService` renvoie `response.data`. |
-| S2 | GET | `/api/schools/:id` | `SchoolDetailScreen` | — (public) | `School` | **EXISTE** | — |
+| S1 | GET | `/api/schools` | `SchoolsListScreen` | — (public) | `School[]` : `{ id, name, address, phone, email, logoUrl?, currency, createdAt }` | **EXISTE** | `currency` = code ISO 4217 de l'école (D-43, migration 012, `TND` par défaut ; modifiable par les routes admin `POST /` et `PUT /:id`, ou `CURRENCY=` du script d'onboarding). Mobile aligné (6.1, 7.1) : `School` de `src/models/School.ts` = cet objet. |
+| S2 | GET | `/api/schools/:id` | `SchoolDetailScreen`, `useSchoolCurrency` (tout écran qui affiche un montant) | — (public) | `School` | **EXISTE** | Le mobile lit ici la devise d'une école, une fois par session (7.1). |
 | S3 | GET | `/api/schools/:id/instructors` | `SchoolDetailScreen` | — (public) | `Instructor[]` : `{ id, userId, schoolId, firstName, lastName, phone, licenseNumber, specialties[] }` | **EXISTE** | `firstName` / `lastName` par jointure `users` (D-16, 3.1 ; `''` si aucun compte lié). Le champ dérivé `name` a été retiré du payload en 6.1 (la colonne héritée `instructors.name` n'est plus lue). L'`id` est `instructors.id`, réutilisé comme `preferredInstructorId` dans L2. |
 | S4 | GET | `/api/schools/:id/pricing` | `SchoolDetailScreen` (onglet Tarifs) | — (public) | `Pricing[]` : `{ id, schoolId, lessonType ∈ CODE\|Manœuvre\|Parc, price, duration }` | **EXISTE** | — |
 | S5 | POST | `/api/schools/school-codes/verify` | — | — | — | **SUPPRIMÉE** | Remplacée par `schoolCode` dans A2 (D-17). `SchoolCodeService.ts` et le chemin ont été retirés du mobile en 6.1 ; l'écran d'inscription instructeur n'a plus qu'une étape. |

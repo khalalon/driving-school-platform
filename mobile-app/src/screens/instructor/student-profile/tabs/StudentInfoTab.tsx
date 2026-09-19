@@ -18,11 +18,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { studentProfileService } from '../../../../services/api/StudentProfileService';
 import { getApiErrorMessage } from '../../../../services/api/ApiError';
 import { FinancialSummary, StudentProfile } from '../../../../models/Profile';
+import { useSchoolCurrency } from '../../../../hooks/useSchoolCurrency';
 import { formatAmount, formatDate, formatPersonName } from '../../../../utils/format';
 import { colors, typography, spacing, shadows } from '../../../../theme';
 
 export const StudentInfoTab = ({ route }: any) => {
   const { studentId, schoolId } = route.params;
+  const currency = useSchoolCurrency(schoolId);
 
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<StudentProfile | null>(null);
@@ -202,14 +204,14 @@ export const StudentInfoTab = ({ route }: any) => {
         <View style={styles.financialRow}>
           <Text style={styles.financialLabel}>Total Revenue</Text>
           <Text style={[styles.financialValue, { color: colors.success[600] }]}>
-            {formatAmount(financial.totalRevenue)}
+            {formatAmount(financial.totalRevenue, currency)}
           </Text>
         </View>
 
         <View style={styles.financialRow}>
           <Text style={styles.financialLabel}>Pending Payment</Text>
           <Text style={[styles.financialValue, { color: colors.warning[600] }]}>
-            {formatAmount(financial.totalPending)}
+            {formatAmount(financial.totalPending, currency)}
           </Text>
         </View>
 
@@ -217,22 +219,30 @@ export const StudentInfoTab = ({ route }: any) => {
 
         <View style={styles.financialRow}>
           <Text style={styles.financialLabel}>Lessons Revenue</Text>
-          <Text style={styles.financialValue}>{formatAmount(financial.lessonsRevenue)}</Text>
+          <Text style={styles.financialValue}>
+            {formatAmount(financial.lessonsRevenue, currency)}
+          </Text>
         </View>
 
         <View style={styles.financialRow}>
           <Text style={styles.financialLabel}>Lessons Pending</Text>
-          <Text style={styles.financialValue}>{formatAmount(financial.lessonsPending)}</Text>
+          <Text style={styles.financialValue}>
+            {formatAmount(financial.lessonsPending, currency)}
+          </Text>
         </View>
 
         <View style={styles.financialRow}>
           <Text style={styles.financialLabel}>Exams Revenue</Text>
-          <Text style={styles.financialValue}>{formatAmount(financial.examsRevenue)}</Text>
+          <Text style={styles.financialValue}>
+            {formatAmount(financial.examsRevenue, currency)}
+          </Text>
         </View>
 
         <View style={styles.financialRow}>
           <Text style={styles.financialLabel}>Exams Pending</Text>
-          <Text style={styles.financialValue}>{formatAmount(financial.examsPending)}</Text>
+          <Text style={styles.financialValue}>
+            {formatAmount(financial.examsPending, currency)}
+          </Text>
         </View>
 
         {financial.lastPaymentDate && (

@@ -322,7 +322,7 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
                       </Text>
                       <Text style={styles.duration}>{price.duration} min</Text>
                     </View>
-                    <Text style={styles.price}>{formatAmount(price.price)}</Text>
+                    <Text style={styles.price}>{formatAmount(price.price, school.currency)}</Text>
                   </View>
                 ))
               )}

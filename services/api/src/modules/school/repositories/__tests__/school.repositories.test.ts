@@ -5,8 +5,8 @@ import { PricingRepository } from '../pricing.repository';
 import { SchoolRepository } from '../school.repository';
 
 describe('SchoolRepository', () => {
-  it('create : logoUrl absent → null ; colonnes aliasées en camelCase', async () => {
-    const { pool, query } = fakePool([{ id: UUID.school, logoUrl: null }]);
+  it('create : logoUrl absent → null, devise absente → TND (D-43) ; colonnes aliasées en camelCase', async () => {
+    const { pool, query } = fakePool([{ id: UUID.school, logoUrl: null, currency: 'TND' }]);
     const repo = new SchoolRepository(pool);
 
     const result = await repo.create({
@@ -16,18 +16,33 @@ describe('SchoolRepository', () => {
       email: 'e@x.io',
     });
 
-    expect(result).toEqual({ id: UUID.school, logoUrl: null });
+    expect(result).toEqual({ id: UUID.school, logoUrl: null, currency: 'TND' });
     const [sql, params] = query.mock.calls[0] as [string, unknown[]];
-    expect(sql).toMatch(/logo_url AS "logoUrl"/);
-    expect(params).toEqual(['École', '1 rue du Test', '+216', 'e@x.io', null]);
+    expect(sql).toMatch(/logo_url AS "logoUrl", currency/);
+    expect(params).toEqual(['École', '1 rue du Test', '+216', 'e@x.io', null, 'TND']);
   });
 
-  it('update : les champs absents passent en null pour COALESCE', async () => {
+  it('create : la devise fournie est insérée telle quelle', async () => {
+    const { pool, query } = fakePool([{ id: UUID.school, currency: 'EUR' }]);
+    await new SchoolRepository(pool).create({
+      name: 'École',
+      address: '1 rue du Test',
+      phone: '+216',
+      email: 'e@x.io',
+      currency: 'EUR',
+    });
+
+    const [, params] = query.mock.calls[0] as [string, unknown[]];
+    expect(params[5]).toBe('EUR');
+  });
+
+  it('update : les champs absents passent en null pour COALESCE (devise comprise)', async () => {
     const { pool, query } = fakePool([{ id: UUID.school }]);
     await new SchoolRepository(pool).update(UUID.school, { phone: '+21699' });
 
-    const [, params] = query.mock.calls[0] as [string, unknown[]];
-    expect(params).toEqual([UUID.school, null, null, '+21699', null, null]);
+    const [sql, params] = query.mock.calls[0] as [string, unknown[]];
+    expect(sql).toMatch(/currency = COALESCE\(\$7, currency\)/);
+    expect(params).toEqual([UUID.school, null, null, '+21699', null, null, null]);
   });
 
   it('findById / findAll / delete', async () => {

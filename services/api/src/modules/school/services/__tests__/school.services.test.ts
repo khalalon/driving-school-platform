@@ -17,6 +17,7 @@ const school: School = {
   phone: '+21600000000',
   email: 'contact@seed.io',
   logoUrl: null,
+  currency: 'TND',
   createdAt: now,
   updatedAt: now,
 };

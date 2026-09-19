@@ -28,7 +28,8 @@ import { schoolService } from '../../services/api/SchoolService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
 import { LESSON_TYPE_LABELS, LESSON_TYPES, LessonType } from '../../models/Lesson';
 import { SchoolPricing, SchoolStudent } from '../../models/School';
-import { CURRENCY_SYMBOL, formatAmount, formatPersonName } from '../../utils/format';
+import { useSchoolCurrency } from '../../hooks/useSchoolCurrency';
+import { formatAmount, formatPersonName } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
 
 const DEFAULT_DURATION_MINUTES = 60;
@@ -44,6 +45,7 @@ const tomorrowMorning = (): Date => {
 export const BookForStudentScreen = ({ navigation }: any) => {
   const { user } = useAuth();
   const schoolId = user?.schoolId;
+  const currency = useSchoolCurrency(schoolId);
 
   const [loadingStudents, setLoadingStudents] = useState(true);
   const [students, setStudents] = useState<SchoolStudent[]>([]);
@@ -396,11 +398,11 @@ export const BookForStudentScreen = ({ navigation }: any) => {
         {/* Price (D-30) */}
         <View style={styles.section}>
           <Text style={styles.label}>
-            Price ({CURRENCY_SYMBOL}){priceRequired ? ' — required' : ''}
+            Price{currency ? ` (${currency})` : ''}{priceRequired ? ' — required' : ''}
           </Text>
           {rate ? (
             <Text style={styles.rateText}>
-              School rate: {formatAmount(rate.price)} (applied automatically)
+              School rate: {formatAmount(rate.price, currency)} (applied automatically)
             </Text>
           ) : (
             <>

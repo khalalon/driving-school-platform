@@ -28,6 +28,7 @@ import {
   LessonStatus,
   canStudentCancel,
 } from '../../models/Lesson';
+import { useSchoolCurrency } from '../../hooks/useSchoolCurrency';
 import { formatAmount, formatPersonName, formatTime } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
 
@@ -51,6 +52,8 @@ export const MyLessonsScreen = ({ navigation }: any) => {
   const [refreshing, setRefreshing] = useState(false);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [filter, setFilter] = useState<FilterType>('upcoming');
+  // Une seule inscription active (D-22) : toutes les leçons sont dans la même école
+  const currency = useSchoolCurrency(lessons[0]?.schoolId);
 
   useEffect(() => {
     loadLessons();
@@ -183,7 +186,9 @@ export const MyLessonsScreen = ({ navigation }: any) => {
         {(item.price !== null || item.paid) && (
           <View style={styles.priceRow}>
             <Ionicons name="cash-outline" size={16} color={colors.text.secondary} />
-            <Text style={styles.priceText}>{formatAmount(item.amount ?? item.price)}</Text>
+            <Text style={styles.priceText}>
+              {formatAmount(item.amount ?? item.price, currency)}
+            </Text>
             <View style={[styles.paidBadge, item.paid ? styles.paidBadgeOn : styles.paidBadgeOff]}>
               <Text style={[styles.paidText, item.paid ? styles.paidTextOn : styles.paidTextOff]}>
                 {item.paid ? 'Paid' : 'Unpaid'}

@@ -10,6 +10,7 @@
 #   DURATION_MINUTES                          durée d'une leçon dans la grille (défaut 60)
 #   CODE_MAX_USES                             quota du code (défaut : illimité)
 #   CODE_EXPIRES_AT                           expiration du code, ex. 2026-12-31 (défaut : jamais)
+#   CURRENCY                                  devise de l'école, code ISO 4217 (défaut TND, D-43)
 #   DB_CONTAINER, DB_USER, DB_NAME            défauts = docker-compose.yml
 #
 # Idempotent sur l'email de l'école : relancer le script ne crée ni doublon d'école, ni
@@ -33,6 +34,12 @@ PRICE_CODE="${PRICE_CODE:-20}"
 PRICE_MANOEUVRE="${PRICE_MANOEUVRE:-35}"
 PRICE_PARC="${PRICE_PARC:-40}"
 DURATION_MINUTES="${DURATION_MINUTES:-60}"
+CURRENCY="${CURRENCY:-TND}"
+
+if ! [[ "$CURRENCY" =~ ^[A-Z]{3}$ ]]; then
+  echo "CURRENCY : code ISO 4217 attendu (trois lettres majuscules), reçu : $CURRENCY" >&2
+  exit 2
+fi
 
 for n in "$PRICE_CODE" "$PRICE_MANOEUVRE" "$PRICE_PARC" "$DURATION_MINUTES" "${CODE_MAX_USES:-1}"; do
   if ! [[ "$n" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
@@ -72,7 +79,7 @@ fi
 docker exec -i "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -qtA \
   -v name="$NAME" -v address="$ADDRESS" -v phone="$PHONE" -v email="$EMAIL" \
   -v price_code="$PRICE_CODE" -v price_manoeuvre="$PRICE_MANOEUVRE" -v price_parc="$PRICE_PARC" \
-  -v duration="$DURATION_MINUTES" -v new_code="$NEW_CODE" \
+  -v duration="$DURATION_MINUTES" -v new_code="$NEW_CODE" -v currency="$CURRENCY" \
   -v max_uses="$MAX_USES_SQL" -v expires_at="$EXPIRES_AT_SQL" -f - <<'SQL'
 BEGIN;
 
@@ -80,8 +87,8 @@ SELECT (SELECT id FROM schools WHERE email = :'email' ORDER BY created_at LIMIT 
 \if :{?school_id}
   \warn École déjà enregistrée (:email) : tarifs et code existants conservés.
 \else
-  INSERT INTO schools (name, address, phone, email)
-  VALUES (:'name', :'address', :'phone', :'email')
+  INSERT INTO schools (name, address, phone, email, currency)
+  VALUES (:'name', :'address', :'phone', :'email', :'currency')
   RETURNING id AS school_id \gset
   \warn École créée : :name
 \endif

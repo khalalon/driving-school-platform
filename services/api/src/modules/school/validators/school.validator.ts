@@ -9,6 +9,11 @@ import {
 } from '../types/school.types';
 
 const phone = Joi.string().pattern(/^\+?[0-9\s-()]+$/);
+// Devise ISO 4217 (D-43) : trois lettres majuscules, ex. TND, EUR.
+const currency = Joi.string()
+  .trim()
+  .uppercase()
+  .pattern(/^[A-Z]{3}$/);
 
 export const createSchoolSchema = Joi.object<CreateSchoolDTO>({
   name: Joi.string().min(2).max(255).required(),
@@ -16,6 +21,7 @@ export const createSchoolSchema = Joi.object<CreateSchoolDTO>({
   phone: phone.required(),
   email: Joi.string().email().required(),
   logoUrl: Joi.string().uri().optional(),
+  currency: currency.optional(),
 });
 
 export const updateSchoolSchema = Joi.object<UpdateSchoolDTO>({
@@ -24,6 +30,7 @@ export const updateSchoolSchema = Joi.object<UpdateSchoolDTO>({
   phone: phone.optional(),
   email: Joi.string().email().optional(),
   logoUrl: Joi.string().uri().optional(),
+  currency: currency.optional(),
 }).min(1);
 
 export const createInstructorSchema = Joi.object<CreateInstructorDTO>({

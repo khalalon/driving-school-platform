@@ -32,7 +32,8 @@ import { schoolService } from '../../services/api/SchoolService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
 import { LESSON_TYPE_LABELS, Lesson, LessonStatus, LessonType } from '../../models/Lesson';
 import { SchoolInstructor, SchoolPricing } from '../../models/School';
-import { CURRENCY_SYMBOL, formatAmount, formatDateTime, formatPersonName } from '../../utils/format';
+import { useSchoolCurrency } from '../../hooks/useSchoolCurrency';
+import { formatAmount, formatDateTime, formatPersonName } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
 
 /** Motif de refus : 10 à 500 caractères, même règle que le backend (D-29). */
@@ -51,6 +52,7 @@ const tomorrowMorning = (): Date => {
 export const LessonRequestsScreen = ({ navigation }: any) => {
   const { user } = useAuth();
   const schoolId = user?.schoolId;
+  const currency = useSchoolCurrency(schoolId);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -334,7 +336,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
               <Ionicons name="car-outline" size={16} color={colors.text.tertiary} />
               <Text style={styles.detailText}>
                 {LESSON_TYPE_LABELS[item.type] ?? item.type}
-                {rate ? ` · ${formatAmount(rate.price)} · ${rate.duration} min` : ''}
+                {rate ? ` · ${formatAmount(rate.price, currency)} · ${rate.duration} min` : ''}
               </Text>
             </View>
             <View style={styles.detailRow}>
@@ -547,11 +549,12 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
 
               <View style={styles.section}>
                 <Text style={styles.label}>
-                  Price ({CURRENCY_SYMBOL}){priceRequired ? ' — required' : ''}
+                  Price{currency ? ` (${currency})` : ''}{priceRequired ? ' — required' : ''}
                 </Text>
                 {selectedRate ? (
                   <Text style={styles.rateText}>
-                    School rate: {formatAmount(selectedRate.price)} (applied automatically)
+                    School rate: {formatAmount(selectedRate.price, currency)} (applied
+                    automatically)
                   </Text>
                 ) : (
                   <>

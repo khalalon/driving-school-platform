@@ -3,13 +3,17 @@
  */
 
 /**
- * Libellé monétaire. Le backend ne porte aucune devise ; le symbole affiché n'est pas tranché
- * (Q-20 dans `docs/DECISIONS.md`) : on garde ici, en un seul endroit, celui des écrans existants.
+ * Montant dans la devise de l'école (D-43, code ISO 4217 lu par `useSchoolCurrency`). Tant que
+ * la devise n'est pas connue, le nombre s'affiche seul.
  */
-export const CURRENCY_SYMBOL = '€';
-
-export const formatAmount = (amount: number | null | undefined): string =>
-  amount === null || amount === undefined ? '—' : `${amount.toFixed(2)} ${CURRENCY_SYMBOL}`;
+export const formatAmount = (
+  amount: number | null | undefined,
+  currency: string | null | undefined
+): string => {
+  if (amount === null || amount === undefined) return '—';
+  const value = amount.toFixed(2);
+  return currency ? `${value} ${currency}` : value;
+};
 
 const parse = (iso: string | null | undefined): Date | null => {
   if (!iso) return null;

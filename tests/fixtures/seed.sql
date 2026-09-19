@@ -5,14 +5,15 @@
 -- Les mêmes identifiants sont exposés par tests/helpers/api.ts (SEED).
 -- L'admin est celui de la migration 001 (admin@drivingschool.com / admin123).
 
--- École
-INSERT INTO schools (id, name, address, phone, email)
+-- École (devise TND, D-43)
+INSERT INTO schools (id, name, address, phone, email, currency)
 VALUES (
     '11111111-1111-4111-8111-111111111111',
     'Seed Driving School',
     '1 rue du Test, Tunis',
     '+21600000000',
-    'contact@seed.io'
+    'contact@seed.io',
+    'TND'
 )
 ON CONFLICT DO NOTHING;
 
