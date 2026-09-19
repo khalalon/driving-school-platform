@@ -15,6 +15,8 @@ export interface Env {
   JWT_ACCESS_EXPIRES_IN: string;
   JWT_REFRESH_EXPIRES_IN: string;
   BCRYPT_ROUNDS: number;
+  /** Fenêtre d'annulation par l'élève d'une leçon planifiée, en heures (D-24). */
+  LESSON_CANCEL_HOURS: number;
 }
 
 const envSchema = Joi.object<Env>({
@@ -37,6 +39,7 @@ const envSchema = Joi.object<Env>({
   JWT_ACCESS_EXPIRES_IN: Joi.string().default('1h'),
   JWT_REFRESH_EXPIRES_IN: Joi.string().default('30d'),
   BCRYPT_ROUNDS: Joi.number().integer().min(4).max(15).default(12),
+  LESSON_CANCEL_HOURS: Joi.number().integer().min(0).max(720).default(24),
 }).unknown(true);
 
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {

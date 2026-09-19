@@ -1,10 +1,22 @@
 import { Pool } from 'pg';
-import { Lesson, LessonFilters, LessonScope, NewLessonRequest } from '../types/lesson.types';
+import {
+  Lesson,
+  LessonApproval,
+  LessonFilters,
+  LessonScope,
+  NewLessonRequest,
+} from '../types/lesson.types';
 
 export interface ILessonRepository {
   createRequest(data: NewLessonRequest): Promise<Lesson>;
   findById(id: string): Promise<Lesson | null>;
   findAll(scope: LessonScope, filters: LessonFilters): Promise<Lesson[]>;
+  /** L5 : `pending` → `scheduled` ; `null` si la leçon n'est plus `pending` (course entre instructeurs). */
+  approve(id: string, approval: LessonApproval): Promise<Lesson | null>;
+  /** L6 : `pending` → `rejected` ; `null` si la leçon n'est plus `pending`. */
+  reject(id: string, reason: string): Promise<Lesson | null>;
+  /** L3 : `pending` ou `scheduled` → `cancelled` ; `null` si le statut a changé entre-temps. */
+  cancel(id: string, cancelledBy: string, reason?: string): Promise<Lesson | null>;
 }
 
 /**
@@ -24,7 +36,8 @@ const LESSON_COLUMNS = `l.id, l.school_id AS "schoolId", su.id AS "studentId",
   l.requested_date AS "requestedDate", l.scheduled_date AS "scheduledDate",
   l.duration_minutes AS "durationMinutes", l.price::float8 AS price, l.capacity,
   l.current_bookings AS "currentBookings", l.notes, l.admin_notes AS "adminNotes",
-  l.rejection_reason AS "rejectionReason", l.attended, l.feedback, l.rating, l.paid,
+  l.rejection_reason AS "rejectionReason", l.cancellation_reason AS "cancellationReason",
+  l.cancelled_by AS "cancelledBy", l.attended, l.feedback, l.rating, l.paid,
   l.amount::float8 AS amount, l.payment_date AS "paymentDate", l.payment_method AS "paymentMethod",
   l.created_at AS "createdAt", l.updated_at AS "updatedAt"`;
 
@@ -107,6 +120,48 @@ export class LessonRepository implements ILessonRepository {
       values
     );
     return result.rows;
+  }
+
+  async approve(id: string, approval: LessonApproval): Promise<Lesson | null> {
+    const result = await this.db.query<{ id: string }>(
+      `UPDATE lessons
+       SET status = 'scheduled', instructor_id = $2, scheduled_date = $3, duration_minutes = $4,
+           price = $5, admin_notes = $6, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1 AND status = 'pending'
+       RETURNING id`,
+      [
+        id,
+        approval.instructorId,
+        approval.scheduledDate,
+        approval.durationMinutes,
+        approval.price,
+        approval.adminNotes ?? null,
+      ]
+    );
+    return result.rows[0] ? this.requireById(id) : null;
+  }
+
+  async reject(id: string, reason: string): Promise<Lesson | null> {
+    const result = await this.db.query<{ id: string }>(
+      `UPDATE lessons
+       SET status = 'rejected', rejection_reason = $2, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1 AND status = 'pending'
+       RETURNING id`,
+      [id, reason]
+    );
+    return result.rows[0] ? this.requireById(id) : null;
+  }
+
+  async cancel(id: string, cancelledBy: string, reason?: string): Promise<Lesson | null> {
+    const result = await this.db.query<{ id: string }>(
+      `UPDATE lessons
+       SET status = 'cancelled', cancellation_reason = $2, cancelled_by = $3,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1 AND status IN ('pending', 'scheduled')
+       RETURNING id`,
+      [id, reason ?? null, cancelledBy]
+    );
+    return result.rows[0] ? this.requireById(id) : null;
   }
 
   /** Relecture avec les jointures après une écriture (RETURNING ne peut pas joindre). */

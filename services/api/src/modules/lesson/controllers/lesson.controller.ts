@@ -3,7 +3,13 @@ import { sendCaughtError, sendValidationError } from '../../../http/errors';
 import { uuidParam, validate } from '../../../http/validation';
 import { AuthRequest, getAuthUser } from '../../../middleware/auth.middleware';
 import { LessonService } from '../services/lesson.service';
-import { lessonFiltersSchema, requestLessonSchema } from '../validators/lesson.validator';
+import {
+  approveLessonSchema,
+  cancelLessonSchema,
+  lessonFiltersSchema,
+  rejectLessonSchema,
+  requestLessonSchema,
+} from '../validators/lesson.validator';
 
 export class LessonController {
   constructor(private readonly lessonService: LessonService) {}
@@ -40,6 +46,51 @@ export class LessonController {
     try {
       const id = uuidParam(req.params.id, 'Leçon');
       res.json(await this.lessonService.getLesson(getAuthUser(req), id));
+    } catch (err) {
+      sendCaughtError(res, err);
+    }
+  };
+
+  /** L5 */
+  approveLesson = async (req: AuthRequest, res: Response): Promise<void> => {
+    const parsed = validate(approveLessonSchema, req.body);
+    if (!parsed.ok) {
+      sendValidationError(res, parsed.detail);
+      return;
+    }
+    try {
+      const id = uuidParam(req.params.id, 'Leçon');
+      res.json(await this.lessonService.approveLesson(getAuthUser(req), id, parsed.value));
+    } catch (err) {
+      sendCaughtError(res, err);
+    }
+  };
+
+  /** L6 */
+  rejectLesson = async (req: AuthRequest, res: Response): Promise<void> => {
+    const parsed = validate(rejectLessonSchema, req.body);
+    if (!parsed.ok) {
+      sendValidationError(res, parsed.detail);
+      return;
+    }
+    try {
+      const id = uuidParam(req.params.id, 'Leçon');
+      res.json(await this.lessonService.rejectLesson(getAuthUser(req), id, parsed.value));
+    } catch (err) {
+      sendCaughtError(res, err);
+    }
+  };
+
+  /** L3 */
+  cancelLesson = async (req: AuthRequest, res: Response): Promise<void> => {
+    const parsed = validate(cancelLessonSchema, req.body ?? {});
+    if (!parsed.ok) {
+      sendValidationError(res, parsed.detail);
+      return;
+    }
+    try {
+      const id = uuidParam(req.params.id, 'Leçon');
+      res.json(await this.lessonService.cancelLesson(getAuthUser(req), id, parsed.value));
     } catch (err) {
       sendCaughtError(res, err);
     }

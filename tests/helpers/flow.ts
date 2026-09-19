@@ -32,6 +32,7 @@ export interface Lesson {
   studentId: string;
   instructorId: string | null;
   price?: number | string;
+  instructor?: { id: string; firstName: string; lastName: string } | null;
   attended?: boolean;
 }
 

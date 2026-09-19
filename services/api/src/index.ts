@@ -36,7 +36,9 @@ async function bootstrap(): Promise<void> {
     requireAuth: auth.requireAuth,
     students: student.studentRepository,
     instructors: instructorRepository,
+    pricing: school.pricingService,
     schoolGuard,
+    cancelWindowHours: env.LESSON_CANCEL_HOURS,
   });
   const exam = buildExamModule({ db, requireAuth: auth.requireAuth });
 

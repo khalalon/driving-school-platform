@@ -104,6 +104,57 @@ describe('LessonRepository (schéma 007, objet Lesson du contrat)', () => {
     expect(bothParams).toEqual([UUID.school, UUID.instructor]);
   });
 
+  it('approve / reject / cancel : UPDATE conditionné au statut, relecture jointe ; null si aucune ligne', async () => {
+    const query = jest
+      .fn()
+      .mockResolvedValueOnce({ rows: [{ id: UUID.booking }] })
+      .mockResolvedValueOnce({ rows: [{ ...row, status: 'scheduled' }] })
+      .mockResolvedValueOnce({ rows: [] }) // reject : plus pending
+      .mockResolvedValueOnce({ rows: [{ id: UUID.booking }] })
+      .mockResolvedValueOnce({ rows: [{ ...row, status: 'cancelled' }] });
+    const repo = new LessonRepository({ query } as unknown as Pool);
+    const scheduledDate = new Date('2026-10-02T09:00:00Z');
+
+    await expect(
+      repo.approve(UUID.booking, {
+        instructorId: UUID.instructor,
+        scheduledDate,
+        durationMinutes: 60,
+        price: 40,
+        adminNotes: 'RDV au parc',
+      })
+    ).resolves.toMatchObject({ status: 'scheduled' });
+    const [approveSql, approveParams] = query.mock.calls[0] as [string, unknown[]];
+    expect(approveSql).toMatch(
+      /SET status = 'scheduled', instructor_id = \$2, scheduled_date = \$3/
+    );
+    expect(approveSql).toMatch(/WHERE id = \$1 AND status = 'pending'/);
+    expect(approveParams).toEqual([
+      UUID.booking,
+      UUID.instructor,
+      scheduledDate,
+      60,
+      40,
+      'RDV au parc',
+    ]);
+
+    await expect(repo.reject(UUID.booking, 'Créneau indisponible')).resolves.toBeNull();
+    const [rejectSql, rejectParams] = query.mock.calls[2] as [string, unknown[]];
+    expect(rejectSql).toMatch(/SET status = 'rejected', rejection_reason = \$2/);
+    expect(rejectSql).toMatch(/WHERE id = \$1 AND status = 'pending'/);
+    expect(rejectParams).toEqual([UUID.booking, 'Créneau indisponible']);
+
+    await expect(repo.cancel(UUID.booking, 'user-1')).resolves.toMatchObject({
+      status: 'cancelled',
+    });
+    const [cancelSql, cancelParams] = query.mock.calls[3] as [string, unknown[]];
+    expect(cancelSql).toMatch(
+      /SET status = 'cancelled', cancellation_reason = \$2, cancelled_by = \$3/
+    );
+    expect(cancelSql).toMatch(/WHERE id = \$1 AND status IN \('pending', 'scheduled'\)/);
+    expect(cancelParams).toEqual([UUID.booking, null, 'user-1']);
+  });
+
   it('findAll : portée admin sans condition ; findById null sans ligne', async () => {
     const { pool, query } = fakePool([]);
     const repo = new LessonRepository(pool);

@@ -126,17 +126,18 @@ describe('Chemin critique v1 (D-15)', () => {
     expect(mine?.status).toBe('pending');
   });
 
-  step("L5 — l'instructeur planifie la leçon : scheduled, prix de la grille Parc", async () => {
+  step("L5 — approbation de la leçon par l'instructeur : scheduled, prix de la grille Parc", async () => {
     const lesson = await ensureLesson();
     const res = await api()
       .put(`/api/lessons/${lesson.id}/approve`)
       .set(bearer(await ensureInstructorToken()))
       .send({ scheduledDate: futureDate(3), durationMinutes: SEED.lessonDurationMinutes });
-    expectStatus(res, 200, 'L5 planification de la leçon');
+    expectStatus(res, 200, 'L5 approbation de la leçon');
     const body = res.body as Lesson;
     expect(body.status).toBe('scheduled');
     expect(body.instructorId).toBe(SEED.instructor.instructorId);
     expect(Number(body.price)).toBe(SEED.pricing.Parc);
+    expect(body.instructor).toMatchObject({ id: SEED.instructor.instructorId, firstName: 'Seed' });
     rememberScheduledLesson(body);
   });
 

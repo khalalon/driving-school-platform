@@ -16,6 +16,7 @@ describe('loadEnv', () => {
     expect(env.JWT_ACCESS_EXPIRES_IN).toBe('1h');
     expect(env.JWT_REFRESH_EXPIRES_IN).toBe('30d');
     expect(env.BCRYPT_ROUNDS).toBe(12);
+    expect(env.LESSON_CANCEL_HOURS).toBe(24);
   });
 
   it('refuse de démarrer sans les deux secrets JWT ni DATABASE_URL, en listant les manques', () => {

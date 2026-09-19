@@ -73,6 +73,7 @@ services:
       JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-1h}
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-30d}
       BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
+      LESSON_CANCEL_HOURS: ${LESSON_CANCEL_HOURS:-24}
     ports:
       # Accès direct en développement ; la passerelle reste Nginx sur :80.
       - "3000:3000"

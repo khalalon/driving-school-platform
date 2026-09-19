@@ -352,7 +352,7 @@ ITOK=$(curl -s -X POST localhost/api/auth/login -H 'Content-Type: application/js
 ```
 **Hors périmètre** : approbation (5.3).
 
-### - [ ] 5.3 — Leçons : approbation, refus, annulation (L5, L6, L3)
+### - [x] 5.3 — Leçons : approbation, refus, annulation (L5, L6, L3)
 **Objectif** : `PUT /:id/approve { scheduledDate, durationMinutes, price?, adminNotes? }` par **tout instructeur de l'école**, qui devient `instructor_id` (D-32) → `scheduled`, `price` copié de `pricing` ou pris du payload (D-30, 400 `PRICE_REQUIRED` si aucun) ; `PUT /:id/reject { reason }` → `rejected` ; `POST /:id/cancel` avec la règle 24 h (`LESSON_CANCEL_HOURS`, D-24).
 **Fichiers** : `modules/lesson/**`, `src/config/env.ts`, tests, `docs/API_CONTRACT.md` (L3, L5, L6).
 **Critère de validation** :

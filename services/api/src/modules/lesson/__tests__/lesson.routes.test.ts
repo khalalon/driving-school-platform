@@ -11,6 +11,9 @@ describe('Routes /api/lessons (L1, L2, GET /:id)', () => {
     requestLesson: jest.fn(),
     listLessons: jest.fn(),
     getLesson: jest.fn(),
+    approveLesson: jest.fn(),
+    rejectLesson: jest.fn(),
+    cancelLesson: jest.fn(),
   };
   const app = createApp({
     auth: createLessonRouter(
@@ -104,6 +107,81 @@ describe('Routes /api/lessons (L1, L2, GET /:id)', () => {
       .set('Authorization', bearerFor('student'))
       .expect(404);
     expect(lessonService.getLesson).toHaveBeenCalledTimes(1);
+  });
+
+  it('L5 PUT /:id/approve : instructeur seulement ; payload validé ; PRICE_REQUIRED relayé', async () => {
+    const url = `${base}/${lessonId}/approve`;
+    const body = { scheduledDate: future, durationMinutes: 60, adminNotes: 'RDV au parc' };
+    await request(app).put(url).set('Authorization', bearerFor('student')).send(body).expect(403);
+    await request(app).put(url).set('Authorization', bearerFor('admin')).send(body).expect(403);
+    await request(app)
+      .put(url)
+      .set('Authorization', bearerFor('instructor'))
+      .send({ scheduledDate: future })
+      .expect(400);
+
+    lessonService.approveLesson.mockResolvedValue({ id: lessonId, status: 'scheduled' });
+    const ok = await request(app).put(url).set('Authorization', bearerFor('instructor')).send(body);
+    expect(ok.status).toBe(200);
+    expect(lessonService.approveLesson).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: TEST_USERS.instructor.userId }),
+      lessonId,
+      { scheduledDate: new Date(future), durationMinutes: 60, adminNotes: 'RDV au parc' }
+    );
+
+    lessonService.approveLesson.mockRejectedValue(
+      new HttpError(400, 'PRICE_REQUIRED', 'Indiquez un prix')
+    );
+    const noPrice = await request(app)
+      .put(url)
+      .set('Authorization', bearerFor('instructor'))
+      .send(body);
+    expect(noPrice.status).toBe(400);
+    expect(noPrice.body).toEqual({ error: 'PRICE_REQUIRED', message: 'Indiquez un prix' });
+  });
+
+  it('L6 PUT /:id/reject : instructeur ou admin ; motif 10–500 caractères (D-29)', async () => {
+    const url = `${base}/${lessonId}/reject`;
+    const reason = { reason: 'Créneau indisponible' };
+    await request(app).put(url).set('Authorization', bearerFor('student')).send(reason).expect(403);
+    await request(app)
+      .put(url)
+      .set('Authorization', bearerFor('instructor'))
+      .send({ reason: 'court' })
+      .expect(400);
+
+    lessonService.rejectLesson.mockResolvedValue({ id: lessonId, status: 'rejected' });
+    await request(app).put(url).set('Authorization', bearerFor('admin')).send(reason).expect(200);
+    expect(lessonService.rejectLesson).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: TEST_USERS.admin.userId }),
+      lessonId,
+      reason
+    );
+  });
+
+  it('L3 POST /:id/cancel : tout rôle authentifié, corps facultatif ; CANCEL_WINDOW_CLOSED relayé', async () => {
+    const url = `${base}/${lessonId}/cancel`;
+    await request(app).post(url).expect(401);
+
+    lessonService.cancelLesson.mockResolvedValue({ id: lessonId, status: 'cancelled' });
+    await request(app).post(url).set('Authorization', bearerFor('student')).expect(200);
+    expect(lessonService.cancelLesson).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: TEST_USERS.student.userId }),
+      lessonId,
+      {}
+    );
+    await request(app)
+      .post(url)
+      .set('Authorization', bearerFor('instructor'))
+      .send({ reason: 'Instructeur malade' })
+      .expect(200);
+
+    lessonService.cancelLesson.mockRejectedValue(
+      new HttpError(403, 'CANCEL_WINDOW_CLOSED', 'Trop tard')
+    );
+    const closed = await request(app).post(url).set('Authorization', bearerFor('student'));
+    expect(closed.status).toBe(403);
+    expect(closed.body).toEqual({ error: 'CANCEL_WINDOW_CLOSED', message: 'Trop tard' });
   });
 
   it('anciennes routes de créneaux et de réservation disparues (5.2)', async () => {

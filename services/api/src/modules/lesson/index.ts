@@ -4,7 +4,12 @@ import { SchoolGuard } from '../../http/authz';
 import { LessonController } from './controllers/lesson.controller';
 import { LessonRepository } from './repositories/lesson.repository';
 import { createLessonRouter } from './routes/lesson.routes';
-import { InstructorLookup, LessonService, StudentLookup } from './services/lesson.service';
+import {
+  InstructorLookup,
+  LessonService,
+  PricingLookup,
+  StudentLookup,
+} from './services/lesson.service';
 
 export interface LessonModuleDeps {
   db: Pool;
@@ -13,7 +18,11 @@ export interface LessonModuleDeps {
   students: StudentLookup;
   /** `InstructorRepository` partagé (module school). */
   instructors: InstructorLookup;
+  /** `PricingService` du module school : prix figé à l'approbation (D-30). */
+  pricing: PricingLookup;
   schoolGuard: SchoolGuard;
+  /** `LESSON_CANCEL_HOURS` (D-24). */
+  cancelWindowHours: number;
 }
 
 export interface LessonModule {
@@ -26,13 +35,17 @@ export function buildLessonModule({
   requireAuth,
   students,
   instructors,
+  pricing,
   schoolGuard,
+  cancelWindowHours,
 }: LessonModuleDeps): LessonModule {
   const lessonService = new LessonService(
     new LessonRepository(db),
     students,
     instructors,
-    schoolGuard
+    pricing,
+    schoolGuard,
+    cancelWindowHours
   );
   return {
     router: createLessonRouter(new LessonController(lessonService), requireAuth),

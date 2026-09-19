@@ -42,6 +42,9 @@ export interface Lesson {
   notes: string | null;
   adminNotes: string | null;
   rejectionReason: string | null;
+  cancellationReason: string | null;
+  /** users.id de l'auteur de l'annulation (élève ou instructeur), pour Q-17. */
+  cancelledBy: string | null;
   attended: boolean | null;
   feedback: string | null;
   rating: number | null;
@@ -94,6 +97,15 @@ export interface BookForStudentDTO {
   durationMinutes: number;
   price?: number;
   notes?: string;
+}
+
+/** Ce que le repository écrit à l'approbation (L5) : instructeur = l'appelant (D-32), prix figé (D-30). */
+export interface LessonApproval {
+  instructorId: string;
+  scheduledDate: Date;
+  durationMinutes: number;
+  price: number;
+  adminNotes?: string;
 }
 
 /** L7 : présence par identifiant de leçon (une leçon = un élève). */
