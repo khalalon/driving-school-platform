@@ -188,6 +188,22 @@ describe('ProfileRepository', () => {
     expect(sql).toMatch(/FROM lessons l WHERE l\.student_id IN/);
     expect(sql).toMatch(/FROM exams e WHERE e\.student_id IN/);
     expect(sql).toMatch(/\(SELECT credit FROM student\) AS credit/);
+    // D-41 : une absence sort du dû
+    expect(sql).toMatch(/AND l\.attended IS DISTINCT FROM FALSE/);
+  });
+
+  it('findLessonBilling : école et présence de la leçon (P6, D-41) ; null si inconnue', async () => {
+    const { pool, query } = fakePool([{ schoolId: UUID.school, attended: false }]);
+    await expect(new ProfileRepository(pool).findLessonBilling(UUID.booking)).resolves.toEqual({
+      schoolId: UUID.school,
+      attended: false,
+    });
+    const [sql, params] = query.mock.calls[0] as [string, unknown[]];
+    expect(sql).toMatch(/SELECT school_id AS "schoolId", attended FROM lessons WHERE id = \$1/);
+    expect(params).toEqual([UUID.booking]);
+    await expect(
+      new ProfileRepository(fakePool([]).pool).findLessonBilling('ghost')
+    ).resolves.toBeNull();
   });
 
   it('getFinancialSummary : l’avoir de l’élève (D-40) est renvoyé converti', async () => {

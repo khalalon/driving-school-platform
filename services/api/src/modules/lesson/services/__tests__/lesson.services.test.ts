@@ -194,7 +194,7 @@ describe('LessonService (D-21 / D-32 : demande L2, liste L1, lecture scoped)', (
       );
     });
 
-    it('absent : completed sans incrémenter le compteur (D-33 ; facturation : Q-18)', async () => {
+    it('absent : completed sans incrémenter le compteur (D-33) ; rien à rendre si rien n’était versé (D-41)', async () => {
       repository.findById.mockResolvedValue(scheduled);
       repository.markAttendance.mockResolvedValue({
         lesson: { ...scheduled, status: LessonStatus.COMPLETED, attended: false },
@@ -206,6 +206,22 @@ describe('LessonService (D-21 / D-32 : demande L2, liste L1, lecture scoped)', (
       await expect(
         service.markAttendance(instructor, 'lesson-1', { attended: false })
       ).resolves.toMatchObject({ attended: false });
+      expect(stats.incrementLessonCount).not.toHaveBeenCalled();
+      expect(credits.addCredit).not.toHaveBeenCalled();
+    });
+
+    it('absent après prépaiement (D-41) : versement et crédit consommé rendus à l’avoir, dans la transaction', async () => {
+      repository.findById.mockResolvedValue({ ...scheduled, paid: true, amount: 40 });
+      repository.markAttendance.mockResolvedValue({
+        lesson: { ...scheduled, status: LessonStatus.COMPLETED, attended: false },
+        studentRowId: 'student-row-1',
+        paidAmount: 40,
+        creditApplied: 5,
+      });
+
+      await service.markAttendance(instructor, 'lesson-1', { attended: false });
+
+      expect(credits.addCredit).toHaveBeenCalledWith('user-1', 45, tx);
       expect(stats.incrementLessonCount).not.toHaveBeenCalled();
     });
 

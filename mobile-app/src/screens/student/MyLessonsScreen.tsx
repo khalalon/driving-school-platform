@@ -207,6 +207,12 @@ export const MyLessonsScreen = ({ navigation }: any) => {
         {paymentNote(item) === 'refunded-as-credit' && (
           <Text style={styles.paymentNote}>Your payment was returned to your credit</Text>
         )}
+        {item.status === LessonStatus.COMPLETED && item.attended === false && (
+          <View style={styles.reasonBox}>
+            <Ionicons name="alert-circle-outline" size={18} color={colors.error[600]} />
+            <Text style={styles.reasonText}>Marked absent — this lesson is not billed</Text>
+          </View>
+        )}
 
         {item.status === LessonStatus.REJECTED && item.rejectionReason && (
           <View style={styles.reasonBox}>

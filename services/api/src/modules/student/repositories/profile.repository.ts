@@ -13,8 +13,14 @@ export interface IProfileRepository {
   getFinancialSummary(userId: string, schoolId: string): Promise<FinancialSummary>;
   /** École de la fiche `students` de l'utilisateur (unique, D-22), pour le cloisonnement de P5. */
   findStudentSchool(userId: string): Promise<string | null>;
-  /** École de la leçon (P6) / de l'examen (P7), pour le cloisonnement ; `null` si inconnu. */
-  findLessonSchool(lessonId: string): Promise<string | null>;
+  /**
+   * École de la leçon (P6, cloisonnement) et présence : une absence n'est pas facturable
+   * (D-41). `null` si la leçon est inconnue.
+   */
+  findLessonBilling(
+    lessonId: string
+  ): Promise<{ schoolId: string; attended: boolean | null } | null>;
+  /** École de l'examen (P7), pour le cloisonnement ; `null` si inconnu. */
   findExamSchool(examId: string): Promise<string | null>;
   /** `false` si aucune fiche `students` pour cet utilisateur. */
   updateNotes(userId: string, notes: string): Promise<boolean>;
@@ -97,7 +103,8 @@ export class ProfileRepository implements IProfileRepository {
   /**
    * Encaissé = argent versé (`amount` des leçons / examens payés ; une leçon réglée par l'avoir
    * vaut 0 — D-40) ; dû = leçons et examens planifiés ou passés non payés, au montant saisi
-   * (reste après avoir) sinon au prix ; `credit` = avoir disponible de l'élève (D-40).
+   * (reste après avoir) sinon au prix — une absence (`attended = false`) n'est pas due (D-41) ;
+   * `credit` = avoir disponible de l'élève (D-40).
    */
   async getFinancialSummary(userId: string, schoolId: string): Promise<FinancialSummary> {
     const result = await this.db.query<{
@@ -112,6 +119,7 @@ export class ProfileRepository implements IProfileRepository {
        lessons_summary AS (
          SELECT COALESCE(SUM(CASE WHEN l.paid THEN l.amount END), 0) AS revenue,
                 COALESCE(SUM(CASE WHEN NOT l.paid AND l.status IN ('scheduled', 'completed')
+                                       AND l.attended IS DISTINCT FROM FALSE
                                   THEN COALESCE(l.amount, l.price) END), 0) AS pending,
                 MAX(CASE WHEN l.paid THEN l.payment_date END) AS last_payment
          FROM lessons l WHERE l.student_id IN (SELECT id FROM student)
@@ -153,8 +161,14 @@ export class ProfileRepository implements IProfileRepository {
     return this.findSchoolOf('students', 'user_id', userId);
   }
 
-  findLessonSchool(lessonId: string): Promise<string | null> {
-    return this.findSchoolOf('lessons', 'id', lessonId);
+  async findLessonBilling(
+    lessonId: string
+  ): Promise<{ schoolId: string; attended: boolean | null } | null> {
+    const result = await this.db.query<{ schoolId: string; attended: boolean | null }>(
+      `SELECT school_id AS "schoolId", attended FROM lessons WHERE id = $1`,
+      [lessonId]
+    );
+    return result.rows[0] ?? null;
   }
 
   findExamSchool(examId: string): Promise<string | null> {
@@ -194,7 +208,7 @@ export class ProfileRepository implements IProfileRepository {
 
   // Tables et colonnes fixées par les appelants ci-dessus : jamais issues d'une entrée utilisateur.
   private async findSchoolOf(
-    table: 'students' | 'lessons' | 'exams',
+    table: 'students' | 'exams',
     column: 'id' | 'user_id',
     value: string
   ): Promise<string | null> {

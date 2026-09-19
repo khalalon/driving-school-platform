@@ -62,7 +62,7 @@ export const MyLessonsPaymentTab = ({ route }: any) => {
             ]}
           >
             <Text style={styles.statusText}>
-              {item.attended ? 'Attended' : 'Missed'}
+              {item.attended ? 'Attended' : 'Missed — not billed'}
             </Text>
           </View>
         )}
@@ -107,12 +107,28 @@ export const MyLessonsPaymentTab = ({ route }: any) => {
         <View style={styles.paymentRow}>
           <View style={styles.paymentLabel}>
             <Ionicons
-              name={item.paid ? 'checkmark-circle' : 'alert-circle-outline'}
+              name={
+                item.attended === false && !item.paid
+                  ? 'remove-circle-outline'
+                  : item.paid
+                    ? 'checkmark-circle'
+                    : 'alert-circle-outline'
+              }
               size={20}
-              color={item.paid ? colors.success[500] : colors.warning[500]}
+              color={
+                item.attended === false && !item.paid
+                  ? colors.text.tertiary
+                  : item.paid
+                    ? colors.success[500]
+                    : colors.warning[500]
+              }
             />
             <Text style={styles.paymentLabelText}>
-              {item.paid ? 'Paid' : 'Pending Payment'}
+              {item.attended === false && !item.paid
+                ? 'Not billed'
+                : item.paid
+                  ? 'Paid'
+                  : 'Pending Payment'}
             </Text>
           </View>
           {(item.amount !== null || item.price !== null) && (
@@ -139,6 +155,9 @@ export const MyLessonsPaymentTab = ({ route }: any) => {
           <Text style={styles.paymentDate}>
             Credit applied: {formatAmount(item.creditApplied, currency)}
           </Text>
+        )}
+        {item.attended === false && (item.paid || item.creditApplied > 0) && (
+          <Text style={styles.paymentDate}>Your prepayment was returned to your credit</Text>
         )}
       </View>
     </View>

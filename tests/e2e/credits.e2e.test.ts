@@ -205,3 +205,98 @@ describe('Avoir de l’élève (D-40)', () => {
     });
   });
 });
+
+describe('Absence non facturée (D-41)', () => {
+  let instructorToken = '';
+  let userId = '';
+  let unpaidLesson: Lesson;
+  let prepaidLesson: Lesson;
+
+  const book = async (day: number): Promise<Lesson> => {
+    const booked = await api()
+      .post('/api/lessons/book-for-student')
+      .set(bearer(instructorToken))
+      .send({
+        studentId: userId,
+        type: 'Parc',
+        scheduledDate: futureDate(day),
+        durationMinutes: SEED.lessonDurationMinutes,
+      });
+    expectStatus(booked, 201, 'L4 réservation directe');
+    return booked.body as Lesson;
+  };
+
+  const markAbsent = async (lessonId: string): Promise<Lesson> => {
+    const res = await api()
+      .put(`/api/lessons/${lessonId}/attendance`)
+      .set(bearer(instructorToken))
+      .send({ attended: false });
+    expectStatus(res, 200, 'L7 absence');
+    return res.body as Lesson;
+  };
+
+  beforeAll(async () => {
+    instructorToken = await ensureInstructorToken();
+    ({ userId } = await enrolledStudent());
+  });
+
+  step('absence — deux leçons Parc réservées (L4) : 80 dus', async () => {
+    unpaidLesson = await book(9);
+    prepaidLesson = await book(10);
+    expect(await financial(userId, instructorToken)).toMatchObject({
+      totalDue: 80,
+      lessonsPending: 80,
+      credit: 0,
+    });
+  });
+
+  step('absence — L7 attended=false sur la leçon non payée : completed, hors du dû', async () => {
+    const absent = await markAbsent(unpaidLesson.id);
+    expect(absent).toMatchObject({ status: 'completed', attended: false, paid: false });
+    expect(await financial(userId, instructorToken)).toMatchObject({
+      totalDue: 40,
+      lessonsPending: 40,
+      credit: 0,
+    });
+  });
+
+  step('absence — P6 refuse de la marquer payée : 409 CONFLICT', async () => {
+    const res = await api()
+      .put(`/api/profiles/lessons/${unpaidLesson.id}/mark-paid`)
+      .set(bearer(instructorToken))
+      .send({ amount: 40, paymentMethod: 'cash' });
+    expectStatus(res, 409, 'P6 sur une absence');
+    expect(res.body).toMatchObject({ error: 'CONFLICT' });
+  });
+
+  step('absence — prépayée (P6 40) puis absente : le versement revient en avoir (40), encaissé 40, rien de dû', async () => {
+    const paid = await api()
+      .put(`/api/profiles/lessons/${prepaidLesson.id}/mark-paid`)
+      .set(bearer(instructorToken))
+      .send({ amount: 40, paymentMethod: 'card' });
+    expectStatus(paid, 204, 'P6 prépaiement');
+
+    const absent = await markAbsent(prepaidLesson.id);
+    expect(absent).toMatchObject({ status: 'completed', attended: false, paid: true, amount: 40 });
+    expect(await financial(userId, instructorToken)).toMatchObject({
+      totalRevenue: 40,
+      totalDue: 0,
+      credit: 40,
+    });
+  });
+
+  step('absence — le compteur de leçons effectuées reste à 0 (D-33) ; P2 montre les deux absences', async () => {
+    const profile = await api()
+      .get(`/api/profiles/${userId}/schools/${SEED.schoolId}/complete`)
+      .set(bearer(instructorToken));
+    expectStatus(profile, 200, 'P1');
+    expect(profile.body as { completedLessons: number }).toMatchObject({ completedLessons: 0 });
+
+    const history = await api()
+      .get(`/api/profiles/${userId}/schools/${SEED.schoolId}/lessons`)
+      .set(bearer(instructorToken));
+    expectStatus(history, 200, 'P2');
+    const absences = (history.body as Lesson[]).filter((l) => l.attended === false);
+    expect(absences).toHaveLength(2);
+  });
+});

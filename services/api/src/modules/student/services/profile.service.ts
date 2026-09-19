@@ -68,18 +68,25 @@ export class ProfileService {
     await this.profileRepository.updateNotes(userId, notes);
   }
 
-  /** P6 : la leçon doit être dans l'école de l'appelant. */
+  /** P6 : la leçon doit être dans l'école de l'appelant ; une absence n'est pas facturable (D-41). */
   async markLessonPaid(
     caller: AuthUser,
     lessonId: string,
     amount: number,
     paymentMethod: string
   ): Promise<void> {
-    const schoolId = await this.profileRepository.findLessonSchool(lessonId);
-    if (!schoolId) {
+    const billing = await this.profileRepository.findLessonBilling(lessonId);
+    if (!billing) {
       throw new HttpError(404, 'NOT_FOUND', 'Leçon introuvable');
     }
-    await this.schoolGuard.assertSameSchool(caller, schoolId);
+    await this.schoolGuard.assertSameSchool(caller, billing.schoolId);
+    if (billing.attended === false) {
+      throw new HttpError(
+        409,
+        'CONFLICT',
+        "Une leçon manquée par l'élève n'est pas facturable : elle ne peut pas être marquée payée"
+      );
+    }
     await this.profileRepository.markLessonPaid(lessonId, amount, paymentMethod);
   }
 

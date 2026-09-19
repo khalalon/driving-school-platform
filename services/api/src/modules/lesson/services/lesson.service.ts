@@ -244,8 +244,9 @@ export class LessonService {
 
   /**
    * L7 : uniquement l'instructeur de la leçon ; `scheduled` → `completed`. Le compteur de leçons
-   * effectuées n'augmente que si l'élève était présent (D-33), dans la même transaction.
-   * Facturation d'une absence : Q-18 — aucune règle ici.
+   * effectuées n'augmente que si l'élève était présent (D-33), dans la même transaction. Une
+   * absence n'est pas facturée (D-41) : ce que l'élève avait déjà versé ou réglé par l'avoir
+   * pour cette leçon revient à son avoir, comme pour une annulation (D-40).
    */
   async markAttendance(caller: AuthUser, id: string, dto: MarkAttendanceDTO): Promise<Lesson> {
     const lesson = await this.requireLesson(id);
@@ -272,6 +273,8 @@ export class LessonService {
           { schoolId: lesson.schoolId, lessonType: lesson.type, attended: true },
           tx
         );
+      } else {
+        await this.refundToCredit(lesson.studentId, marked.paidAmount, marked.creditApplied, tx);
       }
       return marked.lesson;
     });

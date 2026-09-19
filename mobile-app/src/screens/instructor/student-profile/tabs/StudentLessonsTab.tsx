@@ -154,7 +154,7 @@ export const StudentLessonsTab = ({ route }: any) => {
                 { color: item.attended ? colors.success[600] : colors.error[600] },
               ]}
             >
-              {item.attended ? 'Attended' : 'Absent'}
+              {item.attended ? 'Attended' : 'Absent — not billed'}
             </Text>
           </View>
         )}
@@ -189,7 +189,8 @@ export const StudentLessonsTab = ({ route }: any) => {
         </View>
       )}
 
-      {!item.paid && (
+      {/* D-41 : une absence n'est pas facturable (P6 la refuse) */}
+      {!item.paid && item.attended !== false && (
         <TouchableOpacity
           style={styles.markPaidButton}
           onPress={() => handleMarkPaid(item)}
@@ -198,6 +199,14 @@ export const StudentLessonsTab = ({ route }: any) => {
           <Ionicons name="checkmark-circle-outline" size={20} color={colors.text.inverse} />
           <Text style={styles.markPaidText}>Mark as Paid</Text>
         </TouchableOpacity>
+      )}
+
+      {item.attended === false && (item.paid || item.creditApplied > 0) && (
+        <View style={styles.paymentInfo}>
+          <Text style={styles.paymentInfoText}>
+            Prepayment returned to the student's credit (absence)
+          </Text>
+        </View>
       )}
 
       {item.paid && item.paymentDate && (

@@ -37,7 +37,7 @@ describe('ProfileService', () => {
       getStudentExams: jest.fn(),
       getFinancialSummary: jest.fn(),
       findStudentSchool: jest.fn(),
-      findLessonSchool: jest.fn(),
+      findLessonBilling: jest.fn(),
       findExamSchool: jest.fn(),
       updateNotes: jest.fn(),
       markLessonPaid: jest.fn(),
@@ -128,7 +128,7 @@ describe('ProfileService', () => {
 
   it('les écritures délèguent au repository avec les mêmes arguments (users.id, lessons.id, exams.id)', async () => {
     repository.findStudentSchool.mockResolvedValue('school-1');
-    repository.findLessonSchool.mockResolvedValue('school-1');
+    repository.findLessonBilling.mockResolvedValue({ schoolId: 'school-1', attended: true });
     repository.findExamSchool.mockResolvedValue('school-1');
     repository.updateNotes.mockResolvedValue(true);
     repository.markLessonPaid.mockResolvedValue(true);
@@ -145,7 +145,7 @@ describe('ProfileService', () => {
 
   it('les écritures répondent 404 NOT_FOUND quand la ressource est inconnue', async () => {
     repository.findStudentSchool.mockResolvedValue(null);
-    repository.findLessonSchool.mockResolvedValue(null);
+    repository.findLessonBilling.mockResolvedValue(null);
     repository.findExamSchool.mockResolvedValue(null);
 
     await expect(service.updateInstructorNotes(instructor, 'ghost', 'x')).rejects.toMatchObject({
@@ -163,9 +163,24 @@ describe('ProfileService', () => {
     expect(repository.updateNotes).not.toHaveBeenCalled();
   });
 
+  it('P6 : une absence (attended = false) n’est pas facturable → 409 CONFLICT (D-41)', async () => {
+    repository.findLessonBilling.mockResolvedValue({ schoolId: 'school-1', attended: false });
+
+    await expect(service.markLessonPaid(instructor, 'lesson-1', 40, 'cash')).rejects.toMatchObject({
+      status: 409,
+      code: 'CONFLICT',
+    });
+    expect(repository.markLessonPaid).not.toHaveBeenCalled();
+
+    // Une leçon planifiée (présence inconnue) ou suivie reste facturable
+    repository.findLessonBilling.mockResolvedValue({ schoolId: 'school-1', attended: null });
+    await service.markLessonPaid(instructor, 'lesson-1', 40, 'cash');
+    expect(repository.markLessonPaid).toHaveBeenCalledTimes(1);
+  });
+
   it('P5–P7 : 403 FORBIDDEN_SCHOOL quand la ressource est dans une autre école (D-20)', async () => {
     repository.findStudentSchool.mockResolvedValue('school-2');
-    repository.findLessonSchool.mockResolvedValue('school-2');
+    repository.findLessonBilling.mockResolvedValue({ schoolId: 'school-2', attended: null });
     repository.findExamSchool.mockResolvedValue('school-2');
 
     await expect(service.updateInstructorNotes(instructor, 'user-1', 'x')).rejects.toMatchObject({

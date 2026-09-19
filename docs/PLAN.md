@@ -501,7 +501,7 @@ Les quatre questions ouvertes sont tranchées (`DECISIONS.md`). Chaque décision
 ```
 **Hors périmètre** : remboursement en espèces, crédit sur les examens.
 
-### - [ ] 7.3 — Absence non facturée (D-41)
+### - [x] 7.3 — Absence non facturée (D-41)
 **Objectif** : P4 / P11 : une leçon `completed` avec `attended = false` sort du dû ; P6 la refuse (409 `CONFLICT`) ; L7 : si elle était payée ou avait consommé du crédit, le montant devient un crédit (mécanisme 7.2) ; le mobile masque « Mark as Paid » et affiche « Absent — not billed ».
 **Fichiers** : `services/api/src/modules/student/{repositories,services}`, `services/api/src/modules/lesson/services`, `tests/e2e/credits.e2e.test.ts`, `mobile-app/src/screens/instructor/student-profile/tabs/StudentLessonsTab.tsx`, `mobile-app/src/screens/student/{MyLessonsScreen,my-profile/tabs/MyLessonsPaymentTab}.tsx`, `docs/API_CONTRACT.md`.
 **Critère de validation** :
