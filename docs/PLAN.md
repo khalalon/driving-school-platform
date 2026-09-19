@@ -439,7 +439,7 @@ cd mobile-app && test "$(grep -c 'API call to' src/screens/instructor/LessonRequ
 ```
 **Hors périmètre** : réservation directe (6.4).
 
-### - [ ] 6.4 — Instructeur : réservation directe pour un élève
+### - [x] 6.4 — Instructeur : réservation directe pour un élève
 **Objectif** : `BookForStudentScreen` charge S6 et propose une liste d'élèves ; payload L4 `{ studentId, type, scheduledDate, durationMinutes, notes? }`.
 **Fichiers** : `src/screens/instructor/BookForStudentScreen.tsx`, `src/services/api/{LessonService,SchoolService}.ts` + tests.
 **Critère de validation** :

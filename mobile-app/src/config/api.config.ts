@@ -40,12 +40,13 @@ export const API_CONFIG = {
       ME: '/api/auth/me',
       LOGOUT: '/api/auth/logout',
     },
-    // §2 Écoles (lecture publique)
+    // §2 Écoles (lecture publique, sauf STUDENTS : instructeur de l'école)
     SCHOOLS: {
       LIST: '/api/schools',
       DETAIL: '/api/schools/:id',
       INSTRUCTORS: '/api/schools/:id/instructors',
       PRICING: '/api/schools/:id/pricing',
+      STUDENTS: '/api/schools/:id/students',
     },
     // §3 Inscriptions
     ENROLLMENT: {

@@ -121,7 +121,7 @@ Le détail par écran est dans `API_CONTRACT.md`. Résumé des dépendances rée
 | EnrollmentRequests (instructeur) | enrollment (E4, E5, E6 avec motif de 10 à 500 caractères) — `schoolId` passé par `InstructorDashboard` depuis A3 (6.2) |
 | LessonRequests, TodayLessons | lessons (L1 `?status=pending&scope=school` + S3 / S4 pour la préférence et la grille, L5, L6 ; L1 `?status=scheduled,completed&scope=mine&date=`, L7) — câblés en 6.3 |
 | ExamRequests, TodayExams | exams en lecture ; les boutons planifier / rejeter / résultat sont des **stubs** (`Alert('Success')` sans appel réseau) jusqu'à 6.5 |
-| BookForStudent | lessons (L4 au format cible depuis 6.1, mais `studentId` reçoit encore l'email saisi → liste S6 en 6.4) |
+| BookForStudent | schools (S6 liste des élèves, S4 grille), lessons (L4 `{ studentId (users.id), type, scheduledDate, durationMinutes, price?, notes? }`) — câblé en 6.4 |
 | StudentProfile (3 onglets) | profiles — **injoignable** : aucun écran n'y navigue |
 
 Config : l'URL de base vient de `app.json` → `expo.extra.API_BASE_URL` (valeur neutre `http://10.0.2.2:80`, l'hôte vu de l'émulateur Android — D-38), surchargeable par `EXPO_PUBLIC_API_BASE_URL` (fichier `mobile-app/.env`, ignoré ; modèle `.env.example`), résolue dans `mobile-app/src/config/api.config.ts` via `expo-constants` (déclaré en dépendance directe depuis 0.4). `api.config.ts` ne définit que les chemins du contrat (§1–6) ; le plugin Babel `react-native-dotenv` a été retiré en 6.1.
