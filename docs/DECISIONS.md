@@ -73,38 +73,15 @@ Deux sections. « Décisions prises » fait autorité : on ne la rediscute pas d
 | **D-38** | **`app.json` → `expo.extra.API_BASE_URL` porte une valeur neutre : `http://10.0.2.2:80`** (la machine hôte vue depuis l'émulateur Android) ; l'IP réelle de chaque poste, pour un téléphone physique, vit dans `mobile-app/.env` (`EXPO_PUBLIC_API_BASE_URL`), ignoré par git. | L'IP LAN de l'auteur était commitée et déjà périmée le lendemain. L'émulateur fonctionne ainsi sans configuration. | Tâche 0.8. |
 | **D-39** | **Suites de tests unitaires obsolètes supprimées** (`school`, `student`, `lesson`, `exam`, `payment`, `notification`) : elles ne compilaient plus contre le code (méthodes et champs de l'ancien modèle de domaine). `passWithNoTests` en attendant ; les tests sont **réécrits module par module en Phase 2** (2.1, 2.3, 2.4, 2.5). Le test analytics « cached data » est désactivé (`it.skip`, D-31). | Réparer ~1 200 lignes de tests d'un modèle abandonné, sur du code réécrit en Phases 2–5, n'apporte rien. | Tâche 0.9. |
 
+### Décisions du 19/09/2026 (réponses à Q-17 … Q-20, Phase 7 du plan)
+
+| ID | Ex-question | Décision | Justification | Note d'application |
+|---|---|---|---|---|
+| **D-40** | Q-17 | **Avoir.** Quand une leçon déjà payée est annulée (L3, par l'élève ou par l'école), son montant devient un **crédit de l'élève** (`students.credit`, migration 013), imputé automatiquement sur sa **prochaine leçon planifiée** — approuvée (L5) ou réservée par l'instructeur (L4) — dans la même transaction que la planification. Le crédit couvre la leçon en entier (`paid = true`, `payment_method = 'credit'`, `amount = 0`, `credit_applied = prix`) ou en partie (`credit_applied = crédit consommé`, `amount = reste dû`, `paid = false`). Une leçon annulée qui avait consommé du crédit le restitue (`amount` payé + `credit_applied`). | Réponse de l'auteur (option a). Le schéma ne connaît pas les paiements partiels : `amount` = espèces reçues pour la leçon, `credit_applied` = crédit consommé, la somme des deux = le prix. | La leçon annulée garde sa trace de paiement (`paid`, `amount`, `payment_method`) : c'est l'argent réellement encaissé ; le crédit est une dette de l'école envers l'élève, exposée dans P4 / P11 (`credit`). Encaissé = `amount` des leçons payées (un paiement par crédit vaut 0). Lignes L3, L4, L5, P4, P11 du contrat ; objets `Lesson`, `LessonHistory` (`creditApplied`, `paymentMethod`) et `FinancialSummary` (`credit`). Mobile : crédit affiché sur la fiche, « Paid with credit » / « Refunded as credit » sur les leçons. |
+| **D-41** | Q-18 | **Une absence n'est pas facturée.** Une leçon `completed` avec `attended = false` **sort du dû** (P4 / P11 `totalDue`, `lessonsPending`) et **ne peut pas être marquée payée** (P6 → 409 `CONFLICT`). Si elle avait déjà été payée ou avait consommé du crédit avant le pointage, le montant devient un crédit de l'élève (même mécanisme que D-40 : leçon non délivrée → avoir). | Réponse de l'auteur (option b). Le cas « déjà payée puis absente » n'est pas dans la question : traité comme une annulation par cohérence avec D-40 — à contredire si l'école veut retenir l'argent d'une absence prépayée. | L7 : dans la transaction de présence, si `attended = false` et (`paid` ou `credit_applied > 0`) → `students.credit += amount + credit_applied`. Mobile : « Absent — not billed », bouton « Mark as Paid » masqué. Le compteur de leçons effectuées reste inchangé (D-33). |
+| **D-42** | Q-19 | **Les deux procédures existent, selon le type d'examen** : **théorie → (a)** l'école choisit la date (« Schedule » = fixer un rendez-vous, « Reject » = l'école ne présente pas l'élève) ; **pratique → (b)** la date est imposée par la session ATTT (« Record convocation » = enregistrer la date et le centre reçus, « File not ready » = dossier pas prêt, l'élève redemandera à la session suivante). Aucun changement de payload (X3 `{ dateTime, location }`, X4 `{ reason }`) ni de statut (`scheduled` / `rejected`). | Réponse de l'auteur (option c). L'option écrivait « théorie (a), pratique (b), ou l'inverse » sans préciser : l'ordre écrit est appliqué ; l'inverse se fait en échangeant deux entrées de `EXAM_PROCEDURES` (`mobile-app/src/models/Exam.ts`). | Libellés par type dans `EXAM_PROCEDURES` (actions, statuts, champs date / lieu, textes d'attente), utilisés par `ExamRequestsScreen` et `MyExamsScreen`. Texte du §5 du contrat réécrit ; X3 / X4 ne sont plus suspendus. |
+| **D-43** | Q-20 | **Une devise par école** : colonne `schools.currency` (ISO 4217, `CHAR(3)`, migration 012), **`TND` par défaut** (écoles pilotes tunisiennes), exposée dans `School` (S1, S2) et modifiable par les routes admin et le script d'onboarding (`CURRENCY=`). Tous les montants d'une école (grille, leçons, examens, résumé financier) sont dans sa devise ; le mobile affiche le code (« 40.00 TND »). | Réponse de l'auteur (option d, ramenée en v1). Le backend ne portait aucune devise et les écrans mélangeaient `€` et `$`. | Le mobile lit la devise par S2 (cache par école, `useSchoolCurrency`), jamais de symbole codé en dur ; `formatAmount(amount, currency)`. Lignes S1 / S2 du contrat + convention transverse. |
+
 ## Questions ouvertes
 
-### Q-17 — Leçon déjà payée puis annulée : que devient le montant ?
-Une leçon `scheduled` peut être marquée payée (P6) avant sa date, puis annulée (par l'élève dans la fenêtre 24 h, ou par l'instructeur). Le schéma ne prévoit ni avoir ni remboursement.
-- **(a)** Avoir : le montant reste enregistré comme crédit de l'élève et est imputé automatiquement sur sa prochaine leçon approuvée (nouvelle colonne `credit` sur `students`, ou table `credits`).
-- **(b)** Remboursement : la leçon repasse `paid = false`, le montant est retiré du total encaissé, l'école rembourse hors application.
-- **(c)** Retenu : la leçon reste `paid = true` et compte dans le chiffre encaissé ; l'élève ne récupère rien.
-- **(d)** Différent selon qui annule : retenu si c'est l'élève hors fenêtre (impossible par construction) ou dans la fenêtre ? avoir si c'est l'instructeur.
-
-Bloque : 5.3 (règle d'annulation sur une leçon payée), 6.6.
-
-### Q-18 — Élève absent sans prévenir : la leçon est-elle facturée ?
-L7 permet de marquer `attended = false`. Le compteur de leçons effectuées n'augmente pas (D-33). Reste à dire si la leçon compte financièrement.
-- **(a)** Oui, facturée comme une leçon effectuée : elle reste dans le « dû » de l'élève (P4 `totalDue`) et peut être marquée payée (P6). Usage majoritaire des auto-écoles.
-- **(b)** Non : une leçon `completed` avec `attended = false` sort du dû et ne peut pas être marquée payée.
-- **(c)** Au choix de l'instructeur au moment du pointage (case « facturer l'absence »).
-
-Bloque : 5.4 (calcul de `totalDue` en P4/P11), 6.3.
-
-### Q-20 — Quel symbole monétaire afficher sur le mobile ?
-Le backend ne porte aucune devise (`price`, `amount` sont des nombres nus) ; les écrans existants affichaient tantôt `€`, tantôt `$`. Depuis 6.1 le symbole est défini en un seul endroit (`CURRENCY_SYMBOL` dans `mobile-app/src/utils/format.ts`, valeur `€` conservée par défaut). La réponse change une ligne.
-- **(a)** `DT` (usage courant en Tunisie, ex. « 40 DT »).
-- **(b)** `TND` (code ISO, ex. « 40 TND »).
-- **(c)** `€` (statu quo).
-- **(d)** Une devise par école (nouvelle colonne `schools.currency`, hors v1).
-
-Bloque : rien (affichage seulement) ; à trancher avant la recette.
-
-### Q-19 — Procédure d'examen en Tunisie : date choisie par l'école, ou imposée par la session ATTT ?
-Le formulaire X3 (`dateTime`, `location`) et le refus X4 sont les mêmes dans les deux cas ; ce qui change, c'est le sens des actions et les libellés des écrans instructeur et élève.
-- **(a)** L'école choisit la date : « Planifier » = fixer un rendez-vous ; « Refuser » = l'école ne présente pas l'élève. Libellés actuels du mobile conservés.
-- **(b)** La date est imposée par la session ATTT : « Planifier » = « Enregistrer la convocation » (date et centre reçus de l'ATTT) ; « Refuser » = « Dossier pas prêt » (l'élève pourra redemander à la session suivante). Libellés des écrans `ExamRequestsScreen`, `MyExamsScreen` et texte du §5 du contrat à réécrire ; aucun changement de payload.
-- **(c)** Les deux existent selon le type : théorie (a), pratique (b), ou l'inverse.
-
-Bloque : 6.5 (libellés), et le texte du §5 du contrat.
+Aucune au 19/09/2026 : Q-17 → D-40, Q-18 → D-41, Q-19 → D-42, Q-20 → D-43.

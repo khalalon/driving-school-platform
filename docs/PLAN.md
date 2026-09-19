@@ -3,7 +3,7 @@
 Règles de lecture (voir `CLAUDE.md`, règles d'or 3 et 5) :
 - On travaille dans l'ordre, sur la première tâche non cochée. Une tâche = un commit (message Conventional Commits, scope = domaine ou `infra` / `mobile` / `docs` / `e2e`), poussé sur `origin/main` aussitôt. Les tâches d'une même phase s'enchaînent sans validation intermédiaire ; arrêt obligatoire en fin de phase, sur question ouverte non tranchée, sur échec de critère non réparable dans la tâche, ou sur choix produit non tranché (D-36, 18/09/2026).
 - Une tâche est cochée **seulement** quand sa commande « Critère de validation » a été exécutée et que sa sortie a été montrée. Pas d'exception.
-- Si une tâche indique « Dépend de : Q-xx » et que la question n'est pas tranchée dans `DECISIONS.md`, on **s'arrête** et on demande. Au 17/09/2026 il reste **Q-17** (leçon payée annulée), **Q-18** (absence facturée) et **Q-19** (procédure d'examen ATTT).
+- Si une tâche indique « Dépend de : Q-xx » et que la question n'est pas tranchée dans `DECISIONS.md`, on **s'arrête** et on demande. Au 19/09/2026 aucune question n'est ouverte (Q-17 à Q-20 → D-40 à D-43, Phase 7).
 - Chaque tâche livrée ajoute une ligne dans `CHANGELOG.md` et, si elle touche une route, met à jour `docs/API_CONTRACT.md` dans le même commit.
 - Les commandes sont écrites pour Git Bash (Windows) ou un shell POSIX, depuis la racine du dépôt sauf `cd` explicite.
 
@@ -479,6 +479,48 @@ cd mobile-app && grep -q 'approveLessons' src/screens/instructor/LessonRequestsS
 
 ---
 
-## Après la Phase 6
+## Phase 7 — Application des décisions du 19/09/2026 (D-40 à D-43)
+
+Les quatre questions ouvertes sont tranchées (`DECISIONS.md`). Chaque décision = une tâche = un commit. Les critères qui touchent la base supposent la stack démarrée (`docker compose up -d --build`) ; `scripts/migrate.sh` applique les migrations 012 / 013 sur une base existante.
+
+### - [ ] 7.1 — Devise par école (D-43)
+**Objectif** : migration `012_school_currency.sql` (`schools.currency CHAR(3) NOT NULL DEFAULT 'TND'`, `CHECK` ISO 4217, idempotente) ; `School` expose `currency` (S1, S2), accepté par les routes admin (`POST /`, `PUT /:id`) et par `scripts/onboard-school.sh` (`CURRENCY=`) ; le mobile lit la devise de l'école (S2, cache par école) et n'a plus aucun symbole codé en dur : `formatAmount(amount, currency)` partout où un montant s'affiche.
+**Fichiers** : `migrations/012_school_currency.sql`, `services/api/src/modules/school/{types,repositories,validators}`, `scripts/onboard-school.sh`, `tests/fixtures/seed.sql`, `tests/e2e/harness.e2e.test.ts`, `mobile-app/src/models/School.ts`, `mobile-app/src/utils/format.ts`, `mobile-app/src/hooks/useSchoolCurrency.ts` (nouveau), les écrans qui affichent un montant, `docs/API_CONTRACT.md`.
+**Critère de validation** :
+```bash
+./scripts/migrate.sh && docker compose up -d --build api && (cd services/api && npx tsc --noEmit && npm run lint && npm test -- --silent) && (cd tests && npx jest e2e/harness -t 'devise') && ! grep -rq 'CURRENCY_SYMBOL' mobile-app/src && (cd mobile-app && npx tsc --noEmit && npx jest --silent) && echo OK
+```
+**Hors périmètre** : conversion entre devises.
+
+### - [ ] 7.2 — Avoir sur une leçon payée annulée (D-40)
+**Objectif** : migration `013_student_credit.sql` (`students.credit NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK (credit >= 0)`, `lessons.credit_applied NUMERIC(10,2) NOT NULL DEFAULT 0`, idempotente) ; L3 en transaction : une leçon annulée `paid` ou avec `credit_applied > 0` crédite l'élève de `amount + credit_applied` ; L5 et L4 en transaction : le crédit disponible est imputé sur la leçon planifiée (couverture totale → `paid`, `payment_method = 'credit'`, `amount = 0` ; partielle → `credit_applied`, `amount = reste`) ; `Lesson` et `LessonHistory` exposent `creditApplied` (+ `paymentMethod` sur `Lesson`) ; `FinancialSummary` expose `credit` et son encaissé ne compte que les espèces (`amount`) ; le mobile affiche le crédit (fiche élève, « My Profile ») et l'origine du paiement sur les leçons.
+**Fichiers** : `migrations/013_student_credit.sql`, `services/api/src/modules/lesson/{types,repositories,services}`, `services/api/src/modules/student/{types,repositories}` (`StudentRepository` = seul accès à `students.credit`), `services/api/src/index.ts`, `tests/e2e/credits.e2e.test.ts` (nouveau), `mobile-app/src/models/{Lesson,Profile}.ts` et les écrans concernés, `docs/API_CONTRACT.md`.
+**Critère de validation** :
+```bash
+./scripts/migrate.sh && docker compose up -d --build api && (cd services/api && npx tsc --noEmit && npm run lint && npm test -- --silent) && (cd tests && npx jest e2e/credits -t 'avoir') && (cd mobile-app && npx tsc --noEmit && npx jest --silent) && echo OK
+```
+**Hors périmètre** : remboursement en espèces, crédit sur les examens.
+
+### - [ ] 7.3 — Absence non facturée (D-41)
+**Objectif** : P4 / P11 : une leçon `completed` avec `attended = false` sort du dû ; P6 la refuse (409 `CONFLICT`) ; L7 : si elle était payée ou avait consommé du crédit, le montant devient un crédit (mécanisme 7.2) ; le mobile masque « Mark as Paid » et affiche « Absent — not billed ».
+**Fichiers** : `services/api/src/modules/student/{repositories,services}`, `services/api/src/modules/lesson/services`, `tests/e2e/credits.e2e.test.ts`, `mobile-app/src/screens/instructor/student-profile/tabs/StudentLessonsTab.tsx`, `mobile-app/src/screens/student/{MyLessonsScreen,my-profile/tabs/MyLessonsPaymentTab}.tsx`, `docs/API_CONTRACT.md`.
+**Critère de validation** :
+```bash
+docker compose up -d --build api && (cd services/api && npx tsc --noEmit && npm run lint && npm test -- --silent) && (cd tests && npx jest e2e/credits -t 'absence') && (cd mobile-app && npx tsc --noEmit && npx jest --silent) && echo OK
+```
+**Hors périmètre** : pénalité d'absence.
+
+### - [ ] 7.4 — Libellés d'examen selon le type (D-42)
+**Objectif** : `EXAM_PROCEDURES` dans `mobile-app/src/models/Exam.ts` (théorie : « Schedule » / « Reject », date et lieu choisis par l'école ; pratique : « Record convocation » / « File not ready », date de session et centre ATTT) ; `ExamRequestsScreen` et `MyExamsScreen` en tirent leurs actions, statuts et textes ; §5 du contrat réécrit, X3 / X4 plus suspendus.
+**Fichiers** : `mobile-app/src/models/Exam.ts`, `mobile-app/src/screens/instructor/ExamRequestsScreen.tsx`, `mobile-app/src/screens/student/MyExamsScreen.tsx`, `docs/API_CONTRACT.md`.
+**Critère de validation** :
+```bash
+grep -q 'EXAM_PROCEDURES' mobile-app/src/models/Exam.ts && grep -q 'Record convocation' mobile-app/src/models/Exam.ts && grep -q 'EXAM_PROCEDURES' mobile-app/src/screens/instructor/ExamRequestsScreen.tsx && grep -q 'EXAM_PROCEDURES' mobile-app/src/screens/student/MyExamsScreen.tsx && ! grep -q 'Suspendu à Q-19' docs/API_CONTRACT.md && (cd mobile-app && npx tsc --noEmit && npx jest --silent) && echo OK
+```
+**Hors périmètre** : aucun changement de payload ni de statut.
+
+---
+
+## Après la Phase 7
 
 La recette finale (parcours D-15 sur un téléphone via Expo Go, backend en Docker) est faite **par l'humain**, hors de cette liste. Les fonctionnalités hors contrat (paiement en ligne, web, gestion des codes par écran) ne sont pas dans la v1.
