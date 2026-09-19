@@ -154,4 +154,6 @@ Deux familles montées par le module `student` de `services/api` : `/api/profile
 | MANQUE | 0 | — |
 | SUPPRIMÉE | 2 | S5, L8 |
 
-Suspendu : L3 (Q-17, sort d'une leçon payée annulée) ; L7 (Q-18, facturation d'une absence) ; X3, X4 libellés (Q-19, procédure ATTT).
+**Contrat entièrement EXISTE depuis la tâche 5.8** : les 39 routes des §1–7 sont implémentées et couvertes par les tests de bout en bout (`tests/e2e/*`, bloquants en CI). Les colonnes « Écart / notes » ne décrivent plus que l'état du mobile (Phase 6) et les points suspendus.
+
+Suspendu (règles produit, pas d'écart de route) : L3 (Q-17, sort d'une leçon payée annulée) ; L7 (Q-18, facturation d'une absence) ; X3, X4 libellés (Q-19, procédure ATTT).

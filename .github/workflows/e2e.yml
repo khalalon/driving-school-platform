@@ -50,11 +50,9 @@ jobs:
         working-directory: tests
 
       # Le harnais (tests/setup.ts) applique tests/fixtures/seed.sql avant la campagne.
-      # TODO(5.8): retirer continue-on-error — le chemin critique devient bloquant quand le
-      # contrat est entièrement EXISTE.
-      - name: Tests de bout en bout (informatif)
+      # Bloquant depuis 5.8 : le contrat est entièrement EXISTE.
+      - name: Tests de bout en bout
         id: e2e
-        continue-on-error: true
         run: npm run test:e2e -- --ci --json --outputFile=report.json
         env:
           GATEWAY_URL: http://localhost
@@ -68,7 +66,7 @@ jobs:
               const lines = [
                 "## Tests de bout en bout",
                 "",
-                `**${r.numPassedTests} réussi(s), ${r.numFailedTests} en échec** sur ${r.numTotalTests} (informatif jusqu à 5.8)`,
+                `**${r.numPassedTests} réussi(s), ${r.numFailedTests} en échec** sur ${r.numTotalTests} (bloquant depuis 5.8)`,
                 "",
               ];
               for (const s of r.testResults) {
@@ -92,7 +90,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Journaux de la stack en cas d'échec
-        if: steps.e2e.outcome == 'failure'
+        if: failure() && steps.e2e.outcome == 'failure'
         run: docker compose logs --tail=100
 
       - name: Arrêter la stack

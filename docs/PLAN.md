@@ -399,7 +399,7 @@ test "$(curl -s -o /dev/null -w '%{http_code}' localhost/api/verification/verify
 ```
 **Hors périmètre** : —
 
-### - [ ] 5.8 — Contrat entièrement EXISTE, e2e bloquant en CI
+### - [x] 5.8 — Contrat entièrement EXISTE, e2e bloquant en CI
 **Objectif** : plus aucune ligne MANQUE ou DIVERGE dans les tableaux du contrat ; le job e2e devient bloquant.
 **Fichiers** : `docs/API_CONTRACT.md` (§10), `.github/workflows/e2e.yml`.
 **Critère de validation** :

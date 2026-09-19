@@ -6,7 +6,7 @@ Plateforme de gestion d'auto-écoles : un élève demande à rejoindre une écol
 - **Backend** : une application Node 20 / TypeScript / Express (`services/api/`), PostgreSQL 15, Redis 7, Nginx en façade sur `:80`.
 - **Web** : squelette Vite (`web-frontend/`), gelé pour la v1.
 
-État : le mobile et le backend implémentent encore deux modèles de domaine différents ; le backend est en cours d'alignement sur le mobile (Phases 3 à 5 de `docs/PLAN.md`). Le détail est dans `docs/`.
+État : le backend implémente intégralement le contrat (`docs/API_CONTRACT.md`, 39 routes, tests de bout en bout bloquants en CI) ; le mobile est en cours de câblage sur ce contrat (Phase 6 de `docs/PLAN.md`). Le détail est dans `docs/`.
 
 ## Lancer en local
 

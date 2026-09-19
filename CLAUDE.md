@@ -6,7 +6,7 @@ Plateforme de gestion d'auto-écoles (types de leçons `CODE` / `Manœuvre` / `P
 Un **mobile Expo / React Native** (`mobile-app/`) est le produit principal : un élève demande à rejoindre une école, l'instructeur approuve, puis l'élève demande des leçons et des examens que l'instructeur planifie.
 Le **backend** est **une seule application** Node 20 / TypeScript / Express (`services/api`, modules `auth`, `school`, `student`, `lesson`, `exam` ; `payment` porté non monté) derrière Nginx, avec **une seule base PostgreSQL** et un Redis. Les 8 anciens services ont été fusionnés puis supprimés en Phase 2.
 Le frontend web (`web-frontend/`) est un squelette Vite, **gelé pour la v1** — ne pas y toucher.
-Le mobile et le backend implémentent deux modèles de domaine différents ; le contrat cible est dans `docs/API_CONTRACT.md`, l'ordre de travail dans `docs/PLAN.md`.
+Le backend implémente intégralement le contrat `docs/API_CONTRACT.md` (39 routes EXISTE, e2e bloquants en CI depuis 5.8) ; le mobile reste à câbler dessus (Phase 6). L'ordre de travail est dans `docs/PLAN.md`.
 
 ## Où sont les docs
 
