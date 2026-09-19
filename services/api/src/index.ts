@@ -35,6 +35,8 @@ async function bootstrap(): Promise<void> {
     db,
     requireAuth: auth.requireAuth,
     students: student.studentRepository,
+    instructors: instructorRepository,
+    schoolGuard,
   });
   const exam = buildExamModule({ db, requireAuth: auth.requireAuth });
 

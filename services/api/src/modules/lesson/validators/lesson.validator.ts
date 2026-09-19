@@ -3,16 +3,13 @@ import { LESSON_TYPES } from '../../../types/domain';
 import {
   ApproveLessonDTO,
   BookForStudentDTO,
-  BookLessonDTO,
   CancelLessonDTO,
-  CreateLessonDTO,
   LESSON_STATUSES,
   LessonFilters,
   LessonStatus,
   MarkAttendanceDTO,
   RejectLessonDTO,
   RequestLessonDTO,
-  UpdateLessonDTO,
 } from '../types/lesson.types';
 
 const uuid = Joi.string().uuid();
@@ -21,7 +18,7 @@ const futureDate = Joi.date().iso().greater('now');
 const durationMinutes = Joi.number().integer().min(15).max(480);
 const price = Joi.number().positive();
 
-/** L2 (5.2). */
+/** L2. */
 export const requestLessonSchema = Joi.object<RequestLessonDTO>({
   type: lessonType.required(),
   requestedDate: futureDate.required(),
@@ -57,39 +54,12 @@ export const bookForStudentSchema = Joi.object<BookForStudentDTO>({
   notes: Joi.string().max(1000).optional(),
 });
 
-/** Ancienne route `POST /api/lessons/:lessonId/book` (jusqu'en 5.2). */
-export const bookLessonSchema = Joi.object<BookLessonDTO>({
-  studentId: uuid.required(),
-});
-
 /** L7. */
 export const markAttendanceSchema = Joi.object<MarkAttendanceDTO>({
   attended: Joi.boolean().required(),
   feedback: Joi.string().max(1000).optional(),
   rating: Joi.number().integer().min(1).max(5).optional(),
 });
-
-/** Ancienne route `POST /api/lessons` (jusqu'en 5.2) : une leçon planifiée pour un élève donné. */
-export const createLessonSchema = Joi.object<CreateLessonDTO>({
-  schoolId: uuid.required(),
-  studentId: uuid.required(),
-  instructorId: uuid.required(),
-  type: lessonType.required(),
-  scheduledDate: futureDate.required(),
-  durationMinutes: durationMinutes.required(),
-  price: price.required(),
-});
-
-/** Ancienne route `PUT /api/lessons/:id` (jusqu'en 5.2). */
-export const updateLessonSchema = Joi.object<UpdateLessonDTO>({
-  instructorId: uuid.optional(),
-  scheduledDate: futureDate.optional(),
-  durationMinutes: durationMinutes.optional(),
-  price: price.optional(),
-  status: Joi.string()
-    .valid(...LESSON_STATUSES)
-    .optional(),
-}).min(1);
 
 /** `status=pending,scheduled` (L1) → tableau de statuts connus. */
 const statusList = Joi.custom((value: unknown, helpers: CustomHelpers): LessonStatus[] => {
@@ -106,16 +76,11 @@ const statusList = Joi.custom((value: unknown, helpers: CustomHelpers): LessonSt
   return statuses as LessonStatus[];
 }, 'liste de statuts');
 
+/** L1. */
 export const lessonFiltersSchema = Joi.object<LessonFilters>({
   status: statusList.optional(),
   scope: Joi.string().valid('school', 'mine').optional(),
   date: Joi.string()
     .pattern(/^\d{4}-\d{2}-\d{2}$/)
     .optional(),
-  schoolId: uuid.optional(),
-  instructorId: uuid.optional(),
-  studentId: uuid.optional(),
-  type: lessonType.optional(),
-  dateFrom: Joi.date().iso().optional(),
-  dateTo: Joi.date().iso().optional(),
 });

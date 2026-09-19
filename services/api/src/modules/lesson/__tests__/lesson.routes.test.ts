@@ -1,158 +1,126 @@
 import request from 'supertest';
 import { createApp } from '../../../app';
 import { HttpError } from '../../../http/errors';
-import { bearerFor, testRequireAuth, UUID } from '../../../test-utils/http';
+import { bearerFor, TEST_USERS, testRequireAuth, UUID } from '../../../test-utils/http';
 import { LessonController } from '../controllers/lesson.controller';
 import { createLessonRouter } from '../routes/lesson.routes';
-import { BookingService } from '../services/booking.service';
 import { LessonService } from '../services/lesson.service';
 
-describe('Routes /api/lessons (état actuel)', () => {
+describe('Routes /api/lessons (L1, L2, GET /:id)', () => {
   const lessonService = {
-    createLesson: jest.fn(),
-    getLessonById: jest.fn(),
-    getLessons: jest.fn(),
-    updateLesson: jest.fn(),
-    cancelLesson: jest.fn(),
-    deleteLesson: jest.fn(),
-    checkAvailability: jest.fn(),
-  };
-  const bookingService = {
-    bookLesson: jest.fn(),
-    getBookingById: jest.fn(),
-    getBookingsByLesson: jest.fn(),
-    getBookingsByStudent: jest.fn(),
-    markAttendance: jest.fn(),
-    cancelBooking: jest.fn(),
+    requestLesson: jest.fn(),
+    listLessons: jest.fn(),
+    getLesson: jest.fn(),
   };
   const app = createApp({
     auth: createLessonRouter(
-      new LessonController(
-        lessonService as unknown as LessonService,
-        bookingService as unknown as BookingService
-      ),
+      new LessonController(lessonService as unknown as LessonService),
       testRequireAuth
     ),
   });
   const base = '/api/auth';
   const lessonId = UUID.booking;
-  const future = new Date(Date.now() + 86_400_000).toISOString();
+  const future = new Date(Date.now() + 3 * 86_400_000).toISOString();
 
   beforeEach(() => jest.clearAllMocks());
 
-  it('GET / : filtres validés (type hors D-18 → 400), dates converties', async () => {
-    lessonService.getLessons.mockResolvedValue([]);
-    await request(app).get(`${base}?schoolId=${UUID.school}&type=Parc`).expect(200, []);
-    expect(lessonService.getLessons).toHaveBeenCalledWith({ schoolId: UUID.school, type: 'Parc' });
-
-    const bad = await request(app).get(`${base}?type=DRIVING`);
-    expect(bad.status).toBe(400);
-    expect(bad.body).toMatchObject({ error: 'VALIDATION_ERROR' });
-  });
-
-  it('POST / : 403 élève ; 201 instructeur avec payload valide ; date passée → 400 Joi', async () => {
-    const body = {
-      schoolId: UUID.school,
-      studentId: UUID.student,
-      instructorId: UUID.instructor,
-      type: 'Parc',
-      scheduledDate: future,
-      durationMinutes: 60,
-      price: 40,
-    };
-    await request(app).post(base).set('Authorization', bearerFor('student')).send(body).expect(403);
-
-    lessonService.createLesson.mockResolvedValue({ id: lessonId, ...body });
-    const ok = await request(app)
+  it('L2 POST / : élève seulement (401 sans jeton, 403 instructeur) ; 201 avec le payload validé', async () => {
+    const body = { type: 'Parc', requestedDate: future, notes: 'Première leçon' };
+    await request(app).post(base).send(body).expect(401);
+    await request(app)
       .post(base)
       .set('Authorization', bearerFor('instructor'))
-      .send(body);
-    expect(ok.status).toBe(201);
-
-    const past = await request(app)
-      .post(base)
-      .set('Authorization', bearerFor('instructor'))
-      .send({ ...body, scheduledDate: '2020-01-01T10:00:00.000Z' });
-    expect(past.status).toBe(400);
-  });
-
-  it('GET /:id, /:id/availability : 404 relayé, identifiant mal formé → 404', async () => {
-    lessonService.getLessonById.mockRejectedValue(
-      new HttpError(404, 'NOT_FOUND', 'Leçon introuvable')
-    );
-    await request(app).get(`${base}/${lessonId}`).expect(404);
-    await request(app).get(`${base}/nope`).expect(404);
-
-    lessonService.checkAvailability.mockResolvedValue(true);
-    await request(app).get(`${base}/${lessonId}/availability`).expect(200, { available: true });
-  });
-
-  it('PUT /:id, POST /:id/cancel, DELETE /:id (admin)', async () => {
-    lessonService.updateLesson.mockResolvedValue({ id: lessonId, price: 50 });
-    lessonService.cancelLesson.mockResolvedValue({ id: lessonId, status: 'cancelled' });
-    lessonService.deleteLesson.mockResolvedValue(undefined);
-
-    await request(app)
-      .put(`${base}/${lessonId}`)
-      .set('Authorization', bearerFor('instructor'))
-      .send({ price: 50 })
-      .expect(200);
-    await request(app)
-      .post(`${base}/${lessonId}/cancel`)
-      .set('Authorization', bearerFor('instructor'))
-      .expect(200);
-    await request(app)
-      .delete(`${base}/${lessonId}`)
-      .set('Authorization', bearerFor('instructor'))
+      .send(body)
       .expect(403);
+
+    lessonService.requestLesson.mockResolvedValue({ id: lessonId, status: 'pending' });
+    const res = await request(app).post(base).set('Authorization', bearerFor('student')).send(body);
+    expect(res.status).toBe(201);
+    expect(res.body).toEqual({ id: lessonId, status: 'pending' });
+    expect(lessonService.requestLesson).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: TEST_USERS.student.userId }),
+      { type: 'Parc', requestedDate: new Date(future), notes: 'Première leçon' }
+    );
+  });
+
+  it('L2 : 400 VALIDATION_ERROR (type hors D-18, date passée) ; 403 NOT_ENROLLED relayé', async () => {
+    const auth = bearerFor('student');
+    await request(app)
+      .post(base)
+      .set('Authorization', auth)
+      .send({ type: 'PRACTICAL', requestedDate: future })
+      .expect(400);
+    await request(app)
+      .post(base)
+      .set('Authorization', auth)
+      .send({ type: 'Parc', requestedDate: '2020-01-01T10:00:00.000Z' })
+      .expect(400);
+    expect(lessonService.requestLesson).not.toHaveBeenCalled();
+
+    lessonService.requestLesson.mockRejectedValue(
+      new HttpError(403, 'NOT_ENROLLED', 'Vous devez être inscrit')
+    );
+    const res = await request(app)
+      .post(base)
+      .set('Authorization', auth)
+      .send({ type: 'Parc', requestedDate: future });
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({ error: 'NOT_ENROLLED', message: 'Vous devez être inscrit' });
+  });
+
+  it('L1 GET / : jeton requis ; filtres validés (status multiple, scope, date) ; statut inconnu → 400', async () => {
+    await request(app).get(base).expect(401);
+
+    lessonService.listLessons.mockResolvedValue([]);
+    await request(app)
+      .get(`${base}?status=pending,scheduled&scope=mine&date=2026-10-01`)
+      .set('Authorization', bearerFor('instructor'))
+      .expect(200, []);
+    expect(lessonService.listLessons).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: TEST_USERS.instructor.userId }),
+      { status: ['pending', 'scheduled'], scope: 'mine', date: '2026-10-01' }
+    );
+
+    await request(app)
+      .get(`${base}?status=booked`)
+      .set('Authorization', bearerFor('student'))
+      .expect(400);
+    await request(app)
+      .get(`${base}?scope=all`)
+      .set('Authorization', bearerFor('student'))
+      .expect(400);
+  });
+
+  it('GET /:id : 404 relayé ; identifiant mal formé → 404 sans appel au service', async () => {
+    lessonService.getLesson.mockRejectedValue(new HttpError(404, 'NOT_FOUND', 'Leçon introuvable'));
+    const res = await request(app)
+      .get(`${base}/${lessonId}`)
+      .set('Authorization', bearerFor('student'));
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ error: 'NOT_FOUND', message: 'Leçon introuvable' });
+
+    await request(app)
+      .get(`${base}/not-a-uuid`)
+      .set('Authorization', bearerFor('student'))
+      .expect(404);
+    expect(lessonService.getLesson).toHaveBeenCalledTimes(1);
+  });
+
+  it('anciennes routes de créneaux et de réservation disparues (5.2)', async () => {
+    const auth = bearerFor('instructor');
+    await request(app)
+      .post(`${base}/${lessonId}/book`)
+      .set('Authorization', auth)
+      .send({})
+      .expect(404);
+    await request(app).get(`${base}/${lessonId}/bookings`).set('Authorization', auth).expect(404);
+    await request(app)
+      .get(`${base}/${lessonId}/availability`)
+      .set('Authorization', auth)
+      .expect(404);
     await request(app)
       .delete(`${base}/${lessonId}`)
       .set('Authorization', bearerFor('admin'))
-      .expect(204);
-  });
-
-  it('réservations : book (élève), lecture, présence (instructeur), annulation', async () => {
-    bookingService.bookLesson.mockResolvedValue({ id: UUID.request, lessonId });
-    const booked = await request(app)
-      .post(`${base}/${lessonId}/book`)
-      .set('Authorization', bearerFor('student'))
-      .send({ studentId: UUID.student });
-    expect(booked.status).toBe(201);
-    expect(bookingService.bookLesson).toHaveBeenCalledWith(lessonId, UUID.student);
-
-    await request(app)
-      .post(`${base}/${lessonId}/book`)
-      .set('Authorization', bearerFor('student'))
-      .send({ studentId: 'not-a-uuid' })
-      .expect(400);
-
-    bookingService.getBookingById.mockResolvedValue({ id: UUID.request });
-    bookingService.getBookingsByLesson.mockResolvedValue([]);
-    bookingService.getBookingsByStudent.mockResolvedValue([]);
-    await request(app).get(`${base}/bookings/${UUID.request}`).expect(200);
-    await request(app).get(`${base}/${lessonId}/bookings`).expect(200, []);
-    await request(app).get(`${base}/students/${UUID.student}/bookings`).expect(401);
-    await request(app)
-      .get(`${base}/students/${UUID.student}/bookings`)
-      .set('Authorization', bearerFor('student'))
-      .expect(200, []);
-
-    bookingService.markAttendance.mockResolvedValue({ id: UUID.request, attended: true });
-    await request(app)
-      .put(`${base}/bookings/${UUID.request}/attendance`)
-      .set('Authorization', bearerFor('instructor'))
-      .send({ attended: true, rating: 5 })
-      .expect(200);
-    await request(app)
-      .put(`${base}/bookings/${UUID.request}/attendance`)
-      .set('Authorization', bearerFor('instructor'))
-      .send({ attended: true, rating: 9 })
-      .expect(400);
-
-    bookingService.cancelBooking.mockResolvedValue(undefined);
-    await request(app)
-      .delete(`${base}/bookings/${UUID.request}`)
-      .set('Authorization', bearerFor('student'))
-      .expect(204);
+      .expect(404);
   });
 });

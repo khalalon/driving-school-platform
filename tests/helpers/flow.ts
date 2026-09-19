@@ -29,6 +29,7 @@ export interface Lesson {
   id: string;
   status: string;
   type: string;
+  studentId: string;
   instructorId: string | null;
   price?: number | string;
   attended?: boolean;

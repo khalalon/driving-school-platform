@@ -95,8 +95,8 @@ describe('Chemin critique v1 (D-15)', () => {
     expect(res.body).toMatchObject({ isEnrolled: true, canBook: true });
   });
 
-  step("L2 — l'élève demande une leçon Parc (pending, sans instructeur)", async () => {
-    await ensureApprovedEnrollment();
+  step("L2 — demande de leçon Parc par l'élève (pending, sans instructeur)", async () => {
+    const approved = await ensureApprovedEnrollment();
     const { token } = await ensureStudent();
     const res = await api()
       .post('/api/lessons')
@@ -112,10 +112,11 @@ describe('Chemin critique v1 (D-15)', () => {
     expect(body.status).toBe('pending');
     expect(body.type).toBe('Parc');
     expect(body.instructorId).toBeNull();
+    expect(body.studentId).toBe(approved.studentId); // users.id (D-28)
     rememberLesson(body);
   });
 
-  step("L1 — la leçon pending figure dans la liste de l'élève", async () => {
+  step("L1 — liste des leçons de l'élève : la demande pending y figure", async () => {
     const lesson = await ensureLesson();
     const { token } = await ensureStudent();
     const res = await api().get('/api/lessons').set(bearer(token));

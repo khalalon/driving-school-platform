@@ -11,15 +11,25 @@ export enum LessonStatus {
 
 export const LESSON_STATUSES: readonly LessonStatus[] = Object.values(LessonStatus);
 
+/** Identité jointe depuis `users` (D-16). */
+export interface PersonSummary {
+  id: string;
+  firstName: string;
+  lastName: string;
+}
+
 /**
- * Une leçon = un élève (D-34) ; `studentId` = students.id en base (users.id dans l'API à partir
- * de 5.2, D-28). `instructorId` est `null` tant que la demande est `pending` (D-32).
+ * Objet `Lesson` du contrat (§4). Une leçon = un élève (D-34) ; `studentId` = users.id (D-28,
+ * `student` = identité de l'élève) ; `instructorId` = instructors.id, `null` tant que la demande
+ * est `pending` (D-32), `instructor` = identité de l'instructeur.
  */
 export interface Lesson {
   id: string;
   schoolId: string;
   studentId: string;
+  student: PersonSummary;
   instructorId: string | null;
+  instructor: PersonSummary | null;
   preferredInstructorId: string | null;
   type: LessonType;
   status: LessonStatus;
@@ -43,23 +53,19 @@ export interface Lesson {
   updatedAt: Date;
 }
 
-/** Table `lesson_bookings`, plus alimentée depuis 007 ; lue par les anciennes routes jusqu'en 5.2. */
-export interface LessonBooking {
-  id: string;
-  lessonId: string;
-  studentId: string;
-  attended: boolean | null;
-  feedback: string | null;
-  rating: number | null;
-  createdAt: Date;
-}
-
-/** L2 (5.2) : demande de l'élève, adressée à l'école. */
+/** L2 : demande de l'élève, adressée à l'école. */
 export interface RequestLessonDTO {
   type: LessonType;
   requestedDate: Date;
   preferredInstructorId?: string;
   notes?: string;
+}
+
+/** Ce que le repository écrit pour une demande (élève et école résolus par le service). */
+export interface NewLessonRequest extends RequestLessonDTO {
+  /** students.id */
+  studentRowId: string;
+  schoolId: string;
 }
 
 /** L5 (5.3) : planification par l'instructeur qui approuve. */
@@ -90,11 +96,6 @@ export interface BookForStudentDTO {
   notes?: string;
 }
 
-/** Ancienne route `POST /api/lessons/:lessonId/book` (jusqu'en 5.2) ; `studentId` = students.id. */
-export interface BookLessonDTO {
-  studentId: string;
-}
-
 /** L7 : présence par identifiant de leçon (une leçon = un élève). */
 export interface MarkAttendanceDTO {
   attended: boolean;
@@ -102,42 +103,20 @@ export interface MarkAttendanceDTO {
   rating?: number;
 }
 
-/**
- * Ancienne route `POST /api/lessons` (créneau créé par l'école), conservée jusqu'en 5.2 : depuis
- * 007 une leçon a toujours son élève, d'où `studentId` (students.id).
- */
-export interface CreateLessonDTO {
-  schoolId: string;
-  studentId: string;
-  instructorId: string;
-  type: LessonType;
-  scheduledDate: Date;
-  durationMinutes: number;
-  price: number;
-}
-
-/** Ancienne route `PUT /api/lessons/:id`, conservée jusqu'en 5.2. */
-export interface UpdateLessonDTO {
-  instructorId?: string;
-  scheduledDate?: Date;
-  durationMinutes?: number;
-  price?: number;
-  status?: LessonStatus;
-}
-
-/**
- * Filtres de L1 : `status` (une ou plusieurs valeurs), `scope` (instructeur), `date` (jour).
- * `schoolId`, `instructorId`, `studentId`, `type`, `dateFrom`, `dateTo` : ancienne liste publique,
- * conservés jusqu'en 5.2.
- */
+/** Filtres de L1 : `status` (une ou plusieurs valeurs), `scope` (instructeur), `date` (jour). */
 export interface LessonFilters {
   status?: LessonStatus[];
   scope?: 'school' | 'mine';
   date?: string;
-  schoolId?: string;
-  instructorId?: string;
-  studentId?: string;
-  type?: LessonType;
-  dateFrom?: Date;
-  dateTo?: Date;
 }
+
+/** Portée résolue par le service à partir de l'appelant, appliquée par le repository. */
+export type LessonScope =
+  | { kind: 'student'; studentRowId: string }
+  | {
+      kind: 'instructor';
+      instructorId: string;
+      schoolId: string;
+      scope: 'school' | 'mine' | 'both';
+    }
+  | { kind: 'all' };

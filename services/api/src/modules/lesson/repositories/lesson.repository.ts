@@ -1,135 +1,120 @@
 import { Pool } from 'pg';
-import { CreateLessonDTO, Lesson, LessonFilters, UpdateLessonDTO } from '../types/lesson.types';
+import { Lesson, LessonFilters, LessonScope, NewLessonRequest } from '../types/lesson.types';
 
 export interface ILessonRepository {
-  create(dto: CreateLessonDTO): Promise<Lesson>;
+  createRequest(data: NewLessonRequest): Promise<Lesson>;
   findById(id: string): Promise<Lesson | null>;
-  findAll(filters: LessonFilters): Promise<Lesson[]>;
-  update(id: string, dto: UpdateLessonDTO): Promise<Lesson>;
-  delete(id: string): Promise<void>;
-  incrementBookings(id: string): Promise<void>;
-  decrementBookings(id: string): Promise<void>;
+  findAll(scope: LessonScope, filters: LessonFilters): Promise<Lesson[]>;
 }
 
-/** Schéma 007 : une leçon = un élève, deux dates (demandée / planifiée), paiement sur la leçon. */
-const LESSON_COLUMNS = `id, school_id AS "schoolId", student_id AS "studentId",
-  instructor_id AS "instructorId", preferred_instructor_id AS "preferredInstructorId", type, status,
-  requested_date AS "requestedDate", scheduled_date AS "scheduledDate",
-  duration_minutes AS "durationMinutes", price::float8 AS price, capacity,
-  current_bookings AS "currentBookings", notes, admin_notes AS "adminNotes",
-  rejection_reason AS "rejectionReason", attended, feedback, rating, paid, amount::float8 AS amount,
-  payment_date AS "paymentDate", payment_method AS "paymentMethod",
-  created_at AS "createdAt", updated_at AS "updatedAt"`;
+/**
+ * Fuseau de référence des écoles pour le filtre `date` de L1 (jour local). Les écoles n'ont pas
+ * de fuseau propre en v1 (pilote tunisien, D-08) ; les timestamps sont stockés en UTC.
+ */
+export const SCHOOL_TIMEZONE = 'Africa/Tunis';
+
+/** Schéma 007 ; identités par jointure `users` (élève via students, instructeur via instructors). */
+const LESSON_COLUMNS = `l.id, l.school_id AS "schoolId", su.id AS "studentId",
+  json_build_object('id', su.id, 'firstName', su.first_name, 'lastName', su.last_name) AS student,
+  l.instructor_id AS "instructorId",
+  CASE WHEN i.id IS NULL THEN NULL
+       ELSE json_build_object('id', i.id, 'firstName', COALESCE(iu.first_name, ''),
+                              'lastName', COALESCE(iu.last_name, '')) END AS instructor,
+  l.preferred_instructor_id AS "preferredInstructorId", l.type, l.status,
+  l.requested_date AS "requestedDate", l.scheduled_date AS "scheduledDate",
+  l.duration_minutes AS "durationMinutes", l.price::float8 AS price, l.capacity,
+  l.current_bookings AS "currentBookings", l.notes, l.admin_notes AS "adminNotes",
+  l.rejection_reason AS "rejectionReason", l.attended, l.feedback, l.rating, l.paid,
+  l.amount::float8 AS amount, l.payment_date AS "paymentDate", l.payment_method AS "paymentMethod",
+  l.created_at AS "createdAt", l.updated_at AS "updatedAt"`;
+
+const LESSON_FROM = `FROM lessons l
+  JOIN students s ON s.id = l.student_id
+  JOIN users su ON su.id = s.user_id
+  LEFT JOIN instructors i ON i.id = l.instructor_id
+  LEFT JOIN users iu ON iu.id = i.user_id`;
 
 export class LessonRepository implements ILessonRepository {
   constructor(private readonly db: Pool) {}
 
-  /** Ancienne route de création (jusqu'en 5.2) : leçon directement `scheduled` pour un élève. */
-  async create(dto: CreateLessonDTO): Promise<Lesson> {
-    const result = await this.db.query<Lesson>(
-      `INSERT INTO lessons (school_id, student_id, instructor_id, type, scheduled_date,
-         duration_minutes, price, status, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 'scheduled', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-       RETURNING ${LESSON_COLUMNS}`,
+  /** L2 : demande `pending`, sans instructeur (D-32), capacité 1 (D-34). */
+  async createRequest(data: NewLessonRequest): Promise<Lesson> {
+    const inserted = await this.db.query<{ id: string }>(
+      `INSERT INTO lessons (school_id, student_id, type, status, requested_date,
+         preferred_instructor_id, notes, created_at, updated_at)
+       VALUES ($1, $2, $3, 'pending', $4, $5, $6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+       RETURNING id`,
       [
-        dto.schoolId,
-        dto.studentId,
-        dto.instructorId,
-        dto.type,
-        dto.scheduledDate,
-        dto.durationMinutes,
-        dto.price,
+        data.schoolId,
+        data.studentRowId,
+        data.type,
+        data.requestedDate,
+        data.preferredInstructorId ?? null,
+        data.notes ?? null,
       ]
     );
-    return result.rows[0];
+    return this.requireById(inserted.rows[0].id);
   }
 
   async findById(id: string): Promise<Lesson | null> {
     const result = await this.db.query<Lesson>(
-      `SELECT ${LESSON_COLUMNS} FROM lessons WHERE id = $1`,
+      `SELECT ${LESSON_COLUMNS} ${LESSON_FROM} WHERE l.id = $1`,
       [id]
     );
     return result.rows[0] ?? null;
   }
 
   /**
-   * Filtres par colonnes. `scope` est résolu par le service (5.2 : il dépend de l'appelant) ;
-   * `date` cible le jour de `scheduled_date`, ou de `requested_date` pour une demande `pending`.
+   * L1. Portée : les leçons de l'élève ; pour un instructeur, les demandes `pending` de son école
+   * (file partagée, D-32) et/ou les leçons dont il est l'instructeur ; tout pour un admin.
+   * `date` : jour local (SCHOOL_TIMEZONE) de `scheduled_date`, ou de `requested_date` pour une
+   * demande `pending`. Tri par date croissante.
    */
-  async findAll(filters: LessonFilters): Promise<Lesson[]> {
+  async findAll(scope: LessonScope, filters: LessonFilters): Promise<Lesson[]> {
     const conditions: string[] = [];
     const values: unknown[] = [];
-    const add = (column: string, operator: string, value: unknown): void => {
+    const param = (value: unknown): string => {
       values.push(value);
-      conditions.push(`${column} ${operator} $${values.length}`);
+      return `$${values.length}`;
     };
 
-    if (filters.schoolId) add('school_id', '=', filters.schoolId);
-    if (filters.instructorId) add('instructor_id', '=', filters.instructorId);
-    if (filters.studentId) add('student_id', '=', filters.studentId);
-    if (filters.type) add('type', '=', filters.type);
+    if (scope.kind === 'student') {
+      conditions.push(`l.student_id = ${param(scope.studentRowId)}`);
+    } else if (scope.kind === 'instructor') {
+      // Paramètres numérotés dans l'ordre d'apparition : chaque portée construit les siens.
+      const pendingOfSchool = (): string =>
+        `(l.school_id = ${param(scope.schoolId)} AND l.status = 'pending')`;
+      const mine = (): string => `l.instructor_id = ${param(scope.instructorId)}`;
+      if (scope.scope === 'school') conditions.push(pendingOfSchool());
+      else if (scope.scope === 'mine') conditions.push(mine());
+      else conditions.push(`(${pendingOfSchool()} OR ${mine()})`);
+    }
     if (filters.status && filters.status.length > 0) {
-      values.push(filters.status);
-      conditions.push(`status = ANY($${values.length})`);
+      conditions.push(`l.status = ANY(${param(filters.status)})`);
     }
     if (filters.date) {
-      values.push(filters.date);
+      const day = param(filters.date);
       conditions.push(
-        `COALESCE(scheduled_date, CASE WHEN status = 'pending' THEN requested_date END)::date = $${values.length}::date`
+        `(COALESCE(l.scheduled_date, CASE WHEN l.status = 'pending' THEN l.requested_date END)
+           AT TIME ZONE 'UTC' AT TIME ZONE '${SCHOOL_TIMEZONE}')::date = ${day}::date`
       );
     }
-    if (filters.dateFrom) add('scheduled_date', '>=', filters.dateFrom);
-    if (filters.dateTo) add('scheduled_date', '<=', filters.dateTo);
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const result = await this.db.query<Lesson>(
-      `SELECT ${LESSON_COLUMNS} FROM lessons ${where}
-       ORDER BY COALESCE(scheduled_date, requested_date) ASC, created_at ASC`,
+      `SELECT ${LESSON_COLUMNS} ${LESSON_FROM} ${where}
+       ORDER BY COALESCE(l.scheduled_date, l.requested_date) ASC, l.created_at ASC`,
       values
     );
     return result.rows;
   }
 
-  async update(id: string, dto: UpdateLessonDTO): Promise<Lesson> {
-    const updates: string[] = [];
-    const values: unknown[] = [];
-    const set = (column: string, value: unknown): void => {
-      values.push(value);
-      updates.push(`${column} = $${values.length}`);
-    };
-
-    if (dto.instructorId !== undefined) set('instructor_id', dto.instructorId);
-    if (dto.scheduledDate !== undefined) set('scheduled_date', dto.scheduledDate);
-    if (dto.durationMinutes !== undefined) set('duration_minutes', dto.durationMinutes);
-    if (dto.price !== undefined) set('price', dto.price);
-    if (dto.status !== undefined) set('status', dto.status);
-    updates.push('updated_at = CURRENT_TIMESTAMP');
-    values.push(id);
-
-    const result = await this.db.query<Lesson>(
-      `UPDATE lessons SET ${updates.join(', ')} WHERE id = $${values.length}
-       RETURNING ${LESSON_COLUMNS}`,
-      values
-    );
-    return result.rows[0];
-  }
-
-  async delete(id: string): Promise<void> {
-    await this.db.query('DELETE FROM lessons WHERE id = $1', [id]);
-  }
-
-  /** Anciennes réservations (jusqu'en 5.2) ; `capacity = 1` depuis 007, donc jamais au-delà. */
-  async incrementBookings(id: string): Promise<void> {
-    await this.db.query(
-      'UPDATE lessons SET current_bookings = LEAST(current_bookings + 1, capacity) WHERE id = $1',
-      [id]
-    );
-  }
-
-  async decrementBookings(id: string): Promise<void> {
-    await this.db.query(
-      'UPDATE lessons SET current_bookings = GREATEST(current_bookings - 1, 0) WHERE id = $1',
-      [id]
-    );
+  /** Relecture avec les jointures après une écriture (RETURNING ne peut pas joindre). */
+  protected async requireById(id: string): Promise<Lesson> {
+    const lesson = await this.findById(id);
+    if (!lesson) {
+      throw new Error(`Leçon ${id} introuvable après écriture`);
+    }
+    return lesson;
   }
 }

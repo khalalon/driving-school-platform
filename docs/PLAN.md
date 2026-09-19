@@ -343,7 +343,7 @@ ITOK=$(curl -s -X POST localhost/api/auth/login -H 'Content-Type: application/js
 ```
 **Hors périmètre** : écran mobile (6.2).
 
-### - [ ] 5.2 — Leçons : demande (L2) et liste de l'appelant (L1)
+### - [x] 5.2 — Leçons : demande (L2) et liste de l'appelant (L1)
 **Objectif** : `POST /api/lessons` (`student` autorisé) crée une leçon `pending` `{ type, requestedDate, preferredInstructorId?, notes? }` avec `instructor_id = NULL` (D-32), **403 `NOT_ENROLLED`** sans inscription `approved`, école résolue depuis cette inscription, instructeur préféré vérifié de cette école s'il est fourni ; `GET /api/lessons` scoped (élève : les siennes avec `paid`/`amount` ; instructeur : les `pending` de son école + les leçons dont il est `instructor_id`) au format `Lesson` du contrat. Anciennes routes de créneaux retirées.
 **Fichiers** : `modules/lesson/**`, tests, `docs/API_CONTRACT.md` (L1, L2, §8).
 **Critère de validation** :

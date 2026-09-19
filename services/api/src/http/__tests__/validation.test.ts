@@ -1,5 +1,15 @@
 import Joi from 'joi';
+import { HttpError } from '../errors';
 import { enumQuery, uuidParam, validate } from '../validation';
+
+const thrownBy = (fn: () => unknown): unknown => {
+  try {
+    fn();
+  } catch (err) {
+    return err;
+  }
+  return undefined;
+};
 
 describe('http/validation', () => {
   it('uuidParam : forme uuid de Postgres acceptée (nil UUID compris), sinon 404 NOT_FOUND', () => {
@@ -9,18 +19,19 @@ describe('http/validation', () => {
     expect(uuidParam('00000000-0000-0000-0000-000000000000', 'École')).toBe(
       '00000000-0000-0000-0000-000000000000'
     );
-    expect(() => uuidParam('not-a-uuid', 'École')).toThrow(
-      expect.objectContaining({ status: 404, code: 'NOT_FOUND', message: 'École introuvable' })
-    );
-    expect(() => uuidParam(undefined, 'École')).toThrow(expect.objectContaining({ status: 404 }));
+    const bad = thrownBy(() => uuidParam('not-a-uuid', 'École'));
+    expect(bad).toBeInstanceOf(HttpError);
+    expect(bad).toMatchObject({ status: 404, code: 'NOT_FOUND', message: 'École introuvable' });
+    expect(thrownBy(() => uuidParam(undefined, 'École'))).toMatchObject({ status: 404 });
   });
 
   it('enumQuery : valeur absente → undefined, connue → renvoyée, inconnue → 400', () => {
     expect(enumQuery(undefined, ['a', 'b'], 'x')).toBeUndefined();
     expect(enumQuery('a', ['a', 'b'], 'x')).toBe('a');
-    expect(() => enumQuery('c', ['a', 'b'], 'x')).toThrow(
-      expect.objectContaining({ status: 400, code: 'VALIDATION_ERROR' })
-    );
+    expect(thrownBy(() => enumQuery('c', ['a', 'b'], 'x'))).toMatchObject({
+      status: 400,
+      code: 'VALIDATION_ERROR',
+    });
   });
 
   it('validate : valeur typée quand ok, détail Joi sinon', () => {

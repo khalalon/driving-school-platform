@@ -1,26 +1,32 @@
+import { SchoolGuard } from '../../../../http/authz';
+import { AuthUser, UserRole } from '../../../../types/auth';
 import { LessonType } from '../../../../types/domain';
-import { IBookingRepository } from '../../repositories/booking.repository';
 import { ILessonRepository } from '../../repositories/lesson.repository';
-import { Lesson, LessonBooking, LessonStatus } from '../../types/lesson.types';
-import { BookingService, StudentLookup } from '../booking.service';
+import { Lesson, LessonStatus } from '../../types/lesson.types';
 import { LessonService } from '../lesson.service';
 
 const future = new Date(Date.now() + 7 * 24 * 3600 * 1000);
 const past = new Date(Date.now() - 24 * 3600 * 1000);
+const student: AuthUser = { userId: 'user-1', email: 's@x.io', role: UserRole.STUDENT };
+const instructor: AuthUser = { userId: 'user-instr', email: 'i@x.io', role: UserRole.INSTRUCTOR };
+const admin: AuthUser = { userId: 'user-admin', email: 'a@x.io', role: UserRole.ADMIN };
+
 const lesson: Lesson = {
   id: 'lesson-1',
   schoolId: 'school-1',
-  studentId: 'student-1',
-  instructorId: 'instr-1',
-  preferredInstructorId: null,
+  studentId: 'user-1',
+  student: { id: 'user-1', firstName: 'Élève', lastName: 'Test' },
+  instructorId: null,
+  instructor: null,
+  preferredInstructorId: 'instr-1',
   type: LessonType.PARC,
-  status: LessonStatus.SCHEDULED,
-  requestedDate: null,
-  scheduledDate: future,
-  durationMinutes: 60,
-  price: 40,
+  status: LessonStatus.PENDING,
+  requestedDate: future,
+  scheduledDate: null,
+  durationMinutes: null,
+  price: null,
   capacity: 1,
-  currentBookings: 0,
+  currentBookings: 1,
   notes: null,
   adminNotes: null,
   rejectionReason: null,
@@ -34,208 +40,145 @@ const lesson: Lesson = {
   createdAt: past,
   updatedAt: past,
 };
-const booking: LessonBooking = {
-  id: 'booking-1',
-  lessonId: 'lesson-1',
-  studentId: 'student-1',
-  attended: null,
-  feedback: null,
-  rating: null,
-  createdAt: past,
-};
 
-function lessonRepositoryMock(): jest.Mocked<ILessonRepository> {
-  return {
-    create: jest.fn(),
-    findById: jest.fn(),
-    findAll: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
-    incrementBookings: jest.fn(),
-    decrementBookings: jest.fn(),
-  };
-}
-
-describe('LessonService (créneaux, état actuel)', () => {
+describe('LessonService (D-21 / D-32 : demande L2, liste L1, lecture scoped)', () => {
   let repository: jest.Mocked<ILessonRepository>;
+  let students: { findByUserId: jest.Mock };
+  let instructors: { findById: jest.Mock; findByUserId: jest.Mock };
   let service: LessonService;
 
   beforeEach(() => {
-    repository = lessonRepositoryMock();
-    service = new LessonService(repository);
+    repository = { createRequest: jest.fn(), findById: jest.fn(), findAll: jest.fn() };
+    students = { findByUserId: jest.fn() };
+    instructors = { findById: jest.fn(), findByUserId: jest.fn() };
+    students.findByUserId.mockResolvedValue({
+      id: 'student-row-1',
+      schoolId: 'school-1',
+      authorized: true,
+    });
+    instructors.findById.mockResolvedValue({ id: 'instr-1', schoolId: 'school-1' });
+    instructors.findByUserId.mockResolvedValue({ id: 'instr-1', schoolId: 'school-1' });
+    service = new LessonService(repository, students, instructors, new SchoolGuard(instructors));
   });
 
-  it('createLesson : refuse une date passée (400), crée sinon', async () => {
-    await expect(
-      service.createLesson({
+  describe('requestLesson (L2)', () => {
+    const dto = { type: LessonType.PARC, requestedDate: future, preferredInstructorId: 'instr-1' };
+
+    it('école résolue depuis l’inscription approuvée ; demande pending sans instructeur', async () => {
+      repository.createRequest.mockResolvedValue(lesson);
+
+      await expect(service.requestLesson(student, dto)).resolves.toEqual(lesson);
+
+      expect(students.findByUserId).toHaveBeenCalledWith('user-1');
+      expect(repository.createRequest).toHaveBeenCalledWith({
+        ...dto,
+        studentRowId: 'student-row-1',
         schoolId: 'school-1',
-        studentId: 'student-1',
-        instructorId: 'instr-1',
-        type: LessonType.PARC,
-        scheduledDate: past,
-        durationMinutes: 60,
-        price: 40,
-      })
-    ).rejects.toMatchObject({ status: 400, code: 'VALIDATION_ERROR' });
+      });
+    });
 
-    repository.create.mockResolvedValue(lesson);
-    await expect(
-      service.createLesson({
-        schoolId: 'school-1',
-        studentId: 'student-1',
-        instructorId: 'instr-1',
-        type: LessonType.PARC,
-        scheduledDate: future,
-        durationMinutes: 60,
-        price: 40,
-      })
-    ).resolves.toEqual(lesson);
-  });
+    it('403 NOT_ENROLLED sans fiche students ou sans autorisation', async () => {
+      students.findByUserId.mockResolvedValue(null);
+      await expect(service.requestLesson(student, dto)).rejects.toMatchObject({
+        status: 403,
+        code: 'NOT_ENROLLED',
+      });
 
-  it('getLessonById : 404 « Leçon introuvable »', async () => {
-    repository.findById.mockResolvedValue(null);
-    await expect(service.getLessonById('ghost')).rejects.toMatchObject({
-      status: 404,
-      message: 'Leçon introuvable',
+      students.findByUserId.mockResolvedValue({ id: 's', schoolId: 'school-1', authorized: false });
+      await expect(service.requestLesson(student, dto)).rejects.toMatchObject({
+        code: 'NOT_ENROLLED',
+      });
+      expect(repository.createRequest).not.toHaveBeenCalled();
+    });
+
+    it('400 VALIDATION_ERROR si l’instructeur préféré n’est pas de l’école de l’élève', async () => {
+      instructors.findById.mockResolvedValue({ id: 'instr-2', schoolId: 'school-2' });
+      await expect(service.requestLesson(student, dto)).rejects.toMatchObject({
+        status: 400,
+        code: 'VALIDATION_ERROR',
+      });
+
+      instructors.findById.mockResolvedValue(null);
+      await expect(service.requestLesson(student, dto)).rejects.toMatchObject({ status: 400 });
+      expect(repository.createRequest).not.toHaveBeenCalled();
+    });
+
+    it('sans préférence : aucune vérification d’instructeur', async () => {
+      repository.createRequest.mockResolvedValue(lesson);
+      await service.requestLesson(student, { type: LessonType.CODE, requestedDate: future });
+      expect(instructors.findById).not.toHaveBeenCalled();
     });
   });
 
-  it('updateLesson : seulement si scheduled ; date future exigée', async () => {
-    repository.findById.mockResolvedValue({ ...lesson, status: LessonStatus.COMPLETED });
-    await expect(service.updateLesson('lesson-1', { price: 50 })).rejects.toMatchObject({
-      status: 409,
+  describe('listLessons (L1)', () => {
+    beforeEach(() => repository.findAll.mockResolvedValue([lesson]));
+
+    it('élève : ses leçons (fiche students) ; sans fiche → portée impossible, liste vide', async () => {
+      await expect(
+        service.listLessons(student, { status: [LessonStatus.PENDING] })
+      ).resolves.toEqual([lesson]);
+      expect(repository.findAll).toHaveBeenCalledWith(
+        { kind: 'student', studentRowId: 'student-row-1' },
+        { status: ['pending'] }
+      );
+
+      students.findByUserId.mockResolvedValue(null);
+      await service.listLessons(student, {});
+      expect(repository.findAll).toHaveBeenLastCalledWith(
+        { kind: 'student', studentRowId: '00000000-0000-0000-0000-000000000000' },
+        {}
+      );
     });
 
-    repository.findById.mockResolvedValue(lesson);
-    await expect(service.updateLesson('lesson-1', { scheduledDate: past })).rejects.toMatchObject({
-      status: 400,
+    it('instructeur : file de son école et/ou ses leçons selon scope ; 403 sans fiche', async () => {
+      await service.listLessons(instructor, { scope: 'school' });
+      expect(repository.findAll).toHaveBeenLastCalledWith(
+        { kind: 'instructor', instructorId: 'instr-1', schoolId: 'school-1', scope: 'school' },
+        { scope: 'school' }
+      );
+      await service.listLessons(instructor, {});
+      expect(repository.findAll).toHaveBeenLastCalledWith(
+        expect.objectContaining({ kind: 'instructor', scope: 'both' }),
+        {}
+      );
+
+      instructors.findByUserId.mockResolvedValue(null);
+      await expect(service.listLessons(instructor, {})).rejects.toMatchObject({
+        status: 403,
+        code: 'FORBIDDEN_SCHOOL',
+      });
     });
 
-    repository.update.mockResolvedValue({ ...lesson, price: 50 });
-    await expect(service.updateLesson('lesson-1', { price: 50 })).resolves.toMatchObject({
-      price: 50,
+    it('admin : tout', async () => {
+      await service.listLessons(admin, { date: '2026-10-01' });
+      expect(repository.findAll).toHaveBeenLastCalledWith({ kind: 'all' }, { date: '2026-10-01' });
     });
   });
 
-  it('cancelLesson / deleteLesson : refusés (409) avec des réservations', async () => {
-    repository.findById.mockResolvedValue({ ...lesson, currentBookings: 1 });
-    await expect(service.cancelLesson('lesson-1')).rejects.toMatchObject({ status: 409 });
-    await expect(service.deleteLesson('lesson-1')).rejects.toMatchObject({ status: 409 });
+  describe('getLesson (GET /:id, scoped)', () => {
+    it('404 inconnue ; élève : sa leçon seulement (403 sinon)', async () => {
+      repository.findById.mockResolvedValue(null);
+      await expect(service.getLesson(student, 'ghost')).rejects.toMatchObject({ status: 404 });
 
-    repository.findById.mockResolvedValue(lesson);
-    repository.update.mockResolvedValue({ ...lesson, status: LessonStatus.CANCELLED });
-    await expect(service.cancelLesson('lesson-1')).resolves.toMatchObject({
-      status: 'cancelled',
-    });
-    expect(repository.update).toHaveBeenCalledWith('lesson-1', { status: 'cancelled' });
-    await service.deleteLesson('lesson-1');
-    expect(repository.delete).toHaveBeenCalledWith('lesson-1');
-  });
-
-  it('checkAvailability : place libre et statut scheduled', async () => {
-    repository.findById.mockResolvedValue(lesson);
-    await expect(service.checkAvailability('lesson-1')).resolves.toBe(true);
-    repository.findById.mockResolvedValue({ ...lesson, currentBookings: 1 });
-    await expect(service.checkAvailability('lesson-1')).resolves.toBe(false);
-  });
-
-  it('getLessons délègue les filtres', async () => {
-    repository.findAll.mockResolvedValue([lesson]);
-    await expect(service.getLessons({ schoolId: 'school-1' })).resolves.toEqual([lesson]);
-    expect(repository.findAll).toHaveBeenCalledWith({ schoolId: 'school-1' });
-  });
-});
-
-describe('BookingService (réservations, état actuel)', () => {
-  let bookings: jest.Mocked<IBookingRepository>;
-  let lessons: jest.Mocked<ILessonRepository>;
-  let students: jest.Mocked<StudentLookup>;
-  let service: BookingService;
-
-  beforeEach(() => {
-    bookings = {
-      create: jest.fn(),
-      findById: jest.fn(),
-      findByLessonId: jest.fn(),
-      findByStudentId: jest.fn(),
-      findByLessonAndStudent: jest.fn(),
-      updateAttendance: jest.fn(),
-      delete: jest.fn(),
-    };
-    lessons = lessonRepositoryMock();
-    students = { findById: jest.fn() };
-    service = new BookingService(bookings, lessons, students);
-  });
-
-  it('bookLesson : crée la réservation et incrémente le compteur', async () => {
-    lessons.findById.mockResolvedValue(lesson);
-    students.findById.mockResolvedValue({ id: 'student-1', authorized: true });
-    bookings.findByLessonAndStudent.mockResolvedValue(null);
-    bookings.create.mockResolvedValue(booking);
-
-    await expect(service.bookLesson('lesson-1', 'student-1')).resolves.toEqual(booking);
-    expect(lessons.incrementBookings).toHaveBeenCalledWith('lesson-1');
-  });
-
-  it('bookLesson : 404 leçon / élève, 403 NOT_ENROLLED, 409 complet ou doublon', async () => {
-    lessons.findById.mockResolvedValue(null);
-    await expect(service.bookLesson('ghost', 'student-1')).rejects.toMatchObject({ status: 404 });
-
-    lessons.findById.mockResolvedValue(lesson);
-    students.findById.mockResolvedValue(null);
-    await expect(service.bookLesson('lesson-1', 'ghost')).rejects.toMatchObject({ status: 404 });
-
-    students.findById.mockResolvedValue({ id: 'student-1', authorized: false });
-    await expect(service.bookLesson('lesson-1', 'student-1')).rejects.toMatchObject({
-      status: 403,
-      code: 'NOT_ENROLLED',
+      repository.findById.mockResolvedValue(lesson);
+      await expect(service.getLesson(student, 'lesson-1')).resolves.toEqual(lesson);
+      await expect(
+        service.getLesson({ ...student, userId: 'user-2' }, 'lesson-1')
+      ).rejects.toMatchObject({ status: 403, code: 'FORBIDDEN' });
     });
 
-    students.findById.mockResolvedValue({ id: 'student-1', authorized: true });
-    lessons.findById.mockResolvedValue({ ...lesson, currentBookings: 1 });
-    await expect(service.bookLesson('lesson-1', 'student-1')).rejects.toMatchObject({
-      status: 409,
-      message: 'Cette leçon est complète',
+    it('instructeur : leçons de son école (403 FORBIDDEN_SCHOOL sinon) ; admin : tout', async () => {
+      repository.findById.mockResolvedValue(lesson);
+      await expect(service.getLesson(instructor, 'lesson-1')).resolves.toEqual(lesson);
+
+      repository.findById.mockResolvedValue({ ...lesson, schoolId: 'school-2' });
+      await expect(service.getLesson(instructor, 'lesson-1')).rejects.toMatchObject({
+        status: 403,
+        code: 'FORBIDDEN_SCHOOL',
+      });
+      await expect(service.getLesson(admin, 'lesson-1')).resolves.toMatchObject({
+        schoolId: 'school-2',
+      });
     });
-
-    lessons.findById.mockResolvedValue(lesson);
-    bookings.findByLessonAndStudent.mockResolvedValue(booking);
-    await expect(service.bookLesson('lesson-1', 'student-1')).rejects.toMatchObject({
-      status: 409,
-      message: 'Cet élève a déjà réservé cette leçon',
-    });
-    expect(bookings.create).not.toHaveBeenCalled();
-  });
-
-  it('markAttendance : 404 si inconnue, sinon met à jour', async () => {
-    bookings.findById.mockResolvedValue(null);
-    await expect(service.markAttendance('ghost', { attended: true })).rejects.toMatchObject({
-      status: 404,
-    });
-
-    bookings.findById.mockResolvedValue(booking);
-    bookings.updateAttendance.mockResolvedValue({ ...booking, attended: true, rating: 5 });
-    await expect(
-      service.markAttendance('booking-1', { attended: true, rating: 5 })
-    ).resolves.toMatchObject({ attended: true, rating: 5 });
-  });
-
-  it('cancelBooking : refusée si pointée, sinon supprime et décrémente', async () => {
-    bookings.findById.mockResolvedValue({ ...booking, attended: true });
-    await expect(service.cancelBooking('booking-1')).rejects.toMatchObject({ status: 409 });
-
-    bookings.findById.mockResolvedValue(booking);
-    await service.cancelBooking('booking-1');
-    expect(bookings.delete).toHaveBeenCalledWith('booking-1');
-    expect(lessons.decrementBookings).toHaveBeenCalledWith('lesson-1');
-  });
-
-  it('lectures : par leçon, par élève, par identifiant', async () => {
-    bookings.findByLessonId.mockResolvedValue([booking]);
-    bookings.findByStudentId.mockResolvedValue([booking]);
-    bookings.findById.mockResolvedValue(booking);
-    await expect(service.getBookingsByLesson('lesson-1')).resolves.toEqual([booking]);
-    await expect(service.getBookingsByStudent('student-1')).resolves.toEqual([booking]);
-    await expect(service.getBookingById('booking-1')).resolves.toEqual(booking);
   });
 });
