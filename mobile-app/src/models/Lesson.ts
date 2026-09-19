@@ -116,3 +116,13 @@ export interface MarkAttendanceData {
   feedback?: string;
   rating?: number;
 }
+
+/**
+ * Filtres de L1 : `status` (une ou plusieurs valeurs), `scope` (instructeur : `school` = file
+ * `pending` de l'école, `mine` = ses leçons ; ignoré pour un élève), `date` = un jour `YYYY-MM-DD`.
+ */
+export interface LessonFilters {
+  status?: LessonStatus[];
+  scope?: 'school' | 'mine';
+  date?: string;
+}

@@ -9,9 +9,20 @@ import {
   ApproveLessonData,
   BookLessonForStudentData,
   Lesson,
+  LessonFilters,
   MarkAttendanceData,
   RequestLessonData,
 } from '../../models/Lesson';
+
+/** Query de L1 : seules les clés fournies partent ; `status` multiple séparé par des virgules. */
+const toQuery = (filters?: LessonFilters): Record<string, string> | undefined => {
+  if (!filters) return undefined;
+  const params: Record<string, string> = {};
+  if (filters.status && filters.status.length > 0) params.status = filters.status.join(',');
+  if (filters.scope) params.scope = filters.scope;
+  if (filters.date) params.date = filters.date;
+  return Object.keys(params).length > 0 ? params : undefined;
+};
 
 export class LessonService {
   // ----- Élève -----
@@ -22,9 +33,13 @@ export class LessonService {
     return response.data;
   }
 
-  /** L1 : les leçons de l'appelant (élève : les siennes ; instructeur : selon le scope). */
-  async getMyLessons(): Promise<Lesson[]> {
-    const response = await apiClient.get<Lesson[]>(API_CONFIG.ENDPOINTS.LESSONS.LIST);
+  /** L1 : les leçons de l'appelant (élève : les siennes ; instructeur : selon `scope`), triées par date. */
+  async getMyLessons(filters?: LessonFilters): Promise<Lesson[]> {
+    const params = toQuery(filters);
+    const response = await apiClient.get<Lesson[]>(
+      API_CONFIG.ENDPOINTS.LESSONS.LIST,
+      params ? { params } : undefined
+    );
     return response.data;
   }
 

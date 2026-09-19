@@ -37,6 +37,13 @@ export const formatDateTime = (iso: string | null | undefined, fallback = 'Date 
   return date ? `${formatDate(iso)} at ${formatTime(iso)}` : fallback;
 };
 
+/** Jour local `YYYY-MM-DD` (filtre `date` de L1), sans passer par l'UTC d'`toISOString`. */
+export const toLocalDateKey = (date: Date = new Date()): string => {
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${mm}-${dd}`;
+};
+
 /** `Prénom Nom`, ou le texte de repli si l'identité est vide. */
 export const formatPersonName = (
   person: { firstName?: string | null; lastName?: string | null } | null | undefined,

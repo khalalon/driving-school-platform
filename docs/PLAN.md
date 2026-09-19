@@ -430,7 +430,7 @@ cd mobile-app && npx tsc --noEmit && npx jest src/services/api --silent && grep 
 ```
 **Hors périmètre** : leçons/examens.
 
-### - [ ] 6.3 — Instructeur : demandes de leçons et présence
+### - [x] 6.3 — Instructeur : demandes de leçons et présence
 **Objectif** : `LessonRequestsScreen` liste les `pending` de l'école (file partagée, D-32, avec l'instructeur préféré affiché s'il y en a un), appelle `approveLesson { scheduledDate, durationMinutes, price?, adminNotes? }` (champ prix affiché seulement si l'école n'a pas de tarif pour ce type) / `rejectLesson { reason }` (plus de stub, motif ≥ 10 car.) ; `TodayLessonsScreen` liste **ses** leçons `scheduled` du jour (celles dont il est `instructorId`) et appelle `markAttendance` par identifiant de leçon. Tests jest.
 **Fichiers** : `src/screens/instructor/{LessonRequestsScreen,TodayLessonsScreen}.tsx`, `src/services/api/LessonService.ts` + tests.
 **Critère de validation** :
