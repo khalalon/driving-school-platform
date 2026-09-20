@@ -112,7 +112,8 @@ Le détail par écran est dans `API_CONTRACT.md`. Résumé des dépendances rée
 | Écran mobile | Domaines appelés |
 |---|---|
 | Login / Register / InstructorRegistration | auth (A1, A2 avec `schoolCode` en une étape depuis 6.1) |
-| StudentDashboard, InstructorDashboard | aucun (menus) |
+| StudentDashboard (« My journey », 8.2) | enrollment (E3 : école active), lessons (L1 `status=pending,scheduled` : prochaine leçon, compte à rebours, L3 annulation D-24), exams (X1), student-profiles (P8 `completedLessonsByType`, P11 dû / avoir) — parcours Code → théorie → Manœuvre → Parc → pratique construit par `models/Journey.ts` (D-45, pur, testé) ; sans inscription approuvée : « Browse schools » / « Enrollment status » |
+| InstructorDashboard | aucun (menus) |
 | SchoolsList, SchoolDetail | schools, enrollment (bouton « Request Lesson » sans instructeur, ou « Request » depuis un instructeur = préférence D-32) |
 | BookLesson, MyLessons | lessons (L2 `{ type, requestedDate, preferredInstructorId?, notes? }`, L1, L3 — bouton « Cancel » masqué hors fenêtre D-24 par `canStudentCancel`, `CANCEL_WINDOW_CLOSED` géré), enrollment (E1) |
 | RequestExam, MyExams | exams |

@@ -5,6 +5,9 @@
 
 import { LessonType } from './Lesson';
 
+/** Leçons effectuées (présence marquée, D-33) par type (D-45) : même base que `completedLessons`. */
+export type CompletedLessonsByType = Record<LessonType, number>;
+
 /** P1 : fiche complète ; `notes` = note privée de l'instructeur, absente de P8. */
 export interface StudentProfile {
   id: string;
@@ -21,6 +24,8 @@ export interface StudentProfile {
   notes?: string | null;
   totalLessons: number;
   completedLessons: number;
+  /** Sans objectif ni seuil (D-26) : sert au parcours de l'accueil (`models/Journey.ts`). */
+  completedLessonsByType: CompletedLessonsByType;
   totalExams: number;
   passedExams: number;
 }

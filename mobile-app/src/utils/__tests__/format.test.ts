@@ -1,7 +1,23 @@
 /**
  * Formatage d'affichage : montants dans la devise de l'école (D-43), noms, jour local.
  */
-import { formatAmount, formatPersonName, toLocalDateKey } from '../format';
+import { formatAmount, formatCountdown, formatPersonName, toLocalDateKey } from '../format';
+
+describe('formatCountdown', () => {
+  const now = new Date('2026-09-20T10:00:00.000Z');
+
+  it('minutes, puis heures et minutes, puis jours', () => {
+    expect(formatCountdown('2026-09-20T10:45:00.000Z', now)).toBe('in 45 min');
+    expect(formatCountdown('2026-09-20T12:05:00.000Z', now)).toBe('in 2 h 05 min');
+    expect(formatCountdown('2026-09-22T09:00:00.000Z', now)).toBe('in 2 days');
+    expect(formatCountdown('2026-09-21T10:30:00.000Z', now)).toBe('in 1 day');
+  });
+
+  it('déjà commencé, ou date absente', () => {
+    expect(formatCountdown('2026-09-20T09:00:00.000Z', now)).toBe('Started');
+    expect(formatCountdown(null, now)).toBe('Date TBD');
+  });
+});
 
 describe('formatAmount (D-43)', () => {
   it('affiche deux décimales suivies du code ISO de la devise', () => {

@@ -1,9 +1,11 @@
 /**
- * Student Dashboard - Minimal & Elegant
- * Single Responsibility: Main dashboard for students
+ * Student Dashboard — « My journey » (D-45, 8.2)
+ * Single Responsibility: l'accueil de l'élève raconte son parcours.
  *
- * La fiche « My Profile » (P8–P11) est celle de l'école de l'inscription approuvée (une seule
- * inscription active, D-22), retrouvée par E3 à chaque retour sur le tableau de bord.
+ * L'école active est celle de l'inscription approuvée (une seule, D-22), retrouvée par E3 à
+ * chaque retour sur l'écran. Ensuite : prochaine leçon (L1), parcours (P8 + X1 + L1, règles
+ * pures dans `models/Journey.ts`), dû et avoir (P11, devise de l'école), actions L2 / X2.
+ * Sans inscription approuvée : accueil réduit à la recherche d'école et au suivi des demandes.
  */
 
 import React, { useCallback, useState } from 'react';
@@ -14,169 +16,424 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { enrollmentService } from '../../services/api/EnrollmentService';
-import { getApiErrorMessage } from '../../services/api/ApiError';
-import { EnrollmentStatus } from '../../models/Enrollment';
+import { lessonService } from '../../services/api/LessonService';
+import { examService } from '../../services/api/ExamService';
+import { studentSelfProfileService } from '../../services/api/StudentSelfProfileService';
+import { getApiErrorCode, getApiErrorMessage } from '../../services/api/ApiError';
+import { EnrollmentRequest, EnrollmentStatus } from '../../models/Enrollment';
+import {
+  LESSON_CANCEL_HOURS,
+  LESSON_TYPE_LABELS,
+  Lesson,
+  LessonStatus,
+  canStudentCancel,
+} from '../../models/Lesson';
+import { Exam } from '../../models/Exam';
+import { FinancialSummary, MyProfile } from '../../models/Profile';
+import { JourneyStep, buildJourney } from '../../models/Journey';
+import { useSchoolCurrency } from '../../hooks/useSchoolCurrency';
+import {
+  formatAmount,
+  formatCountdown,
+  formatDate,
+  formatPersonName,
+  formatTime,
+} from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
+
+interface HomeData {
+  lessons: Lesson[];
+  exams: Exam[];
+  profile: MyProfile | null;
+  financial: FinancialSummary | null;
+}
+
+/** La prochaine leçon planifiée : la première dont la fin n'est pas passée. */
+const findNextLesson = (lessons: Lesson[], now: Date = new Date()): Lesson | null =>
+  lessons
+    .filter((l) => l.status === LessonStatus.SCHEDULED && l.scheduledDate)
+    .filter((l) => {
+      const start = new Date(l.scheduledDate as string).getTime();
+      return start + (l.durationMinutes ?? 60) * 60000 > now.getTime();
+    })
+    .sort((a, b) => (a.scheduledDate as string).localeCompare(b.scheduledDate as string))[0] ??
+  null;
 
 export const StudentDashboard = ({ navigation }: any) => {
   const { user, logout } = useAuth();
   // `undefined` = pas encore chargé, `null` = aucune inscription approuvée
-  const [activeSchoolId, setActiveSchoolId] = useState<string | null | undefined>(undefined);
+  const [enrollment, setEnrollment] = useState<EnrollmentRequest | null | undefined>(undefined);
+  const [data, setData] = useState<HomeData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const schoolId = enrollment?.schoolId ?? null;
+  const currency = useSchoolCurrency(schoolId);
 
-  const loadActiveEnrollment = useCallback(async (): Promise<string | null> => {
+  const load = useCallback(async () => {
     try {
+      setError(null);
       // E3 : l'inscription approuvée donne l'école de la fiche élève
       const requests = await enrollmentService.getMyRequests();
-      const approved = requests.find((r) => r.status === EnrollmentStatus.APPROVED);
-      const schoolId = approved?.schoolId ?? null;
-      setActiveSchoolId(schoolId);
-      return schoolId;
-    } catch {
-      // Hors réseau : on retentera au prochain retour sur l'écran
-      return activeSchoolId ?? null;
+      const approved = requests.find((r) => r.status === EnrollmentStatus.APPROVED) ?? null;
+      setEnrollment(approved);
+      if (!approved) {
+        setData(null);
+        return;
+      }
+      const [lessons, exams, profile, financial] = await Promise.all([
+        lessonService.getMyLessons({ status: [LessonStatus.PENDING, LessonStatus.SCHEDULED] }),
+        examService.getMyExams(),
+        studentSelfProfileService.getMyProfile(approved.schoolId).catch(() => null),
+        studentSelfProfileService.getMyFinancialSummary(approved.schoolId).catch(() => null),
+      ]);
+      setData({ lessons, exams, profile, financial });
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Failed to load your home screen'));
+    } finally {
+      setLoading(false);
     }
-  }, [activeSchoolId]);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      loadActiveEnrollment();
-    }, [])
+      load();
+    }, [load])
   );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }, [load]);
 
   const handleLogout = async () => {
     await logout();
     // No need to navigate - AuthContext will trigger navigator rebuild
   };
 
-  const openMyProfile = async () => {
-    let schoolId = activeSchoolId;
-    if (schoolId === undefined) {
-      try {
-        schoolId = await loadActiveEnrollment();
-      } catch (error) {
-        Alert.alert('Error', getApiErrorMessage(error, 'Failed to load your enrollment'));
-        return;
-      }
-    }
-    if (!schoolId) {
-      Alert.alert(
-        'Not enrolled yet',
-        'Your profile is available once a school has approved your enrollment.',
-        [
-          { text: 'Browse schools', onPress: () => navigation.navigate('SchoolsList') },
-          { text: 'OK', style: 'cancel' },
-        ]
-      );
-      return;
-    }
+  const handleCancelLesson = (lesson: Lesson) => {
+    Alert.alert('Cancel lesson', 'Are you sure you want to cancel this lesson?', [
+      { text: 'No', style: 'cancel' },
+      {
+        text: 'Yes, cancel',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await lessonService.cancelLesson(lesson.id);
+            load();
+          } catch (err) {
+            // Fenêtre de 24 h (D-24) contrôlée par le serveur : le bouton n'est qu'un confort
+            if (getApiErrorCode(err) === 'CANCEL_WINDOW_CLOSED') {
+              Alert.alert(
+                'Too late to cancel',
+                getApiErrorMessage(
+                  err,
+                  `A lesson can only be cancelled up to ${LESSON_CANCEL_HOURS} hours before it starts. Please contact your instructor.`
+                )
+              );
+              load();
+              return;
+            }
+            Alert.alert('Error', getApiErrorMessage(err, 'Failed to cancel lesson'));
+          }
+        },
+      },
+    ]);
+  };
+
+  const openMyProfile = () => {
+    if (!schoolId) return;
     navigation.navigate('MyProfile', { schoolId });
   };
 
-  const openRoute = (route: string) => {
-    if (route === 'MyProfile') {
-      openMyProfile();
-      return;
-    }
-    navigation.navigate(route);
+  const requestLesson = () => {
+    if (!schoolId) return;
+    navigation.navigate('BookLesson', { schoolId });
   };
 
-  const menuItems = [
-    {
-      id: '1',
-      title: 'Enrollment Status',
-      description: 'Track your applications',
-      icon: 'school-outline',
-      color: colors.primary[600],
-      bgColor: colors.primary[50],
-      route: 'MyEnrollmentRequests',
-    },
-    {
-      id: '2',
-      title: 'Browse Schools',
-      description: 'Find driving schools',
-      icon: 'business-outline',
-      color: colors.success[600],
-      bgColor: colors.success[50],
-      route: 'SchoolsList',
-    },
-    {
-      id: '3',
-      title: 'My Lessons',
-      description: 'View and manage lessons',
-      icon: 'calendar-outline',
-      color: colors.warning[600],
-      bgColor: colors.warning[50],
-      route: 'MyLessons',
-    },
-    {
-      id: '4',
-      title: 'Request Exam',
-      description: 'Schedule driving test',
-      icon: 'clipboard-outline',
-      color: colors.error[600],
-      bgColor: colors.error[50],
-      route: 'RequestExam',
-    },
-    {
-      id: '5',
-      title: 'My Exams',
-      description: 'View exam results',
-      icon: 'trophy-outline',
-      color: colors.primary[600],
-      bgColor: colors.primary[50],
-      route: 'MyExams',
-    },
-    {
-      id: '6',
-      title: 'My Profile',
-      description: 'Progress and payments',
-      icon: 'person-outline',
-      color: colors.success[600],
-      bgColor: colors.success[50],
-      route: 'MyProfile',
-    },
-  ];
+  const renderHeader = () => (
+    <View style={styles.header}>
+      <View style={styles.headerText}>
+        <Text style={styles.greeting}>Hello,</Text>
+        <Text style={styles.userName}>{user?.firstName || 'Student'}</Text>
+        {enrollment?.schoolName ? (
+          <Text style={styles.schoolName}>{enrollment.schoolName}</Text>
+        ) : null}
+      </View>
+      <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+        <Ionicons name="log-out-outline" size={24} color={colors.text.secondary} />
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderNotEnrolled = () => (
+    <View style={styles.heroCard}>
+      <Ionicons name="school-outline" size={36} color={colors.primary[600]} />
+      <Text style={styles.heroTitle}>Find your driving school</Text>
+      <Text style={styles.heroText}>
+        Your journey starts once a school has approved your enrollment request.
+      </Text>
+      <TouchableOpacity
+        style={styles.primaryButton}
+        onPress={() => navigation.navigate('SchoolsList')}
+      >
+        <Text style={styles.primaryButtonText}>Browse schools</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.secondaryButton}
+        onPress={() => navigation.navigate('MyEnrollmentRequests')}
+      >
+        <Text style={styles.secondaryButtonText}>Enrollment status</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderNextLesson = (lessons: Lesson[]) => {
+    const next = findNextLesson(lessons);
+    const pendingCount = lessons.filter((l) => l.status === LessonStatus.PENDING).length;
+    return (
+      <View style={styles.nextCard}>
+        <Text style={styles.nextLabel}>NEXT LESSON</Text>
+        {next ? (
+          <>
+            <View style={styles.nextRow}>
+              <Text style={styles.nextTitle}>{LESSON_TYPE_LABELS[next.type]}</Text>
+              <View style={styles.countdownPill}>
+                <Ionicons name="time-outline" size={14} color={colors.primary[700]} />
+                <Text style={styles.countdownText}>{formatCountdown(next.scheduledDate)}</Text>
+              </View>
+            </View>
+            <Text style={styles.nextWhen}>
+              {formatDate(next.scheduledDate)} · {formatTime(next.scheduledDate)}
+              {next.durationMinutes ? ` · ${next.durationMinutes} min` : ''}
+            </Text>
+            <Text style={styles.nextMeta}>
+              with {formatPersonName(next.instructor, 'your instructor')}
+            </Text>
+            <View style={styles.nextActions}>
+              <TouchableOpacity
+                style={styles.inverseButton}
+                onPress={() => navigation.navigate('MyLessons')}
+              >
+                <Text style={styles.inverseButtonText}>All lessons</Text>
+              </TouchableOpacity>
+              {canStudentCancel(next) ? (
+                <TouchableOpacity
+                  style={styles.ghostButton}
+                  onPress={() => handleCancelLesson(next)}
+                >
+                  <Text style={styles.ghostButtonText}>Cancel</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          </>
+        ) : (
+          <>
+            <Text style={styles.nextTitle}>No lesson scheduled</Text>
+            <Text style={styles.nextMeta}>
+              {pendingCount > 0
+                ? `${pendingCount} request${pendingCount === 1 ? '' : 's'} waiting for your school`
+                : 'Ask your school for your next lesson.'}
+            </Text>
+            <View style={styles.nextActions}>
+              <TouchableOpacity style={styles.inverseButton} onPress={requestLesson}>
+                <Text style={styles.inverseButtonText}>Request a lesson</Text>
+              </TouchableOpacity>
+              {pendingCount > 0 ? (
+                <TouchableOpacity
+                  style={styles.ghostButton}
+                  onPress={() => navigation.navigate('MyLessons')}
+                >
+                  <Text style={styles.ghostButtonText}>My requests</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          </>
+        )}
+      </View>
+    );
+  };
+
+  const renderStep = (step: JourneyStep, index: number, count: number) => {
+    const isLast = index === count - 1;
+    const iconName =
+      step.state === 'done'
+        ? 'checkmark-circle'
+        : step.kind === 'exam'
+          ? 'ribbon-outline'
+          : 'car-outline';
+    const iconColor =
+      step.state === 'done'
+        ? colors.success[600]
+        : step.state === 'current'
+          ? colors.primary[600]
+          : step.state === 'started'
+            ? colors.warning[600]
+            : colors.neutral[400];
+    return (
+      <View key={step.key} style={styles.stepRow}>
+        <View style={styles.stepRail}>
+          <View
+            style={[
+              styles.stepDot,
+              step.state === 'current' && styles.stepDotCurrent,
+              step.state === 'done' && styles.stepDotDone,
+            ]}
+          >
+            <Ionicons name={iconName as any} size={18} color={iconColor} />
+          </View>
+          {!isLast ? (
+            <View
+              style={[styles.stepLine, step.state === 'done' && styles.stepLineDone]}
+            />
+          ) : null}
+        </View>
+        <View style={[styles.stepBody, step.state === 'current' && styles.stepBodyCurrent]}>
+          <View style={styles.stepTitleRow}>
+            <Text style={[styles.stepTitle, step.state === 'upcoming' && styles.stepTitleMuted]}>
+              {step.title}
+            </Text>
+            {step.state === 'current' ? (
+              <View style={styles.currentPill}>
+                <Text style={styles.currentPillText}>Now</Text>
+              </View>
+            ) : null}
+          </View>
+          <Text style={styles.stepDetail}>{step.detail}</Text>
+        </View>
+      </View>
+    );
+  };
+
+  const renderJourney = (home: HomeData) => {
+    const steps = buildJourney(home.profile?.completedLessonsByType, home.exams, home.lessons);
+    return (
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle}>My journey</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('MyExams')}>
+            <Text style={styles.cardLink}>My exams</Text>
+          </TouchableOpacity>
+        </View>
+        {steps.map((step, index) => renderStep(step, index, steps.length))}
+      </View>
+    );
+  };
+
+  const renderMoney = (financial: FinancialSummary | null) => (
+    <View style={styles.tilesRow}>
+      <TouchableOpacity style={styles.tile} onPress={openMyProfile} activeOpacity={0.7}>
+        <Text style={styles.tileLabel}>Amount due</Text>
+        <Text style={[styles.tileValue, (financial?.totalDue ?? 0) > 0 && styles.tileValueDue]}>
+          {formatAmount(financial?.totalDue ?? 0, currency)}
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.tile} onPress={openMyProfile} activeOpacity={0.7}>
+        <Text style={styles.tileLabel}>Your credit</Text>
+        <Text
+          style={[styles.tileValue, (financial?.credit ?? 0) > 0 && styles.tileValueCredit]}
+        >
+          {formatAmount(financial?.credit ?? 0, currency)}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderActions = () => (
+    <View style={styles.actionsRow}>
+      <TouchableOpacity style={styles.actionButton} onPress={requestLesson} activeOpacity={0.8}>
+        <Ionicons name="calendar-outline" size={20} color={colors.text.inverse} />
+        <Text style={styles.actionText}>Request a lesson</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.actionButton, styles.actionButtonAlt]}
+        onPress={() => navigation.navigate('RequestExam')}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="ribbon-outline" size={20} color={colors.primary[700]} />
+        <Text style={[styles.actionText, styles.actionTextAlt]}>Request an exam</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderLinks = () => (
+    <View style={styles.linksRow}>
+      {[
+        { label: 'My lessons', route: 'MyLessons', icon: 'list-outline' },
+        { label: 'My profile', route: 'MyProfile', icon: 'person-outline' },
+        { label: 'Enrollment', route: 'MyEnrollmentRequests', icon: 'school-outline' },
+        { label: 'Schools', route: 'SchoolsList', icon: 'business-outline' },
+      ].map((link) => (
+        <TouchableOpacity
+          key={link.route}
+          style={styles.linkChip}
+          onPress={() => (link.route === 'MyProfile' ? openMyProfile() : navigation.navigate(link.route))}
+        >
+          <Ionicons name={link.icon as any} size={16} color={colors.text.secondary} />
+          <Text style={styles.linkText}>{link.label}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+
+  const renderBody = () => {
+    if (loading && enrollment === undefined) {
+      return (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={colors.primary[600]} />
+        </View>
+      );
+    }
+    if (error && !data) {
+      return (
+        <View style={styles.heroCard}>
+          <Ionicons name="cloud-offline-outline" size={32} color={colors.error[600]} />
+          <Text style={styles.heroText}>{error}</Text>
+          <TouchableOpacity style={styles.primaryButton} onPress={load}>
+            <Text style={styles.primaryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    if (!enrollment || !data) {
+      return renderNotEnrolled();
+    }
+    return (
+      <>
+        {error ? <Text style={styles.errorBanner}>{error}</Text> : null}
+        {renderNextLesson(data.lessons)}
+        {renderJourney(data)}
+        {renderMoney(data.financial)}
+        {renderActions()}
+        {renderLinks()}
+      </>
+    );
+  };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Hello,</Text>
-          <Text style={styles.userName}>{user?.firstName || 'Student'}</Text>
-        </View>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-          <Ionicons name="log-out-outline" size={24} color={colors.text.secondary} />
-        </TouchableOpacity>
-      </View>
-
+      {renderHeader()}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primary[600]]}
+          />
+        }
       >
-        {/* Menu Grid */}
-        <View style={styles.menuGrid}>
-          {menuItems.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.menuCard}
-              onPress={() => openRoute(item.route)}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.menuIconContainer, { backgroundColor: item.bgColor }]}>
-                <Ionicons name={item.icon as any} size={28} color={item.color} />
-              </View>
-              <Text style={styles.menuTitle}>{item.title}</Text>
-              <Text style={styles.menuDescription}>{item.description}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {renderBody()}
       </ScrollView>
     </View>
   );
@@ -193,18 +450,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.xl,
     paddingTop: spacing['4xl'],
-    paddingBottom: spacing.xl,
+    paddingBottom: spacing.lg,
     backgroundColor: colors.background.primary,
+  },
+  headerText: {
+    flex: 1,
   },
   greeting: {
     fontSize: typography.size.base,
     color: colors.text.secondary,
-    marginBottom: spacing.xs,
   },
   userName: {
     fontSize: typography.size['2xl'],
     fontWeight: typography.weight.bold,
     color: colors.text.primary,
+  },
+  schoolName: {
+    marginTop: spacing.xs,
+    fontSize: typography.size.sm,
+    color: colors.text.tertiary,
   },
   logoutButton: {
     width: 44,
@@ -219,36 +483,311 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: spacing.xl,
+    gap: spacing.base,
+    paddingBottom: spacing['3xl'],
   },
-  menuGrid: {
+  center: {
+    paddingVertical: spacing['5xl'],
+    alignItems: 'center',
+  },
+  errorBanner: {
+    color: colors.error[600],
+    fontSize: typography.size.sm,
+  },
+
+  // Hors inscription / erreur
+  heroCard: {
+    backgroundColor: colors.background.primary,
+    borderRadius: 20,
+    padding: spacing.xl,
+    alignItems: 'center',
+    gap: spacing.md,
+    ...shadows.sm,
+  },
+  heroTitle: {
+    fontSize: typography.size.xl,
+    fontWeight: typography.weight.bold,
+    color: colors.text.primary,
+  },
+  heroText: {
+    fontSize: typography.size.sm,
+    color: colors.text.secondary,
+    textAlign: 'center',
+    lineHeight: typography.size.sm * typography.lineHeight.normal,
+  },
+  primaryButton: {
+    alignSelf: 'stretch',
+    backgroundColor: colors.primary[600],
+    borderRadius: 12,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
+  primaryButtonText: {
+    color: colors.text.inverse,
+    fontWeight: typography.weight.semibold,
+    fontSize: typography.size.base,
+  },
+  secondaryButton: {
+    alignSelf: 'stretch',
+    borderRadius: 12,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border.default,
+  },
+  secondaryButtonText: {
+    color: colors.text.primary,
+    fontWeight: typography.weight.medium,
+  },
+
+  // Prochaine leçon
+  nextCard: {
+    backgroundColor: colors.primary[600],
+    borderRadius: 20,
+    padding: spacing.xl,
+    ...shadows.md,
+  },
+  nextLabel: {
+    color: colors.primary[100],
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.semibold,
+    letterSpacing: 1,
+    marginBottom: spacing.sm,
+  },
+  nextRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  nextTitle: {
+    color: colors.text.inverse,
+    fontSize: typography.size['2xl'],
+    fontWeight: typography.weight.bold,
+  },
+  countdownPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.primary[50],
+    borderRadius: 999,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  countdownText: {
+    color: colors.primary[700],
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
+  },
+  nextWhen: {
+    color: colors.text.inverse,
+    fontSize: typography.size.base,
+    marginTop: spacing.sm,
+  },
+  nextMeta: {
+    color: colors.primary[100],
+    fontSize: typography.size.sm,
+    marginTop: spacing.xs,
+  },
+  nextActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+  },
+  inverseButton: {
+    backgroundColor: colors.background.primary,
+    borderRadius: 12,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.lg,
+  },
+  inverseButtonText: {
+    color: colors.primary[700],
+    fontWeight: typography.weight.semibold,
+  },
+  ghostButton: {
+    borderRadius: 12,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.primary[300],
+  },
+  ghostButtonText: {
+    color: colors.text.inverse,
+    fontWeight: typography.weight.medium,
+  },
+
+  // Parcours
+  card: {
+    backgroundColor: colors.background.primary,
+    borderRadius: 20,
+    padding: spacing.xl,
+    ...shadows.sm,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.base,
+  },
+  cardTitle: {
+    fontSize: typography.size.lg,
+    fontWeight: typography.weight.bold,
+    color: colors.text.primary,
+  },
+  cardLink: {
+    fontSize: typography.size.sm,
+    color: colors.primary[600],
+    fontWeight: typography.weight.medium,
+  },
+  stepRow: {
+    flexDirection: 'row',
+  },
+  stepRail: {
+    width: 36,
+    alignItems: 'center',
+  },
+  stepDot: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.background.tertiary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepDotCurrent: {
+    backgroundColor: colors.primary[50],
+    borderWidth: 2,
+    borderColor: colors.primary[600],
+  },
+  stepDotDone: {
+    backgroundColor: colors.success[50],
+  },
+  stepLine: {
+    flex: 1,
+    width: 2,
+    minHeight: spacing.base,
+    backgroundColor: colors.border.default,
+    marginVertical: spacing.xs,
+  },
+  stepLineDone: {
+    backgroundColor: colors.success[500],
+  },
+  stepBody: {
+    flex: 1,
+    marginLeft: spacing.md,
+    paddingBottom: spacing.lg,
+  },
+  stepBodyCurrent: {
+    backgroundColor: colors.primary[50],
+    borderRadius: 12,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    paddingBottom: spacing.md,
+  },
+  stepTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  stepTitle: {
+    fontSize: typography.size.base,
+    fontWeight: typography.weight.semibold,
+    color: colors.text.primary,
+  },
+  stepTitleMuted: {
+    color: colors.text.tertiary,
+  },
+  currentPill: {
+    backgroundColor: colors.primary[600],
+    borderRadius: 999,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+  },
+  currentPillText: {
+    color: colors.text.inverse,
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.semibold,
+  },
+  stepDetail: {
+    fontSize: typography.size.sm,
+    color: colors.text.secondary,
+    marginTop: 2,
+  },
+
+  // Dû / avoir
+  tilesRow: {
+    flexDirection: 'row',
     gap: spacing.base,
   },
-  menuCard: {
-    width: '48%',
+  tile: {
+    flex: 1,
     backgroundColor: colors.background.primary,
     borderRadius: 16,
     padding: spacing.lg,
     ...shadows.sm,
   },
-  menuIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
-  },
-  menuTitle: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.primary,
-    marginBottom: spacing.xs,
-  },
-  menuDescription: {
+  tileLabel: {
     fontSize: typography.size.sm,
     color: colors.text.secondary,
-    lineHeight: typography.size.sm * typography.lineHeight.normal,
+    marginBottom: spacing.xs,
+  },
+  tileValue: {
+    fontSize: typography.size.xl,
+    fontWeight: typography.weight.bold,
+    color: colors.text.primary,
+  },
+  tileValueDue: {
+    color: colors.warning[600],
+  },
+  tileValueCredit: {
+    color: colors.success[600],
+  },
+
+  // Actions
+  actionsRow: {
+    flexDirection: 'row',
+    gap: spacing.base,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primary[600],
+    borderRadius: 14,
+    paddingVertical: spacing.md + 2,
+  },
+  actionButtonAlt: {
+    backgroundColor: colors.primary[50],
+  },
+  actionText: {
+    color: colors.text.inverse,
+    fontWeight: typography.weight.semibold,
+    fontSize: typography.size.sm,
+  },
+  actionTextAlt: {
+    color: colors.primary[700],
+  },
+
+  // Liens
+  linksRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  linkChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.background.primary,
+    borderRadius: 999,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+  },
+  linkText: {
+    fontSize: typography.size.sm,
+    color: colors.text.secondary,
   },
 });

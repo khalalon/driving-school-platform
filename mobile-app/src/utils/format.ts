@@ -41,6 +41,27 @@ export const formatDateTime = (iso: string | null | undefined, fallback = 'Date 
   return date ? `${formatDate(iso)} at ${formatTime(iso)}` : fallback;
 };
 
+/**
+ * Compte à rebours vers un instant : « Started », « in 45 min », « in 2 h 05 min », « in 3 days »
+ * (ou le texte de repli si la date est absente). Au-delà de 24 h on compte en jours calendaires.
+ */
+export const formatCountdown = (
+  iso: string | null | undefined,
+  now: Date = new Date(),
+  fallback = 'Date TBD'
+): string => {
+  const date = parse(iso);
+  if (!date) return fallback;
+  const diffMs = date.getTime() - now.getTime();
+  if (diffMs <= 0) return 'Started';
+  const minutes = Math.round(diffMs / 60000);
+  if (minutes < 60) return `in ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `in ${hours} h ${String(minutes % 60).padStart(2, '0')} min`;
+  const days = Math.ceil(hours / 24);
+  return `in ${days} day${days === 1 ? '' : 's'}`;
+};
+
 /** Jour local `YYYY-MM-DD` (filtre `date` de L1), sans passer par l'UTC d'`toISOString`. */
 export const toLocalDateKey = (date: Date = new Date()): string => {
   const mm = String(date.getMonth() + 1).padStart(2, '0');

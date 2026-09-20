@@ -534,7 +534,7 @@ docker compose up -d --build api && (cd services/api && npx tsc --noEmit && npm 
 ```
 **Hors périmètre** : objectif de leçons par type (D-26), migration (aucune : `lessons` suffit).
 
-### - [ ] 8.2 — Accueil élève « My journey »
+### - [x] 8.2 — Accueil élève « My journey »
 **Objectif** : `StudentDashboard` réécrit : (1) **prochaine leçon** (L1 `status=scheduled`, la première à venir) avec compte à rebours, instructeur, type, et « Cancel » si `canStudentCancel` (L3, motif facultatif) ; (2) **parcours** Code → examen théorique → Manœuvre → Parc → examen pratique, construit par une fonction pure `buildJourney(profile, exams, lessons)` (`src/models/Journey.ts`, testée) à partir de P8 (`completedLessonsByType`), X1 (statut / résultat des examens) et L1, selon D-45 (nombre de leçons effectuées par étape, examen demandé / planifié / réussi / ajourné, étape courante = dernière étape non conclue avec une activité) ; (3) **dû** et **avoir** (P11, devise de l'école) ; (4) actions « Request a lesson » (L2) et « Request an exam » (X2) ; (5) accès conservés : My lessons, My exams, My profile, Enrollment status, Browse schools. Sans inscription approuvée (E3) : accueil réduit à « Browse schools » et « Enrollment status ». Rafraîchi à chaque retour sur l'écran (`useFocusEffect`).
 **Fichiers** : `mobile-app/src/models/Journey.ts` (nouveau) + `mobile-app/src/models/__tests__/Journey.test.ts` (nouveau), `mobile-app/src/models/Profile.ts`, `mobile-app/src/screens/student/StudentDashboard.tsx`, `mobile-app/src/utils/format.ts` (compte à rebours), `docs/ARCHITECTURE.md`.
 **Critère de validation** :
