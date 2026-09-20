@@ -543,7 +543,7 @@ grep -q 'completedLessonsByType' mobile-app/src/models/Profile.ts && grep -q 'bu
 ```
 **Hors périmètre** : itinéraire / carte (aucune adresse sur une leçon), objectifs de leçons, notifications.
 
-### - [ ] 8.3 — Accueil instructeur « Today »
+### - [x] 8.3 — Accueil instructeur « Today »
 **Objectif** : `InstructorDashboard` réécrit : (1) **bandeau des demandes** : leçons `pending` de l'école (L1 `scope=school`, avec le nombre de demandes de code regroupables, D-34), examens `pending` (X1), inscriptions `pending` (E4) — chaque compteur ouvre l'écran correspondant ; (2) **timeline du jour** : L1 `scope=mine`, `status=scheduled,completed`, `date=` aujourd'hui, une carte par leçon (heure, élève, type, durée), la leçon **en cours** (D-45 : `scheduledDate ≤ now < scheduledDate + durationMinutes`, sinon la prochaine du jour) mise en avant avec « Present » / « Absent » directement sur la carte (L7, même modale que `TodayLessonsScreen` pour note et commentaire), les leçons passées marquées faites / absent, les autres à venir ; (3) **examens du jour** (X1 `status=scheduled`, jour local) avec « Result » → `TodayExams` ; (4) **cette semaine** : leçons `scheduled` de l'instructeur réparties sur les 7 prochains jours ; (5) accès conservés : Book for a student, Enrollment requests, Today's lessons / exams. Rafraîchi à chaque retour sur l'écran.
 **Fichiers** : `mobile-app/src/screens/instructor/InstructorDashboard.tsx`, `mobile-app/src/models/Lesson.ts` (`isLessonInProgress`, testée), `mobile-app/src/models/__tests__/Lesson.test.ts`, `docs/ARCHITECTURE.md`.
 **Critère de validation** :

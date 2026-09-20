@@ -118,6 +118,38 @@ export const canStudentCancel = (lesson: Lesson, now: Date = new Date()): boolea
   return scheduled - now.getTime() >= LESSON_CANCEL_HOURS * 60 * 60 * 1000;
 };
 
+/** Durée retenue quand la leçon n'en porte pas (planification sans durée : jamais par L5 / L4). */
+const DEFAULT_DURATION_MINUTES = 60;
+
+/**
+ * Leçon en cours (D-45) : planifiée, et `[scheduledDate, scheduledDate + durationMinutes[`
+ * contient l'instant présent.
+ */
+export const isLessonInProgress = (
+  lesson: Pick<Lesson, 'status' | 'scheduledDate' | 'durationMinutes'>,
+  now: Date = new Date()
+): boolean => {
+  if (lesson.status !== LessonStatus.SCHEDULED || !lesson.scheduledDate) return false;
+  const start = new Date(lesson.scheduledDate).getTime();
+  const end = start + (lesson.durationMinutes ?? DEFAULT_DURATION_MINUTES) * 60 * 1000;
+  return start <= now.getTime() && now.getTime() < end;
+};
+
+/**
+ * La leçon à mettre en avant sur l'accueil instructeur (D-45) : celle en cours, sinon la
+ * prochaine planifiée (début à venir), sinon aucune.
+ */
+export const pickCurrentLesson = (lessons: Lesson[], now: Date = new Date()): Lesson | null => {
+  const scheduled = lessons
+    .filter((l) => l.status === LessonStatus.SCHEDULED && l.scheduledDate)
+    .sort((a, b) => (a.scheduledDate as string).localeCompare(b.scheduledDate as string));
+  return (
+    scheduled.find((l) => isLessonInProgress(l, now)) ??
+    scheduled.find((l) => new Date(l.scheduledDate as string).getTime() > now.getTime()) ??
+    null
+  );
+};
+
 /** L2 : demande de l'élève, adressée à l'école ; l'instructeur n'est qu'une préférence (D-32). */
 export interface RequestLessonData {
   type: LessonType;

@@ -113,7 +113,7 @@ Le détail par écran est dans `API_CONTRACT.md`. Résumé des dépendances rée
 |---|---|
 | Login / Register / InstructorRegistration | auth (A1, A2 avec `schoolCode` en une étape depuis 6.1) |
 | StudentDashboard (« My journey », 8.2) | enrollment (E3 : école active), lessons (L1 `status=pending,scheduled` : prochaine leçon, compte à rebours, L3 annulation D-24), exams (X1), student-profiles (P8 `completedLessonsByType`, P11 dû / avoir) — parcours Code → théorie → Manœuvre → Parc → pratique construit par `models/Journey.ts` (D-45, pur, testé) ; sans inscription approuvée : « Browse schools » / « Enrollment status » |
-| InstructorDashboard | aucun (menus) |
+| InstructorDashboard (« Today », 8.3) | lessons (L1 `scope=mine` du jour local : timeline, leçon en cours `pickCurrentLesson` (D-45) avec « Present » / « Absent » → L7 via `components/AttendanceModal` partagée avec `TodayLessons` ; L1 `scope=mine, status=scheduled` : charge des 7 prochains jours ; L1 `scope=school, status=pending` : demandes, dont codes regroupables D-34), exams (X1 `pending,scheduled` : demandes et examens du jour → `TodayExams`), enrollment (E4 `pending`, `schoolId` de A3) |
 | SchoolsList, SchoolDetail | schools, enrollment (bouton « Request Lesson » sans instructeur, ou « Request » depuis un instructeur = préférence D-32) |
 | BookLesson, MyLessons | lessons (L2 `{ type, requestedDate, preferredInstructorId?, notes? }`, L1, L3 — bouton « Cancel » masqué hors fenêtre D-24 par `canStudentCancel`, `CANCEL_WINDOW_CLOSED` géré), enrollment (E1) |
 | RequestExam, MyExams | exams |
