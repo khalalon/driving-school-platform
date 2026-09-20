@@ -43,7 +43,7 @@ export const formatDateTime = (iso: string | null | undefined, fallback = 'Date 
 
 /**
  * Compte à rebours vers un instant : « Started », « in 45 min », « in 2 h 05 min », « in 3 days »
- * (ou le texte de repli si la date est absente). Au-delà de 24 h on compte en jours calendaires.
+ * (ou le texte de repli si la date est absente). Au-delà de 24 h on compte en jours (arrondi).
  */
 export const formatCountdown = (
   iso: string | null | undefined,
@@ -58,7 +58,7 @@ export const formatCountdown = (
   if (minutes < 60) return `in ${minutes} min`;
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `in ${hours} h ${String(minutes % 60).padStart(2, '0')} min`;
-  const days = Math.ceil(hours / 24);
+  const days = Math.max(1, Math.round(hours / 24));
   return `in ${days} day${days === 1 ? '' : 's'}`;
 };
 

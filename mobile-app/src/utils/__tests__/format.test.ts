@@ -11,6 +11,7 @@ describe('formatCountdown', () => {
     expect(formatCountdown('2026-09-20T12:05:00.000Z', now)).toBe('in 2 h 05 min');
     expect(formatCountdown('2026-09-22T09:00:00.000Z', now)).toBe('in 2 days');
     expect(formatCountdown('2026-09-21T10:30:00.000Z', now)).toBe('in 1 day');
+    expect(formatCountdown('2026-09-21T22:00:00.000Z', now)).toBe('in 2 days');
   });
 
   it('déjà commencé, ou date absente', () => {

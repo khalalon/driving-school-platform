@@ -239,6 +239,15 @@ export const InstructorDashboard = ({ navigation }: any) => {
   const renderLesson = (lesson: Lesson, current: Lesson | null, isLast: boolean) => {
     const isCurrent = current?.id === lesson.id;
     const isDone = lesson.status === LessonStatus.COMPLETED;
+    // Planifiée mais déjà passée sans présence pointée : à enregistrer (L7 reste possible)
+    const isOverdue =
+      !isDone &&
+      !isCurrent &&
+      lesson.status === LessonStatus.SCHEDULED &&
+      !!lesson.scheduledDate &&
+      new Date(lesson.scheduledDate).getTime() + (lesson.durationMinutes ?? 60) * 60000 <=
+        Date.now();
+    const canRecord = isCurrent || isOverdue;
     const dotColor = isDone
       ? lesson.attended === false
         ? colors.error[500]
@@ -280,13 +289,17 @@ export const InstructorDashboard = ({ navigation }: any) => {
               <View style={[styles.chip, styles.chipNow]}>
                 <Text style={[styles.chipText, styles.chipTextNow]}>Now</Text>
               </View>
+            ) : isOverdue ? (
+              <View style={[styles.chip, styles.chipOverdue]}>
+                <Text style={[styles.chipText, styles.chipTextOverdue]}>To record</Text>
+              </View>
             ) : null}
           </View>
           <Text style={styles.lessonMeta}>
             {LESSON_TYPE_LABELS[lesson.type] ?? lesson.type}
             {lesson.durationMinutes ? ` · ${lesson.durationMinutes} min` : ''}
           </Text>
-          {isCurrent ? (
+          {canRecord ? (
             <View style={styles.attendanceRow}>
               <TouchableOpacity
                 style={[styles.attendanceButton, styles.presentButton]}
@@ -729,6 +742,12 @@ const styles = StyleSheet.create({
   },
   chipNow: {
     backgroundColor: colors.primary[600],
+  },
+  chipOverdue: {
+    backgroundColor: colors.warning[50],
+  },
+  chipTextOverdue: {
+    color: colors.warning[600],
   },
   chipTextNow: {
     color: colors.text.inverse,
