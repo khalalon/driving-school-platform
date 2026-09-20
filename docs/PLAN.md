@@ -3,7 +3,7 @@
 Règles de lecture (voir `CLAUDE.md`, règles d'or 3 et 5) :
 - On travaille dans l'ordre, sur la première tâche non cochée. Une tâche = un commit (message Conventional Commits, scope = domaine ou `infra` / `mobile` / `docs` / `e2e`), poussé sur `origin/main` aussitôt. Les tâches d'une même phase s'enchaînent sans validation intermédiaire ; arrêt obligatoire en fin de phase, sur question ouverte non tranchée, sur échec de critère non réparable dans la tâche, ou sur choix produit non tranché (D-36, 18/09/2026).
 - Une tâche est cochée **seulement** quand sa commande « Critère de validation » a été exécutée et que sa sortie a été montrée. Pas d'exception.
-- Si une tâche indique « Dépend de : Q-xx » et que la question n'est pas tranchée dans `DECISIONS.md`, on **s'arrête** et on demande. Au 19/09/2026 (soir) aucune question n'est ouverte : Q-17 à Q-21 → D-40 à D-44 (Phase 7 ; D-44 = statu quo de D-42, sans tâche).
+- Si une tâche indique « Dépend de : Q-xx » et que la question n'est pas tranchée dans `DECISIONS.md`, on **s'arrête** et on demande. Au 20/09/2026 aucune question n'est ouverte : Q-17 à Q-21 → D-40 à D-44 (Phase 7 ; D-44 = statu quo de D-42, sans tâche) ; la Phase 8 applique D-45 (accueils « wow »).
 - Chaque tâche livrée ajoute une ligne dans `CHANGELOG.md` et, si elle touche une route, met à jour `docs/API_CONTRACT.md` dans le même commit.
 - Les commandes sont écrites pour Git Bash (Windows) ou un shell POSIX, depuis la racine du dépôt sauf `cd` explicite.
 
@@ -521,6 +521,48 @@ grep -q 'EXAM_PROCEDURES' mobile-app/src/models/Exam.ts && grep -q 'Record convo
 
 ---
 
-## Après la Phase 7
+## Phase 8 — Accueil « wow » (proposition de design du 20/09/2026, D-45)
+
+Les deux tableaux de bord (grilles de menus) deviennent des accueils qui racontent le parcours : élève « My journey », instructeur « Today », puis une barre d'onglets par rôle. Aucune route nouvelle ; une seule extension de réponse (8.1). Le parcours affiché est informatif (D-26 : aucun seuil, aucun blocage) — règles d'affichage dans D-45.
+
+### - [ ] 8.1 — Compteurs de leçons par type dans P1 / P8 (D-45)
+**Objectif** : `StudentProfile` / `MyProfile` exposent `completedLessonsByType: { CODE, Manœuvre, Parc }` = leçons `completed` **avec présence** (`attended = true`, D-33) par type, comptées dans `lessons` (même base que `completedLessons`) ; contrat §6 (P1, P8) mis à jour dans le même commit ; test de repository (SQL) et e2e (P8 à zéro par type ; P1 après L7 compte la leçon `Parc` du chemin critique).
+**Fichiers** : `services/api/src/modules/student/{types,repositories}`, `services/api/src/modules/student/repositories/__tests__/student.repositories.test.ts`, `tests/e2e/profiles.e2e.test.ts`, `tests/e2e/critical-path.e2e.test.ts`, `docs/API_CONTRACT.md`.
+**Critère de validation** :
+```bash
+docker compose up -d --build api && (cd services/api && npx tsc --noEmit && npm run lint && npm test -- --silent) && (cd tests && npx jest e2e/profiles e2e/critical-path -t 'par type') && grep -q 'completedLessonsByType' docs/API_CONTRACT.md && echo OK
+```
+**Hors périmètre** : objectif de leçons par type (D-26), migration (aucune : `lessons` suffit).
+
+### - [ ] 8.2 — Accueil élève « My journey »
+**Objectif** : `StudentDashboard` réécrit : (1) **prochaine leçon** (L1 `status=scheduled`, la première à venir) avec compte à rebours, instructeur, type, et « Cancel » si `canStudentCancel` (L3, motif facultatif) ; (2) **parcours** Code → examen théorique → Manœuvre → Parc → examen pratique, construit par une fonction pure `buildJourney(profile, exams, lessons)` (`src/models/Journey.ts`, testée) à partir de P8 (`completedLessonsByType`), X1 (statut / résultat des examens) et L1, selon D-45 (nombre de leçons effectuées par étape, examen demandé / planifié / réussi / ajourné, étape courante = dernière étape non conclue avec une activité) ; (3) **dû** et **avoir** (P11, devise de l'école) ; (4) actions « Request a lesson » (L2) et « Request an exam » (X2) ; (5) accès conservés : My lessons, My exams, My profile, Enrollment status, Browse schools. Sans inscription approuvée (E3) : accueil réduit à « Browse schools » et « Enrollment status ». Rafraîchi à chaque retour sur l'écran (`useFocusEffect`).
+**Fichiers** : `mobile-app/src/models/Journey.ts` (nouveau) + `mobile-app/src/models/__tests__/Journey.test.ts` (nouveau), `mobile-app/src/models/Profile.ts`, `mobile-app/src/screens/student/StudentDashboard.tsx`, `mobile-app/src/utils/format.ts` (compte à rebours), `docs/ARCHITECTURE.md`.
+**Critère de validation** :
+```bash
+grep -q 'completedLessonsByType' mobile-app/src/models/Profile.ts && grep -q 'buildJourney' mobile-app/src/screens/student/StudentDashboard.tsx && ! grep -q 'menuItems' mobile-app/src/screens/student/StudentDashboard.tsx && (cd mobile-app && npx tsc --noEmit && npx jest --silent && npx jest models/__tests__/Journey -t 'parcours') && echo OK
+```
+**Hors périmètre** : itinéraire / carte (aucune adresse sur une leçon), objectifs de leçons, notifications.
+
+### - [ ] 8.3 — Accueil instructeur « Today »
+**Objectif** : `InstructorDashboard` réécrit : (1) **bandeau des demandes** : leçons `pending` de l'école (L1 `scope=school`, avec le nombre de demandes de code regroupables, D-34), examens `pending` (X1), inscriptions `pending` (E4) — chaque compteur ouvre l'écran correspondant ; (2) **timeline du jour** : L1 `scope=mine`, `status=scheduled,completed`, `date=` aujourd'hui, une carte par leçon (heure, élève, type, durée), la leçon **en cours** (D-45 : `scheduledDate ≤ now < scheduledDate + durationMinutes`, sinon la prochaine du jour) mise en avant avec « Present » / « Absent » directement sur la carte (L7, même modale que `TodayLessonsScreen` pour note et commentaire), les leçons passées marquées faites / absent, les autres à venir ; (3) **examens du jour** (X1 `status=scheduled`, jour local) avec « Result » → `TodayExams` ; (4) **cette semaine** : leçons `scheduled` de l'instructeur réparties sur les 7 prochains jours ; (5) accès conservés : Book for a student, Enrollment requests, Today's lessons / exams. Rafraîchi à chaque retour sur l'écran.
+**Fichiers** : `mobile-app/src/screens/instructor/InstructorDashboard.tsx`, `mobile-app/src/models/Lesson.ts` (`isLessonInProgress`, testée), `mobile-app/src/models/__tests__/Lesson.test.ts`, `docs/ARCHITECTURE.md`.
+**Critère de validation** :
+```bash
+grep -q 'markAttendance' mobile-app/src/screens/instructor/InstructorDashboard.tsx && grep -q "scope: 'school'" mobile-app/src/screens/instructor/InstructorDashboard.tsx && ! grep -q 'sections' mobile-app/src/screens/instructor/InstructorDashboard.tsx && (cd mobile-app && npx tsc --noEmit && npx jest --silent && npx jest models/__tests__/Lesson -t 'en cours') && echo OK
+```
+**Hors périmètre** : agenda multi-jours, réaffectation d'une leçon.
+
+### - [ ] 8.4 — Barre d'onglets par rôle
+**Objectif** : `AppNavigator` : une pile par rôle dont la racine est un `createBottomTabNavigator` (`@react-navigation/bottom-tabs`, déjà installé) — élève : Home (`StudentDashboard`), Lessons (`MyLessons`), Exams (`MyExams`), Profile (`MyProfile`, qui résout lui-même l'école de l'inscription approuvée par E3 quand il est ouvert sans paramètre) ; instructeur : Today (`InstructorDashboard`), Requests (`LessonRequests`), Exams (`ExamRequests`), Students (`BookForStudent`). Les autres écrans restent dans la pile au-dessus des onglets ; les boutons « retour » codés en dur des écrans racines disparaissent ; `navigation/types.ts` typé en conséquence (`NavigatorScreenParams`).
+**Fichiers** : `mobile-app/src/navigation/{AppNavigator.tsx,types.ts}`, `mobile-app/src/screens/student/my-profile/MyProfileScreen.tsx`, les écrans devenus onglets (en-tête sans bouton retour), `docs/ARCHITECTURE.md`.
+**Critère de validation** :
+```bash
+grep -q 'createBottomTabNavigator' mobile-app/src/navigation/AppNavigator.tsx && grep -q 'NavigatorScreenParams' mobile-app/src/navigation/types.ts && (cd mobile-app && npx tsc --noEmit && npx jest --silent) && echo OK
+```
+**Hors périmètre** : deep links, mode sombre.
+
+---
+
+## Après la Phase 8
 
 La recette finale (parcours D-15 sur un téléphone via Expo Go, backend en Docker) est faite **par l'humain**, hors de cette liste. Les fonctionnalités hors contrat (paiement en ligne, web, gestion des codes par écran) ne sont pas dans la v1.
