@@ -8,7 +8,7 @@
  * tarif pour ce type (D-30).
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../../context/AuthContext';
 import { lessonService } from '../../services/api/LessonService';
@@ -62,14 +63,17 @@ export const BookForStudentScreen = ({ navigation }: any) => {
   const [price, setPrice] = useState('');
   const [notes, setNotes] = useState('');
 
-  useEffect(() => {
-    loadSchoolData();
-  }, [schoolId]);
+  // Onglet (8.4) : la liste S6 est rechargée à chaque retour au premier plan
+  useFocusEffect(
+    useCallback(() => {
+      loadSchoolData();
+    }, [schoolId])
+  );
 
   const loadSchoolData = async () => {
     if (!schoolId) {
       Alert.alert('No school', 'Your account is not linked to a school yet.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
+        { text: 'OK', onPress: () => navigation.navigate('InstructorDashboard') },
       ]);
       return;
     }
@@ -179,7 +183,7 @@ export const BookForStudentScreen = ({ navigation }: any) => {
       Alert.alert(
         'Success',
         `Lesson booked for ${formatPersonName(selectedStudent, 'the student')}`,
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
+        [{ text: 'OK', onPress: () => navigation.navigate('InstructorDashboard') }]
       );
     } catch (error) {
       Alert.alert('Error', getApiErrorMessage(error, 'Failed to book lesson'));
@@ -191,14 +195,7 @@ export const BookForStudentScreen = ({ navigation }: any) => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Book for Student</Text>
+        <Text style={styles.headerTitle}>Students</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -478,14 +475,6 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.lg,
     backgroundColor: colors.background.primary,
     gap: spacing.md,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.background.tertiary,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   headerTitle: {
     fontSize: typography.size.xl,

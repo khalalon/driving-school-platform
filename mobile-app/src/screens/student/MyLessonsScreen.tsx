@@ -6,7 +6,7 @@
  * (`scheduled`, date confirmée), puis passe `completed` ; l'élève voit l'état de paiement (D-32).
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { lessonService } from '../../services/api/LessonService';
 import { getApiErrorCode, getApiErrorMessage } from '../../services/api/ApiError';
 import {
@@ -56,9 +57,12 @@ export const MyLessonsScreen = ({ navigation }: any) => {
   // Une seule inscription active (D-22) : toutes les leçons sont dans la même école
   const currency = useSchoolCurrency(lessons[0]?.schoolId);
 
-  useEffect(() => {
-    loadLessons();
-  }, []);
+  // Onglet (8.4) : rechargé à chaque retour au premier plan
+  useFocusEffect(
+    useCallback(() => {
+      loadLessons();
+    }, [])
+  );
 
   const loadLessons = async () => {
     try {
@@ -287,13 +291,6 @@ export const MyLessonsScreen = ({ navigation }: any) => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
-        </TouchableOpacity>
         <Text style={styles.headerTitle}>My Lessons</Text>
       </View>
 
@@ -354,14 +351,6 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.lg,
     backgroundColor: colors.background.primary,
     gap: spacing.md,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.background.tertiary,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   headerTitle: {
     fontSize: typography.size.xl,

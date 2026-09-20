@@ -9,7 +9,7 @@
  * un même créneau — un seul formulaire, puis un appel L5 par demande, avec récapitulatif.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -25,6 +25,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../../context/AuthContext';
 import { lessonService } from '../../services/api/LessonService';
@@ -80,10 +81,13 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
   const [selectedRequest, setSelectedRequest] = useState<Lesson | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
 
-  useEffect(() => {
-    loadRequests();
-    loadSchoolData();
-  }, [schoolId]);
+  // Onglet (8.4) : rechargé à chaque retour au premier plan
+  useFocusEffect(
+    useCallback(() => {
+      loadRequests();
+      loadSchoolData();
+    }, [schoolId])
+  );
 
   const loadRequests = async () => {
     try {
@@ -410,13 +414,6 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
-        </TouchableOpacity>
         <Text style={styles.headerTitle}>Lesson Requests</Text>
       </View>
 
@@ -704,14 +701,6 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.lg,
     backgroundColor: colors.background.primary,
     gap: spacing.md,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.background.tertiary,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   headerTitle: {
     fontSize: typography.size.xl,

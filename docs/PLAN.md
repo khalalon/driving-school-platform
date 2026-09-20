@@ -552,7 +552,7 @@ grep -q 'markAttendance' mobile-app/src/screens/instructor/InstructorDashboard.t
 ```
 **Hors périmètre** : agenda multi-jours, réaffectation d'une leçon.
 
-### - [ ] 8.4 — Barre d'onglets par rôle
+### - [x] 8.4 — Barre d'onglets par rôle
 **Objectif** : `AppNavigator` : une pile par rôle dont la racine est un `createBottomTabNavigator` (`@react-navigation/bottom-tabs`, déjà installé) — élève : Home (`StudentDashboard`), Lessons (`MyLessons`), Exams (`MyExams`), Profile (`MyProfile`, qui résout lui-même l'école de l'inscription approuvée par E3 quand il est ouvert sans paramètre) ; instructeur : Today (`InstructorDashboard`), Requests (`LessonRequests`), Exams (`ExamRequests`), Students (`BookForStudent`). Les autres écrans restent dans la pile au-dessus des onglets ; les boutons « retour » codés en dur des écrans racines disparaissent ; `navigation/types.ts` typé en conséquence (`NavigatorScreenParams`).
 **Fichiers** : `mobile-app/src/navigation/{AppNavigator.tsx,types.ts}`, `mobile-app/src/screens/student/my-profile/MyProfileScreen.tsx`, les écrans devenus onglets (en-tête sans bouton retour), `docs/ARCHITECTURE.md`.
 **Critère de validation** :

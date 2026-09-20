@@ -69,7 +69,7 @@ export const RequestExamScreen = ({ navigation }: any) => {
       Alert.alert(
         'Request Sent!',
         'Your exam request has been submitted. The instructor will review and schedule it for you.',
-        [{ text: 'OK', onPress: () => navigation.navigate('MyExams') }]
+        [{ text: 'OK', onPress: () => navigation.navigate('StudentTabs', { screen: 'MyExams' }) }]
       );
     } catch (error) {
       Alert.alert('Error', getApiErrorMessage(error, 'Failed to submit request'));

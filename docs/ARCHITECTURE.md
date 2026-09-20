@@ -107,7 +107,7 @@ Conséquences : `/api/profiles/*` et `/api/student-profiles/*` sont **joignables
 ## 6. Qui appelle quoi
 
 ### Mobile → backend (via Nginx :80)
-Le détail par écran est dans `API_CONTRACT.md`. Résumé des dépendances réelles :
+Le détail par écran est dans `API_CONTRACT.md`. Navigation (8.4, `src/navigation/AppNavigator.tsx`) : une pile par rôle dont la racine est une barre d'onglets — élève `StudentTabs` (Home = `StudentDashboard`, Lessons = `MyLessons`, Exams = `MyExams`, Profile = `MyProfile`, qui résout l'école par E3 quand il est ouvert sans paramètre), instructeur `InstructorTabs` (Today = `InstructorDashboard`, Requests = `LessonRequests`, Exams = `ExamRequests`, Students = `BookForStudent`) ; les autres écrans s'empilent au-dessus avec leur bouton retour ; les onglets se rechargent au focus. Résumé des dépendances réelles :
 
 | Écran mobile | Domaines appelés |
 |---|---|

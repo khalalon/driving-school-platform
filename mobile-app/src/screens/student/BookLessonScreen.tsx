@@ -118,7 +118,7 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
       Alert.alert(
         'Request Sent!',
         'Your lesson request has been submitted. An instructor will review and schedule it soon.',
-        [{ text: 'OK', onPress: () => navigation.navigate('MyLessons') }]
+        [{ text: 'OK', onPress: () => navigation.navigate('StudentTabs', { screen: 'MyLessons' }) }]
       );
     } catch (error) {
       Alert.alert('Error', getApiErrorMessage(error, 'Failed to request lesson'));

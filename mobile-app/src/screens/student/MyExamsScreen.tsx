@@ -8,7 +8,7 @@
  * session ATTT (`EXAM_PROCEDURES`).
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { examService } from '../../services/api/ExamService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
 import {
@@ -53,9 +54,12 @@ export const MyExamsScreen = ({ navigation }: any) => {
   // Une seule inscription active (D-22) : tous les examens sont dans la même école
   const currency = useSchoolCurrency(exams[0]?.schoolId);
 
-  useEffect(() => {
-    loadExams();
-  }, []);
+  // Onglet (8.4) : rechargé à chaque retour au premier plan
+  useFocusEffect(
+    useCallback(() => {
+      loadExams();
+    }, [])
+  );
 
   const loadExams = async () => {
     try {
@@ -278,13 +282,6 @@ export const MyExamsScreen = ({ navigation }: any) => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
-        </TouchableOpacity>
         <Text style={styles.headerTitle}>My Exams</Text>
       </View>
 
@@ -345,14 +342,6 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.lg,
     backgroundColor: colors.background.primary,
     gap: spacing.md,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.background.tertiary,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   headerTitle: {
     fontSize: typography.size.xl,
