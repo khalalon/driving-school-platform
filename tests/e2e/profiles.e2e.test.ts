@@ -12,6 +12,7 @@ interface Profile {
   email: string;
   totalLessons: number;
   completedLessons: number;
+  completedLessonsByType: { CODE: number; Manœuvre: number; Parc: number };
   totalExams: number;
   passedExams: number;
   notes?: string | null;
@@ -36,14 +37,20 @@ describe('Fiches élève (P1–P11)', () => {
     instructorToken = await ensureInstructorToken();
   });
 
-  test('P8 — l’élève approuvé lit sa propre fiche : 200, compteurs à zéro, sans notes', async () => {
+  test('P8 — l’élève approuvé lit sa propre fiche : 200, compteurs à zéro (aussi par type), sans notes', async () => {
     const res = await api()
       .get(`/api/student-profiles/me/schools/${SEED.schoolId}/profile`)
       .set(bearer(studentToken));
     expectStatus(res, 200, 'P8 ma fiche');
     const body = res.body as Profile;
     expect(body.id).toBe(studentId);
-    expect(body).toMatchObject({ totalLessons: 0, completedLessons: 0, totalExams: 0, passedExams: 0 });
+    expect(body).toMatchObject({
+      totalLessons: 0,
+      completedLessons: 0,
+      totalExams: 0,
+      passedExams: 0,
+    });
+    expect(body.completedLessonsByType).toEqual({ CODE: 0, Manœuvre: 0, Parc: 0 });
     expect(typeof body.firstName).toBe('string');
     expect(body).not.toHaveProperty('notes');
   });

@@ -525,7 +525,7 @@ grep -q 'EXAM_PROCEDURES' mobile-app/src/models/Exam.ts && grep -q 'Record convo
 
 Les deux tableaux de bord (grilles de menus) deviennent des accueils qui racontent le parcours : élève « My journey », instructeur « Today », puis une barre d'onglets par rôle. Aucune route nouvelle ; une seule extension de réponse (8.1). Le parcours affiché est informatif (D-26 : aucun seuil, aucun blocage) — règles d'affichage dans D-45.
 
-### - [ ] 8.1 — Compteurs de leçons par type dans P1 / P8 (D-45)
+### - [x] 8.1 — Compteurs de leçons par type dans P1 / P8 (D-45)
 **Objectif** : `StudentProfile` / `MyProfile` exposent `completedLessonsByType: { CODE, Manœuvre, Parc }` = leçons `completed` **avec présence** (`attended = true`, D-33) par type, comptées dans `lessons` (même base que `completedLessons`) ; contrat §6 (P1, P8) mis à jour dans le même commit ; test de repository (SQL) et e2e (P8 à zéro par type ; P1 après L7 compte la leçon `Parc` du chemin critique).
 **Fichiers** : `services/api/src/modules/student/{types,repositories}`, `services/api/src/modules/student/repositories/__tests__/student.repositories.test.ts`, `tests/e2e/profiles.e2e.test.ts`, `tests/e2e/critical-path.e2e.test.ts`, `docs/API_CONTRACT.md`.
 **Critère de validation** :

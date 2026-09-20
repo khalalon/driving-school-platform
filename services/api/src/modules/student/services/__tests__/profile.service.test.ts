@@ -20,6 +20,7 @@ describe('ProfileService', () => {
     notes: 'Note privée de l’instructeur',
     totalLessons: 3,
     completedLessons: 2,
+    completedLessonsByType: { CODE: 1, Manœuvre: 1, Parc: 0 },
     totalExams: 1,
     passedExams: 0,
   };

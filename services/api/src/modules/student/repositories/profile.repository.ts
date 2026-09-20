@@ -1,10 +1,18 @@
 import { Pool } from 'pg';
+import { LessonType } from '../../../types/domain';
 import {
   ExamHistory,
   FinancialSummary,
   LessonHistory,
   StudentProfile,
 } from '../types/student.types';
+
+/** Ligne de P1 / P8 : les compteurs par type arrivent à plat, puis sont regroupés (D-45). */
+type StudentProfileRow = Omit<StudentProfile, 'completedLessonsByType'> & {
+  completedCode: number;
+  completedManoeuvre: number;
+  completedParc: number;
+};
 
 export interface IProfileRepository {
   getStudentProfile(userId: string, schoolId: string): Promise<StudentProfile | null>;
@@ -39,8 +47,12 @@ export interface IProfileRepository {
 export class ProfileRepository implements IProfileRepository {
   constructor(private readonly db: Pool) {}
 
+  /**
+   * Compteurs par type (D-45) : leçons `completed` avec présence, comme `completed_lessons`
+   * (L7 n'incrémente que si `attended = true`, D-33), mais comptées dans `lessons`.
+   */
   async getStudentProfile(userId: string, schoolId: string): Promise<StudentProfile | null> {
-    const result = await this.db.query<StudentProfile>(
+    const result = await this.db.query<StudentProfileRow>(
       `SELECT u.id, u.first_name AS "firstName", u.last_name AS "lastName", u.email,
               s.phone, s.address, s.date_of_birth AS "dateOfBirth",
               s.license_number AS "licenseNumber", s.enrollment_date AS "enrollmentDate",
@@ -50,6 +62,8 @@ export class ProfileRepository implements IProfileRepository {
                 WHERE l.student_id = s.id AND l.status IN ('scheduled', 'completed'))::int
                 AS "totalLessons",
               COALESCE(sls.completed_lessons, 0)::int AS "completedLessons",
+              done.code AS "completedCode", done.manoeuvre AS "completedManoeuvre",
+              done.parc AS "completedParc",
               (SELECT count(*) FROM exams e
                 WHERE e.student_id = s.id AND e.status IN ('scheduled', 'completed'))::int
                 AS "totalExams",
@@ -58,10 +72,27 @@ export class ProfileRepository implements IProfileRepository {
        FROM students s
        JOIN users u ON u.id = s.user_id
        LEFT JOIN student_lesson_stats sls ON sls.student_id = s.id AND sls.school_id = s.school_id
+       LEFT JOIN LATERAL (
+         SELECT (count(*) FILTER (WHERE l.type = $3))::int AS code,
+                (count(*) FILTER (WHERE l.type = $4))::int AS manoeuvre,
+                (count(*) FILTER (WHERE l.type = $5))::int AS parc
+         FROM lessons l
+         WHERE l.student_id = s.id AND l.status = 'completed' AND l.attended = TRUE
+       ) done ON TRUE
        WHERE s.user_id = $1 AND s.school_id = $2`,
-      [userId, schoolId]
+      [userId, schoolId, LessonType.CODE, LessonType.MANOEUVRE, LessonType.PARC]
     );
-    return result.rows[0] ?? null;
+    const row = result.rows[0];
+    if (!row) return null;
+    const { completedCode, completedManoeuvre, completedParc, ...profile } = row;
+    return {
+      ...profile,
+      completedLessonsByType: {
+        [LessonType.CODE]: completedCode,
+        [LessonType.MANOEUVRE]: completedManoeuvre,
+        [LessonType.PARC]: completedParc,
+      },
+    };
   }
 
   async getStudentLessons(userId: string, schoolId: string): Promise<LessonHistory[]> {

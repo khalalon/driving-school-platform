@@ -14,6 +14,7 @@ import { api, bearer, expectStatus, futureDate, login, SEED, step } from '../hel
 import {
   EnrollmentRequest,
   ensureApprovedEnrollment,
+  ensureCompletedLesson,
   ensureEnrollmentRequest,
   ensureInstructorToken,
   ensureLesson,
@@ -22,6 +23,7 @@ import {
   Lesson,
   newStudent,
   rememberApproval,
+  rememberCompletedLesson,
   rememberEnrollmentRequest,
   rememberLesson,
   rememberScheduledLesson,
@@ -56,22 +58,25 @@ describe('Chemin critique v1 (D-15)', () => {
     expect(typeof tokens.accessToken).toBe('string');
   });
 
-  step("E4 — la demande apparaît dans la liste de l'école, avec l'identité de l'élève", async () => {
-    const request = await ensureEnrollmentRequest();
-    const { student } = await ensureStudent();
-    const res = await api()
-      .get(`/api/enrollment/schools/${SEED.schoolId}/requests`)
-      .query({ status: 'pending' })
-      .set(bearer(await ensureInstructorToken()));
-    expectStatus(res, 200, 'E4 liste des demandes');
-    const mine = (res.body as EnrollmentRequest[]).find((r) => r.id === request.id);
-    expect(mine).toBeDefined();
-    expect(mine).toMatchObject({
-      studentEmail: student.email,
-      studentFirstName: student.firstName,
-      studentLastName: student.lastName,
-    });
-  });
+  step(
+    "E4 — la demande apparaît dans la liste de l'école, avec l'identité de l'élève",
+    async () => {
+      const request = await ensureEnrollmentRequest();
+      const { student } = await ensureStudent();
+      const res = await api()
+        .get(`/api/enrollment/schools/${SEED.schoolId}/requests`)
+        .query({ status: 'pending' })
+        .set(bearer(await ensureInstructorToken()));
+      expectStatus(res, 200, 'E4 liste des demandes');
+      const mine = (res.body as EnrollmentRequest[]).find((r) => r.id === request.id);
+      expect(mine).toBeDefined();
+      expect(mine).toMatchObject({
+        studentEmail: student.email,
+        studentFirstName: student.firstName,
+        studentLastName: student.lastName,
+      });
+    }
+  );
 
   step("E5 — approbation de la demande par l'instructeur", async () => {
     const request = await ensureEnrollmentRequest();
@@ -126,20 +131,26 @@ describe('Chemin critique v1 (D-15)', () => {
     expect(mine?.status).toBe('pending');
   });
 
-  step("L5 — approbation de la leçon par l'instructeur : scheduled, prix de la grille Parc", async () => {
-    const lesson = await ensureLesson();
-    const res = await api()
-      .put(`/api/lessons/${lesson.id}/approve`)
-      .set(bearer(await ensureInstructorToken()))
-      .send({ scheduledDate: futureDate(3), durationMinutes: SEED.lessonDurationMinutes });
-    expectStatus(res, 200, 'L5 approbation de la leçon');
-    const body = res.body as Lesson;
-    expect(body.status).toBe('scheduled');
-    expect(body.instructorId).toBe(SEED.instructor.instructorId);
-    expect(Number(body.price)).toBe(SEED.pricing.Parc);
-    expect(body.instructor).toMatchObject({ id: SEED.instructor.instructorId, firstName: 'Seed' });
-    rememberScheduledLesson(body);
-  });
+  step(
+    "L5 — approbation de la leçon par l'instructeur : scheduled, prix de la grille Parc",
+    async () => {
+      const lesson = await ensureLesson();
+      const res = await api()
+        .put(`/api/lessons/${lesson.id}/approve`)
+        .set(bearer(await ensureInstructorToken()))
+        .send({ scheduledDate: futureDate(3), durationMinutes: SEED.lessonDurationMinutes });
+      expectStatus(res, 200, 'L5 approbation de la leçon');
+      const body = res.body as Lesson;
+      expect(body.status).toBe('scheduled');
+      expect(body.instructorId).toBe(SEED.instructor.instructorId);
+      expect(Number(body.price)).toBe(SEED.pricing.Parc);
+      expect(body.instructor).toMatchObject({
+        id: SEED.instructor.instructorId,
+        firstName: 'Seed',
+      });
+      rememberScheduledLesson(body);
+    }
+  );
 
   step("L7 — l'instructeur marque la présence : completed", async () => {
     const lesson = await ensureScheduledLesson();
@@ -151,5 +162,21 @@ describe('Chemin critique v1 (D-15)', () => {
     const body = res.body as Lesson;
     expect(body.status).toBe('completed');
     expect(body.attended).toBe(true);
+    rememberCompletedLesson(body);
+  });
+
+  step('P1 — la fiche compte la leçon effectuée par type (Parc, D-45)', async () => {
+    const lesson = await ensureCompletedLesson();
+    const res = await api()
+      .get(`/api/profiles/${lesson.studentId}/schools/${SEED.schoolId}/complete`)
+      .set(bearer(await ensureInstructorToken()));
+    expectStatus(res, 200, 'P1 après L7');
+    const body = res.body as {
+      completedLessons: number;
+      completedLessonsByType: Record<string, number>;
+    };
+    expect(body.completedLessons).toBeGreaterThanOrEqual(1);
+    expect(body.completedLessonsByType.Parc).toBe(body.completedLessons);
+    expect(body.completedLessonsByType).toMatchObject({ CODE: 0, Manœuvre: 0 });
   });
 });

@@ -84,6 +84,9 @@ export interface LessonCompletedDTO {
   attended: boolean;
 }
 
+/** Leçons effectuées (présence marquée, D-33) par type de leçon (D-45, 8.1). */
+export type CompletedLessonsByType = Record<LessonType, number>;
+
 /** P1 / P8 : `id` = users.id (D-28) ; compteurs sur les leçons et examens planifiés ou passés. */
 export interface StudentProfile {
   id: string;
@@ -100,6 +103,8 @@ export interface StudentProfile {
   notes: string | null;
   totalLessons: number;
   completedLessons: number;
+  /** Même base que `completedLessons`, ventilée par type (`lessons`, D-45). */
+  completedLessonsByType: CompletedLessonsByType;
   totalExams: number;
   passedExams: number;
 }

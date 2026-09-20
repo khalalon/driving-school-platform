@@ -132,25 +132,36 @@ describe('StatsRepository', () => {
 });
 
 describe('ProfileRepository', () => {
-  it('getStudentProfile : une requête, fiche résolue par users.id + école (D-28), compteurs en sous-requêtes', async () => {
+  it('getStudentProfile : une requête, fiche résolue par users.id + école (D-28), compteurs en sous-requêtes et par type (D-45)', async () => {
     const row = {
       id: 'user-1',
       firstName: 'Élève',
       lastName: 'Test',
       totalLessons: 3,
       completedLessons: 2,
+      completedCode: 1,
+      completedManoeuvre: 1,
+      completedParc: 0,
     };
     const { pool, query } = fakePool([row]);
 
     await expect(
       new ProfileRepository(pool).getStudentProfile('user-1', UUID.school)
-    ).resolves.toEqual(row);
+    ).resolves.toEqual({
+      id: 'user-1',
+      firstName: 'Élève',
+      lastName: 'Test',
+      totalLessons: 3,
+      completedLessons: 2,
+      completedLessonsByType: { CODE: 1, Manœuvre: 1, Parc: 0 },
+    });
 
     const [sql, params] = query.mock.calls[0] as [string, unknown[]];
     expect(sql).toMatch(/WHERE s\.user_id = \$1 AND s\.school_id = \$2/);
     expect(sql).toMatch(/l\.status IN \('scheduled', 'completed'\)/);
+    expect(sql).toMatch(/l\.status = 'completed' AND l\.attended = TRUE/);
     expect(sql).toMatch(/e\.result = 'passed'/);
-    expect(params).toEqual(['user-1', UUID.school]);
+    expect(params).toEqual(['user-1', UUID.school, 'CODE', 'Manœuvre', 'Parc']);
   });
 
   it('getStudentProfile : null si la fiche n’existe pas (une seule requête)', async () => {

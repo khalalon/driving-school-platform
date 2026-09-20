@@ -51,6 +51,7 @@ const cache: {
   approved?: EnrollmentRequest;
   lesson?: Lesson;
   scheduled?: Lesson;
+  completed?: Lesson;
 } = {};
 
 export function rememberStudent(student: StudentAccount, accessToken: string): void {
@@ -163,4 +164,24 @@ export async function ensureScheduledLesson(): Promise<Lesson> {
   const scheduled = res.body as Lesson;
   rememberScheduledLesson(scheduled);
   return scheduled;
+}
+
+export function rememberCompletedLesson(lesson: Lesson): void {
+  cache.completed = lesson;
+}
+
+/** L7 (présent) rejoué comme prérequis. */
+export async function ensureCompletedLesson(): Promise<Lesson> {
+  if (cache.completed) {
+    return cache.completed;
+  }
+  const lesson = await ensureScheduledLesson();
+  const res = await api()
+    .put(`/api/lessons/${lesson.id}/attendance`)
+    .set(bearer(await ensureInstructorToken()))
+    .send({ attended: true });
+  expectStatus(res, 200, 'prérequis L7 présence');
+  const completed = res.body as Lesson;
+  rememberCompletedLesson(completed);
+  return completed;
 }
