@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { MyProgressTab } from './tabs/MyProgressTab';
 import { MyLessonsPaymentTab } from './tabs/MyLessonsPaymentTab';
 import { MyExamsPaymentTab } from './tabs/MyExamsPaymentTab';
+import { LanguagePicker } from '../../../components/LanguagePicker';
 import { enrollmentService } from '../../../services/api/EnrollmentService';
 import { getApiErrorMessage } from '../../../services/api/ApiError';
 import { EnrollmentStatus } from '../../../models/Enrollment';
@@ -117,6 +118,7 @@ export const MyProfileScreen = ({ route, navigation }: any) => {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Profile</Text>
+        <LanguagePicker compact />
       </View>
 
       {renderBody()}

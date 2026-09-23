@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
+import { LanguagePicker } from '../../components/LanguagePicker';
 import { getApiErrorMessage } from '../../services/api/ApiError';
 import { colors, typography, spacing, shadows } from '../../theme';
 
@@ -49,6 +50,11 @@ export const LoginScreen = ({ navigation }: any) => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.content}>
+        {/* Langue : accessible avant la connexion (D-47) */}
+        <View style={styles.languageRow}>
+          <LanguagePicker compact />
+        </View>
+
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.iconContainer}>
@@ -164,6 +170,10 @@ export const LoginScreen = ({ navigation }: any) => {
 };
 
 const styles = StyleSheet.create({
+  languageRow: {
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
   container: {
     flex: 1,
     backgroundColor: colors.background.secondary,

@@ -582,7 +582,7 @@ cd mobile-app && node -e "const v=require('./package.json').dependencies.expo; i
 
 L'interface est en anglais alors que les élèves visés lisent le français ou l'arabe, et les messages du serveur sont en français (D-27) : l'app parle deux langues, au choix, l'arabe en RTL. Aucune route, aucun payload, aucune valeur en base ne change (D-18) : seul l'affichage.
 
-### - [ ] 10.1 — Infrastructure i18n et sélecteur de langue
+### - [x] 10.1 — Infrastructure i18n et sélecteur de langue
 **Objectif** : `expo-localization` installé ; `mobile-app/src/i18n/` = `fr.ts`, `ar.ts` (mêmes clés), `index.ts` (`t(key, params?)`, `useI18n()`, `setLanguage()`, `currentLanguage()`), contexte `LanguageProvider` monté au-dessus du navigateur ; au premier lancement la langue suit celle du téléphone (`ar*` → arabe, tout le reste → français, D-47), le choix est mémorisé sur l'appareil (`StorageService`) ; passer en arabe applique le RTL (`I18nManager.forceRTL(true)`) et redémarre l'app (`expo-updates`), repasser en français le retire ; sélecteur de langue sur l'écran de connexion **et** dans « My Profile ». Un test garantit que `fr` et `ar` ont exactement les mêmes clés et qu'aucune valeur n'est vide.
 **Fichiers** : `mobile-app/src/i18n/{index.ts,fr.ts,ar.ts}` (nouveaux), `mobile-app/src/i18n/__tests__/i18n.test.ts` (nouveau), `mobile-app/src/context/LanguageContext.tsx` (nouveau), `mobile-app/src/components/LanguagePicker.tsx` (nouveau), `mobile-app/App.tsx`, `mobile-app/src/screens/auth/LoginScreen.tsx`, `mobile-app/src/screens/student/my-profile/MyProfileScreen.tsx`, `mobile-app/package.json`, `docs/ARCHITECTURE.md`.
 **Critère de validation** :
