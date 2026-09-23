@@ -3,7 +3,7 @@
 Règles de lecture (voir `CLAUDE.md`, règles d'or 3 et 5) :
 - On travaille dans l'ordre, sur la première tâche non cochée. Une tâche = un commit (message Conventional Commits, scope = domaine ou `infra` / `mobile` / `docs` / `e2e`), poussé sur `origin/main` aussitôt. Les tâches d'une même phase s'enchaînent sans validation intermédiaire ; arrêt obligatoire en fin de phase, sur question ouverte non tranchée, sur échec de critère non réparable dans la tâche, ou sur choix produit non tranché (D-36, 18/09/2026).
 - Une tâche est cochée **seulement** quand sa commande « Critère de validation » a été exécutée et que sa sortie a été montrée. Pas d'exception.
-- Si une tâche indique « Dépend de : Q-xx » et que la question n'est pas tranchée dans `DECISIONS.md`, on **s'arrête** et on demande. Au 23/09/2026 aucune question n'est ouverte : Q-17 à Q-21 → D-40 à D-44 (Phase 7 ; D-44 = statu quo de D-42, sans tâche) ; la Phase 8 applique D-45 (accueils « wow »), la Phase 9 applique D-46 (Expo SDK 57).
+- Si une tâche indique « Dépend de : Q-xx » et que la question n'est pas tranchée dans `DECISIONS.md`, on **s'arrête** et on demande. Au 23/09/2026 aucune question n'est ouverte : Q-17 à Q-21 → D-40 à D-44 (Phase 7 ; D-44 = statu quo de D-42, sans tâche) ; la Phase 8 applique D-45 (accueils « wow »), la Phase 9 D-46 (Expo SDK 57), la Phase 10 D-47 (français et arabe).
 - Chaque tâche livrée ajoute une ligne dans `CHANGELOG.md` et, si elle touche une route, met à jour `docs/API_CONTRACT.md` dans le même commit.
 - Les commandes sont écrites pour Git Bash (Windows) ou un shell POSIX, depuis la racine du dépôt sauf `cd` explicite.
 
@@ -578,6 +578,66 @@ cd mobile-app && node -e "const v=require('./package.json').dependencies.expo; i
 
 ---
 
-## Après la Phase 9
+## Phase 10 — Français et arabe (D-47)
+
+L'interface est en anglais alors que les élèves visés lisent le français ou l'arabe, et les messages du serveur sont en français (D-27) : l'app parle deux langues, au choix, l'arabe en RTL. Aucune route, aucun payload, aucune valeur en base ne change (D-18) : seul l'affichage.
+
+### - [ ] 10.1 — Infrastructure i18n et sélecteur de langue
+**Objectif** : `expo-localization` installé ; `mobile-app/src/i18n/` = `fr.ts`, `ar.ts` (mêmes clés), `index.ts` (`t(key, params?)`, `useI18n()`, `setLanguage()`, `currentLanguage()`), contexte `LanguageProvider` monté au-dessus du navigateur ; au premier lancement la langue suit celle du téléphone (`ar*` → arabe, tout le reste → français, D-47), le choix est mémorisé sur l'appareil (`StorageService`) ; passer en arabe applique le RTL (`I18nManager.forceRTL(true)`) et redémarre l'app (`expo-updates`), repasser en français le retire ; sélecteur de langue sur l'écran de connexion **et** dans « My Profile ». Un test garantit que `fr` et `ar` ont exactement les mêmes clés et qu'aucune valeur n'est vide.
+**Fichiers** : `mobile-app/src/i18n/{index.ts,fr.ts,ar.ts}` (nouveaux), `mobile-app/src/i18n/__tests__/i18n.test.ts` (nouveau), `mobile-app/src/context/LanguageContext.tsx` (nouveau), `mobile-app/src/components/LanguagePicker.tsx` (nouveau), `mobile-app/App.tsx`, `mobile-app/src/screens/auth/LoginScreen.tsx`, `mobile-app/src/screens/student/my-profile/MyProfileScreen.tsx`, `mobile-app/package.json`, `docs/ARCHITECTURE.md`.
+**Critère de validation** :
+```bash
+cd mobile-app && node -e "const p=require('./package.json').dependencies; if(!p['expo-localization']||!p['expo-updates']) process.exit(1)" && npx tsc --noEmit && npx jest i18n --silent && npx jest --silent && echo OK
+```
+**Hors périmètre** : traduction des écrans (10.3, 10.4), préférence de langue stockée côté serveur (aucune route, hors contrat).
+
+### - [ ] 10.2 — Vocabulaire métier et formats traduits
+**Objectif** : les libellés des modèles ne sont plus des constantes anglaises mais des clés traduites — `LESSON_TYPE_LABELS`, `LESSON_STATUS_LABELS`, `EXAM_TYPE_LABELS`, `EXAM_STATUS_LABELS`, `EXAM_RESULT_LABELS`, `EXAM_PROCEDURES` (D-42), `PAYMENT_METHOD_LABELS`, textes du parcours (`models/Journey.ts`, D-45) ; `utils/format.ts` formate dates, heures et montants selon la langue courante (`fr-FR` / `ar`). Les **valeurs** échangées avec le backend restent celles du contrat (D-18) : seuls les mots affichés changent. Les termes arabes du métier sont regroupés dans `ar.ts` et **restent à valider par une école** (D-47).
+**Fichiers** : `mobile-app/src/models/{Lesson,Exam,Profile,Journey}.ts`, `mobile-app/src/utils/format.ts`, `mobile-app/src/i18n/{fr,ar}.ts`, les tests des modèles et de `format`.
+**Critère de validation** :
+```bash
+cd mobile-app && npx jest models utils -t 'arabe' --silent && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : traduction des écrans.
+
+### - [ ] 10.3 — Écrans élève traduits
+**Objectif** : plus une seule chaîne visible en dur dans les écrans d'authentification et d'élève : `Login`, `Register`, `InstructorRegistration`, `StudentDashboard`, `SchoolsList`, `SchoolDetail`, `BookLesson`, `MyLessons`, `RequestExam`, `MyExams`, `MyEnrollmentRequests`, `MyProfile` et ses trois onglets. Chaque écran lit ses textes par `t(...)` (titres, boutons, états vides, alertes, textes d'aide).
+**Fichiers** : `mobile-app/src/screens/auth/*`, `mobile-app/src/screens/student/**`, `mobile-app/src/i18n/{fr,ar}.ts`.
+**Critère de validation** :
+```bash
+cd mobile-app && test -z "$(grep -rL "useI18n\|from '../../i18n'\|from '../../../i18n'" src/screens/auth src/screens/student --include='*.tsx')" && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : écrans instructeur (10.4).
+
+### - [ ] 10.4 — Écrans instructeur traduits
+**Objectif** : même chose pour `InstructorDashboard`, `TodayLessons`, `LessonRequests`, `BookForStudent`, `TodayExams`, `ExamRequests`, `EnrollmentRequests`, `StudentProfile` et ses trois onglets, et `components/AttendanceModal`.
+**Fichiers** : `mobile-app/src/screens/instructor/**`, `mobile-app/src/i18n/{fr,ar}.ts`.
+**Critère de validation** :
+```bash
+cd mobile-app && test -z "$(grep -rL "useI18n\|from '../../i18n'\|from '../../../i18n'\|from '../../../../i18n'" src/screens/instructor --include='*.tsx')" && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : messages d'erreur du serveur (10.5).
+
+### - [ ] 10.5 — Messages d'erreur du serveur traduits par code
+**Objectif** : `getApiErrorMessage` traduit l'erreur à partir du **code stable** renvoyé par le backend (`error`, D-27) — `VALIDATION_ERROR`, `NOT_ENROLLED`, `CANCEL_WINDOW_CLOSED`, `FORBIDDEN_SCHOOL`, `FORBIDDEN`, `CONFLICT`, `NOT_FOUND`, `UNAUTHORIZED`, `INVALID_CREDENTIALS`, `EMAIL_TAKEN`, `SCHOOL_CODE_INVALID`… — et ne retombe sur le texte français du serveur que si le code est inconnu ; l'élève en arabe ne voit plus de phrase française. Les codes traduits sont ceux du contrat : un code absent du contrat n'est pas inventé.
+**Fichiers** : `mobile-app/src/services/api/ApiError.ts`, `mobile-app/src/services/api/__tests__/ApiError.test.ts` (nouveau), `mobile-app/src/i18n/{fr,ar}.ts`, `docs/API_CONTRACT.md` (note transverse : le mobile traduit par code).
+**Critère de validation** :
+```bash
+cd mobile-app && npx jest ApiError -t 'code' --silent && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : traduction des messages côté backend (ils restent français, D-27).
+
+### - [ ] 10.6 — RTL vérifié en arabe
+**Objectif** : l'app en arabe est utilisable : mises en page en miroir (barre d'onglets, cartes, timeline du parcours, en-têtes), icônes directionnelles retournées (chevrons, flèche retour), `textAlign` cohérent, aucune mise en page cassée. Les écarts trouvés sont corrigés (`I18nManager.isRTL` plutôt que des valeurs codées en dur ; `start`/`end` au lieu de `left`/`right`).
+**Fichiers** : les écrans et composants concernés, `mobile-app/src/i18n/index.ts`.
+**Critère de validation** :
+```bash
+cd mobile-app && test -z "$(grep -rn "marginLeft\|marginRight\|paddingLeft\|paddingRight" src/screens src/components --include='*.tsx' | grep -v 'Start\|End')" && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : traduction de nouveaux écrans, polices arabes personnalisées.
+
+---
+
+## Après la Phase 10
 
 La recette finale (parcours D-15 sur un téléphone via Expo Go, backend en Docker) est faite **par l'humain**, hors de cette liste. Les fonctionnalités hors contrat (paiement en ligne, web, gestion des codes par écran) ne sont pas dans la v1.

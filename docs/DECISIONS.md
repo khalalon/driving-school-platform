@@ -94,7 +94,13 @@ Deux sections. « Décisions prises » fait autorité : on ne la rediscute pas d
 |---|---|---|---|---|
 | **D-46** | — | **Le mobile suit le dernier SDK Expo** (aujourd'hui **57**). Expo Go ne charge qu'un seul SDK à la fois et se met à jour tout seul depuis le magasin : un projet en retard d'un SDK n'est plus testable sur un vrai téléphone. La montée de version est donc une tâche du plan dès qu'Expo Go de la machine de recette passe au SDK suivant, pas un chantier « quand on aura le temps ». | Recette du 21/09/2026 bloquée : Expo Go SDK 57 contre projet SDK 54 (« Project is incompatible with this version of Expo Go »). Rétrograder Expo Go n'est qu'un dépannage : le magasin le remet à jour. | Une tâche, un commit (Phase 9) : `npx expo install expo@~<SDK> --fix`, `npx expo-doctor` propre, typecheck et tests verts, bundle vérifié dans Expo Go. Le code applicatif ne change que si le SDK le casse. |
 
+### Décision du 23/09/2026 (Phase 10, langues)
+
+| ID | Ex-question | Décision | Justification | Note d'application |
+|---|---|---|---|---|
+| **D-47** | — | **L'app parle français et arabe, au choix de l'utilisateur.** Catalogue de traductions dans le mobile (`src/i18n`), sélecteur accessible **avant** connexion (écran de login) et dans « My Profile ». Au premier lancement la langue suit celle du téléphone (locale `ar*` → arabe, **tout le reste → français**) ; le choix est ensuite mémorisé sur l'appareil (`AsyncStorage`), pas côté serveur — aucune route du contrat ne porte de préférence de langue. L'arabe s'affiche en **RTL** (`I18nManager.forceRTL` + redémarrage de l'app au changement). Le **vocabulaire métier est traduit en arabe** (types de leçon, examens, ATTT) : les valeurs échangées et stockées ne changent pas (D-18), seul l'affichage. Les messages d'erreur du serveur restent français (D-27) et sont **retraduits côté mobile à partir du code d'erreur stable**, avec repli sur le texte du serveur si le code est inconnu. | Réponses de l'auteur (23/09/2026) : élèves tunisiens, deux langues d'usage ; l'anglais actuel de l'interface n'était le choix de personne. Le coût du sélecteur + RTL a été présenté et accepté. | Phase 10 (10.1 à 10.6). Les termes arabes du métier vivent dans le seul fichier `mobile-app/src/i18n/ar.ts` et **restent à valider par une école pilote**, comme D-44 : une correction = un commit, sans toucher au reste. |
+
 
 ## Questions ouvertes
 
-Aucune au 23/09/2026 : Q-17 → D-40, Q-18 → D-41, Q-19 → D-42, Q-20 → D-43, Q-21 → D-44 ; D-45 (design accepté) et D-46 (SDK Expo) prises sans question.
+Aucune au 23/09/2026 : Q-17 → D-40, Q-18 → D-41, Q-19 → D-42, Q-20 → D-43, Q-21 → D-44 ; D-45 (design accepté), D-46 (SDK Expo) et D-47 (français et arabe) prises sans question. **À vérifier sur le terrain** : le rattachement type → procédure d'examen (D-44) et les termes arabes du métier (D-47).
