@@ -22,6 +22,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { lessonService } from '../../services/api/LessonService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
+import { useI18n } from '../../context/LanguageContext';
 import { lessonTypeLabel, Lesson, LessonStatus, MarkAttendanceData } from '../../models/Lesson';
 import { formatPersonName, formatTime, toLocalDateKey } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
@@ -30,6 +31,7 @@ import { AttendanceModal } from './components/AttendanceModal';
 type FilterType = 'upcoming' | 'completed';
 
 export const TodayLessonsScreen = ({ navigation }: any) => {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -54,7 +56,7 @@ export const TodayLessonsScreen = ({ navigation }: any) => {
       });
       setLessons(data);
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load lessons'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('myLessons.loadFailed')));
     } finally {
       setLoading(false);
     }
@@ -77,13 +79,13 @@ export const TodayLessonsScreen = ({ navigation }: any) => {
       // L7 : par identifiant de leçon, uniquement par son instructeur
       await lessonService.markAttendance(selectedLesson.id, data);
       Alert.alert(
-        'Success',
-        data.attended ? 'Lesson completed, attendance recorded' : 'Absence recorded'
+        t('common.success'),
+        data.attended ? t('attendance.recorded') : t('attendance.absenceRecorded')
       );
       closeAttendance();
       loadTodayLessons();
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to record attendance'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('today.attendanceFailed')));
     } finally {
       setProcessing(false);
     }
@@ -107,7 +109,9 @@ export const TodayLessonsScreen = ({ navigation }: any) => {
           </View>
 
           <View style={styles.lessonInfo}>
-            <Text style={styles.studentName}>{formatPersonName(item.student, 'Student')}</Text>
+            <Text style={styles.studentName}>
+              {formatPersonName(item.student, t('today.student'))}
+            </Text>
             <View style={styles.detailRow}>
               <Ionicons name="car-outline" size={16} color={colors.text.tertiary} />
               <Text style={styles.detailText}>{lessonTypeLabel(item.type) ?? item.type}</Text>
@@ -137,7 +141,9 @@ export const TodayLessonsScreen = ({ navigation }: any) => {
 
         {isCompleted && (
           <Text style={styles.attendanceText}>
-            {item.attended === false ? 'Student absent' : 'Student present'}
+            {item.attended === false
+              ? t('attendance.studentAbsent')
+              : t('attendance.studentPresent')}
             {item.rating ? ` · ${item.rating}/5` : ''}
             {item.feedback ? ` · ${item.feedback}` : ''}
           </Text>
@@ -151,7 +157,7 @@ export const TodayLessonsScreen = ({ navigation }: any) => {
             disabled={processing}
           >
             <Ionicons name="checkmark-outline" size={20} color={colors.success[600]} />
-            <Text style={styles.completeButtonText}>Record Attendance</Text>
+            <Text style={styles.completeButtonText}>{t('attendance.record')}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -191,7 +197,7 @@ export const TodayLessonsScreen = ({ navigation }: any) => {
         >
           <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Today's Lessons</Text>
+        <Text style={styles.headerTitle}>{t('todayLessons.title')}</Text>
       </View>
 
       {/* Filter Tabs */}

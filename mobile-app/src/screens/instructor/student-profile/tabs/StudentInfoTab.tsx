@@ -21,8 +21,10 @@ import { FinancialSummary, StudentProfile } from '../../../../models/Profile';
 import { useSchoolCurrency } from '../../../../hooks/useSchoolCurrency';
 import { formatAmount, formatDate, formatPersonName } from '../../../../utils/format';
 import { colors, typography, spacing, shadows } from '../../../../theme';
+import { useI18n } from '../../../../context/LanguageContext';
 
 export const StudentInfoTab = ({ route }: any) => {
+  const { t } = useI18n();
   const { studentId, schoolId } = route.params;
   const currency = useSchoolCurrency(schoolId);
 
@@ -48,7 +50,7 @@ export const StudentInfoTab = ({ route }: any) => {
       setFinancial(financialData);
       setNotes(profileData.notes || '');
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load student profile'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('studentInfo.loadFailed')));
     } finally {
       setLoading(false);
     }
@@ -58,11 +60,11 @@ export const StudentInfoTab = ({ route }: any) => {
     try {
       setSavingNotes(true);
       await studentProfileService.updateNotes(studentId, notes);
-      Alert.alert('Success', 'Notes updated successfully');
+      Alert.alert(t('common.success'), t('studentInfo.notesSaved'));
       setShowNotesModal(false);
       loadData();
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to update notes'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('studentInfo.notesFailed')));
     } finally {
       setSavingNotes(false);
     }
@@ -79,7 +81,7 @@ export const StudentInfoTab = ({ route }: any) => {
   if (!profile || !financial) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Profile not found</Text>
+        <Text style={styles.errorText}>{t('studentInfo.notFound')}</Text>
       </View>
     );
   }
@@ -94,46 +96,46 @@ export const StudentInfoTab = ({ route }: any) => {
         </View>
 
         <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Name</Text>
+          <Text style={styles.infoLabel}>{t('studentInfo.name')}</Text>
           <Text style={styles.infoValue}>{formatPersonName(profile)}</Text>
         </View>
 
         <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Email</Text>
+          <Text style={styles.infoLabel}>{t('studentInfo.email')}</Text>
           <Text style={styles.infoValue}>{profile.email}</Text>
         </View>
 
         {profile.phone && (
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Phone</Text>
+            <Text style={styles.infoLabel}>{t('studentInfo.phone')}</Text>
             <Text style={styles.infoValue}>{profile.phone}</Text>
           </View>
         )}
 
         {profile.address && (
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Address</Text>
+            <Text style={styles.infoLabel}>{t('studentInfo.address')}</Text>
             <Text style={styles.infoValue}>{profile.address}</Text>
           </View>
         )}
 
         {profile.dateOfBirth && (
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Date of Birth</Text>
+            <Text style={styles.infoLabel}>{t('studentInfo.dateOfBirth')}</Text>
             <Text style={styles.infoValue}>{formatDate(profile.dateOfBirth)}</Text>
           </View>
         )}
 
         {profile.licenseNumber && (
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>License Number</Text>
+            <Text style={styles.infoLabel}>{t('studentInfo.licenseNumber')}</Text>
             <Text style={styles.infoValue}>{profile.licenseNumber}</Text>
           </View>
         )}
 
         {profile.enrollmentDate && (
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Enrollment Date</Text>
+            <Text style={styles.infoLabel}>{t('studentInfo.enrollmentDate')}</Text>
             <Text style={styles.infoValue}>{formatDate(profile.enrollmentDate)}</Text>
           </View>
         )}
@@ -149,14 +151,14 @@ export const StudentInfoTab = ({ route }: any) => {
 
           {profile.emergencyContact && (
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Name</Text>
+              <Text style={styles.infoLabel}>{t('studentInfo.name')}</Text>
               <Text style={styles.infoValue}>{profile.emergencyContact}</Text>
             </View>
           )}
 
           {profile.emergencyPhone && (
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Phone</Text>
+              <Text style={styles.infoLabel}>{t('studentInfo.phone')}</Text>
               <Text style={styles.infoValue}>{profile.emergencyPhone}</Text>
             </View>
           )}
@@ -173,23 +175,23 @@ export const StudentInfoTab = ({ route }: any) => {
         <View style={styles.statsGrid}>
           <View style={styles.statBox}>
             <Text style={styles.statValue}>{profile.totalLessons}</Text>
-            <Text style={styles.statLabel}>Total Lessons</Text>
+            <Text style={styles.statLabel}>{t('studentInfo.totalLessons')}</Text>
           </View>
           <View style={styles.statBox}>
             <Text style={[styles.statValue, { color: colors.success[600] }]}>
               {profile.completedLessons}
             </Text>
-            <Text style={styles.statLabel}>Completed</Text>
+            <Text style={styles.statLabel}>{t('studentInfo.completed')}</Text>
           </View>
           <View style={styles.statBox}>
             <Text style={styles.statValue}>{profile.totalExams}</Text>
-            <Text style={styles.statLabel}>Exams</Text>
+            <Text style={styles.statLabel}>{t('studentInfo.exams')}</Text>
           </View>
           <View style={styles.statBox}>
             <Text style={[styles.statValue, { color: colors.success[600] }]}>
               {profile.passedExams}
             </Text>
-            <Text style={styles.statLabel}>Passed</Text>
+            <Text style={styles.statLabel}>{t('studentInfo.passed')}</Text>
           </View>
         </View>
       </View>
@@ -202,14 +204,14 @@ export const StudentInfoTab = ({ route }: any) => {
         </View>
 
         <View style={styles.financialRow}>
-          <Text style={styles.financialLabel}>Total Revenue</Text>
+          <Text style={styles.financialLabel}>{t('studentInfo.totalRevenue')}</Text>
           <Text style={[styles.financialValue, { color: colors.success[600] }]}>
             {formatAmount(financial.totalRevenue, currency)}
           </Text>
         </View>
 
         <View style={styles.financialRow}>
-          <Text style={styles.financialLabel}>Pending Payment</Text>
+          <Text style={styles.financialLabel}>{t('studentInfo.pendingPayment')}</Text>
           <Text style={[styles.financialValue, { color: colors.warning[600] }]}>
             {formatAmount(financial.totalPending, currency)}
           </Text>
@@ -218,28 +220,28 @@ export const StudentInfoTab = ({ route }: any) => {
         <View style={styles.divider} />
 
         <View style={styles.financialRow}>
-          <Text style={styles.financialLabel}>Lessons Revenue</Text>
+          <Text style={styles.financialLabel}>{t('studentInfo.lessonsRevenue')}</Text>
           <Text style={styles.financialValue}>
             {formatAmount(financial.lessonsRevenue, currency)}
           </Text>
         </View>
 
         <View style={styles.financialRow}>
-          <Text style={styles.financialLabel}>Lessons Pending</Text>
+          <Text style={styles.financialLabel}>{t('studentInfo.lessonsPending')}</Text>
           <Text style={styles.financialValue}>
             {formatAmount(financial.lessonsPending, currency)}
           </Text>
         </View>
 
         <View style={styles.financialRow}>
-          <Text style={styles.financialLabel}>Exams Revenue</Text>
+          <Text style={styles.financialLabel}>{t('studentInfo.examsRevenue')}</Text>
           <Text style={styles.financialValue}>
             {formatAmount(financial.examsRevenue, currency)}
           </Text>
         </View>
 
         <View style={styles.financialRow}>
-          <Text style={styles.financialLabel}>Exams Pending</Text>
+          <Text style={styles.financialLabel}>{t('studentInfo.examsPending')}</Text>
           <Text style={styles.financialValue}>
             {formatAmount(financial.examsPending, currency)}
           </Text>
@@ -248,7 +250,7 @@ export const StudentInfoTab = ({ route }: any) => {
         <View style={styles.divider} />
 
         <View style={styles.financialRow}>
-          <Text style={styles.financialLabel}>Credit Available</Text>
+          <Text style={styles.financialLabel}>{t('studentInfo.creditAvailable')}</Text>
           <Text style={[styles.financialValue, { color: colors.primary[600] }]}>
             {formatAmount(financial.credit, currency)}
           </Text>
@@ -273,7 +275,7 @@ export const StudentInfoTab = ({ route }: any) => {
         {profile.notes ? (
           <Text style={styles.notesText}>{profile.notes}</Text>
         ) : (
-          <Text style={styles.noNotesText}>No notes added yet</Text>
+          <Text style={styles.noNotesText}>{t('studentInfo.noNotes')}</Text>
         )}
 
         <TouchableOpacity
@@ -282,7 +284,7 @@ export const StudentInfoTab = ({ route }: any) => {
           activeOpacity={0.7}
         >
           <Ionicons name="create-outline" size={20} color={colors.text.inverse} />
-          <Text style={styles.editButtonText}>Edit Notes</Text>
+          <Text style={styles.editButtonText}>{t('studentInfo.editNotes')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -296,7 +298,7 @@ export const StudentInfoTab = ({ route }: any) => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Instructor Notes</Text>
+              <Text style={styles.modalTitle}>{t('studentInfo.notesTitle')}</Text>
               <TouchableOpacity onPress={() => setShowNotesModal(false)} activeOpacity={0.7}>
                 <Ionicons name="close" size={24} color={colors.text.secondary} />
               </TouchableOpacity>
@@ -304,7 +306,7 @@ export const StudentInfoTab = ({ route }: any) => {
 
             <TextInput
               style={styles.notesInput}
-              placeholder="Add private notes about this student..."
+              placeholder={t('studentInfo.notesPlaceholder')}
               placeholderTextColor={colors.neutral[400]}
               value={notes}
               onChangeText={setNotes}
@@ -319,7 +321,7 @@ export const StudentInfoTab = ({ route }: any) => {
                 onPress={() => setShowNotesModal(false)}
                 activeOpacity={0.7}
               >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <Text style={styles.cancelButtonText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -331,7 +333,7 @@ export const StudentInfoTab = ({ route }: any) => {
                 {savingNotes ? (
                   <ActivityIndicator size="small" color={colors.text.inverse} />
                 ) : (
-                  <Text style={styles.saveButtonText}>Save</Text>
+                  <Text style={styles.saveButtonText}>{t('common.save')}</Text>
                 )}
               </TouchableOpacity>
             </View>

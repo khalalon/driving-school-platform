@@ -27,8 +27,10 @@ import { lessonTypeLabel, LessonType } from '../../../../models/Lesson';
 import { useSchoolCurrency } from '../../../../hooks/useSchoolCurrency';
 import { formatAmount, formatDate, formatDateTime } from '../../../../utils/format';
 import { colors, typography, spacing, shadows } from '../../../../theme';
+import { useI18n } from '../../../../context/LanguageContext';
 
 export const StudentLessonsTab = ({ route }: any) => {
+  const { t } = useI18n();
   const { studentId, schoolId } = route.params;
   const currency = useSchoolCurrency(schoolId);
 
@@ -50,7 +52,7 @@ export const StudentLessonsTab = ({ route }: any) => {
       const data = await studentProfileService.getStudentLessons(studentId, schoolId);
       setLessons(data);
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load lessons'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('myLessons.loadFailed')));
     } finally {
       setLoading(false);
     }
@@ -65,7 +67,7 @@ export const StudentLessonsTab = ({ route }: any) => {
 
   const confirmPayment = async () => {
     if (!selectedLesson || !amount || parseFloat(amount) <= 0) {
-      Alert.alert('Invalid Amount', 'Please enter a valid amount');
+      Alert.alert(t('studentLessons.invalidAmount'), t('studentLessons.invalidAmountText'));
       return;
     }
 
@@ -76,13 +78,13 @@ export const StudentLessonsTab = ({ route }: any) => {
         parseFloat(amount),
         paymentMethod
       );
-      Alert.alert('Success', 'Lesson marked as paid');
+      Alert.alert(t('common.success'), t('studentLessons.markedPaid'));
       setShowPaymentModal(false);
       setSelectedLesson(null);
       setAmount('');
       loadLessons();
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to mark as paid'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('studentLessons.markPaidFailed')));
     } finally {
       setProcessing(false);
     }
@@ -107,7 +109,7 @@ export const StudentLessonsTab = ({ route }: any) => {
         <View style={[styles.typeBadge, { backgroundColor: `${getLessonTypeColor(item.type)}20` }]}>
           <Text style={[styles.typeText, { color: getLessonTypeColor(item.type) }]}>
             {lessonTypeLabel(item.type) ?? item.type}
-            {item.status === 'cancelled' ? ' · Cancelled' : ''}
+            {item.status === 'cancelled' ? t('common.cancelledSuffix') : ''}
           </Text>
         </View>
         <View style={[styles.statusBadge, item.paid ? styles.paidBadge : styles.unpaidBadge]}>
@@ -117,7 +119,7 @@ export const StudentLessonsTab = ({ route }: any) => {
             color={item.paid ? colors.success[600] : colors.warning[600]}
           />
           <Text style={[styles.statusText, item.paid ? styles.paidText : styles.unpaidText]}>
-            {item.paid ? 'Paid' : 'Unpaid'}
+            {item.paid ? t('myLessons.paid') : t('myLessons.unpaid')}
           </Text>
         </View>
       </View>
@@ -153,7 +155,7 @@ export const StudentLessonsTab = ({ route }: any) => {
                 { color: item.attended ? colors.success[600] : colors.error[600] },
               ]}
             >
-              {item.attended ? 'Attended' : 'Absent — not billed'}
+              {item.attended ? t('studentLessons.attended') : t('studentLessons.absentNotBilled')}
             </Text>
           </View>
         )}
@@ -170,7 +172,7 @@ export const StudentLessonsTab = ({ route }: any) => {
 
       {item.feedback && (
         <View style={styles.feedbackContainer}>
-          <Text style={styles.feedbackLabel}>Feedback:</Text>
+          <Text style={styles.feedbackLabel}>{t('profile.feedback')}</Text>
           <Text style={styles.feedbackText}>{item.feedback}</Text>
         </View>
       )}
@@ -196,7 +198,7 @@ export const StudentLessonsTab = ({ route }: any) => {
           activeOpacity={0.7}
         >
           <Ionicons name="checkmark-circle-outline" size={20} color={colors.text.inverse} />
-          <Text style={styles.markPaidText}>Mark as Paid</Text>
+          <Text style={styles.markPaidText}>{t('studentLessons.markPaid')}</Text>
         </TouchableOpacity>
       )}
 
@@ -211,7 +213,10 @@ export const StudentLessonsTab = ({ route }: any) => {
       {item.paid && item.paymentDate && (
         <View style={styles.paymentInfo}>
           <Text style={styles.paymentInfoText}>
-            Paid on {formatDate(item.paymentDate)} via {paymentMethodLabel(item.paymentMethod)}
+            {t('studentLessons.paidOnVia', {
+              date: formatDate(item.paymentDate),
+              method: paymentMethodLabel(item.paymentMethod),
+            })}
           </Text>
         </View>
       )}
@@ -232,8 +237,8 @@ export const StudentLessonsTab = ({ route }: any) => {
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
       <Ionicons name="car-outline" size={64} color={colors.neutral[400]} />
-      <Text style={styles.emptyTitle}>No Lessons</Text>
-      <Text style={styles.emptySubtitle}>This student hasn't booked any lessons yet</Text>
+      <Text style={styles.emptyTitle}>{t('studentLessons.emptyTitle')}</Text>
+      <Text style={styles.emptySubtitle}>{t('studentLessons.emptyText')}</Text>
     </View>
   );
 
@@ -266,7 +271,7 @@ export const StudentLessonsTab = ({ route }: any) => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Mark Lesson as Paid</Text>
+              <Text style={styles.modalTitle}>{t('studentLessons.modalTitle')}</Text>
               <TouchableOpacity onPress={() => setShowPaymentModal(false)} activeOpacity={0.7}>
                 <Ionicons name="close" size={24} color={colors.text.secondary} />
               </TouchableOpacity>
@@ -282,7 +287,7 @@ export const StudentLessonsTab = ({ route }: any) => {
               keyboardType="decimal-pad"
             />
 
-            <Text style={styles.inputLabel}>Payment Method</Text>
+            <Text style={styles.inputLabel}>{t('studentLessons.paymentMethod')}</Text>
             <View style={styles.methodButtons}>
               {PAYMENT_METHODS.map((method) => (
                 <TouchableOpacity
@@ -309,7 +314,7 @@ export const StudentLessonsTab = ({ route }: any) => {
                 onPress={() => setShowPaymentModal(false)}
                 activeOpacity={0.7}
               >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <Text style={styles.cancelButtonText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -321,7 +326,7 @@ export const StudentLessonsTab = ({ route }: any) => {
                 {processing ? (
                   <ActivityIndicator size="small" color={colors.text.inverse} />
                 ) : (
-                  <Text style={styles.confirmButtonText}>Confirm Payment</Text>
+                  <Text style={styles.confirmButtonText}>{t('studentLessons.confirmPayment')}</Text>
                 )}
               </TouchableOpacity>
             </View>

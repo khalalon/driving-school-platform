@@ -19,6 +19,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { enrollmentService } from '../../services/api/EnrollmentService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
+import { useI18n } from '../../context/LanguageContext';
+import { TranslationKey } from '../../i18n';
 import { EnrollmentRequest, EnrollmentStatus } from '../../models/Enrollment';
 import { formatDate, formatPersonName } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
@@ -29,16 +31,23 @@ type FilterType = 'pending' | 'all';
 const REJECTION_REASON_MIN = 10;
 const REJECTION_REASON_MAX = 500;
 
-const STATUS_STYLES: Record<EnrollmentStatus, { badge: object; label: string }> = {
-  [EnrollmentStatus.PENDING]: { badge: { backgroundColor: colors.warning[50] }, label: 'Pending' },
+const STATUS_STYLES: Record<EnrollmentStatus, { badge: object; labelKey: TranslationKey }> = {
+  [EnrollmentStatus.PENDING]: {
+    badge: { backgroundColor: colors.warning[50] },
+    labelKey: 'enrollments.statusPending',
+  },
   [EnrollmentStatus.APPROVED]: {
     badge: { backgroundColor: colors.success[50] },
-    label: 'Approved',
+    labelKey: 'enrollments.statusApproved',
   },
-  [EnrollmentStatus.REJECTED]: { badge: { backgroundColor: colors.error[50] }, label: 'Rejected' },
+  [EnrollmentStatus.REJECTED]: {
+    badge: { backgroundColor: colors.error[50] },
+    labelKey: 'enrollments.statusRejected',
+  },
 };
 
 export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
+  const { t } = useI18n();
   const { schoolId } = route.params || {};
 
   const [loading, setLoading] = useState(true);
@@ -56,7 +65,7 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
     if (schoolId) {
       loadRequests();
     } else {
-      Alert.alert('Error', 'School ID not provided');
+      Alert.alert(t('common.error'), t('enrollments.noSchoolId'));
       navigation.goBack();
     }
   }, [filter, schoolId]);
@@ -68,7 +77,7 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
       const data = await enrollmentService.getSchoolRequests(schoolId, statusFilter);
       setRequests(data);
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load enrollment requests'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('enrollments.loadFailed')));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -82,23 +91,28 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
 
   const handleApprove = async (request: EnrollmentRequest) => {
     Alert.alert(
-      'Approve Enrollment',
-      `Approve enrollment for ${formatPersonName(
-        { firstName: request.studentFirstName, lastName: request.studentLastName },
-        request.studentEmail ?? 'this student'
-      )}?`,
+      t('enrollments.approveTitle'),
+      t('enrollments.approveConfirm', {
+        student: formatPersonName(
+          { firstName: request.studentFirstName, lastName: request.studentLastName },
+          request.studentEmail ?? t('enrollments.thisStudent')
+        ),
+      }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Approve',
+          text: t('enrollments.approve'),
           onPress: async () => {
             try {
               setProcessing(true);
               await enrollmentService.approveRequest(request.id);
-              Alert.alert('Success', 'Student enrollment has been approved');
+              Alert.alert(t('common.success'), t('enrollments.approved'));
               loadRequests();
             } catch (error) {
-              Alert.alert('Error', getApiErrorMessage(error, 'Failed to approve request'));
+              Alert.alert(
+                t('common.error'),
+                getApiErrorMessage(error, t('enrollments.approveFailed'))
+              );
             } finally {
               setProcessing(false);
             }
@@ -120,8 +134,8 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
     if (!selectedRequest) return;
     if (!reasonValid) {
       Alert.alert(
-        'Reason too short',
-        `Please explain the rejection in at least ${REJECTION_REASON_MIN} characters (the student will read it).`
+        t('lessonRequests.reasonTooShort'),
+        t('lessonRequests.reasonTooShortText', { min: REJECTION_REASON_MIN })
       );
       return;
     }
@@ -129,13 +143,13 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
     try {
       setProcessing(true);
       await enrollmentService.rejectRequest(selectedRequest.id, rejectionReason.trim());
-      Alert.alert('Success', 'Enrollment request has been rejected');
+      Alert.alert(t('common.success'), t('enrollments.rejected'));
       setShowRejectModal(false);
       setSelectedRequest(null);
       setRejectionReason('');
       loadRequests();
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to reject request'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('enrollments.rejectFailed')));
     } finally {
       setProcessing(false);
     }
@@ -148,7 +162,7 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
       schoolId,
       studentName: formatPersonName(
         { firstName: request.studentFirstName, lastName: request.studentLastName },
-        request.studentEmail ?? 'Student'
+        request.studentEmail ?? t('today.student')
       ),
     });
   };
@@ -170,20 +184,20 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
           </View>
         </View>
         <View style={[styles.statusBadge, STATUS_STYLES[item.status].badge]}>
-          <Text style={styles.statusText}>{STATUS_STYLES[item.status].label}</Text>
+          <Text style={styles.statusText}>{t(STATUS_STYLES[item.status].labelKey)}</Text>
         </View>
       </View>
 
       {item.message && (
         <View style={styles.messageContainer}>
-          <Text style={styles.messageLabel}>Message:</Text>
+          <Text style={styles.messageLabel}>{t('enrollments.message')}</Text>
           <Text style={styles.messageText}>{item.message}</Text>
         </View>
       )}
 
       {item.status === EnrollmentStatus.REJECTED && item.rejectionReason && (
         <View style={styles.rejectionContainer}>
-          <Text style={styles.rejectionLabel}>Rejection Reason:</Text>
+          <Text style={styles.rejectionLabel}>{t('enrollments.rejectionReason')}</Text>
           <Text style={styles.rejectionText}>{item.rejectionReason}</Text>
         </View>
       )}
@@ -195,7 +209,7 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
           activeOpacity={0.7}
         >
           <Ionicons name="person-circle-outline" size={20} color={colors.primary[600]} />
-          <Text style={styles.profileButtonText}>View student profile</Text>
+          <Text style={styles.profileButtonText}>{t('enrollments.viewProfile')}</Text>
           <Ionicons name="chevron-forward" size={18} color={colors.primary[600]} />
         </TouchableOpacity>
       )}
@@ -209,7 +223,7 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
             activeOpacity={0.7}
           >
             <Ionicons name="checkmark-circle-outline" size={20} color={colors.text.inverse} />
-            <Text style={styles.actionButtonText}>Approve</Text>
+            <Text style={styles.actionButtonText}>{t('enrollments.approve')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -219,7 +233,7 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
             activeOpacity={0.7}
           >
             <Ionicons name="close-circle-outline" size={20} color={colors.text.inverse} />
-            <Text style={styles.actionButtonText}>Reject</Text>
+            <Text style={styles.actionButtonText}>{t('enrollments.reject')}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -229,9 +243,9 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
       <Ionicons name="documents-outline" size={64} color={colors.neutral[400]} />
-      <Text style={styles.emptyTitle}>No Requests</Text>
+      <Text style={styles.emptyTitle}>{t('enrollments.emptyTitle')}</Text>
       <Text style={styles.emptySubtitle}>
-        {filter === 'pending' ? 'No pending enrollment requests' : 'No enrollment requests found'}
+        {filter === 'pending' ? t('enrollments.emptyPending') : t('enrollments.emptyAll')}
       </Text>
     </View>
   );
@@ -247,7 +261,7 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
         >
           <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Enrollment Requests</Text>
+        <Text style={styles.headerTitle}>{t('enrollments.title')}</Text>
       </View>
 
       {/* Filter Tabs */}
@@ -266,7 +280,9 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
           onPress={() => setFilter('all')}
           activeOpacity={0.7}
         >
-          <Text style={[styles.filterText, filter === 'all' && styles.activeFilterText]}>All</Text>
+          <Text style={[styles.filterText, filter === 'all' && styles.activeFilterText]}>
+            {t('enrollments.all')}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -297,7 +313,7 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Reject Enrollment</Text>
+              <Text style={styles.modalTitle}>{t('enrollments.rejectTitle')}</Text>
               <TouchableOpacity
                 onPress={() => {
                   setShowRejectModal(false);
@@ -309,10 +325,10 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.modalLabel}>Rejection Reason</Text>
+            <Text style={styles.modalLabel}>{t('enrollments.rejectLabel')}</Text>
             <TextInput
               style={styles.modalInput}
-              placeholder="Please provide a reason for rejection..."
+              placeholder={t('enrollments.rejectPlaceholder')}
               placeholderTextColor={colors.neutral[400]}
               value={rejectionReason}
               onChangeText={setRejectionReason}
@@ -336,7 +352,7 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
                 }}
                 activeOpacity={0.7}
               >
-                <Text style={styles.modalCancelText}>Cancel</Text>
+                <Text style={styles.modalCancelText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -348,7 +364,7 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
                 {processing ? (
                   <ActivityIndicator size="small" color={colors.text.inverse} />
                 ) : (
-                  <Text style={styles.modalRejectText}>Reject</Text>
+                  <Text style={styles.modalRejectText}>{t('enrollments.reject')}</Text>
                 )}
               </TouchableOpacity>
             </View>

@@ -24,6 +24,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../../context/AuthContext';
+import { useI18n } from '../../context/LanguageContext';
 import { lessonService } from '../../services/api/LessonService';
 import { schoolService } from '../../services/api/SchoolService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
@@ -44,6 +45,7 @@ const tomorrowMorning = (): Date => {
 };
 
 export const BookForStudentScreen = ({ navigation }: any) => {
+  const { t } = useI18n();
   const { user } = useAuth();
   const schoolId = user?.schoolId;
   const currency = useSchoolCurrency(schoolId);
@@ -72,7 +74,7 @@ export const BookForStudentScreen = ({ navigation }: any) => {
 
   const loadSchoolData = async () => {
     if (!schoolId) {
-      Alert.alert('No school', 'Your account is not linked to a school yet.', [
+      Alert.alert(t('today.noSchool'), t('today.noSchoolText'), [
         {
           text: 'OK',
           onPress: () => navigation.navigate('InstructorDashboard'),
@@ -90,7 +92,7 @@ export const BookForStudentScreen = ({ navigation }: any) => {
       setStudents(studentList);
       setPricing(pricingResult);
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load the school students'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('bookFor.loadFailed')));
     } finally {
       setLoadingStudents(false);
     }
@@ -146,27 +148,27 @@ export const BookForStudentScreen = ({ navigation }: any) => {
 
   const handleBookLesson = async () => {
     if (!selectedStudent) {
-      Alert.alert('Required', 'Please select a student');
+      Alert.alert(t('common.required'), t('bookFor.selectStudent'));
       return;
     }
     if (scheduledDate.getTime() <= Date.now()) {
-      Alert.alert('Invalid Date', 'The lesson date must be in the future');
+      Alert.alert(t('lessonRequests.invalidDate'), t('lessonRequests.dateMustBeFuture'));
       return;
     }
     const durationMinutes = Number.parseInt(duration, 10);
     if (!Number.isInteger(durationMinutes) || durationMinutes <= 0) {
-      Alert.alert('Invalid Duration', 'Please enter the duration in minutes');
+      Alert.alert(t('lessonRequests.invalidDuration'), t('lessonRequests.durationText'));
       return;
     }
     const priceValue = price.trim() === '' ? undefined : Number(price.replace(',', '.'));
     if (priceValue !== undefined && (Number.isNaN(priceValue) || priceValue < 0)) {
-      Alert.alert('Invalid Price', 'Please enter a valid price');
+      Alert.alert(t('lessonRequests.invalidPrice'), t('lessonRequests.priceText'));
       return;
     }
     if (priceRequired && priceValue === undefined) {
       Alert.alert(
-        'Price Required',
-        `The school has no rate for ${lessonTypeLabel(lessonType)} lessons: please enter the price.`
+        t('lessonRequests.priceRequired'),
+        t('lessonRequests.priceRequiredText', { type: lessonTypeLabel(lessonType) })
       );
       return;
     }
@@ -184,8 +186,10 @@ export const BookForStudentScreen = ({ navigation }: any) => {
       });
 
       Alert.alert(
-        'Success',
-        `Lesson booked for ${formatPersonName(selectedStudent, 'the student')}`,
+        t('common.success'),
+        t('bookFor.booked', {
+          student: formatPersonName(selectedStudent, t('attendance.theStudent')),
+        }),
         [
           {
             text: 'OK',
@@ -194,7 +198,7 @@ export const BookForStudentScreen = ({ navigation }: any) => {
         ]
       );
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to book lesson'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('bookFor.bookFailed')));
     } finally {
       setLoading(false);
     }
@@ -203,7 +207,7 @@ export const BookForStudentScreen = ({ navigation }: any) => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Students</Text>
+        <Text style={styles.headerTitle}>{t('bookFor.title')}</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -217,7 +221,7 @@ export const BookForStudentScreen = ({ navigation }: any) => {
 
         {/* Student (S6) */}
         <View style={styles.section}>
-          <Text style={styles.label}>Student</Text>
+          <Text style={styles.label}>{t('bookFor.student')}</Text>
           {selectedStudent ? (
             <View style={styles.selectedStudent}>
               <View style={styles.studentAvatar}>
@@ -257,7 +261,7 @@ export const BookForStudentScreen = ({ navigation }: any) => {
                 />
                 <TextInput
                   style={styles.input}
-                  placeholder="Search by name or email"
+                  placeholder={t('bookFor.searchPlaceholder')}
                   placeholderTextColor={colors.neutral[400]}
                   value={search}
                   onChangeText={setSearch}
@@ -274,9 +278,7 @@ export const BookForStudentScreen = ({ navigation }: any) => {
                   />
                 ) : filteredStudents.length === 0 ? (
                   <Text style={styles.emptyText}>
-                    {students.length === 0
-                      ? 'No enrolled students in your school yet'
-                      : 'No student matches your search'}
+                    {students.length === 0 ? t('bookFor.noStudents') : t('bookFor.noMatch')}
                   </Text>
                 ) : (
                   filteredStudents.map((student) => (
@@ -317,7 +319,7 @@ export const BookForStudentScreen = ({ navigation }: any) => {
 
         {/* Lesson type (D-18) */}
         <View style={styles.section}>
-          <Text style={styles.label}>Lesson Type</Text>
+          <Text style={styles.label}>{t('book.lessonType')}</Text>
           <View style={styles.typeContainer}>
             {LESSON_TYPES.map((type) => {
               const active = lessonType === type;
@@ -339,7 +341,7 @@ export const BookForStudentScreen = ({ navigation }: any) => {
 
         {/* Date & time */}
         <View style={styles.section}>
-          <Text style={styles.label}>Date & Time</Text>
+          <Text style={styles.label}>{t('lessonRequests.dateTime')}</Text>
           <View style={styles.dateRow}>
             <TouchableOpacity
               style={[styles.dateButton, styles.dateButtonGrow]}
@@ -386,7 +388,7 @@ export const BookForStudentScreen = ({ navigation }: any) => {
 
         {/* Duration */}
         <View style={styles.section}>
-          <Text style={styles.label}>Duration (minutes)</Text>
+          <Text style={styles.label}>{t('lessonRequests.duration')}</Text>
           <View style={styles.inputContainer}>
             <Ionicons
               name="hourglass-outline"
@@ -434,19 +436,17 @@ export const BookForStudentScreen = ({ navigation }: any) => {
                 />
               </View>
               <Text style={styles.hintText}>
-                {priceRequired
-                  ? 'The school has no rate for this lesson type'
-                  : 'Leave empty to apply the school rate'}
+                {priceRequired ? t('lessonRequests.noRate') : t('lessonRequests.leaveEmpty')}
               </Text>
             </>
           )}
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.label}>Notes (Optional)</Text>
+          <Text style={styles.label}>{t('bookFor.notes')}</Text>
           <TextInput
             style={styles.notesInput}
-            placeholder="Add any notes about this lesson..."
+            placeholder={t('bookFor.notesPlaceholder')}
             placeholderTextColor={colors.neutral[400]}
             value={notes}
             onChangeText={setNotes}
@@ -466,7 +466,7 @@ export const BookForStudentScreen = ({ navigation }: any) => {
             <ActivityIndicator size="small" color={colors.text.inverse} />
           ) : (
             <>
-              <Text style={styles.bookButtonText}>Book Lesson</Text>
+              <Text style={styles.bookButtonText}>{t('bookFor.book')}</Text>
               <Ionicons name="checkmark" size={20} color={colors.text.inverse} />
             </>
           )}

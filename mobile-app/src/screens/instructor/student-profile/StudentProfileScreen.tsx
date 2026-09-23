@@ -11,10 +11,12 @@ import { StudentInfoTab } from './tabs/StudentInfoTab';
 import { StudentLessonsTab } from './tabs/StudentLessonsTab';
 import { StudentExamsTab } from './tabs/StudentExamsTab';
 import { colors, typography, spacing } from '../../../theme';
+import { useI18n } from '../../../context/LanguageContext';
 
 const Tab = createMaterialTopTabNavigator();
 
 export const StudentProfileScreen = ({ route, navigation }: any) => {
+  const { t } = useI18n();
   const { studentId, schoolId, studentName } = route.params;
 
   return (
@@ -60,16 +62,19 @@ export const StudentProfileScreen = ({ route, navigation }: any) => {
           name="Info"
           component={StudentInfoTab}
           initialParams={{ studentId, schoolId }}
+          options={{ title: t('studentProfile.tab.info') }}
         />
         <Tab.Screen
           name="Lessons"
           component={StudentLessonsTab}
           initialParams={{ studentId, schoolId }}
+          options={{ title: t('studentProfile.tab.lessons') }}
         />
         <Tab.Screen
           name="Exams"
           component={StudentExamsTab}
           initialParams={{ studentId, schoolId }}
+          options={{ title: t('studentProfile.tab.exams') }}
         />
       </Tab.Navigator>
     </View>

@@ -23,12 +23,14 @@ import {
   PAYMENT_METHODS,
   PaymentMethod,
 } from '../../../../models/Profile';
-import { examResultLabel, ExamResult, ExamType } from '../../../../models/Exam';
+import { examResultLabel, examTypeLabel, ExamResult, ExamType } from '../../../../models/Exam';
 import { useSchoolCurrency } from '../../../../hooks/useSchoolCurrency';
-import { formatAmount, formatDateTime } from '../../../../utils/format';
+import { formatAmount, formatDate, formatDateTime } from '../../../../utils/format';
 import { colors, typography, spacing, shadows } from '../../../../theme';
+import { useI18n } from '../../../../context/LanguageContext';
 
 export const StudentExamsTab = ({ route }: any) => {
+  const { t } = useI18n();
   const { studentId, schoolId } = route.params;
   const currency = useSchoolCurrency(schoolId);
 
@@ -50,7 +52,7 @@ export const StudentExamsTab = ({ route }: any) => {
       const data = await studentProfileService.getStudentExams(studentId, schoolId);
       setExams(data);
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load exams'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('myExams.loadFailed')));
     } finally {
       setLoading(false);
     }
@@ -64,20 +66,20 @@ export const StudentExamsTab = ({ route }: any) => {
 
   const confirmPayment = async () => {
     if (!selectedExam || !amount || parseFloat(amount) <= 0) {
-      Alert.alert('Invalid Amount', 'Please enter a valid amount');
+      Alert.alert(t('studentLessons.invalidAmount'), t('studentLessons.invalidAmountText'));
       return;
     }
 
     try {
       setProcessing(true);
       await studentProfileService.markExamPaid(selectedExam.id, parseFloat(amount), paymentMethod);
-      Alert.alert('Success', 'Exam marked as paid');
+      Alert.alert(t('common.success'), t('studentExams.markedPaid'));
       setShowPaymentModal(false);
       setSelectedExam(null);
       setAmount('');
       loadExams();
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to mark as paid'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('studentLessons.markPaidFailed')));
     } finally {
       setProcessing(false);
     }
@@ -117,8 +119,8 @@ export const StudentExamsTab = ({ route }: any) => {
             color={colors.primary[600]}
           />
           <Text style={styles.examType}>
-            {item.type === ExamType.THEORY ? 'Theory Exam' : 'Practical Exam'}
-            {item.status === 'cancelled' ? ' · Cancelled' : ''}
+            {t('myExams.examSuffix', { type: examTypeLabel(item.type as ExamType) })}
+            {item.status === 'cancelled' ? t('common.cancelledSuffix') : ''}
           </Text>
         </View>
         <View style={[styles.statusBadge, item.paid ? styles.paidBadge : styles.unpaidBadge]}>
@@ -128,7 +130,7 @@ export const StudentExamsTab = ({ route }: any) => {
             color={item.paid ? colors.success[600] : colors.warning[600]}
           />
           <Text style={[styles.statusText, item.paid ? styles.paidText : styles.unpaidText]}>
-            {item.paid ? 'Paid' : 'Unpaid'}
+            {item.paid ? t('myLessons.paid') : t('myLessons.unpaid')}
           </Text>
         </View>
       </View>
@@ -153,7 +155,9 @@ export const StudentExamsTab = ({ route }: any) => {
               {getResultLabel(item.result)}
             </Text>
             {item.score !== null && item.score !== undefined && (
-              <Text style={styles.scoreText}>Score: {item.score}/100</Text>
+              <Text style={styles.scoreText}>
+                {t('studentExams.scoreOutOf', { score: item.score })}
+              </Text>
             )}
           </View>
         )}
@@ -170,7 +174,7 @@ export const StudentExamsTab = ({ route }: any) => {
 
       {item.notes && (
         <View style={styles.notesContainer}>
-          <Text style={styles.notesLabel}>Notes:</Text>
+          <Text style={styles.notesLabel}>{t('profile.notes')}</Text>
           <Text style={styles.notesText}>{item.notes}</Text>
         </View>
       )}
@@ -182,14 +186,17 @@ export const StudentExamsTab = ({ route }: any) => {
           activeOpacity={0.7}
         >
           <Ionicons name="checkmark-circle-outline" size={20} color={colors.text.inverse} />
-          <Text style={styles.markPaidText}>Mark as Paid</Text>
+          <Text style={styles.markPaidText}>{t('studentLessons.markPaid')}</Text>
         </TouchableOpacity>
       )}
 
       {item.paid && item.paymentDate && (
         <View style={styles.paymentInfo}>
           <Text style={styles.paymentInfoText}>
-            Paid on {new Date(item.paymentDate).toLocaleDateString()} via {item.paymentMethod}
+            {t('studentLessons.paidOnVia', {
+              date: formatDate(item.paymentDate),
+              method: paymentMethodLabel(item.paymentMethod),
+            })}
           </Text>
         </View>
       )}
@@ -199,8 +206,8 @@ export const StudentExamsTab = ({ route }: any) => {
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
       <Ionicons name="clipboard-outline" size={64} color={colors.neutral[400]} />
-      <Text style={styles.emptyTitle}>No Exams</Text>
-      <Text style={styles.emptySubtitle}>This student hasn't registered for any exams yet</Text>
+      <Text style={styles.emptyTitle}>{t('studentExams.emptyTitle')}</Text>
+      <Text style={styles.emptySubtitle}>{t('studentExams.emptyText')}</Text>
     </View>
   );
 
@@ -233,7 +240,7 @@ export const StudentExamsTab = ({ route }: any) => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Mark Exam as Paid</Text>
+              <Text style={styles.modalTitle}>{t('studentExams.modalTitle')}</Text>
               <TouchableOpacity onPress={() => setShowPaymentModal(false)} activeOpacity={0.7}>
                 <Ionicons name="close" size={24} color={colors.text.secondary} />
               </TouchableOpacity>
@@ -276,7 +283,7 @@ export const StudentExamsTab = ({ route }: any) => {
                 onPress={() => setShowPaymentModal(false)}
                 activeOpacity={0.7}
               >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <Text style={styles.cancelButtonText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -288,7 +295,7 @@ export const StudentExamsTab = ({ route }: any) => {
                 {processing ? (
                   <ActivityIndicator size="small" color={colors.text.inverse} />
                 ) : (
-                  <Text style={styles.confirmButtonText}>Confirm Payment</Text>
+                  <Text style={styles.confirmButtonText}>{t('studentLessons.confirmPayment')}</Text>
                 )}
               </TouchableOpacity>
             </View>

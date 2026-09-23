@@ -13,6 +13,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
+import { useI18n } from '../context/LanguageContext';
 import { UserRole } from '../models/User';
 import { AppStackParamList, InstructorTabParamList, StudentTabParamList } from './types';
 import { colors, typography } from '../theme';
@@ -66,55 +67,61 @@ const tabScreenOptions = {
   },
 };
 
-const StudentTabs = () => (
-  <StudentTab.Navigator screenOptions={tabScreenOptions}>
-    <StudentTab.Screen
-      name="StudentDashboard"
-      component={StudentDashboard}
-      options={{ title: 'Home', tabBarIcon: tabIcon('home', 'home-outline') }}
-    />
-    <StudentTab.Screen
-      name="MyLessons"
-      component={MyLessonsScreen}
-      options={{ title: 'Lessons', tabBarIcon: tabIcon('calendar', 'calendar-outline') }}
-    />
-    <StudentTab.Screen
-      name="MyExams"
-      component={MyExamsScreen}
-      options={{ title: 'Exams', tabBarIcon: tabIcon('ribbon', 'ribbon-outline') }}
-    />
-    <StudentTab.Screen
-      name="MyProfile"
-      component={MyProfileScreen}
-      options={{ title: 'Profile', tabBarIcon: tabIcon('person', 'person-outline') }}
-    />
-  </StudentTab.Navigator>
-);
+const StudentTabs = () => {
+  const { t } = useI18n();
+  return (
+    <StudentTab.Navigator screenOptions={tabScreenOptions}>
+      <StudentTab.Screen
+        name="StudentDashboard"
+        component={StudentDashboard}
+        options={{ title: t('tabs.home'), tabBarIcon: tabIcon('home', 'home-outline') }}
+      />
+      <StudentTab.Screen
+        name="MyLessons"
+        component={MyLessonsScreen}
+        options={{ title: t('tabs.lessons'), tabBarIcon: tabIcon('calendar', 'calendar-outline') }}
+      />
+      <StudentTab.Screen
+        name="MyExams"
+        component={MyExamsScreen}
+        options={{ title: t('tabs.exams'), tabBarIcon: tabIcon('ribbon', 'ribbon-outline') }}
+      />
+      <StudentTab.Screen
+        name="MyProfile"
+        component={MyProfileScreen}
+        options={{ title: t('tabs.profile'), tabBarIcon: tabIcon('person', 'person-outline') }}
+      />
+    </StudentTab.Navigator>
+  );
+};
 
-const InstructorTabs = () => (
-  <InstructorTab.Navigator screenOptions={tabScreenOptions}>
-    <InstructorTab.Screen
-      name="InstructorDashboard"
-      component={InstructorDashboard}
-      options={{ title: 'Today', tabBarIcon: tabIcon('today', 'today-outline') }}
-    />
-    <InstructorTab.Screen
-      name="LessonRequests"
-      component={LessonRequestsScreen}
-      options={{ title: 'Requests', tabBarIcon: tabIcon('time', 'time-outline') }}
-    />
-    <InstructorTab.Screen
-      name="ExamRequests"
-      component={ExamRequestsScreen}
-      options={{ title: 'Exams', tabBarIcon: tabIcon('ribbon', 'ribbon-outline') }}
-    />
-    <InstructorTab.Screen
-      name="BookForStudent"
-      component={BookForStudentScreen}
-      options={{ title: 'Students', tabBarIcon: tabIcon('people', 'people-outline') }}
-    />
-  </InstructorTab.Navigator>
-);
+const InstructorTabs = () => {
+  const { t } = useI18n();
+  return (
+    <InstructorTab.Navigator screenOptions={tabScreenOptions}>
+      <InstructorTab.Screen
+        name="InstructorDashboard"
+        component={InstructorDashboard}
+        options={{ title: t('tabs.today'), tabBarIcon: tabIcon('today', 'today-outline') }}
+      />
+      <InstructorTab.Screen
+        name="LessonRequests"
+        component={LessonRequestsScreen}
+        options={{ title: t('tabs.requests'), tabBarIcon: tabIcon('time', 'time-outline') }}
+      />
+      <InstructorTab.Screen
+        name="ExamRequests"
+        component={ExamRequestsScreen}
+        options={{ title: t('tabs.exams'), tabBarIcon: tabIcon('ribbon', 'ribbon-outline') }}
+      />
+      <InstructorTab.Screen
+        name="BookForStudent"
+        component={BookForStudentScreen}
+        options={{ title: t('tabs.students'), tabBarIcon: tabIcon('people', 'people-outline') }}
+      />
+    </InstructorTab.Navigator>
+  );
+};
 
 export const AppNavigator = () => {
   const { user, isLoading } = useAuth();

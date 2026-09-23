@@ -17,6 +17,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { lessonTypeLabel, Lesson, MarkAttendanceData } from '../../../models/Lesson';
 import { formatPersonName, formatTime } from '../../../utils/format';
+import { useI18n } from '../../../context/LanguageContext';
 import { colors, typography, spacing, shadows } from '../../../theme';
 
 const RATINGS = [1, 2, 3, 4, 5];
@@ -38,6 +39,7 @@ export const AttendanceModal = ({
   onClose,
   onConfirm,
 }: AttendanceModalProps) => {
+  const { t } = useI18n();
   const [attended, setAttended] = useState(initialAttended);
   const [feedback, setFeedback] = useState('');
   const [rating, setRating] = useState<number | null>(null);
@@ -63,7 +65,7 @@ export const AttendanceModal = ({
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Record Attendance</Text>
+            <Text style={styles.modalTitle}>{t('attendance.title')}</Text>
             <TouchableOpacity onPress={onClose}>
               <Ionicons name="close" size={24} color={colors.text.secondary} />
             </TouchableOpacity>
@@ -71,15 +73,16 @@ export const AttendanceModal = ({
 
           <Text style={styles.modalSubtitle}>
             {lesson
-              ? `${lessonTypeLabel(lesson.type)} lesson with ${formatPersonName(
-                  lesson.student,
-                  'the student'
-                )} at ${formatTime(lesson.scheduledDate)}`
+              ? t('attendance.subtitle', {
+                  type: lessonTypeLabel(lesson.type),
+                  student: formatPersonName(lesson.student, t('attendance.theStudent')),
+                  time: formatTime(lesson.scheduledDate),
+                })
               : ''}
           </Text>
 
           <View style={styles.section}>
-            <Text style={styles.label}>Was the student present?</Text>
+            <Text style={styles.label}>{t('attendance.question')}</Text>
             <View style={styles.choiceRow}>
               <TouchableOpacity
                 style={[styles.choiceButton, attended && styles.choicePresent]}
@@ -92,7 +95,7 @@ export const AttendanceModal = ({
                   color={attended ? colors.success[600] : colors.text.tertiary}
                 />
                 <Text style={[styles.choiceText, attended && styles.choiceTextActive]}>
-                  Present
+                  {t('today.present')}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -106,7 +109,7 @@ export const AttendanceModal = ({
                   color={!attended ? colors.error[600] : colors.text.tertiary}
                 />
                 <Text style={[styles.choiceText, !attended && styles.choiceTextActive]}>
-                  Absent
+                  {t('today.absent')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -114,7 +117,7 @@ export const AttendanceModal = ({
 
           {attended && (
             <View style={styles.section}>
-              <Text style={styles.label}>Rating (optional)</Text>
+              <Text style={styles.label}>{t('attendance.rating')}</Text>
               <View style={styles.ratingRow}>
                 {RATINGS.map((star) => (
                   <TouchableOpacity
@@ -135,10 +138,10 @@ export const AttendanceModal = ({
           )}
 
           <View style={styles.section}>
-            <Text style={styles.label}>Feedback (optional)</Text>
+            <Text style={styles.label}>{t('attendance.feedback')}</Text>
             <TextInput
               style={styles.feedbackInput}
-              placeholder="Progress, points to work on..."
+              placeholder={t('attendance.feedbackPlaceholder')}
               placeholderTextColor={colors.neutral[400]}
               value={feedback}
               onChangeText={setFeedback}
@@ -154,7 +157,7 @@ export const AttendanceModal = ({
               onPress={onClose}
               activeOpacity={0.7}
             >
-              <Text style={styles.modalCancelText}>Cancel</Text>
+              <Text style={styles.modalCancelText}>{t('common.cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[
@@ -169,7 +172,7 @@ export const AttendanceModal = ({
               {processing ? (
                 <ActivityIndicator size="small" color={colors.text.inverse} />
               ) : (
-                <Text style={styles.modalConfirmText}>Save</Text>
+                <Text style={styles.modalConfirmText}>{t('common.save')}</Text>
               )}
             </TouchableOpacity>
           </View>

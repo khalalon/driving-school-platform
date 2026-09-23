@@ -28,6 +28,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../../context/AuthContext';
+import { useI18n } from '../../context/LanguageContext';
 import { lessonService } from '../../services/api/LessonService';
 import { schoolService } from '../../services/api/SchoolService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
@@ -65,6 +66,7 @@ const firstFutureSlot = (wanted: string | null | undefined, now: Date = new Date
 };
 
 export const LessonRequestsScreen = ({ navigation }: any) => {
+  const { t } = useI18n();
   const { user } = useAuth();
   const schoolId = user?.schoolId;
   const currency = useSchoolCurrency(schoolId);
@@ -115,7 +117,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
       // Une demande traitée entre-temps ne reste pas cochée
       setCheckedIds((previous) => new Set(data.filter((l) => previous.has(l.id)).map((l) => l.id)));
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load lesson requests'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('lessonRequests.loadFailed')));
     } finally {
       setLoading(false);
     }
@@ -210,23 +212,23 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
     const priceRequired = pricing !== null && !rate;
 
     if (scheduledDate.getTime() <= Date.now()) {
-      Alert.alert('Invalid Date', 'The lesson date must be in the future');
+      Alert.alert(t('lessonRequests.invalidDate'), t('lessonRequests.dateMustBeFuture'));
       return;
     }
     const durationMinutes = Number.parseInt(duration, 10);
     if (!Number.isInteger(durationMinutes) || durationMinutes <= 0) {
-      Alert.alert('Invalid Duration', 'Please enter the duration in minutes');
+      Alert.alert(t('lessonRequests.invalidDuration'), t('lessonRequests.durationText'));
       return;
     }
     const priceValue = price.trim() === '' ? undefined : Number(price.replace(',', '.'));
     if (priceValue !== undefined && (Number.isNaN(priceValue) || priceValue < 0)) {
-      Alert.alert('Invalid Price', 'Please enter a valid price');
+      Alert.alert(t('lessonRequests.invalidPrice'), t('lessonRequests.priceText'));
       return;
     }
     if (priceRequired && priceValue === undefined) {
       Alert.alert(
-        'Price Required',
-        `The school has no rate for ${lessonTypeLabel(targetType)} lessons: please enter the price.`
+        t('lessonRequests.priceRequired'),
+        t('lessonRequests.priceRequiredText', { type: lessonTypeLabel(targetType) })
       );
       return;
     }
@@ -243,7 +245,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
       if (approveTargets.length === 1) {
         // L5 : l'appelant devient l'instructeur ; prix de la grille sinon celui saisi (D-30)
         await lessonService.approveLesson(approveTargets[0].id, data);
-        Alert.alert('Success', 'Lesson scheduled: you are now its instructor');
+        Alert.alert(t('common.success'), t('lessonRequests.scheduled'));
       } else {
         // D-34 : un appel L5 par demande cochée, en séquence, puis récapitulatif
         const result = await lessonService.approveLessons(
@@ -252,13 +254,18 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
         );
         const failures = result.failed.map(({ lessonId, error }) => {
           const request = approveTargets.find((t) => t.id === lessonId);
-          const who = request ? formatPersonName(request.student, 'Student') : lessonId;
-          return `• ${who}: ${getApiErrorMessage(error, 'request failed')}`;
+          const who = request ? formatPersonName(request.student, t('today.student')) : lessonId;
+          return `• ${who}: ${getApiErrorMessage(error, t('lessonRequests.requestFailed'))}`;
         });
         Alert.alert(
-          failures.length === 0 ? 'Success' : 'Partially scheduled',
-          `${result.succeeded.length} of ${approveTargets.length} lesson(s) scheduled` +
-            (failures.length > 0 ? `\n\nNot scheduled:\n${failures.join('\n')}` : '')
+          failures.length === 0 ? t('common.success') : t('lessonRequests.partiallyScheduled'),
+          t('lessonRequests.batchResult', {
+            done: result.succeeded.length,
+            total: approveTargets.length,
+          }) +
+            (failures.length > 0
+              ? `\n\n${t('lessonRequests.notScheduled')}\n${failures.join('\n')}`
+              : '')
         );
         setCheckedIds(new Set());
       }
@@ -266,7 +273,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
       loadRequests();
     } catch (error) {
       // 409 : un collègue a déjà traité la demande ; 400 PRICE_REQUIRED : grille incomplète
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to approve lesson'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('lessonRequests.approveFailed')));
       loadRequests();
     } finally {
       setProcessing(false);
@@ -294,8 +301,8 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
     if (!selectedRequest) return;
     if (!reasonValid) {
       Alert.alert(
-        'Reason too short',
-        `Please explain the rejection in at least ${REASON_MIN} characters (the student will read it).`
+        t('lessonRequests.reasonTooShort'),
+        t('lessonRequests.reasonTooShortText', { min: REASON_MIN })
       );
       return;
     }
@@ -303,11 +310,11 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
     try {
       setProcessing(true);
       await lessonService.rejectLesson(selectedRequest.id, rejectionReason.trim());
-      Alert.alert('Success', 'Lesson request rejected');
+      Alert.alert(t('common.success'), t('lessonRequests.rejected'));
       closeReject();
       loadRequests();
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to reject lesson'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('lessonRequests.rejectFailed')));
       loadRequests();
     } finally {
       setProcessing(false);
@@ -332,7 +339,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
               activeOpacity={0.7}
               accessibilityRole="checkbox"
               accessibilityState={{ checked }}
-              accessibilityLabel="Select this code request for group scheduling"
+              accessibilityLabel={t('lessonRequests.selectCode')}
             >
               <Ionicons
                 name={checked ? 'checkbox' : 'square-outline'}
@@ -347,7 +354,9 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
           )}
 
           <View style={styles.requestInfo}>
-            <Text style={styles.studentName}>{formatPersonName(item.student, 'Student')}</Text>
+            <Text style={styles.studentName}>
+              {formatPersonName(item.student, t('today.student'))}
+            </Text>
             <View style={styles.detailRow}>
               <Ionicons name="car-outline" size={16} color={colors.text.tertiary} />
               <Text style={styles.detailText}>
@@ -358,13 +367,17 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
             <View style={styles.detailRow}>
               <Ionicons name="calendar-outline" size={16} color={colors.text.tertiary} />
               <Text style={styles.detailText}>
-                Requested: {formatDateTime(item.requestedDate, 'no date given')}
+                {t('lessonRequests.requestedOn', {
+                  date: formatDateTime(item.requestedDate, t('lessonRequests.noDateGiven')),
+                })}
               </Text>
             </View>
             {preferred && (
               <View style={styles.detailRow}>
                 <Ionicons name="star-outline" size={16} color={colors.warning[600]} />
-                <Text style={[styles.detailText, styles.preferredText]}>Prefers {preferred}</Text>
+                <Text style={[styles.detailText, styles.preferredText]}>
+                  {t('lessonRequests.prefers', { name: preferred })}
+                </Text>
               </View>
             )}
             {item.notes && (
@@ -383,7 +396,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
             disabled={processing}
           >
             <Ionicons name="close-outline" size={20} color={colors.error[600]} />
-            <Text style={styles.rejectButtonText}>Reject</Text>
+            <Text style={styles.rejectButtonText}>{t('lessonRequests.reject')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionButton, styles.approveButton]}
@@ -392,7 +405,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
             disabled={processing}
           >
             <Ionicons name="checkmark-outline" size={20} color={colors.text.inverse} />
-            <Text style={styles.approveButtonText}>Schedule</Text>
+            <Text style={styles.approveButtonText}>{t('lessonRequests.schedule')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -404,8 +417,8 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
       <View style={styles.emptyIconContainer}>
         <Ionicons name="document-text-outline" size={64} color={colors.neutral[300]} />
       </View>
-      <Text style={styles.emptyTitle}>No Pending Requests</Text>
-      <Text style={styles.emptyText}>New lesson requests from your school will appear here</Text>
+      <Text style={styles.emptyTitle}>{t('lessonRequests.emptyTitle')}</Text>
+      <Text style={styles.emptyText}>{t('lessonRequests.emptyText')}</Text>
     </View>
   );
 
@@ -426,7 +439,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Lesson Requests</Text>
+        <Text style={styles.headerTitle}>{t('lessonRequests.title')}</Text>
       </View>
 
       {/* Requests List */}
@@ -458,7 +471,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
             onPress={() => setCheckedIds(new Set())}
             activeOpacity={0.7}
           >
-            <Text style={styles.batchClearText}>Clear</Text>
+            <Text style={styles.batchClearText}>{t('lessonRequests.clear')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.batchButton}
@@ -467,7 +480,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
             disabled={processing}
           >
             <Ionicons name="calendar-outline" size={18} color={colors.text.inverse} />
-            <Text style={styles.batchButtonText}>Schedule together</Text>
+            <Text style={styles.batchButtonText}>{t('lessonRequests.scheduleTogether')}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -484,7 +497,9 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
             <ScrollView showsVerticalScrollIndicator={false}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>
-                  {isBatch ? `Schedule ${approveTargets.length} Lessons` : 'Schedule Lesson'}
+                  {isBatch
+                    ? t('lessonRequests.scheduleMany', { count: approveTargets.length })
+                    : t('lessonRequests.scheduleOne')}
                 </Text>
                 <TouchableOpacity onPress={closeApprove}>
                   <Ionicons name="close" size={24} color={colors.text.secondary} />
@@ -493,19 +508,25 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
 
               <Text style={styles.modalSubtitle}>
                 {isBatch
-                  ? `One ${lessonTypeLabel(LessonType.CODE)} lesson per student, same slot — ` +
-                    `you will be the instructor of each: ` +
-                    approveTargets.map((t) => formatPersonName(t.student, 'Student')).join(', ')
+                  ? t('lessonRequests.batchSubtitle', {
+                      type: lessonTypeLabel(LessonType.CODE),
+                      students: approveTargets
+                        .map((target) => formatPersonName(target.student, t('today.student')))
+                        .join(', '),
+                    })
                   : approveTargets[0]
-                    ? `${lessonTypeLabel(approveTargets[0].type)} lesson for ${formatPersonName(
-                        approveTargets[0].student,
-                        'the student'
-                      )} — you will be the instructor`
+                    ? t('lessonRequests.singleSubtitle', {
+                        type: lessonTypeLabel(approveTargets[0].type),
+                        student: formatPersonName(
+                          approveTargets[0].student,
+                          t('attendance.theStudent')
+                        ),
+                      })
                     : ''}
               </Text>
 
               <View style={styles.section}>
-                <Text style={styles.label}>Date & Time</Text>
+                <Text style={styles.label}>{t('lessonRequests.dateTime')}</Text>
                 <View style={styles.dateRow}>
                   <TouchableOpacity
                     style={[styles.dateButton, styles.dateButtonGrow]}
@@ -551,7 +572,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
               </View>
 
               <View style={styles.section}>
-                <Text style={styles.label}>Duration (minutes)</Text>
+                <Text style={styles.label}>{t('lessonRequests.duration')}</Text>
                 <TextInput
                   style={styles.input}
                   value={duration}
@@ -564,13 +585,15 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
 
               <View style={styles.section}>
                 <Text style={styles.label}>
-                  Price{currency ? ` (${currency})` : ''}
+                  {t('lessonRequests.priceLabel')}
+                  {currency ? ` (${currency})` : ''}
                   {priceRequired ? ' — required' : ''}
                 </Text>
                 {selectedRate ? (
                   <Text style={styles.rateText}>
-                    School rate: {formatAmount(selectedRate.price, currency)} (applied
-                    automatically)
+                    {t('lessonRequests.schoolRate', {
+                      price: formatAmount(selectedRate.price, currency),
+                    })}
                   </Text>
                 ) : (
                   <>
@@ -583,19 +606,17 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
                       placeholderTextColor={colors.neutral[400]}
                     />
                     <Text style={styles.hintText}>
-                      {priceRequired
-                        ? 'The school has no rate for this lesson type'
-                        : 'Leave empty to apply the school rate'}
+                      {priceRequired ? t('lessonRequests.noRate') : t('lessonRequests.leaveEmpty')}
                     </Text>
                   </>
                 )}
               </View>
 
               <View style={styles.section}>
-                <Text style={styles.label}>Notes for the student (optional)</Text>
+                <Text style={styles.label}>{t('lessonRequests.notesLabel')}</Text>
                 <TextInput
                   style={styles.reasonInput}
-                  placeholder="Meeting point, documents to bring..."
+                  placeholder={t('lessonRequests.notesPlaceholder')}
                   placeholderTextColor={colors.neutral[400]}
                   value={adminNotes}
                   onChangeText={setAdminNotes}
@@ -611,7 +632,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
                   onPress={closeApprove}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.modalCancelText}>Cancel</Text>
+                  <Text style={styles.modalCancelText}>{t('common.cancel')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[
@@ -627,7 +648,9 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
                     <ActivityIndicator size="small" color={colors.text.inverse} />
                   ) : (
                     <Text style={styles.modalApproveText}>
-                      {isBatch ? `Schedule ${approveTargets.length}` : 'Confirm'}
+                      {isBatch
+                        ? t('lessonRequests.confirmMany', { count: approveTargets.length })
+                        : t('lessonRequests.confirm')}
                     </Text>
                   )}
                 </TouchableOpacity>
@@ -647,19 +670,17 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Reject Request</Text>
+              <Text style={styles.modalTitle}>{t('lessonRequests.rejectTitle')}</Text>
               <TouchableOpacity onPress={closeReject}>
                 <Ionicons name="close" size={24} color={colors.text.secondary} />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.modalSubtitle}>
-              Provide a reason for rejecting this lesson request
-            </Text>
+            <Text style={styles.modalSubtitle}>{t('lessonRequests.rejectSubtitle')}</Text>
 
             <TextInput
               style={styles.reasonInput}
-              placeholder="e.g., No availability this week, please request another date..."
+              placeholder={t('lessonRequests.rejectPlaceholder')}
               placeholderTextColor={colors.neutral[400]}
               value={rejectionReason}
               onChangeText={setRejectionReason}
@@ -680,7 +701,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
                 onPress={closeReject}
                 activeOpacity={0.7}
               >
-                <Text style={styles.modalCancelText}>Cancel</Text>
+                <Text style={styles.modalCancelText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
@@ -695,7 +716,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
                 {processing ? (
                   <ActivityIndicator size="small" color={colors.text.inverse} />
                 ) : (
-                  <Text style={styles.modalRejectText}>Reject</Text>
+                  <Text style={styles.modalRejectText}>{t('lessonRequests.reject')}</Text>
                 )}
               </TouchableOpacity>
             </View>

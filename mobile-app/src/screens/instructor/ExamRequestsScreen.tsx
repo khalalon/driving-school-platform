@@ -29,6 +29,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { examService } from '../../services/api/ExamService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
+import { useI18n } from '../../context/LanguageContext';
 import { examProcedure, examTypeLabel, Exam, ExamStatus, ExamType } from '../../models/Exam';
 import { formatDate, formatPersonName } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
@@ -60,6 +61,7 @@ const firstFutureSlot = (wanted: string | null | undefined, now: Date = new Date
 };
 
 export const ExamRequestsScreen = ({ navigation }: any) => {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [requests, setRequests] = useState<Exam[]>([]);
@@ -93,7 +95,7 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
       });
       setRequests(data);
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load exam requests'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('examRequests.loadFailed')));
     } finally {
       setLoading(false);
     }
@@ -141,11 +143,11 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
   const confirmSchedule = async () => {
     if (!selectedRequest) return;
     if (!location.trim()) {
-      Alert.alert('Required', 'Please enter the exam location');
+      Alert.alert(t('common.required'), t('examRequests.locationRequired'));
       return;
     }
     if (dateTime.getTime() <= Date.now()) {
-      Alert.alert('Invalid Date', 'The exam date must be in the future');
+      Alert.alert(t('lessonRequests.invalidDate'), t('examRequests.dateMustBeFuture'));
       return;
     }
 
@@ -158,16 +160,16 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
       });
       // Confirmation dans les mots de la procédure du type (D-42)
       Alert.alert(
-        'Success',
+        t('common.success'),
         selectedRequest.type === ExamType.PRACTICAL
-          ? 'Convocation recorded: the student sees the session date and center'
-          : 'Exam scheduled: the student sees the date and location'
+          ? t('examRequests.convocationRecorded')
+          : t('examRequests.examScheduled')
       );
       closeSchedule();
       loadRequests();
     } catch (error) {
       // 409 : un collègue a déjà traité la demande
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to schedule exam'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('examRequests.scheduleFailed')));
       loadRequests();
     } finally {
       setProcessing(false);
@@ -195,8 +197,8 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
     if (!selectedRequest) return;
     if (!reasonValid) {
       Alert.alert(
-        'Reason too short',
-        `Please explain the rejection in at least ${REASON_MIN} characters (the student will read it).`
+        t('lessonRequests.reasonTooShort'),
+        t('lessonRequests.reasonTooShortText', { min: REASON_MIN })
       );
       return;
     }
@@ -205,15 +207,15 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
       setProcessing(true);
       await examService.rejectExamRequest(selectedRequest.id, rejectionReason.trim());
       Alert.alert(
-        'Success',
+        t('common.success'),
         selectedRequest.type === ExamType.PRACTICAL
-          ? 'File marked as not ready: the student can request again for the next session'
-          : 'Exam request rejected: the student has been given your reason'
+          ? t('examRequests.fileNotReadyDone')
+          : t('examRequests.rejectedDone')
       );
       closeReject();
       loadRequests();
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to reject request'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('examRequests.rejectFailed')));
       loadRequests();
     } finally {
       setProcessing(false);
@@ -243,7 +245,7 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
                   firstName: item.studentFirstName,
                   lastName: item.studentLastName,
                 },
-                'Student'
+                t('today.student')
               )}
             </Text>
             <View style={styles.detailRow}>
@@ -296,8 +298,8 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
       <View style={styles.emptyIconContainer}>
         <Ionicons name="documents-outline" size={64} color={colors.neutral[300]} />
       </View>
-      <Text style={styles.emptyTitle}>No Pending Requests</Text>
-      <Text style={styles.emptyText}>New exam requests from your school will appear here</Text>
+      <Text style={styles.emptyTitle}>{t('examRequests.emptyTitle')}</Text>
+      <Text style={styles.emptyText}>{t('examRequests.emptyText')}</Text>
     </View>
   );
 
@@ -316,7 +318,7 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Exam Requests</Text>
+        <Text style={styles.headerTitle}>{t('examRequests.title')}</Text>
       </View>
 
       {/* Requests List */}
@@ -387,7 +389,7 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.label}>Time</Text>
+              <Text style={styles.label}>{t('examRequests.time')}</Text>
               <TouchableOpacity
                 style={styles.dateButton}
                 onPress={() => setShowTimePicker(true)}
@@ -429,7 +431,7 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
                 onPress={closeSchedule}
                 activeOpacity={0.7}
               >
-                <Text style={styles.modalCancelText}>Cancel</Text>
+                <Text style={styles.modalCancelText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
@@ -472,7 +474,7 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
 
             <TextInput
               style={styles.reasonInput}
-              placeholder="e.g., Need more practice lessons first..."
+              placeholder={t('examRequests.rejectPlaceholder')}
               placeholderTextColor={colors.neutral[400]}
               value={rejectionReason}
               onChangeText={setRejectionReason}
@@ -493,7 +495,7 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
                 onPress={closeReject}
                 activeOpacity={0.7}
               >
-                <Text style={styles.modalCancelText}>Cancel</Text>
+                <Text style={styles.modalCancelText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[

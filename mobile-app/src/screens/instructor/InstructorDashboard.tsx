@@ -22,6 +22,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
+import { useI18n } from '../../context/LanguageContext';
 import { lessonService } from '../../services/api/LessonService';
 import { examService } from '../../services/api/ExamService';
 import { enrollmentService } from '../../services/api/EnrollmentService';
@@ -66,6 +67,7 @@ const weekLoad = (lessons: Lesson[], from: Date = new Date()) =>
   });
 
 export const InstructorDashboard = ({ navigation }: any) => {
+  const { t } = useI18n();
   const { user, logout } = useAuth();
   const schoolId = user?.schoolId ?? null;
   const [data, setData] = useState<TodayData | null>(null);
@@ -103,7 +105,7 @@ export const InstructorDashboard = ({ navigation }: any) => {
         pendingEnrollments: enrollments.length,
       });
     } catch (err) {
-      setError(getApiErrorMessage(err, 'Failed to load your day'));
+      setError(getApiErrorMessage(err, t('today.loadFailed')));
     } finally {
       setLoading(false);
     }
@@ -129,7 +131,7 @@ export const InstructorDashboard = ({ navigation }: any) => {
   /** Écran cloisonné à l'école de l'instructeur : `schoolId` vient de A3 (D-19). */
   const openEnrollmentRequests = () => {
     if (!schoolId) {
-      Alert.alert('No school', 'Your account is not linked to a school yet.');
+      Alert.alert(t('today.noSchool'), t('today.noSchoolText'));
       return;
     }
     navigation.navigate('EnrollmentRequests', { schoolId });
@@ -149,7 +151,7 @@ export const InstructorDashboard = ({ navigation }: any) => {
       setSelectedLesson(null);
       load();
     } catch (err) {
-      Alert.alert('Error', getApiErrorMessage(err, 'Failed to record attendance'));
+      Alert.alert(t('common.error'), getApiErrorMessage(err, t('today.attendanceFailed')));
     } finally {
       setProcessing(false);
     }
@@ -163,8 +165,10 @@ export const InstructorDashboard = ({ navigation }: any) => {
           <Text style={styles.greeting}>
             {now.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
           </Text>
-          <Text style={styles.title}>Today</Text>
-          <Text style={styles.subtitle}>Hi, {user?.firstName || 'Instructor'}</Text>
+          <Text style={styles.title}>{t('today.title')}</Text>
+          <Text style={styles.subtitle}>
+            {t('today.hi', { name: user?.firstName || t('today.instructor') })}
+          </Text>
         </View>
         <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
           <Ionicons name="log-out-outline" size={24} color={colors.text.secondary} />
@@ -182,7 +186,7 @@ export const InstructorDashboard = ({ navigation }: any) => {
       return (
         <View style={styles.quietRow}>
           <Ionicons name="checkmark-done-outline" size={18} color={colors.success[600]} />
-          <Text style={styles.quietText}>No pending requests — enjoy your day</Text>
+          <Text style={styles.quietText}>{t('today.noRequests')}</Text>
         </View>
       );
     }
@@ -190,21 +194,28 @@ export const InstructorDashboard = ({ navigation }: any) => {
       lessons > 0 && {
         key: 'lessons',
         icon: 'time-outline',
-        text: `${lessons} lesson request${lessons === 1 ? '' : 's'} waiting`,
-        hint: codes >= 2 ? `${codes} code requests can be scheduled together` : null,
+        text:
+          lessons === 1
+            ? t('today.lessonRequestOne')
+            : t('today.lessonRequestMany', { count: lessons }),
+        hint: codes >= 2 ? t('today.codesTogether', { count: codes }) : null,
         onPress: () => navigation.navigate('LessonRequests'),
       },
       exams > 0 && {
         key: 'exams',
         icon: 'ribbon-outline',
-        text: `${exams} exam request${exams === 1 ? '' : 's'} waiting`,
+        text:
+          exams === 1 ? t('today.examRequestOne') : t('today.examRequestMany', { count: exams }),
         hint: null,
         onPress: () => navigation.navigate('ExamRequests'),
       },
       enrollments > 0 && {
         key: 'enrollments',
         icon: 'people-outline',
-        text: `${enrollments} enrollment request${enrollments === 1 ? '' : 's'} waiting`,
+        text:
+          enrollments === 1
+            ? t('today.enrollmentRequestOne')
+            : t('today.enrollmentRequestMany', { count: enrollments }),
         hint: null,
         onPress: openEnrollmentRequests,
       },
@@ -268,7 +279,9 @@ export const InstructorDashboard = ({ navigation }: any) => {
         </View>
         <View style={[styles.lessonCard, isCurrent && styles.lessonCardCurrent]}>
           <View style={styles.lessonTop}>
-            <Text style={styles.studentName}>{formatPersonName(lesson.student, 'Student')}</Text>
+            <Text style={styles.studentName}>
+              {formatPersonName(lesson.student, t('today.student'))}
+            </Text>
             {isDone ? (
               <View
                 style={[
@@ -282,16 +295,16 @@ export const InstructorDashboard = ({ navigation }: any) => {
                     lesson.attended === false ? styles.chipTextAbsent : styles.chipTextDone,
                   ]}
                 >
-                  {lesson.attended === false ? 'Absent' : 'Done'}
+                  {lesson.attended === false ? t('today.absent') : t('today.done')}
                 </Text>
               </View>
             ) : isCurrent ? (
               <View style={[styles.chip, styles.chipNow]}>
-                <Text style={[styles.chipText, styles.chipTextNow]}>Now</Text>
+                <Text style={[styles.chipText, styles.chipTextNow]}>{t('today.now')}</Text>
               </View>
             ) : isOverdue ? (
               <View style={[styles.chip, styles.chipOverdue]}>
-                <Text style={[styles.chipText, styles.chipTextOverdue]}>To record</Text>
+                <Text style={[styles.chipText, styles.chipTextOverdue]}>{t('today.toRecord')}</Text>
               </View>
             ) : null}
           </View>
@@ -307,7 +320,7 @@ export const InstructorDashboard = ({ navigation }: any) => {
                 activeOpacity={0.7}
               >
                 <Ionicons name="checkmark-circle" size={18} color={colors.text.inverse} />
-                <Text style={styles.presentText}>Present</Text>
+                <Text style={styles.presentText}>{t('today.present')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.attendanceButton, styles.absentButton]}
@@ -315,7 +328,7 @@ export const InstructorDashboard = ({ navigation }: any) => {
                 activeOpacity={0.7}
               >
                 <Ionicons name="close-circle" size={18} color={colors.error[600]} />
-                <Text style={styles.absentText}>Absent</Text>
+                <Text style={styles.absentText}>{t('today.absent')}</Text>
               </TouchableOpacity>
             </View>
           ) : null}
@@ -332,16 +345,16 @@ export const InstructorDashboard = ({ navigation }: any) => {
     return (
       <View style={styles.card}>
         <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>Your lessons</Text>
+          <Text style={styles.cardTitle}>{t('today.yourLessons')}</Text>
           <TouchableOpacity onPress={() => navigation.navigate('TodayLessons')}>
-            <Text style={styles.cardLink}>Full list</Text>
+            <Text style={styles.cardLink}>{t('today.fullList')}</Text>
           </TouchableOpacity>
         </View>
         {lessons.length === 0 ? (
           <View style={styles.emptyBlock}>
-            <Text style={styles.emptyText}>No lessons today.</Text>
+            <Text style={styles.emptyText}>{t('today.noLessons')}</Text>
             <TouchableOpacity onPress={() => navigation.navigate('BookForStudent')}>
-              <Text style={styles.cardLink}>Book a lesson for a student</Text>
+              <Text style={styles.cardLink}>{t('today.bookForStudent')}</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -365,9 +378,9 @@ export const InstructorDashboard = ({ navigation }: any) => {
     return (
       <View style={styles.card}>
         <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>Exams today</Text>
+          <Text style={styles.cardTitle}>{t('today.examsToday')}</Text>
           <TouchableOpacity onPress={() => navigation.navigate('TodayExams')}>
-            <Text style={styles.cardLink}>Record results</Text>
+            <Text style={styles.cardLink}>{t('today.recordResults')}</Text>
           </TouchableOpacity>
         </View>
         {exams.map((exam) => (
@@ -384,15 +397,16 @@ export const InstructorDashboard = ({ navigation }: any) => {
               <Text style={styles.studentName}>
                 {formatPersonName(
                   { firstName: exam.studentFirstName, lastName: exam.studentLastName },
-                  'Student'
+                  t('today.student')
                 )}
               </Text>
               <Text style={styles.lessonMeta}>
-                {examTypeLabel(exam.type)} exam{exam.location ? ` · ${exam.location}` : ''}
+                {t('today.examWithType', { type: examTypeLabel(exam.type) })}
+                {exam.location ? ` · ${exam.location}` : ''}
               </Text>
             </View>
             <View style={[styles.chip, styles.chipNow]}>
-              <Text style={[styles.chipText, styles.chipTextNow]}>Result</Text>
+              <Text style={[styles.chipText, styles.chipTextNow]}>{t('today.result')}</Text>
             </View>
           </TouchableOpacity>
         ))}
@@ -407,9 +421,9 @@ export const InstructorDashboard = ({ navigation }: any) => {
     return (
       <View style={styles.card}>
         <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>Next 7 days</Text>
+          <Text style={styles.cardTitle}>{t('today.next7days')}</Text>
           <Text style={styles.cardMeta}>
-            {total} lesson{total === 1 ? '' : 's'}
+            {total === 1 ? t('today.lessonCountOne') : t('today.lessonCountMany', { count: total })}
           </Text>
         </View>
         <View style={styles.weekRow}>
@@ -438,10 +452,14 @@ export const InstructorDashboard = ({ navigation }: any) => {
   const renderLinks = () => (
     <View style={styles.linksRow}>
       {[
-        { label: 'Book for a student', icon: 'add-circle-outline', route: 'BookForStudent' },
-        { label: 'Enrollments', icon: 'people-outline', route: 'EnrollmentRequests' },
-        { label: "Today's exams", icon: 'ribbon-outline', route: 'TodayExams' },
-        { label: 'Exam requests', icon: 'clipboard-outline', route: 'ExamRequests' },
+        {
+          label: t('today.link.bookForStudent'),
+          icon: 'add-circle-outline',
+          route: 'BookForStudent',
+        },
+        { label: t('today.link.enrollments'), icon: 'people-outline', route: 'EnrollmentRequests' },
+        { label: t('today.link.todayExams'), icon: 'ribbon-outline', route: 'TodayExams' },
+        { label: t('today.link.examRequests'), icon: 'clipboard-outline', route: 'ExamRequests' },
       ].map((link) => (
         <TouchableOpacity
           key={link.route}
@@ -470,9 +488,9 @@ export const InstructorDashboard = ({ navigation }: any) => {
     if (!data) {
       return (
         <View style={styles.card}>
-          <Text style={styles.emptyText}>{error ?? 'Nothing to show yet.'}</Text>
+          <Text style={styles.emptyText}>{error ?? t('today.nothingYet')}</Text>
           <TouchableOpacity style={styles.retryButton} onPress={load}>
-            <Text style={styles.retryText}>Retry</Text>
+            <Text style={styles.retryText}>{t('common.retry')}</Text>
           </TouchableOpacity>
         </View>
       );

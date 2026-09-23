@@ -24,6 +24,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { examService } from '../../services/api/ExamService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
+import { useI18n } from '../../context/LanguageContext';
 import { examTypeLabel, Exam, ExamResult, ExamStatus, ExamType } from '../../models/Exam';
 import { formatPersonName, formatTime, toLocalDateKey } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
@@ -32,6 +33,7 @@ const studentOf = (exam: Exam) =>
   formatPersonName({ firstName: exam.studentFirstName, lastName: exam.studentLastName }, 'Student');
 
 export const TodayExamsScreen = ({ navigation }: any) => {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [exams, setExams] = useState<Exam[]>([]);
@@ -60,7 +62,7 @@ export const TodayExamsScreen = ({ navigation }: any) => {
         all.filter((exam) => exam.dateTime && toLocalDateKey(new Date(exam.dateTime)) === today)
       );
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load exams'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('todayExams.loadFailed')));
     } finally {
       setLoading(false);
     }
@@ -93,7 +95,7 @@ export const TodayExamsScreen = ({ navigation }: any) => {
     if (score.trim() !== '') {
       scoreValue = Number.parseInt(score, 10);
       if (!Number.isInteger(scoreValue) || scoreValue < 0 || scoreValue > 100) {
-        Alert.alert('Invalid Score', 'Score must be a whole number between 0 and 100');
+        Alert.alert(t('todayExams.invalidScore'), t('todayExams.invalidScoreText'));
         return;
       }
     }
@@ -106,11 +108,11 @@ export const TodayExamsScreen = ({ navigation }: any) => {
         score: scoreValue,
         notes: notes.trim() || undefined,
       });
-      Alert.alert('Success', 'Exam result recorded');
+      Alert.alert(t('common.success'), t('todayExams.recorded'));
       closeResult();
       loadTodayExams();
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to record result'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('todayExams.recordFailed')));
       loadTodayExams();
     } finally {
       setProcessing(false);
@@ -173,13 +175,13 @@ export const TodayExamsScreen = ({ navigation }: any) => {
             disabled={processing}
           >
             <Ionicons name="create-outline" size={20} color={colors.primary[600]} />
-            <Text style={styles.recordButtonText}>Record Result</Text>
+            <Text style={styles.recordButtonText}>{t('todayExams.recordResult')}</Text>
           </TouchableOpacity>
         )}
 
         {isCompleted && item.score !== null && (
           <View style={styles.scoreBox}>
-            <Text style={styles.scoreLabel}>Score</Text>
+            <Text style={styles.scoreLabel}>{t('myExams.score')}</Text>
             <Text style={styles.scoreValue}>{item.score}/100</Text>
           </View>
         )}
@@ -192,8 +194,8 @@ export const TodayExamsScreen = ({ navigation }: any) => {
       <View style={styles.emptyIconContainer}>
         <Ionicons name="trophy-outline" size={64} color={colors.neutral[300]} />
       </View>
-      <Text style={styles.emptyTitle}>No Exams Today</Text>
-      <Text style={styles.emptyText}>Your school has no exams scheduled today</Text>
+      <Text style={styles.emptyTitle}>{t('todayExams.emptyTitle')}</Text>
+      <Text style={styles.emptyText}>{t('todayExams.emptyText')}</Text>
     </View>
   );
 
@@ -216,7 +218,7 @@ export const TodayExamsScreen = ({ navigation }: any) => {
         >
           <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Today's Exams</Text>
+        <Text style={styles.headerTitle}>{t('todayExams.title')}</Text>
       </View>
 
       {/* Exams List */}
@@ -246,7 +248,7 @@ export const TodayExamsScreen = ({ navigation }: any) => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Record Result</Text>
+              <Text style={styles.modalTitle}>{t('todayExams.recordResult')}</Text>
               <TouchableOpacity onPress={closeResult}>
                 <Ionicons name="close" size={24} color={colors.text.secondary} />
               </TouchableOpacity>
@@ -260,7 +262,7 @@ export const TodayExamsScreen = ({ navigation }: any) => {
             )}
 
             <View style={styles.section}>
-              <Text style={styles.label}>Result</Text>
+              <Text style={styles.label}>{t('todayExams.result')}</Text>
               <View style={styles.resultButtons}>
                 <TouchableOpacity
                   style={[
@@ -312,10 +314,10 @@ export const TodayExamsScreen = ({ navigation }: any) => {
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.label}>Score (0–100, optional)</Text>
+              <Text style={styles.label}>{t('todayExams.scoreLabel')}</Text>
               <TextInput
                 style={styles.scoreInput}
-                placeholder="Theory exams only"
+                placeholder={t('todayExams.scorePlaceholder')}
                 placeholderTextColor={colors.neutral[400]}
                 value={score}
                 onChangeText={setScore}
@@ -324,10 +326,10 @@ export const TodayExamsScreen = ({ navigation }: any) => {
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.label}>Notes (Optional)</Text>
+              <Text style={styles.label}>{t('todayExams.notes')}</Text>
               <TextInput
                 style={styles.notesInput}
-                placeholder="Add any notes..."
+                placeholder={t('todayExams.notesPlaceholder')}
                 placeholderTextColor={colors.neutral[400]}
                 value={notes}
                 onChangeText={setNotes}
@@ -343,7 +345,7 @@ export const TodayExamsScreen = ({ navigation }: any) => {
                 onPress={closeResult}
                 activeOpacity={0.7}
               >
-                <Text style={styles.modalCancelText}>Cancel</Text>
+                <Text style={styles.modalCancelText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
@@ -358,7 +360,7 @@ export const TodayExamsScreen = ({ navigation }: any) => {
                 {processing ? (
                   <ActivityIndicator size="small" color={colors.text.inverse} />
                 ) : (
-                  <Text style={styles.modalSubmitText}>Save Result</Text>
+                  <Text style={styles.modalSubmitText}>{t('todayExams.saveResult')}</Text>
                 )}
               </TouchableOpacity>
             </View>

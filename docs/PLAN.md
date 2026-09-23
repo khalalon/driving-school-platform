@@ -609,7 +609,7 @@ cd mobile-app && test -z "$(grep -rL "useI18n\|from '../../i18n'\|from '../../..
 ```
 **Hors périmètre** : écrans instructeur (10.4).
 
-### - [ ] 10.4 — Écrans instructeur traduits
+### - [x] 10.4 — Écrans instructeur traduits
 **Objectif** : même chose pour `InstructorDashboard`, `TodayLessons`, `LessonRequests`, `BookForStudent`, `TodayExams`, `ExamRequests`, `EnrollmentRequests`, `StudentProfile` et ses trois onglets, et `components/AttendanceModal`.
 **Fichiers** : `mobile-app/src/screens/instructor/**`, `mobile-app/src/i18n/{fr,ar}.ts`.
 **Critère de validation** :
