@@ -8,7 +8,7 @@
  * Sans inscription approuvée : accueil réduit à la recherche d'école et au suivi des demandes.
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -18,35 +18,38 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
-import { useAuth } from '../../context/AuthContext';
-import { enrollmentService } from '../../services/api/EnrollmentService';
-import { lessonService } from '../../services/api/LessonService';
-import { examService } from '../../services/api/ExamService';
-import { studentSelfProfileService } from '../../services/api/StudentSelfProfileService';
-import { getApiErrorCode, getApiErrorMessage } from '../../services/api/ApiError';
-import { EnrollmentRequest, EnrollmentStatus } from '../../models/Enrollment';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
+import { useAuth } from "../../context/AuthContext";
+import { enrollmentService } from "../../services/api/EnrollmentService";
+import { lessonService } from "../../services/api/LessonService";
+import { examService } from "../../services/api/ExamService";
+import { studentSelfProfileService } from "../../services/api/StudentSelfProfileService";
+import {
+  getApiErrorCode,
+  getApiErrorMessage,
+} from "../../services/api/ApiError";
+import { EnrollmentRequest, EnrollmentStatus } from "../../models/Enrollment";
 import {
   LESSON_CANCEL_HOURS,
   LESSON_TYPE_LABELS,
   Lesson,
   LessonStatus,
   canStudentCancel,
-} from '../../models/Lesson';
-import { Exam } from '../../models/Exam';
-import { FinancialSummary, MyProfile } from '../../models/Profile';
-import { JourneyStep, buildJourney } from '../../models/Journey';
-import { useSchoolCurrency } from '../../hooks/useSchoolCurrency';
+} from "../../models/Lesson";
+import { Exam } from "../../models/Exam";
+import { FinancialSummary, MyProfile } from "../../models/Profile";
+import { JourneyStep, buildJourney } from "../../models/Journey";
+import { useSchoolCurrency } from "../../hooks/useSchoolCurrency";
 import {
   formatAmount,
   formatCountdown,
   formatDate,
   formatPersonName,
   formatTime,
-} from '../../utils/format';
-import { colors, typography, spacing, shadows } from '../../theme';
+} from "../../utils/format";
+import { colors, typography, spacing, shadows } from "../../theme";
 
 interface HomeData {
   lessons: Lesson[];
@@ -56,20 +59,26 @@ interface HomeData {
 }
 
 /** La prochaine leçon planifiée : la première dont la fin n'est pas passée. */
-const findNextLesson = (lessons: Lesson[], now: Date = new Date()): Lesson | null =>
+const findNextLesson = (
+  lessons: Lesson[],
+  now: Date = new Date(),
+): Lesson | null =>
   lessons
     .filter((l) => l.status === LessonStatus.SCHEDULED && l.scheduledDate)
     .filter((l) => {
       const start = new Date(l.scheduledDate as string).getTime();
       return start + (l.durationMinutes ?? 60) * 60000 > now.getTime();
     })
-    .sort((a, b) => (a.scheduledDate as string).localeCompare(b.scheduledDate as string))[0] ??
-  null;
+    .sort((a, b) =>
+      (a.scheduledDate as string).localeCompare(b.scheduledDate as string),
+    )[0] ?? null;
 
 export const StudentDashboard = ({ navigation }: any) => {
   const { user, logout } = useAuth();
   // `undefined` = pas encore chargé, `null` = aucune inscription approuvée
-  const [enrollment, setEnrollment] = useState<EnrollmentRequest | null | undefined>(undefined);
+  const [enrollment, setEnrollment] = useState<
+    EnrollmentRequest | null | undefined
+  >(undefined);
   const [data, setData] = useState<HomeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -80,23 +89,31 @@ export const StudentDashboard = ({ navigation }: any) => {
   const load = useCallback(async () => {
     try {
       setError(null);
+      setLoading(true);
       // E3 : l'inscription approuvée donne l'école de la fiche élève
       const requests = await enrollmentService.getMyRequests();
-      const approved = requests.find((r) => r.status === EnrollmentStatus.APPROVED) ?? null;
+      const approved =
+        requests.find((r) => r.status === EnrollmentStatus.APPROVED) ?? null;
       setEnrollment(approved);
       if (!approved) {
         setData(null);
         return;
       }
       const [lessons, exams, profile, financial] = await Promise.all([
-        lessonService.getMyLessons({ status: [LessonStatus.PENDING, LessonStatus.SCHEDULED] }),
+        lessonService.getMyLessons({
+          status: [LessonStatus.PENDING, LessonStatus.SCHEDULED],
+        }),
         examService.getMyExams(),
-        studentSelfProfileService.getMyProfile(approved.schoolId).catch(() => null),
-        studentSelfProfileService.getMyFinancialSummary(approved.schoolId).catch(() => null),
+        studentSelfProfileService
+          .getMyProfile(approved.schoolId)
+          .catch(() => null),
+        studentSelfProfileService
+          .getMyFinancialSummary(approved.schoolId)
+          .catch(() => null),
       ]);
       setData({ lessons, exams, profile, financial });
     } catch (err) {
-      setError(getApiErrorMessage(err, 'Failed to load your home screen'));
+      setError(getApiErrorMessage(err, "Failed to load your home screen"));
     } finally {
       setLoading(false);
     }
@@ -105,7 +122,7 @@ export const StudentDashboard = ({ navigation }: any) => {
   useFocusEffect(
     useCallback(() => {
       load();
-    }, [load])
+    }, [load]),
   );
 
   const onRefresh = useCallback(async () => {
@@ -120,56 +137,67 @@ export const StudentDashboard = ({ navigation }: any) => {
   };
 
   const handleCancelLesson = (lesson: Lesson) => {
-    Alert.alert('Cancel lesson', 'Are you sure you want to cancel this lesson?', [
-      { text: 'No', style: 'cancel' },
-      {
-        text: 'Yes, cancel',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await lessonService.cancelLesson(lesson.id);
-            load();
-          } catch (err) {
-            // Fenêtre de 24 h (D-24) contrôlée par le serveur : le bouton n'est qu'un confort
-            if (getApiErrorCode(err) === 'CANCEL_WINDOW_CLOSED') {
-              Alert.alert(
-                'Too late to cancel',
-                getApiErrorMessage(
-                  err,
-                  `A lesson can only be cancelled up to ${LESSON_CANCEL_HOURS} hours before it starts. Please contact your instructor.`
-                )
-              );
+    Alert.alert(
+      "Cancel lesson",
+      "Are you sure you want to cancel this lesson?",
+      [
+        { text: "No", style: "cancel" },
+        {
+          text: "Yes, cancel",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await lessonService.cancelLesson(lesson.id);
               load();
-              return;
+            } catch (err) {
+              // Fenêtre de 24 h (D-24) contrôlée par le serveur : le bouton n'est qu'un confort
+              if (getApiErrorCode(err) === "CANCEL_WINDOW_CLOSED") {
+                Alert.alert(
+                  "Too late to cancel",
+                  getApiErrorMessage(
+                    err,
+                    `A lesson can only be cancelled up to ${LESSON_CANCEL_HOURS} hours before it starts. Please contact your instructor.`,
+                  ),
+                );
+                load();
+                return;
+              }
+              Alert.alert(
+                "Error",
+                getApiErrorMessage(err, "Failed to cancel lesson"),
+              );
             }
-            Alert.alert('Error', getApiErrorMessage(err, 'Failed to cancel lesson'));
-          }
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
   const openMyProfile = () => {
     if (!schoolId) return;
-    navigation.navigate('MyProfile', { schoolId });
+    navigation.navigate("MyProfile", { schoolId });
   };
 
   const requestLesson = () => {
     if (!schoolId) return;
-    navigation.navigate('BookLesson', { schoolId });
+    navigation.navigate("BookLesson", { schoolId });
   };
 
   const renderHeader = () => (
     <View style={styles.header}>
       <View style={styles.headerText}>
         <Text style={styles.greeting}>Hello,</Text>
-        <Text style={styles.userName}>{user?.firstName || 'Student'}</Text>
+        <Text style={styles.userName}>{user?.firstName || "Student"}</Text>
         {enrollment?.schoolName ? (
           <Text style={styles.schoolName}>{enrollment.schoolName}</Text>
         ) : null}
       </View>
       <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-        <Ionicons name="log-out-outline" size={24} color={colors.text.secondary} />
+        <Ionicons
+          name="log-out-outline"
+          size={24}
+          color={colors.text.secondary}
+        />
       </TouchableOpacity>
     </View>
   );
@@ -183,13 +211,13 @@ export const StudentDashboard = ({ navigation }: any) => {
       </Text>
       <TouchableOpacity
         style={styles.primaryButton}
-        onPress={() => navigation.navigate('SchoolsList')}
+        onPress={() => navigation.navigate("SchoolsList")}
       >
         <Text style={styles.primaryButtonText}>Browse schools</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.secondaryButton}
-        onPress={() => navigation.navigate('MyEnrollmentRequests')}
+        onPress={() => navigation.navigate("MyEnrollmentRequests")}
       >
         <Text style={styles.secondaryButtonText}>Enrollment status</Text>
       </TouchableOpacity>
@@ -198,30 +226,41 @@ export const StudentDashboard = ({ navigation }: any) => {
 
   const renderNextLesson = (lessons: Lesson[]) => {
     const next = findNextLesson(lessons);
-    const pendingCount = lessons.filter((l) => l.status === LessonStatus.PENDING).length;
+    const pendingCount = lessons.filter(
+      (l) => l.status === LessonStatus.PENDING,
+    ).length;
     return (
       <View style={styles.nextCard}>
         <Text style={styles.nextLabel}>NEXT LESSON</Text>
         {next ? (
           <>
             <View style={styles.nextRow}>
-              <Text style={styles.nextTitle}>{LESSON_TYPE_LABELS[next.type]}</Text>
+              <Text style={styles.nextTitle}>
+                {LESSON_TYPE_LABELS[next.type]}
+              </Text>
               <View style={styles.countdownPill}>
-                <Ionicons name="time-outline" size={14} color={colors.primary[700]} />
-                <Text style={styles.countdownText}>{formatCountdown(next.scheduledDate)}</Text>
+                <Ionicons
+                  name="time-outline"
+                  size={14}
+                  color={colors.primary[700]}
+                />
+                <Text style={styles.countdownText}>
+                  {formatCountdown(next.scheduledDate)}
+                </Text>
               </View>
             </View>
             <Text style={styles.nextWhen}>
-              {formatDate(next.scheduledDate)} · {formatTime(next.scheduledDate)}
-              {next.durationMinutes ? ` · ${next.durationMinutes} min` : ''}
+              {formatDate(next.scheduledDate)} ·{" "}
+              {formatTime(next.scheduledDate)}
+              {next.durationMinutes ? ` · ${next.durationMinutes} min` : ""}
             </Text>
             <Text style={styles.nextMeta}>
-              with {formatPersonName(next.instructor, 'your instructor')}
+              with {formatPersonName(next.instructor, "your instructor")}
             </Text>
             <View style={styles.nextActions}>
               <TouchableOpacity
                 style={styles.inverseButton}
-                onPress={() => navigation.navigate('MyLessons')}
+                onPress={() => navigation.navigate("MyLessons")}
               >
                 <Text style={styles.inverseButtonText}>All lessons</Text>
               </TouchableOpacity>
@@ -240,17 +279,20 @@ export const StudentDashboard = ({ navigation }: any) => {
             <Text style={styles.nextTitle}>No lesson scheduled</Text>
             <Text style={styles.nextMeta}>
               {pendingCount > 0
-                ? `${pendingCount} request${pendingCount === 1 ? '' : 's'} waiting for your school`
-                : 'Ask your school for your next lesson.'}
+                ? `${pendingCount} request${pendingCount === 1 ? "" : "s"} waiting for your school`
+                : "Ask your school for your next lesson."}
             </Text>
             <View style={styles.nextActions}>
-              <TouchableOpacity style={styles.inverseButton} onPress={requestLesson}>
+              <TouchableOpacity
+                style={styles.inverseButton}
+                onPress={requestLesson}
+              >
                 <Text style={styles.inverseButtonText}>Request a lesson</Text>
               </TouchableOpacity>
               {pendingCount > 0 ? (
                 <TouchableOpacity
                   style={styles.ghostButton}
-                  onPress={() => navigation.navigate('MyLessons')}
+                  onPress={() => navigation.navigate("MyLessons")}
                 >
                   <Text style={styles.ghostButtonText}>My requests</Text>
                 </TouchableOpacity>
@@ -265,17 +307,17 @@ export const StudentDashboard = ({ navigation }: any) => {
   const renderStep = (step: JourneyStep, index: number, count: number) => {
     const isLast = index === count - 1;
     const iconName =
-      step.state === 'done'
-        ? 'checkmark-circle'
-        : step.kind === 'exam'
-          ? 'ribbon-outline'
-          : 'car-outline';
+      step.state === "done"
+        ? "checkmark-circle"
+        : step.kind === "exam"
+          ? "ribbon-outline"
+          : "car-outline";
     const iconColor =
-      step.state === 'done'
+      step.state === "done"
         ? colors.success[600]
-        : step.state === 'current'
+        : step.state === "current"
           ? colors.primary[600]
-          : step.state === 'started'
+          : step.state === "started"
             ? colors.warning[600]
             : colors.neutral[400];
     return (
@@ -284,24 +326,37 @@ export const StudentDashboard = ({ navigation }: any) => {
           <View
             style={[
               styles.stepDot,
-              step.state === 'current' && styles.stepDotCurrent,
-              step.state === 'done' && styles.stepDotDone,
+              step.state === "current" && styles.stepDotCurrent,
+              step.state === "done" && styles.stepDotDone,
             ]}
           >
             <Ionicons name={iconName as any} size={18} color={iconColor} />
           </View>
           {!isLast ? (
             <View
-              style={[styles.stepLine, step.state === 'done' && styles.stepLineDone]}
+              style={[
+                styles.stepLine,
+                step.state === "done" && styles.stepLineDone,
+              ]}
             />
           ) : null}
         </View>
-        <View style={[styles.stepBody, step.state === 'current' && styles.stepBodyCurrent]}>
+        <View
+          style={[
+            styles.stepBody,
+            step.state === "current" && styles.stepBodyCurrent,
+          ]}
+        >
           <View style={styles.stepTitleRow}>
-            <Text style={[styles.stepTitle, step.state === 'upcoming' && styles.stepTitleMuted]}>
+            <Text
+              style={[
+                styles.stepTitle,
+                step.state === "upcoming" && styles.stepTitleMuted,
+              ]}
+            >
               {step.title}
             </Text>
-            {step.state === 'current' ? (
+            {step.state === "current" ? (
               <View style={styles.currentPill}>
                 <Text style={styles.currentPillText}>Now</Text>
               </View>
@@ -314,12 +369,16 @@ export const StudentDashboard = ({ navigation }: any) => {
   };
 
   const renderJourney = (home: HomeData) => {
-    const steps = buildJourney(home.profile?.completedLessonsByType, home.exams, home.lessons);
+    const steps = buildJourney(
+      home.profile?.completedLessonsByType,
+      home.exams,
+      home.lessons,
+    );
     return (
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <Text style={styles.cardTitle}>My journey</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('MyExams')}>
+          <TouchableOpacity onPress={() => navigation.navigate("MyExams")}>
             <Text style={styles.cardLink}>My exams</Text>
           </TouchableOpacity>
         </View>
@@ -330,16 +389,32 @@ export const StudentDashboard = ({ navigation }: any) => {
 
   const renderMoney = (financial: FinancialSummary | null) => (
     <View style={styles.tilesRow}>
-      <TouchableOpacity style={styles.tile} onPress={openMyProfile} activeOpacity={0.7}>
+      <TouchableOpacity
+        style={styles.tile}
+        onPress={openMyProfile}
+        activeOpacity={0.7}
+      >
         <Text style={styles.tileLabel}>Amount due</Text>
-        <Text style={[styles.tileValue, (financial?.totalDue ?? 0) > 0 && styles.tileValueDue]}>
+        <Text
+          style={[
+            styles.tileValue,
+            (financial?.totalDue ?? 0) > 0 && styles.tileValueDue,
+          ]}
+        >
           {formatAmount(financial?.totalDue ?? 0, currency)}
         </Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.tile} onPress={openMyProfile} activeOpacity={0.7}>
+      <TouchableOpacity
+        style={styles.tile}
+        onPress={openMyProfile}
+        activeOpacity={0.7}
+      >
         <Text style={styles.tileLabel}>Your credit</Text>
         <Text
-          style={[styles.tileValue, (financial?.credit ?? 0) > 0 && styles.tileValueCredit]}
+          style={[
+            styles.tileValue,
+            (financial?.credit ?? 0) > 0 && styles.tileValueCredit,
+          ]}
         >
           {formatAmount(financial?.credit ?? 0, currency)}
         </Text>
@@ -349,17 +424,27 @@ export const StudentDashboard = ({ navigation }: any) => {
 
   const renderActions = () => (
     <View style={styles.actionsRow}>
-      <TouchableOpacity style={styles.actionButton} onPress={requestLesson} activeOpacity={0.8}>
-        <Ionicons name="calendar-outline" size={20} color={colors.text.inverse} />
+      <TouchableOpacity
+        style={styles.actionButton}
+        onPress={requestLesson}
+        activeOpacity={0.8}
+      >
+        <Ionicons
+          name="calendar-outline"
+          size={20}
+          color={colors.text.inverse}
+        />
         <Text style={styles.actionText}>Request a lesson</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={[styles.actionButton, styles.actionButtonAlt]}
-        onPress={() => navigation.navigate('RequestExam')}
+        onPress={() => navigation.navigate("RequestExam")}
         activeOpacity={0.8}
       >
         <Ionicons name="ribbon-outline" size={20} color={colors.primary[700]} />
-        <Text style={[styles.actionText, styles.actionTextAlt]}>Request an exam</Text>
+        <Text style={[styles.actionText, styles.actionTextAlt]}>
+          Request an exam
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -367,17 +452,29 @@ export const StudentDashboard = ({ navigation }: any) => {
   const renderLinks = () => (
     <View style={styles.linksRow}>
       {[
-        { label: 'My lessons', route: 'MyLessons', icon: 'list-outline' },
-        { label: 'My profile', route: 'MyProfile', icon: 'person-outline' },
-        { label: 'Enrollment', route: 'MyEnrollmentRequests', icon: 'school-outline' },
-        { label: 'Schools', route: 'SchoolsList', icon: 'business-outline' },
+        { label: "My lessons", route: "MyLessons", icon: "list-outline" },
+        { label: "My profile", route: "MyProfile", icon: "person-outline" },
+        {
+          label: "Enrollment",
+          route: "MyEnrollmentRequests",
+          icon: "school-outline",
+        },
+        { label: "Schools", route: "SchoolsList", icon: "business-outline" },
       ].map((link) => (
         <TouchableOpacity
           key={link.route}
           style={styles.linkChip}
-          onPress={() => (link.route === 'MyProfile' ? openMyProfile() : navigation.navigate(link.route))}
+          onPress={() =>
+            link.route === "MyProfile"
+              ? openMyProfile()
+              : navigation.navigate(link.route)
+          }
         >
-          <Ionicons name={link.icon as any} size={16} color={colors.text.secondary} />
+          <Ionicons
+            name={link.icon as any}
+            size={16}
+            color={colors.text.secondary}
+          />
           <Text style={styles.linkText}>{link.label}</Text>
         </TouchableOpacity>
       ))}
@@ -385,7 +482,9 @@ export const StudentDashboard = ({ navigation }: any) => {
   );
 
   const renderBody = () => {
-    if (loading && enrollment === undefined) {
+    // Tant que l'école n'est pas connue, ou que ses données arrivent, on n'annonce rien :
+    // afficher « Find your driving school » à un élève inscrit serait faux (recette 23/09).
+    if (loading && !data) {
       return (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.primary[600]} />
@@ -395,7 +494,11 @@ export const StudentDashboard = ({ navigation }: any) => {
     if (error && !data) {
       return (
         <View style={styles.heroCard}>
-          <Ionicons name="cloud-offline-outline" size={32} color={colors.error[600]} />
+          <Ionicons
+            name="cloud-offline-outline"
+            size={32}
+            color={colors.error[600]}
+          />
           <Text style={styles.heroText}>{error}</Text>
           <TouchableOpacity style={styles.primaryButton} onPress={load}>
             <Text style={styles.primaryButtonText}>Retry</Text>
@@ -445,11 +548,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.secondary,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing['4xl'],
+    paddingTop: spacing["4xl"],
     paddingBottom: spacing.lg,
     backgroundColor: colors.background.primary,
   },
@@ -461,7 +564,7 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
   },
   userName: {
-    fontSize: typography.size['2xl'],
+    fontSize: typography.size["2xl"],
     fontWeight: typography.weight.bold,
     color: colors.text.primary,
   },
@@ -475,8 +578,8 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     backgroundColor: colors.background.tertiary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   scrollView: {
     flex: 1,
@@ -484,11 +587,11 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: spacing.xl,
     gap: spacing.base,
-    paddingBottom: spacing['3xl'],
+    paddingBottom: spacing["3xl"],
   },
   center: {
-    paddingVertical: spacing['5xl'],
-    alignItems: 'center',
+    paddingVertical: spacing["5xl"],
+    alignItems: "center",
   },
   errorBanner: {
     color: colors.error[600],
@@ -500,7 +603,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.primary,
     borderRadius: 20,
     padding: spacing.xl,
-    alignItems: 'center',
+    alignItems: "center",
     gap: spacing.md,
     ...shadows.sm,
   },
@@ -512,15 +615,15 @@ const styles = StyleSheet.create({
   heroText: {
     fontSize: typography.size.sm,
     color: colors.text.secondary,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: typography.size.sm * typography.lineHeight.normal,
   },
   primaryButton: {
-    alignSelf: 'stretch',
+    alignSelf: "stretch",
     backgroundColor: colors.primary[600],
     borderRadius: 12,
     paddingVertical: spacing.md,
-    alignItems: 'center',
+    alignItems: "center",
   },
   primaryButtonText: {
     color: colors.text.inverse,
@@ -528,10 +631,10 @@ const styles = StyleSheet.create({
     fontSize: typography.size.base,
   },
   secondaryButton: {
-    alignSelf: 'stretch',
+    alignSelf: "stretch",
     borderRadius: 12,
     paddingVertical: spacing.md,
-    alignItems: 'center',
+    alignItems: "center",
     borderWidth: 1,
     borderColor: colors.border.default,
   },
@@ -555,18 +658,18 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   nextRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   nextTitle: {
     color: colors.text.inverse,
-    fontSize: typography.size['2xl'],
+    fontSize: typography.size["2xl"],
     fontWeight: typography.weight.bold,
   },
   countdownPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.xs,
     backgroundColor: colors.primary[50],
     borderRadius: 999,
@@ -589,7 +692,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   nextActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: spacing.sm,
     marginTop: spacing.lg,
   },
@@ -623,9 +726,9 @@ const styles = StyleSheet.create({
     ...shadows.sm,
   },
   cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: spacing.base,
   },
   cardTitle: {
@@ -639,19 +742,19 @@ const styles = StyleSheet.create({
     fontWeight: typography.weight.medium,
   },
   stepRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
   },
   stepRail: {
     width: 36,
-    alignItems: 'center',
+    alignItems: "center",
   },
   stepDot: {
     width: 32,
     height: 32,
     borderRadius: 16,
     backgroundColor: colors.background.tertiary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   stepDotCurrent: {
     backgroundColor: colors.primary[50],
@@ -684,8 +787,8 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
   },
   stepTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.sm,
   },
   stepTitle: {
@@ -715,7 +818,7 @@ const styles = StyleSheet.create({
 
   // Dû / avoir
   tilesRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: spacing.base,
   },
   tile: {
@@ -744,14 +847,14 @@ const styles = StyleSheet.create({
 
   // Actions
   actionsRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: spacing.base,
   },
   actionButton: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: spacing.sm,
     backgroundColor: colors.primary[600],
     borderRadius: 14,
@@ -771,13 +874,13 @@ const styles = StyleSheet.create({
 
   // Liens
   linksRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.sm,
   },
   linkChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.xs,
     backgroundColor: colors.background.primary,
     borderRadius: 999,
