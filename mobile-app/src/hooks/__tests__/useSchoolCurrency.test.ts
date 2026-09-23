@@ -35,7 +35,9 @@ describe('getSchoolCurrency', () => {
   });
 
   it('un échec ne reste pas en cache : l’appel suivant retente', async () => {
-    getSchoolById.mockRejectedValueOnce(new Error('réseau')).mockResolvedValueOnce({ currency: 'TND' });
+    getSchoolById
+      .mockRejectedValueOnce(new Error('réseau'))
+      .mockResolvedValueOnce({ currency: 'TND' });
 
     await expect(getSchoolCurrency('s1')).rejects.toThrow('réseau');
     await expect(getSchoolCurrency('s1')).resolves.toBe('TND');

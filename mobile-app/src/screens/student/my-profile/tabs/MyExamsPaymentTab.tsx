@@ -4,19 +4,12 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { studentSelfProfileService } from '../../../../services/api/StudentSelfProfileService';
 import { getApiErrorMessage } from '../../../../services/api/ApiError';
 import { ExamHistory } from '../../../../models/Profile';
-import { EXAM_RESULT_LABELS, EXAM_TYPE_LABELS, ExamResult, ExamType } from '../../../../models/Exam';
+import { examResultLabel, examTypeLabel, ExamResult, ExamType } from '../../../../models/Exam';
 import { useSchoolCurrency } from '../../../../hooks/useSchoolCurrency';
 import { formatAmount, formatDate, formatDateTime } from '../../../../utils/format';
 import { colors, typography, spacing } from '../../../../theme';
@@ -71,7 +64,7 @@ export const MyExamsPaymentTab = ({ route }: any) => {
       <View style={styles.examHeader}>
         <View style={styles.examInfo}>
           <Text style={styles.examType}>
-            {EXAM_TYPE_LABELS[item.type as ExamType] ?? item.type} Exam
+            {examTypeLabel(item.type as ExamType) ?? item.type} Exam
             {item.status === 'cancelled' ? ' · Cancelled' : ''}
           </Text>
           <Text style={styles.examDate}>
@@ -92,11 +85,9 @@ export const MyExamsPaymentTab = ({ route }: any) => {
             />
             <View style={styles.resultInfo}>
               <Text style={[styles.resultText, { color: getResultColor(item.result) }]}>
-                {EXAM_RESULT_LABELS[item.result as ExamResult] ?? item.result}
+                {examResultLabel(item.result as ExamResult) ?? item.result}
               </Text>
-              {item.score !== null && (
-                <Text style={styles.scoreText}>Score: {item.score}%</Text>
-              )}
+              {item.score !== null && <Text style={styles.scoreText}>Score: {item.score}%</Text>}
             </View>
           </View>
         </View>
@@ -119,9 +110,7 @@ export const MyExamsPaymentTab = ({ route }: any) => {
               size={20}
               color={item.paid ? colors.success[500] : colors.warning[500]}
             />
-            <Text style={styles.paymentLabelText}>
-              {item.paid ? 'Paid' : 'Pending Payment'}
-            </Text>
+            <Text style={styles.paymentLabelText}>{item.paid ? 'Paid' : 'Pending Payment'}</Text>
           </View>
           {(item.amount !== null || item.price !== null) && (
             <Text

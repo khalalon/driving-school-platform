@@ -5,7 +5,7 @@
  * Un examen est une demande (`pending`) que l'école planifie (`scheduled`, date et centre),
  * refuse (`rejected`) ou clôt avec un résultat (`completed`) ; l'élève voit l'état de paiement.
  * Les mots dépendent du type (D-42) : théorie planifiée par l'école, pratique convoquée par la
- * session ATTT (`EXAM_PROCEDURES`).
+ * session ATTT (`examProcedure`).
  */
 
 import React, { useState, useCallback } from 'react';
@@ -24,9 +24,9 @@ import { useFocusEffect } from '@react-navigation/native';
 import { examService } from '../../services/api/ExamService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
 import {
-  EXAM_PROCEDURES,
-  EXAM_RESULT_LABELS,
-  EXAM_TYPE_LABELS,
+  examProcedure,
+  examResultLabel,
+  examTypeLabel,
   Exam,
   ExamResult,
   ExamStatus,
@@ -111,7 +111,7 @@ export const MyExamsScreen = ({ navigation }: any) => {
     const statusConfig = getStatusConfig(item.status);
     const resultConfig = getResultConfig(item.result);
     const rejected = item.status === ExamStatus.REJECTED;
-    const procedure = EXAM_PROCEDURES[item.type];
+    const procedure = examProcedure(item.type);
 
     return (
       <View style={styles.examCard}>
@@ -125,7 +125,7 @@ export const MyExamsScreen = ({ navigation }: any) => {
           </View>
 
           <View style={styles.examInfo}>
-            <Text style={styles.examType}>{EXAM_TYPE_LABELS[item.type] ?? item.type} Exam</Text>
+            <Text style={styles.examType}>{examTypeLabel(item.type) ?? item.type} Exam</Text>
 
             {/* Status Badge */}
             <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
@@ -140,7 +140,7 @@ export const MyExamsScreen = ({ navigation }: any) => {
             <View style={[styles.resultBadge, { backgroundColor: resultConfig.bg }]}>
               <Ionicons name={resultConfig.icon as any} size={20} color={resultConfig.color} />
               <Text style={[styles.resultText, { color: resultConfig.color }]}>
-                {EXAM_RESULT_LABELS[item.result]}
+                {examResultLabel(item.result)}
               </Text>
             </View>
           )}
@@ -294,9 +294,7 @@ export const MyExamsScreen = ({ navigation }: any) => {
             onPress={() => setFilter(tab.key)}
             activeOpacity={0.7}
           >
-            <Text
-              style={[styles.filterTabText, filter === tab.key && styles.filterTabTextActive]}
-            >
+            <Text style={[styles.filterTabText, filter === tab.key && styles.filterTabTextActive]}>
               {tab.label}
             </Text>
           </TouchableOpacity>

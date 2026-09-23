@@ -123,10 +123,9 @@ export class ApiClient {
         await this.expireSession();
         return null;
       }
-      const response = await this.refreshClient.post<TokenPair>(
-        API_CONFIG.ENDPOINTS.AUTH.REFRESH,
-        { refreshToken }
-      );
+      const response = await this.refreshClient.post<TokenPair>(API_CONFIG.ENDPOINTS.AUTH.REFRESH, {
+        refreshToken,
+      });
       await this.storeTokens(response.data);
       return response.data.accessToken;
     } catch (error) {

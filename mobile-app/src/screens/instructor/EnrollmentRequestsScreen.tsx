@@ -31,13 +31,16 @@ const REJECTION_REASON_MAX = 500;
 
 const STATUS_STYLES: Record<EnrollmentStatus, { badge: object; label: string }> = {
   [EnrollmentStatus.PENDING]: { badge: { backgroundColor: colors.warning[50] }, label: 'Pending' },
-  [EnrollmentStatus.APPROVED]: { badge: { backgroundColor: colors.success[50] }, label: 'Approved' },
+  [EnrollmentStatus.APPROVED]: {
+    badge: { backgroundColor: colors.success[50] },
+    label: 'Approved',
+  },
   [EnrollmentStatus.REJECTED]: { badge: { backgroundColor: colors.error[50] }, label: 'Rejected' },
 };
 
 export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
   const { schoolId } = route.params || {};
-  
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [requests, setRequests] = useState<EnrollmentRequest[]>([]);
@@ -263,9 +266,7 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
           onPress={() => setFilter('all')}
           activeOpacity={0.7}
         >
-          <Text style={[styles.filterText, filter === 'all' && styles.activeFilterText]}>
-            All
-          </Text>
+          <Text style={[styles.filterText, filter === 'all' && styles.activeFilterText]}>All</Text>
         </TouchableOpacity>
       </View>
 

@@ -104,7 +104,9 @@ describe('LessonService', () => {
 
   it('approveLessons (D-34) : un PUT …/approve par demande, en séquence, échecs collectés sans arrêt', async () => {
     const ids = ['id-1', 'id-2', 'id-3'];
-    const conflict = { response: { status: 409, data: { error: 'CONFLICT', message: 'Déjà traitée' } } };
+    const conflict = {
+      response: { status: 409, data: { error: 'CONFLICT', message: 'Déjà traitée' } },
+    };
     api.put
       .mockResolvedValueOnce(respond({ id: 'id-1', status: LessonStatus.SCHEDULED }))
       .mockRejectedValueOnce(conflict)

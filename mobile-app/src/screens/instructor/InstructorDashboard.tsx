@@ -28,14 +28,14 @@ import { enrollmentService } from '../../services/api/EnrollmentService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
 import { EnrollmentStatus } from '../../models/Enrollment';
 import {
-  LESSON_TYPE_LABELS,
+  lessonTypeLabel,
   Lesson,
   LessonStatus,
   LessonType,
   MarkAttendanceData,
   pickCurrentLesson,
 } from '../../models/Lesson';
-import { EXAM_TYPE_LABELS, Exam, ExamStatus } from '../../models/Exam';
+import { examTypeLabel, Exam, ExamStatus } from '../../models/Exam';
 import { formatPersonName, formatTime, toLocalDateKey } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
 import { AttendanceModal } from './components/AttendanceModal';
@@ -258,10 +258,7 @@ export const InstructorDashboard = ({ navigation }: any) => {
     return (
       <View key={lesson.id} style={styles.timelineRow}>
         <View style={styles.timeColumn}>
-          <Text
-            style={[styles.timeText, isCurrent && styles.timeTextCurrent]}
-            numberOfLines={1}
-          >
+          <Text style={[styles.timeText, isCurrent && styles.timeTextCurrent]} numberOfLines={1}>
             {formatTime(lesson.scheduledDate)}
           </Text>
         </View>
@@ -299,7 +296,7 @@ export const InstructorDashboard = ({ navigation }: any) => {
             ) : null}
           </View>
           <Text style={styles.lessonMeta}>
-            {LESSON_TYPE_LABELS[lesson.type] ?? lesson.type}
+            {lessonTypeLabel(lesson.type) ?? lesson.type}
             {lesson.durationMinutes ? ` · ${lesson.durationMinutes} min` : ''}
           </Text>
           {canRecord ? (
@@ -391,7 +388,7 @@ export const InstructorDashboard = ({ navigation }: any) => {
                 )}
               </Text>
               <Text style={styles.lessonMeta}>
-                {EXAM_TYPE_LABELS[exam.type]} exam{exam.location ? ` · ${exam.location}` : ''}
+                {examTypeLabel(exam.type)} exam{exam.location ? ` · ${exam.location}` : ''}
               </Text>
             </View>
             <View style={[styles.chip, styles.chipNow]}>

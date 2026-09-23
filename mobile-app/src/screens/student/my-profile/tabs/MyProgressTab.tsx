@@ -4,14 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { studentSelfProfileService } from '../../../../services/api/StudentSelfProfileService';
 import { getApiErrorMessage } from '../../../../services/api/ApiError';
@@ -64,13 +57,13 @@ export const MyProgressTab = ({ route }: any) => {
     );
   }
 
-  const completionRate = profile.totalLessons > 0
-    ? Math.round((profile.completedLessons / profile.totalLessons) * 100)
-    : 0;
+  const completionRate =
+    profile.totalLessons > 0
+      ? Math.round((profile.completedLessons / profile.totalLessons) * 100)
+      : 0;
 
-  const examPassRate = profile.totalExams > 0
-    ? Math.round((profile.passedExams / profile.totalExams) * 100)
-    : 0;
+  const examPassRate =
+    profile.totalExams > 0 ? Math.round((profile.passedExams / profile.totalExams) * 100) : 0;
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>

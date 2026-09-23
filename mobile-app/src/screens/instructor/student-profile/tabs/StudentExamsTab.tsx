@@ -19,11 +19,11 @@ import { studentProfileService } from '../../../../services/api/StudentProfileSe
 import { getApiErrorMessage } from '../../../../services/api/ApiError';
 import {
   ExamHistory,
-  PAYMENT_METHOD_LABELS,
+  paymentMethodLabel,
   PAYMENT_METHODS,
   PaymentMethod,
 } from '../../../../models/Profile';
-import { EXAM_RESULT_LABELS, ExamResult, ExamType } from '../../../../models/Exam';
+import { examResultLabel, ExamResult, ExamType } from '../../../../models/Exam';
 import { useSchoolCurrency } from '../../../../hooks/useSchoolCurrency';
 import { formatAmount, formatDateTime } from '../../../../utils/format';
 import { colors, typography, spacing, shadows } from '../../../../theme';
@@ -70,11 +70,7 @@ export const StudentExamsTab = ({ route }: any) => {
 
     try {
       setProcessing(true);
-      await studentProfileService.markExamPaid(
-        selectedExam.id,
-        parseFloat(amount),
-        paymentMethod
-      );
+      await studentProfileService.markExamPaid(selectedExam.id, parseFloat(amount), paymentMethod);
       Alert.alert('Success', 'Exam marked as paid');
       setShowPaymentModal(false);
       setSelectedExam(null);
@@ -109,8 +105,7 @@ export const StudentExamsTab = ({ route }: any) => {
     }
   };
 
-  const getResultLabel = (result: string) =>
-    EXAM_RESULT_LABELS[result as ExamResult] ?? result;
+  const getResultLabel = (result: string) => examResultLabel(result as ExamResult) ?? result;
 
   const renderExam = ({ item }: { item: ExamHistory }) => (
     <View style={styles.examCard}>
@@ -239,10 +234,7 @@ export const StudentExamsTab = ({ route }: any) => {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Mark Exam as Paid</Text>
-              <TouchableOpacity
-                onPress={() => setShowPaymentModal(false)}
-                activeOpacity={0.7}
-              >
+              <TouchableOpacity onPress={() => setShowPaymentModal(false)} activeOpacity={0.7}>
                 <Ionicons name="close" size={24} color={colors.text.secondary} />
               </TouchableOpacity>
             </View>
@@ -270,12 +262,9 @@ export const StudentExamsTab = ({ route }: any) => {
                   activeOpacity={0.7}
                 >
                   <Text
-                    style={[
-                      styles.methodText,
-                      paymentMethod === method && styles.methodTextActive,
-                    ]}
+                    style={[styles.methodText, paymentMethod === method && styles.methodTextActive]}
                   >
-                    {PAYMENT_METHOD_LABELS[method]}
+                    {paymentMethodLabel(method)}
                   </Text>
                 </TouchableOpacity>
               ))}

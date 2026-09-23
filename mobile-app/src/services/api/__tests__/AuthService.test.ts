@@ -80,7 +80,9 @@ describe('AuthService', () => {
   });
 
   it('propage l’erreur du backend (D-27) sans la transformer', async () => {
-    const error = { response: { status: 401, data: { error: 'UNAUTHORIZED', message: 'Identifiants invalides' } } };
+    const error = {
+      response: { status: 401, data: { error: 'UNAUTHORIZED', message: 'Identifiants invalides' } },
+    };
     api.post.mockRejectedValue(error);
 
     await expect(authService.login({ email: 'x@x.io', password: 'bad' })).rejects.toBe(error);

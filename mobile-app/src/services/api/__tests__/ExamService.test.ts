@@ -10,7 +10,12 @@ import { ExamResult, ExamStatus, ExamType } from '../../../models/Exam';
 
 const api = mockedApiClient();
 const examId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
-const exam = { id: examId, type: ExamType.THEORY, status: ExamStatus.PENDING, result: ExamResult.PENDING };
+const exam = {
+  id: examId,
+  type: ExamType.THEORY,
+  status: ExamStatus.PENDING,
+  result: ExamResult.PENDING,
+};
 
 describe('ExamService', () => {
   it('getMyExams (X1) sans filtre : GET /api/exams/my-exams sans query', async () => {
@@ -73,7 +78,11 @@ describe('ExamService', () => {
   it('recordExamResult (X5) : PUT /api/exams/:id/result { result, score?, notes? } — score facultatif', async () => {
     api.put.mockResolvedValue(respond({ ...exam, status: ExamStatus.COMPLETED }));
 
-    await examService.recordExamResult(examId, { result: ExamResult.PASSED, score: 38, notes: 'Bien' });
+    await examService.recordExamResult(examId, {
+      result: ExamResult.PASSED,
+      score: 38,
+      notes: 'Bien',
+    });
     await examService.recordExamResult(examId, { result: ExamResult.FAILED });
 
     expect(api.put).toHaveBeenNthCalledWith(1, `/api/exams/${examId}/result`, {

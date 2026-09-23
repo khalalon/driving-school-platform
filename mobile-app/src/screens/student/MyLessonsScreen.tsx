@@ -6,7 +6,7 @@
  * (`scheduled`, date confirmée), puis passe `completed` ; l'élève voit l'état de paiement (D-32).
  */
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -16,44 +16,40 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from "@react-navigation/native";
-import { lessonService } from "../../services/api/LessonService";
-import {
-  getApiErrorCode,
-  getApiErrorMessage,
-} from "../../services/api/ApiError";
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
+import { lessonService } from '../../services/api/LessonService';
+import { getApiErrorCode, getApiErrorMessage } from '../../services/api/ApiError';
 import {
   LESSON_CANCEL_HOURS,
-  LESSON_STATUS_LABELS,
-  LESSON_TYPE_LABELS,
+  lessonStatusLabel,
+  lessonTypeLabel,
   Lesson,
   LessonStatus,
   canStudentCancel,
   paymentNote,
-} from "../../models/Lesson";
-import { useSchoolCurrency } from "../../hooks/useSchoolCurrency";
-import { formatAmount, formatPersonName, formatTime } from "../../utils/format";
-import { colors, typography, spacing, shadows } from "../../theme";
+} from '../../models/Lesson';
+import { useSchoolCurrency } from '../../hooks/useSchoolCurrency';
+import { formatAmount, formatPersonName, formatTime } from '../../utils/format';
+import { colors, typography, spacing, shadows } from '../../theme';
 
-type FilterType = "pending" | "upcoming" | "completed" | "closed";
+type FilterType = 'pending' | 'upcoming' | 'completed' | 'closed';
 
-const FILTERS: { key: FilterType; label: string; statuses: LessonStatus[] }[] =
-  [
-    { key: "pending", label: "Pending", statuses: [LessonStatus.PENDING] },
-    { key: "upcoming", label: "Upcoming", statuses: [LessonStatus.SCHEDULED] },
-    {
-      key: "completed",
-      label: "Completed",
-      statuses: [LessonStatus.COMPLETED],
-    },
-    {
-      key: "closed",
-      label: "Closed",
-      statuses: [LessonStatus.CANCELLED, LessonStatus.REJECTED],
-    },
-  ];
+const FILTERS: { key: FilterType; label: string; statuses: LessonStatus[] }[] = [
+  { key: 'pending', label: 'Pending', statuses: [LessonStatus.PENDING] },
+  { key: 'upcoming', label: 'Upcoming', statuses: [LessonStatus.SCHEDULED] },
+  {
+    key: 'completed',
+    label: 'Completed',
+    statuses: [LessonStatus.COMPLETED],
+  },
+  {
+    key: 'closed',
+    label: 'Closed',
+    statuses: [LessonStatus.CANCELLED, LessonStatus.REJECTED],
+  },
+];
 
 /** Date affichée : celle confirmée par l'instructeur, sinon celle souhaitée par l'élève. */
 const lessonDateOf = (lesson: Lesson): Date | null => {
@@ -65,7 +61,7 @@ export const MyLessonsScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lessons, setLessons] = useState<Lesson[]>([]);
-  const [filter, setFilter] = useState<FilterType>("upcoming");
+  const [filter, setFilter] = useState<FilterType>('upcoming');
   // Une seule inscription active (D-22) : toutes les leçons sont dans la même école
   const currency = useSchoolCurrency(lessons[0]?.schoolId);
 
@@ -73,7 +69,7 @@ export const MyLessonsScreen = ({ navigation }: any) => {
   useFocusEffect(
     useCallback(() => {
       loadLessons();
-    }, []),
+    }, [])
   );
 
   const loadLessons = async () => {
@@ -82,7 +78,7 @@ export const MyLessonsScreen = ({ navigation }: any) => {
       const data = await lessonService.getMyLessons();
       setLessons(data);
     } catch (error) {
-      Alert.alert("Error", getApiErrorMessage(error, "Failed to load lessons"));
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load lessons'));
     } finally {
       setLoading(false);
     }
@@ -97,50 +93,45 @@ export const MyLessonsScreen = ({ navigation }: any) => {
   const handleCancelLesson = (lesson: Lesson) => {
     const isRequest = lesson.status === LessonStatus.PENDING;
     Alert.alert(
-      isRequest ? "Cancel Request" : "Cancel Lesson",
+      isRequest ? 'Cancel Request' : 'Cancel Lesson',
       isRequest
-        ? "Are you sure you want to withdraw this lesson request?"
-        : "Are you sure you want to cancel this lesson?",
+        ? 'Are you sure you want to withdraw this lesson request?'
+        : 'Are you sure you want to cancel this lesson?',
       [
-        { text: "No", style: "cancel" },
+        { text: 'No', style: 'cancel' },
         {
-          text: "Yes, Cancel",
-          style: "destructive",
+          text: 'Yes, Cancel',
+          style: 'destructive',
           onPress: () => confirmCancelLesson(lesson.id),
         },
-      ],
+      ]
     );
   };
 
   const confirmCancelLesson = async (lessonId: string) => {
     try {
       await lessonService.cancelLesson(lessonId);
-      Alert.alert("Success", "Lesson cancelled successfully");
+      Alert.alert('Success', 'Lesson cancelled successfully');
       loadLessons();
     } catch (error) {
       // Fenêtre de 24 h (D-24) contrôlée par le serveur : le bouton n'est qu'un confort
-      if (getApiErrorCode(error) === "CANCEL_WINDOW_CLOSED") {
+      if (getApiErrorCode(error) === 'CANCEL_WINDOW_CLOSED') {
         Alert.alert(
-          "Too late to cancel",
+          'Too late to cancel',
           getApiErrorMessage(
             error,
-            `A lesson can only be cancelled up to ${LESSON_CANCEL_HOURS} hours before it starts. Please contact your instructor.`,
-          ),
+            `A lesson can only be cancelled up to ${LESSON_CANCEL_HOURS} hours before it starts. Please contact your instructor.`
+          )
         );
         loadLessons();
         return;
       }
-      Alert.alert(
-        "Error",
-        getApiErrorMessage(error, "Failed to cancel lesson"),
-      );
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to cancel lesson'));
     }
   };
 
   const activeFilter = FILTERS.find((f) => f.key === filter) ?? FILTERS[0];
-  const filteredLessons = lessons.filter((lesson) =>
-    activeFilter.statuses.includes(lesson.status),
-  );
+  const filteredLessons = lessons.filter((lesson) => activeFilter.statuses.includes(lesson.status));
 
   const getStatusConfig = (status: LessonStatus) => {
     switch (status) {
@@ -166,9 +157,7 @@ export const MyLessonsScreen = ({ navigation }: any) => {
     const isAwaitingAttendance =
       item.status === LessonStatus.SCHEDULED &&
       !!item.scheduledDate &&
-      new Date(item.scheduledDate).getTime() +
-        (item.durationMinutes ?? 60) * 60000 <=
-        Date.now();
+      new Date(item.scheduledDate).getTime() + (item.durationMinutes ?? 60) * 60000 <= Date.now();
 
     return (
       <View style={styles.lessonCard}>
@@ -176,53 +165,37 @@ export const MyLessonsScreen = ({ navigation }: any) => {
           <View style={styles.dateBox}>
             <Text style={styles.dateMonth}>
               {lessonDate
-                ? lessonDate
-                    .toLocaleDateString("en-US", { month: "short" })
-                    .toUpperCase()
-                : "—"}
+                ? lessonDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()
+                : '—'}
             </Text>
-            <Text style={styles.dateDay}>
-              {lessonDate ? lessonDate.getDate() : "?"}
-            </Text>
+            <Text style={styles.dateDay}>{lessonDate ? lessonDate.getDate() : '?'}</Text>
           </View>
 
           <View style={styles.lessonInfo}>
-            <Text style={styles.lessonType}>
-              {LESSON_TYPE_LABELS[item.type] ?? item.type}
-            </Text>
+            <Text style={styles.lessonType}>{lessonTypeLabel(item.type) ?? item.type}</Text>
             <View style={styles.instructorRow}>
-              <Ionicons
-                name="person-outline"
-                size={16}
-                color={colors.text.tertiary}
-              />
+              <Ionicons name="person-outline" size={16} color={colors.text.tertiary} />
               <Text style={styles.instructorText}>
                 {item.instructor
-                  ? formatPersonName(item.instructor, "Instructor")
+                  ? formatPersonName(item.instructor, 'Instructor')
                   : isPending
-                    ? "Awaiting an instructor"
-                    : "No instructor"}
+                    ? 'Awaiting an instructor'
+                    : 'No instructor'}
               </Text>
             </View>
             <View style={styles.timeRow}>
-              <Ionicons
-                name="time-outline"
-                size={16}
-                color={colors.text.tertiary}
-              />
+              <Ionicons name="time-outline" size={16} color={colors.text.tertiary} />
               <Text style={styles.timeText}>
-                {isPending ? "Requested: " : ""}
+                {isPending ? 'Requested: ' : ''}
                 {formatTime(item.scheduledDate ?? item.requestedDate)}
-                {item.durationMinutes ? ` · ${item.durationMinutes} min` : ""}
+                {item.durationMinutes ? ` · ${item.durationMinutes} min` : ''}
               </Text>
             </View>
           </View>
 
-          <View
-            style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}
-          >
+          <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
             <Text style={[styles.statusText, { color: statusConfig.color }]}>
-              {LESSON_STATUS_LABELS[item.status]}
+              {lessonStatusLabel(item.status)}
             </Text>
           </View>
         </View>
@@ -230,76 +203,44 @@ export const MyLessonsScreen = ({ navigation }: any) => {
         {/* Prix et état de paiement (D-32), avoir (D-40) */}
         {(item.price !== null || item.paid) && (
           <View style={styles.priceRow}>
-            <Ionicons
-              name="cash-outline"
-              size={16}
-              color={colors.text.secondary}
-            />
-            <Text style={styles.priceText}>
-              {formatAmount(item.price, currency)}
-            </Text>
-            <View
-              style={[
-                styles.paidBadge,
-                item.paid ? styles.paidBadgeOn : styles.paidBadgeOff,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.paidText,
-                  item.paid ? styles.paidTextOn : styles.paidTextOff,
-                ]}
-              >
-                {item.paid ? "Paid" : "Unpaid"}
+            <Ionicons name="cash-outline" size={16} color={colors.text.secondary} />
+            <Text style={styles.priceText}>{formatAmount(item.price, currency)}</Text>
+            <View style={[styles.paidBadge, item.paid ? styles.paidBadgeOn : styles.paidBadgeOff]}>
+              <Text style={[styles.paidText, item.paid ? styles.paidTextOn : styles.paidTextOff]}>
+                {item.paid ? 'Paid' : 'Unpaid'}
               </Text>
             </View>
           </View>
         )}
-        {paymentNote(item) === "paid-with-credit" && (
+        {paymentNote(item) === 'paid-with-credit' && (
           <Text style={styles.paymentNote}>Paid with your credit</Text>
         )}
-        {paymentNote(item) === "credit-applied" && (
+        {paymentNote(item) === 'credit-applied' && (
           <Text style={styles.paymentNote}>
-            Credit applied: {formatAmount(item.creditApplied, currency)} ·
-            remaining {formatAmount(item.amount, currency)}
+            Credit applied: {formatAmount(item.creditApplied, currency)} · remaining{' '}
+            {formatAmount(item.amount, currency)}
           </Text>
         )}
-        {paymentNote(item) === "refunded-as-credit" && (
-          <Text style={styles.paymentNote}>
-            Your payment was returned to your credit
-          </Text>
+        {paymentNote(item) === 'refunded-as-credit' && (
+          <Text style={styles.paymentNote}>Your payment was returned to your credit</Text>
         )}
         {item.status === LessonStatus.COMPLETED && item.attended === false && (
           <View style={styles.reasonBox}>
-            <Ionicons
-              name="alert-circle-outline"
-              size={18}
-              color={colors.error[600]}
-            />
-            <Text style={styles.reasonText}>
-              Marked absent — this lesson is not billed
-            </Text>
+            <Ionicons name="alert-circle-outline" size={18} color={colors.error[600]} />
+            <Text style={styles.reasonText}>Marked absent — this lesson is not billed</Text>
           </View>
         )}
 
         {item.status === LessonStatus.REJECTED && item.rejectionReason && (
           <View style={styles.reasonBox}>
-            <Ionicons
-              name="information-circle-outline"
-              size={18}
-              color={colors.error[600]}
-            />
+            <Ionicons name="information-circle-outline" size={18} color={colors.error[600]} />
             <Text style={styles.reasonText}>{item.rejectionReason}</Text>
           </View>
         )}
 
         {item.status === LessonStatus.CANCELLED && item.cancellationReason && (
           <View style={styles.reasonBox}>
-            <Ionicons
-              name="information-circle-outline"
-              size={18}
-              color={colors.error[600]}
-            />
+            <Ionicons name="information-circle-outline" size={18} color={colors.error[600]} />
             <Text style={styles.reasonText}>{item.cancellationReason}</Text>
           </View>
         )}
@@ -310,20 +251,16 @@ export const MyLessonsScreen = ({ navigation }: any) => {
             onPress={() => handleCancelLesson(item)}
             activeOpacity={0.7}
           >
-            <Ionicons
-              name="close-circle-outline"
-              size={20}
-              color={colors.error[600]}
-            />
+            <Ionicons name="close-circle-outline" size={20} color={colors.error[600]} />
             <Text style={styles.cancelButtonText}>
-              {isPending ? "Withdraw Request" : "Cancel Lesson"}
+              {isPending ? 'Withdraw Request' : 'Cancel Lesson'}
             </Text>
           </TouchableOpacity>
         ) : (
           item.status === LessonStatus.SCHEDULED && (
             <Text style={styles.cancelHint}>
               {isAwaitingAttendance
-                ? "This lesson has passed — waiting for your instructor to record attendance"
+                ? 'This lesson has passed — waiting for your instructor to record attendance'
                 : `Cancellation closed (less than ${LESSON_CANCEL_HOURS} h before the lesson) — contact your instructor`}
             </Text>
           )
@@ -335,31 +272,21 @@ export const MyLessonsScreen = ({ navigation }: any) => {
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
       <View style={styles.emptyIconContainer}>
-        <Ionicons
-          name="calendar-outline"
-          size={64}
-          color={colors.neutral[300]}
-        />
+        <Ionicons name="calendar-outline" size={64} color={colors.neutral[300]} />
       </View>
-      <Text style={styles.emptyTitle}>
-        No {activeFilter.label.toLowerCase()} lessons
-      </Text>
+      <Text style={styles.emptyTitle}>No {activeFilter.label.toLowerCase()} lessons</Text>
       <Text style={styles.emptyText}>
-        {filter === "upcoming" || filter === "pending"
-          ? "Request a lesson from your school to get started"
+        {filter === 'upcoming' || filter === 'pending'
+          ? 'Request a lesson from your school to get started'
           : `You don't have any ${activeFilter.label.toLowerCase()} lessons yet`}
       </Text>
-      {(filter === "upcoming" || filter === "pending") && (
+      {(filter === 'upcoming' || filter === 'pending') && (
         <TouchableOpacity
           style={styles.bookButton}
-          onPress={() => navigation.navigate("SchoolsList")}
+          onPress={() => navigation.navigate('SchoolsList')}
           activeOpacity={0.8}
         >
-          <Ionicons
-            name="add-circle-outline"
-            size={20}
-            color={colors.text.inverse}
-          />
+          <Ionicons name="add-circle-outline" size={20} color={colors.text.inverse} />
           <Text style={styles.bookButtonText}>Request Lesson</Text>
         </TouchableOpacity>
       )}
@@ -386,19 +313,11 @@ export const MyLessonsScreen = ({ navigation }: any) => {
         {FILTERS.map((tab) => (
           <TouchableOpacity
             key={tab.key}
-            style={[
-              styles.filterTab,
-              filter === tab.key && styles.filterTabActive,
-            ]}
+            style={[styles.filterTab, filter === tab.key && styles.filterTabActive]}
             onPress={() => setFilter(tab.key)}
             activeOpacity={0.7}
           >
-            <Text
-              style={[
-                styles.filterTabText,
-                filter === tab.key && styles.filterTabTextActive,
-              ]}
-            >
+            <Text style={[styles.filterTabText, filter === tab.key && styles.filterTabTextActive]}>
               {tab.label}
             </Text>
           </TouchableOpacity>
@@ -410,9 +329,7 @@ export const MyLessonsScreen = ({ navigation }: any) => {
         data={filteredLessons}
         renderItem={renderLessonCard}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={
-          filteredLessons.length === 0 ? styles.emptyList : styles.listContent
-        }
+        contentContainerStyle={filteredLessons.length === 0 ? styles.emptyList : styles.listContent}
         ListEmptyComponent={renderEmptyState}
         refreshControl={
           <RefreshControl
@@ -434,15 +351,15 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: colors.background.secondary,
   },
   header: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing["4xl"],
+    paddingTop: spacing['4xl'],
     paddingBottom: spacing.lg,
     backgroundColor: colors.background.primary,
     gap: spacing.md,
@@ -453,7 +370,7 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
   },
   filterContainer: {
-    flexDirection: "row",
+    flexDirection: 'row',
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
     backgroundColor: colors.background.primary,
@@ -464,7 +381,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.xs,
     borderRadius: 8,
-    alignItems: "center",
+    alignItems: 'center',
     backgroundColor: colors.background.tertiary,
   },
   filterTabActive: {
@@ -493,17 +410,17 @@ const styles = StyleSheet.create({
     ...shadows.sm,
   },
   cardHeader: {
-    flexDirection: "row",
+    flexDirection: 'row',
     gap: spacing.md,
-    alignItems: "flex-start",
+    alignItems: 'flex-start',
   },
   dateBox: {
     width: 56,
     height: 56,
     borderRadius: 12,
     backgroundColor: colors.primary[50],
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   dateMonth: {
     fontSize: typography.size.xs,
@@ -525,8 +442,8 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
   },
   instructorRow: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.xs,
   },
   instructorText: {
@@ -534,8 +451,8 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
   },
   timeRow: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.xs,
   },
   timeText: {
@@ -546,15 +463,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: 8,
-    alignSelf: "flex-start",
+    alignSelf: 'flex-start',
   },
   statusText: {
     fontSize: typography.size.xs,
     fontWeight: typography.weight.semibold,
   },
   priceRow: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.xs,
   },
   priceText: {
@@ -563,7 +480,7 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
   },
   paidBadge: {
-    marginLeft: "auto",
+    marginLeft: 'auto',
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
     borderRadius: 6,
@@ -587,11 +504,11 @@ const styles = StyleSheet.create({
   paymentNote: {
     fontSize: typography.size.xs,
     color: colors.success[600],
-    fontStyle: "italic",
+    fontStyle: 'italic',
   },
   reasonBox: {
-    flexDirection: "row",
-    alignItems: "flex-start",
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     gap: spacing.sm,
     backgroundColor: colors.error[50],
     padding: spacing.md,
@@ -603,9 +520,9 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
   },
   cancelButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: spacing.md,
     borderRadius: 8,
     backgroundColor: colors.error[50],
@@ -620,22 +537,22 @@ const styles = StyleSheet.create({
   cancelHint: {
     fontSize: typography.size.xs,
     color: colors.text.tertiary,
-    fontStyle: "italic",
+    fontStyle: 'italic',
     marginTop: spacing.xs,
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: spacing["4xl"],
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing['4xl'],
   },
   emptyIconContainer: {
     width: 120,
     height: 120,
     borderRadius: 60,
     backgroundColor: colors.neutral[100],
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: spacing.xl,
   },
   emptyTitle: {
@@ -647,13 +564,13 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: typography.size.base,
     color: colors.text.secondary,
-    textAlign: "center",
+    textAlign: 'center',
     marginBottom: spacing.xl,
   },
   bookButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: colors.primary[600],
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,

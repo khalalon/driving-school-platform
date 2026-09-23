@@ -5,12 +5,12 @@
  *
  * Pas d'instructeur attitré (D-33) : tout instructeur de l'école voit et traite les demandes.
  * Pas de règle d'éligibilité (D-26) : le nombre de leçons effectuées est affiché pour aider à
- * décider. Les libellés dépendent du type (D-42, `EXAM_PROCEDURES`) : théorie planifiée par
+ * décider. Les libellés dépendent du type (D-42, `examProcedure`) : théorie planifiée par
  * l'école (« Schedule » / « Reject »), pratique par session ATTT (« Record convocation » /
  * « File not ready ») ; mêmes payloads X3 / X4.
  */
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -23,21 +23,15 @@ import {
   TextInput,
   Modal,
   Platform,
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from "@react-navigation/native";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { examService } from "../../services/api/ExamService";
-import { getApiErrorMessage } from "../../services/api/ApiError";
-import {
-  EXAM_PROCEDURES,
-  EXAM_TYPE_LABELS,
-  Exam,
-  ExamStatus,
-  ExamType,
-} from "../../models/Exam";
-import { formatDate, formatPersonName } from "../../utils/format";
-import { colors, typography, spacing, shadows } from "../../theme";
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { examService } from '../../services/api/ExamService';
+import { getApiErrorMessage } from '../../services/api/ApiError';
+import { examProcedure, examTypeLabel, Exam, ExamStatus, ExamType } from '../../models/Exam';
+import { formatDate, formatPersonName } from '../../utils/format';
+import { colors, typography, spacing, shadows } from '../../theme';
 
 /** Motif de refus : 10 à 500 caractères, même règle que le backend. */
 const REASON_MIN = 10;
@@ -55,10 +49,7 @@ const tomorrowMorning = (): Date => {
  * Créneau proposé au départ : la date souhaitée si elle est encore à venir, sinon la même
  * heure au prochain jour futur — une date passée serait refusée (400) et bloquerait l'écran.
  */
-const firstFutureSlot = (
-  wanted: string | null | undefined,
-  now: Date = new Date(),
-): Date => {
+const firstFutureSlot = (wanted: string | null | undefined, now: Date = new Date()): Date => {
   if (!wanted) return tomorrowMorning();
   const date = new Date(wanted);
   if (Number.isNaN(date.getTime())) return tomorrowMorning();
@@ -80,17 +71,17 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
   const [dateTime, setDateTime] = useState<Date>(tomorrowMorning);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
-  const [location, setLocation] = useState("");
+  const [location, setLocation] = useState('');
 
   // Reject modal (X4)
   const [showRejectModal, setShowRejectModal] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState("");
+  const [rejectionReason, setRejectionReason] = useState('');
 
   // Onglet (8.4) : rechargé à chaque retour au premier plan
   useFocusEffect(
     useCallback(() => {
       loadRequests();
-    }, []),
+    }, [])
   );
 
   const loadRequests = async () => {
@@ -102,10 +93,7 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
       });
       setRequests(data);
     } catch (error) {
-      Alert.alert(
-        "Error",
-        getApiErrorMessage(error, "Failed to load exam requests"),
-      );
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load exam requests'));
     } finally {
       setLoading(false);
     }
@@ -122,13 +110,13 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
   const openSchedule = (request: Exam) => {
     setSelectedRequest(request);
     setDateTime(firstFutureSlot(request.preferredDate));
-    setLocation("");
+    setLocation('');
     setShowScheduleModal(true);
   };
 
   const closeSchedule = () => {
     setShowScheduleModal(false);
-    setLocation("");
+    setLocation('');
     setSelectedRequest(null);
   };
 
@@ -136,11 +124,7 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
     setShowDatePicker(false);
     if (selected) {
       const next = new Date(dateTime);
-      next.setFullYear(
-        selected.getFullYear(),
-        selected.getMonth(),
-        selected.getDate(),
-      );
+      next.setFullYear(selected.getFullYear(), selected.getMonth(), selected.getDate());
       setDateTime(next);
     }
   };
@@ -157,11 +141,11 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
   const confirmSchedule = async () => {
     if (!selectedRequest) return;
     if (!location.trim()) {
-      Alert.alert("Required", "Please enter the exam location");
+      Alert.alert('Required', 'Please enter the exam location');
       return;
     }
     if (dateTime.getTime() <= Date.now()) {
-      Alert.alert("Invalid Date", "The exam date must be in the future");
+      Alert.alert('Invalid Date', 'The exam date must be in the future');
       return;
     }
 
@@ -174,19 +158,16 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
       });
       // Confirmation dans les mots de la procédure du type (D-42)
       Alert.alert(
-        "Success",
+        'Success',
         selectedRequest.type === ExamType.PRACTICAL
-          ? "Convocation recorded: the student sees the session date and center"
-          : "Exam scheduled: the student sees the date and location",
+          ? 'Convocation recorded: the student sees the session date and center'
+          : 'Exam scheduled: the student sees the date and location'
       );
       closeSchedule();
       loadRequests();
     } catch (error) {
       // 409 : un collègue a déjà traité la demande
-      Alert.alert(
-        "Error",
-        getApiErrorMessage(error, "Failed to schedule exam"),
-      );
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to schedule exam'));
       loadRequests();
     } finally {
       setProcessing(false);
@@ -197,13 +178,13 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
 
   const openReject = (request: Exam) => {
     setSelectedRequest(request);
-    setRejectionReason("");
+    setRejectionReason('');
     setShowRejectModal(true);
   };
 
   const closeReject = () => {
     setShowRejectModal(false);
-    setRejectionReason("");
+    setRejectionReason('');
     setSelectedRequest(null);
   };
 
@@ -214,31 +195,25 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
     if (!selectedRequest) return;
     if (!reasonValid) {
       Alert.alert(
-        "Reason too short",
-        `Please explain the rejection in at least ${REASON_MIN} characters (the student will read it).`,
+        'Reason too short',
+        `Please explain the rejection in at least ${REASON_MIN} characters (the student will read it).`
       );
       return;
     }
 
     try {
       setProcessing(true);
-      await examService.rejectExamRequest(
-        selectedRequest.id,
-        rejectionReason.trim(),
-      );
+      await examService.rejectExamRequest(selectedRequest.id, rejectionReason.trim());
       Alert.alert(
-        "Success",
+        'Success',
         selectedRequest.type === ExamType.PRACTICAL
-          ? "File marked as not ready: the student can request again for the next session"
-          : "Exam request rejected: the student has been given your reason",
+          ? 'File marked as not ready: the student can request again for the next session'
+          : 'Exam request rejected: the student has been given your reason'
       );
       closeReject();
       loadRequests();
     } catch (error) {
-      Alert.alert(
-        "Error",
-        getApiErrorMessage(error, "Failed to reject request"),
-      );
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to reject request'));
       loadRequests();
     } finally {
       setProcessing(false);
@@ -248,58 +223,40 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
   // ----- Rendering -----
 
   const renderRequestCard = ({ item }: { item: Exam }) => {
-    const procedure = EXAM_PROCEDURES[item.type];
+    const procedure = examProcedure(item.type);
     return (
       <View style={styles.requestCard}>
         <View style={styles.cardHeader}>
           <View style={styles.iconContainer}>
             <Ionicons
-              name={
-                item.type === ExamType.THEORY
-                  ? "book-outline"
-                  : "car-sport-outline"
-              }
+              name={item.type === ExamType.THEORY ? 'book-outline' : 'car-sport-outline'}
               size={28}
-              color={
-                item.type === ExamType.THEORY
-                  ? colors.primary[600]
-                  : colors.warning[600]
-              }
+              color={item.type === ExamType.THEORY ? colors.primary[600] : colors.warning[600]}
             />
           </View>
 
           <View style={styles.requestInfo}>
-            <Text style={styles.examType}>
-              {EXAM_TYPE_LABELS[item.type] ?? item.type} Exam
-            </Text>
+            <Text style={styles.examType}>{examTypeLabel(item.type) ?? item.type} Exam</Text>
             <Text style={styles.studentName}>
               {formatPersonName(
                 {
                   firstName: item.studentFirstName,
                   lastName: item.studentLastName,
                 },
-                "Student",
+                'Student'
               )}
             </Text>
             <View style={styles.detailRow}>
-              <Ionicons
-                name="school-outline"
-                size={16}
-                color={colors.text.tertiary}
-              />
+              <Ionicons name="school-outline" size={16} color={colors.text.tertiary} />
               <Text style={styles.detailText}>
                 {item.studentCompletedLessons} lesson
-                {item.studentCompletedLessons === 1 ? "" : "s"} completed
+                {item.studentCompletedLessons === 1 ? '' : 's'} completed
               </Text>
             </View>
             <View style={styles.detailRow}>
-              <Ionicons
-                name="calendar-outline"
-                size={16}
-                color={colors.text.tertiary}
-              />
+              <Ionicons name="calendar-outline" size={16} color={colors.text.tertiary} />
               <Text style={styles.detailText}>
-                Preferred: {formatDate(item.preferredDate, "no date given")}
+                Preferred: {formatDate(item.preferredDate, 'no date given')}
               </Text>
             </View>
             {item.message && (
@@ -317,14 +274,8 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
             activeOpacity={0.7}
             disabled={processing}
           >
-            <Ionicons
-              name="close-outline"
-              size={20}
-              color={colors.error[600]}
-            />
-            <Text style={styles.rejectButtonText}>
-              {procedure.rejectAction}
-            </Text>
+            <Ionicons name="close-outline" size={20} color={colors.error[600]} />
+            <Text style={styles.rejectButtonText}>{procedure.rejectAction}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionButton, styles.scheduleButton]}
@@ -332,14 +283,8 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
             activeOpacity={0.7}
             disabled={processing}
           >
-            <Ionicons
-              name="calendar-outline"
-              size={20}
-              color={colors.text.inverse}
-            />
-            <Text style={styles.scheduleButtonText}>
-              {procedure.scheduleAction}
-            </Text>
+            <Ionicons name="calendar-outline" size={20} color={colors.text.inverse} />
+            <Text style={styles.scheduleButtonText}>{procedure.scheduleAction}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -349,22 +294,15 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
       <View style={styles.emptyIconContainer}>
-        <Ionicons
-          name="documents-outline"
-          size={64}
-          color={colors.neutral[300]}
-        />
+        <Ionicons name="documents-outline" size={64} color={colors.neutral[300]} />
       </View>
       <Text style={styles.emptyTitle}>No Pending Requests</Text>
-      <Text style={styles.emptyText}>
-        New exam requests from your school will appear here
-      </Text>
+      <Text style={styles.emptyText}>New exam requests from your school will appear here</Text>
     </View>
   );
 
   // Libellés de la modale ouverte : ceux du type de la demande sélectionnée (D-42)
-  const selectedProcedure =
-    EXAM_PROCEDURES[selectedRequest?.type ?? ExamType.THEORY];
+  const selectedProcedure = examProcedure(selectedRequest?.type ?? ExamType.THEORY);
 
   if (loading) {
     return (
@@ -386,9 +324,7 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
         data={requests}
         renderItem={renderRequestCard}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={
-          requests.length === 0 ? styles.emptyList : styles.listContent
-        }
+        contentContainerStyle={requests.length === 0 ? styles.emptyList : styles.listContent}
         ListEmptyComponent={renderEmptyState}
         refreshControl={
           <RefreshControl
@@ -410,28 +346,22 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {selectedProcedure.scheduleAction}
-              </Text>
+              <Text style={styles.modalTitle}>{selectedProcedure.scheduleAction}</Text>
               <TouchableOpacity onPress={closeSchedule}>
-                <Ionicons
-                  name="close"
-                  size={24}
-                  color={colors.text.secondary}
-                />
+                <Ionicons name="close" size={24} color={colors.text.secondary} />
               </TouchableOpacity>
             </View>
 
             <Text style={styles.modalSubtitle}>
               {selectedRequest
-                ? `${EXAM_TYPE_LABELS[selectedRequest.type]} exam for ${formatPersonName(
+                ? `${examTypeLabel(selectedRequest.type)} exam for ${formatPersonName(
                     {
                       firstName: selectedRequest.studentFirstName,
                       lastName: selectedRequest.studentLastName,
                     },
-                    "the student",
+                    'the student'
                   )}: ${selectedProcedure.scheduleHint}`
-                : ""}
+                : ''}
             </Text>
 
             <View style={styles.section}>
@@ -441,20 +371,14 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
                 onPress={() => setShowDatePicker(true)}
                 activeOpacity={0.7}
               >
-                <Ionicons
-                  name="calendar-outline"
-                  size={20}
-                  color={colors.text.secondary}
-                />
-                <Text style={styles.dateText}>
-                  {dateTime.toLocaleDateString()}
-                </Text>
+                <Ionicons name="calendar-outline" size={20} color={colors.text.secondary} />
+                <Text style={styles.dateText}>{dateTime.toLocaleDateString()}</Text>
               </TouchableOpacity>
               {showDatePicker && (
                 <DateTimePicker
                   value={dateTime}
                   mode="date"
-                  display={Platform.OS === "ios" ? "spinner" : "default"}
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                   onValueChange={handleDateChange}
                   onDismiss={() => setShowDatePicker(false)}
                   minimumDate={new Date()}
@@ -469,15 +393,11 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
                 onPress={() => setShowTimePicker(true)}
                 activeOpacity={0.7}
               >
-                <Ionicons
-                  name="time-outline"
-                  size={20}
-                  color={colors.text.secondary}
-                />
+                <Ionicons name="time-outline" size={20} color={colors.text.secondary} />
                 <Text style={styles.dateText}>
                   {dateTime.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
+                    hour: '2-digit',
+                    minute: '2-digit',
                   })}
                 </Text>
               </TouchableOpacity>
@@ -485,7 +405,7 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
                 <DateTimePicker
                   value={dateTime}
                   mode="time"
-                  display={Platform.OS === "ios" ? "spinner" : "default"}
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                   onValueChange={handleTimeChange}
                   onDismiss={() => setShowTimePicker(false)}
                 />
@@ -493,9 +413,7 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.label}>
-                {selectedProcedure.locationLabel}
-              </Text>
+              <Text style={styles.label}>{selectedProcedure.locationLabel}</Text>
               <TextInput
                 style={styles.locationInput}
                 placeholder={selectedProcedure.locationPlaceholder}
@@ -526,9 +444,7 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
                 {processing ? (
                   <ActivityIndicator size="small" color={colors.text.inverse} />
                 ) : (
-                  <Text style={styles.modalSubmitText}>
-                    {selectedProcedure.scheduleAction}
-                  </Text>
+                  <Text style={styles.modalSubmitText}>{selectedProcedure.scheduleAction}</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -546,21 +462,13 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {selectedProcedure.rejectAction}
-              </Text>
+              <Text style={styles.modalTitle}>{selectedProcedure.rejectAction}</Text>
               <TouchableOpacity onPress={closeReject}>
-                <Ionicons
-                  name="close"
-                  size={24}
-                  color={colors.text.secondary}
-                />
+                <Ionicons name="close" size={24} color={colors.text.secondary} />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.modalSubtitle}>
-              {selectedProcedure.rejectHint}
-            </Text>
+            <Text style={styles.modalSubtitle}>{selectedProcedure.rejectHint}</Text>
 
             <TextInput
               style={styles.reasonInput}
@@ -600,9 +508,7 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
                 {processing ? (
                   <ActivityIndicator size="small" color={colors.text.inverse} />
                 ) : (
-                  <Text style={styles.modalRejectText}>
-                    {selectedProcedure.rejectAction}
-                  </Text>
+                  <Text style={styles.modalRejectText}>{selectedProcedure.rejectAction}</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -620,15 +526,15 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: colors.background.secondary,
   },
   header: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing["4xl"],
+    paddingTop: spacing['4xl'],
     paddingBottom: spacing.lg,
     backgroundColor: colors.background.primary,
     gap: spacing.md,
@@ -653,8 +559,8 @@ const styles = StyleSheet.create({
     ...shadows.sm,
   },
   cardHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     gap: spacing.md,
   },
   iconContainer: {
@@ -662,8 +568,8 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 28,
     backgroundColor: colors.primary[50],
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   requestInfo: {
     flex: 1,
@@ -679,8 +585,8 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
   },
   detailRow: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.xs,
   },
   detailText: {
@@ -688,15 +594,15 @@ const styles = StyleSheet.create({
     color: colors.text.tertiary,
   },
   actionRow: {
-    flexDirection: "row",
+    flexDirection: 'row',
     gap: spacing.md,
     marginTop: spacing.sm,
   },
   actionButton: {
     flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: spacing.md,
     borderRadius: 8,
     gap: spacing.xs,
@@ -720,17 +626,17 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: spacing["4xl"],
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing['4xl'],
   },
   emptyIconContainer: {
     width: 120,
     height: 120,
     borderRadius: 60,
     backgroundColor: colors.neutral[100],
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: spacing.xl,
   },
   emptyTitle: {
@@ -742,26 +648,26 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: typography.size.base,
     color: colors.text.secondary,
-    textAlign: "center",
+    textAlign: 'center',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
     padding: spacing.xl,
   },
   modalContent: {
-    width: "100%",
+    width: '100%',
     backgroundColor: colors.background.primary,
     borderRadius: 16,
     padding: spacing.xl,
     ...shadows.lg,
   },
   modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: spacing.sm,
   },
   modalTitle: {
@@ -784,8 +690,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   dateButton: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.background.tertiary,
     padding: spacing.base,
     borderRadius: 12,
@@ -830,17 +736,17 @@ const styles = StyleSheet.create({
   messageText: {
     fontSize: typography.size.sm,
     color: colors.text.secondary,
-    fontStyle: "italic",
+    fontStyle: 'italic',
   },
   modalActions: {
-    flexDirection: "row",
+    flexDirection: 'row',
     gap: spacing.md,
   },
   modalButton: {
     flex: 1,
     paddingVertical: spacing.md,
     borderRadius: 8,
-    alignItems: "center",
+    alignItems: 'center',
   },
   modalCancelButton: {
     backgroundColor: colors.background.tertiary,

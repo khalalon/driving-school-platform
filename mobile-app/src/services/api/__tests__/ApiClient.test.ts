@@ -3,7 +3,12 @@
  * (aucun réseau) ; AsyncStorage est le mock officiel (jest.setup.js).
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios, { AxiosError, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
+import axios, {
+  AxiosError,
+  AxiosRequestConfig,
+  AxiosResponse,
+  InternalAxiosRequestConfig,
+} from 'axios';
 import { ApiClient, REFRESH_TOKEN_KEY, TOKEN_KEY, USER_KEY } from '../ApiClient';
 
 type Adapter = (config: InternalAxiosRequestConfig) => Promise<AxiosResponse>;

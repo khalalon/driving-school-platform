@@ -21,7 +21,7 @@ import { enrollmentService } from '../../services/api/EnrollmentService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
 import { School, SchoolInstructor, SchoolPricing } from '../../models/School';
 import { EnrollmentStatusInfo, EnrollmentStatus } from '../../models/Enrollment';
-import { LESSON_TYPE_LABELS } from '../../models/Lesson';
+import { lessonTypeLabel } from '../../models/Lesson';
 import { formatAmount, formatPersonName } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
 
@@ -75,20 +75,16 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
         message: enrollMessage,
       });
 
-      Alert.alert(
-        'Request Sent!',
-        'Your enrollment request has been sent to the school.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              setShowEnrollModal(false);
-              setEnrollMessage('');
-              loadSchoolDetails();
-            },
+      Alert.alert('Request Sent!', 'Your enrollment request has been sent to the school.', [
+        {
+          text: 'OK',
+          onPress: () => {
+            setShowEnrollModal(false);
+            setEnrollMessage('');
+            loadSchoolDetails();
           },
-        ]
-      );
+        },
+      ]);
     } catch (error) {
       Alert.alert('Error', getApiErrorMessage(error, 'Failed to send enrollment request'));
     } finally {
@@ -236,9 +232,7 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
             onPress={() => setActiveTab('instructors')}
             activeOpacity={0.7}
           >
-            <Text
-              style={[styles.tabText, activeTab === 'instructors' && styles.activeTabText]}
-            >
+            <Text style={[styles.tabText, activeTab === 'instructors' && styles.activeTabText]}>
               Instructors
             </Text>
           </TouchableOpacity>
@@ -271,7 +265,6 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
                 <Ionicons name="mail-outline" size={20} color={colors.text.secondary} />
                 <Text style={[styles.infoText, styles.linkText]}>{school.email}</Text>
               </TouchableOpacity>
-
             </View>
           )}
 
@@ -318,7 +311,7 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
                   <View key={price.id} style={styles.pricingCard}>
                     <View>
                       <Text style={styles.lessonType}>
-                        {LESSON_TYPE_LABELS[price.lessonType] ?? price.lessonType}
+                        {lessonTypeLabel(price.lessonType) ?? price.lessonType}
                       </Text>
                       <Text style={styles.duration}>{price.duration} min</Text>
                     </View>
@@ -347,9 +340,7 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.modalSubtitle}>
-              Tell the school why you'd like to enroll
-            </Text>
+            <Text style={styles.modalSubtitle}>Tell the school why you'd like to enroll</Text>
 
             <TextInput
               style={styles.messageInput}

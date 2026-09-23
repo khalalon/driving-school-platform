@@ -22,12 +22,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { lessonService } from '../../services/api/LessonService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
-import {
-  LESSON_TYPE_LABELS,
-  Lesson,
-  LessonStatus,
-  MarkAttendanceData,
-} from '../../models/Lesson';
+import { lessonTypeLabel, Lesson, LessonStatus, MarkAttendanceData } from '../../models/Lesson';
 import { formatPersonName, formatTime, toLocalDateKey } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
 import { AttendanceModal } from './components/AttendanceModal';
@@ -115,7 +110,7 @@ export const TodayLessonsScreen = ({ navigation }: any) => {
             <Text style={styles.studentName}>{formatPersonName(item.student, 'Student')}</Text>
             <View style={styles.detailRow}>
               <Ionicons name="car-outline" size={16} color={colors.text.tertiary} />
-              <Text style={styles.detailText}>{LESSON_TYPE_LABELS[item.type] ?? item.type}</Text>
+              <Text style={styles.detailText}>{lessonTypeLabel(item.type) ?? item.type}</Text>
             </View>
             <View style={styles.detailRow}>
               <Ionicons name="time-outline" size={16} color={colors.text.tertiary} />
@@ -130,9 +125,7 @@ export const TodayLessonsScreen = ({ navigation }: any) => {
           </View>
 
           {isCompleted && (
-            <View
-              style={[styles.completedBadge, item.attended === false && styles.absentBadge]}
-            >
+            <View style={[styles.completedBadge, item.attended === false && styles.absentBadge]}>
               <Ionicons
                 name={item.attended === false ? 'close-circle' : 'checkmark-circle'}
                 size={24}
@@ -222,9 +215,7 @@ export const TodayLessonsScreen = ({ navigation }: any) => {
         data={filteredLessons}
         renderItem={renderLessonCard}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={
-          filteredLessons.length === 0 ? styles.emptyList : styles.listContent
-        }
+        contentContainerStyle={filteredLessons.length === 0 ? styles.emptyList : styles.listContent}
         ListEmptyComponent={renderEmptyState}
         refreshControl={
           <RefreshControl

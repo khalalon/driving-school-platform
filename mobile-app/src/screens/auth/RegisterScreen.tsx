@@ -219,13 +219,9 @@ export const RegisterScreen = ({ navigation }: any) => {
             </TouchableOpacity>
 
             {/* Login Link */}
-            <TouchableOpacity
-              onPress={() => navigation.navigate('Login')}
-              style={styles.loginLink}
-            >
+            <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.loginLink}>
               <Text style={styles.loginLinkText}>
-                Already have an account?{' '}
-                <Text style={styles.loginLinkTextBold}>Sign in</Text>
+                Already have an account? <Text style={styles.loginLinkTextBold}>Sign in</Text>
               </Text>
             </TouchableOpacity>
           </View>

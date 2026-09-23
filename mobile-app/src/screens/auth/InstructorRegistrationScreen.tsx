@@ -110,8 +110,8 @@ export const InstructorRegistrationScreen = ({ navigation }: any) => {
           <View style={styles.infoBox}>
             <Ionicons name="information-circle-outline" size={24} color={colors.primary[600]} />
             <Text style={styles.infoText}>
-              Enter the school code provided by your school: it links your account to the school
-              and gives you instructor access.
+              Enter the school code provided by your school: it links your account to the school and
+              gives you instructor access.
             </Text>
           </View>
 

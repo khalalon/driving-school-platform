@@ -5,6 +5,9 @@
 import { Exam, ExamResult, ExamStatus, ExamType } from '../Exam';
 import { buildJourney, currentStep } from '../Journey';
 import { Lesson, LessonStatus, LessonType } from '../Lesson';
+import { applyLanguage } from '../../i18n';
+
+afterEach(() => applyLanguage('fr'));
 
 const lesson = (type: LessonType, status: LessonStatus): Lesson => ({
   id: `l-${type}-${status}`,
@@ -39,11 +42,7 @@ const lesson = (type: LessonType, status: LessonStatus): Lesson => ({
   updatedAt: '2026-09-19T00:00:00.000Z',
 });
 
-const exam = (
-  type: ExamType,
-  status: ExamStatus,
-  extra: Partial<Exam> = {}
-): Exam => ({
+const exam = (type: ExamType, status: ExamStatus, extra: Partial<Exam> = {}): Exam => ({
   id: `x-${type}-${status}-${extra.createdAt ?? ''}`,
   schoolId: 's1',
   studentId: 'u1',
@@ -87,8 +86,8 @@ describe('buildJourney — parcours (D-45)', () => {
       'upcoming',
       'upcoming',
     ]);
-    expect(steps[0].detail).toBe('Not started yet');
-    expect(steps[1].detail).toBe('Not requested yet');
+    expect(steps[0].detail).toBe('Pas encore commencé');
+    expect(steps[1].detail).toBe('Pas encore demandé');
     expect(currentStep(steps)?.key).toBe('code');
   });
 
@@ -109,10 +108,13 @@ describe('buildJourney — parcours (D-45)', () => {
       'upcoming',
       'upcoming',
     ]);
-    expect(steps[0].detail).toBe('12 lessons done');
-    expect(steps[1].detail).toBe('Requested — waiting for the school to schedule your exam');
-    expect(steps[2]).toMatchObject({ completedLessons: 4, scheduledLessons: 1 });
-    expect(steps[2].detail).toBe('4 lessons done · 1 scheduled');
+    expect(steps[0].detail).toBe('12 leçons effectuées');
+    expect(steps[1].detail).toBe("Demandé — En attente de la date fixée par l'école");
+    expect(steps[2]).toMatchObject({
+      completedLessons: 4,
+      scheduledLessons: 1,
+    });
+    expect(steps[2].detail).toBe('4 leçons effectuées · 1 planifiée');
   });
 
   it('parcours : la théorie réussie conclut Code et l’examen théorique', () => {
@@ -128,7 +130,7 @@ describe('buildJourney — parcours (D-45)', () => {
       []
     );
     expect(steps.map((s) => s.state)).toEqual(['done', 'done', 'current', 'upcoming', 'upcoming']);
-    expect(steps[1].detail).toBe('Passed · score 36');
+    expect(steps[1].detail).toBe('Réussi · note 36');
   });
 
   it('parcours : un échec garde l’étape ouverte, la demande la plus récente fait foi', () => {
@@ -143,12 +145,14 @@ describe('buildJourney — parcours (D-45)', () => {
           dateTime: '2026-10-02T09:00:00.000Z',
           createdAt: '2026-09-15T00:00:00.000Z',
         }),
-        exam(ExamType.THEORY, ExamStatus.CANCELLED, { createdAt: '2026-09-18T00:00:00.000Z' }),
+        exam(ExamType.THEORY, ExamStatus.CANCELLED, {
+          createdAt: '2026-09-18T00:00:00.000Z',
+        }),
       ],
       []
     );
     expect(steps[1].state).toBe('current');
-    expect(steps[1].detail).toBe('Scheduled · Oct 2, 2026');
+    expect(steps[1].detail).toBe('Planifié · 2 oct. 2026');
     expect(steps[0].state).toBe('started');
   });
 
@@ -156,25 +160,47 @@ describe('buildJourney — parcours (D-45)', () => {
     const steps = buildJourney(
       { CODE: 20, Manœuvre: 10, Parc: 8 },
       [
-        exam(ExamType.THEORY, ExamStatus.COMPLETED, { result: ExamResult.PASSED }),
-        exam(ExamType.PRACTICAL, ExamStatus.COMPLETED, { result: ExamResult.PASSED }),
+        exam(ExamType.THEORY, ExamStatus.COMPLETED, {
+          result: ExamResult.PASSED,
+        }),
+        exam(ExamType.PRACTICAL, ExamStatus.COMPLETED, {
+          result: ExamResult.PASSED,
+        }),
       ],
       []
     );
     expect(steps.every((s) => s.state === 'done')).toBe(true);
     expect(currentStep(steps)).toBeNull();
-    expect(steps[4].detail).toBe('Passed');
+    expect(steps[4].detail).toBe('Réussi');
   });
 
   it('parcours : libellés de la procédure ATTT pour la pratique (D-42)', () => {
     const steps = buildJourney(
       none,
       [
-        exam(ExamType.PRACTICAL, ExamStatus.REJECTED, { rejectionReason: 'Dossier incomplet' }),
+        exam(ExamType.PRACTICAL, ExamStatus.REJECTED, {
+          rejectionReason: 'Dossier incomplet',
+        }),
       ],
       []
     );
-    expect(steps[4].detail).toBe('File not ready — you can request again for the next session');
+    expect(steps[4].detail).toBe(
+      'Dossier incomplet — Vous pourrez redemander à la session suivante'
+    );
     expect(steps[4].state).toBe('current');
+  });
+
+  it('parcours en arabe : titres, compteurs et procédure traduits (D-47)', () => {
+    applyLanguage('ar');
+    const steps = buildJourney({ CODE: 1, Manœuvre: 0, Parc: 0 }, [], []);
+    expect(steps.map((s) => s.title)).toEqual([
+      'قانون السير',
+      'امتحان قانون السير',
+      'المناورات',
+      'الحلبة',
+      'امتحان السياقة',
+    ]);
+    expect(steps[0].detail).toBe('حصة واحدة منجزة');
+    expect(steps[4].detail).toBe('لم يُطلب بعد');
   });
 });

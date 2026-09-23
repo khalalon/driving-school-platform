@@ -16,10 +16,7 @@ class AuthService {
 
   /** A2 : le payload part tel quel (`firstName` / `lastName` exigés, `schoolCode` facultatif, jamais de `role`). */
   async register(data: RegisterRequest): Promise<AuthResponse> {
-    const response = await apiClient.post<AuthResponse>(
-      API_CONFIG.ENDPOINTS.AUTH.REGISTER,
-      data
-    );
+    const response = await apiClient.post<AuthResponse>(API_CONFIG.ENDPOINTS.AUTH.REGISTER, data);
     return response.data;
   }
 

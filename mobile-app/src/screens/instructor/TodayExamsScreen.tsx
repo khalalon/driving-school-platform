@@ -24,7 +24,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { examService } from '../../services/api/ExamService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
-import { EXAM_TYPE_LABELS, Exam, ExamResult, ExamStatus, ExamType } from '../../models/Exam';
+import { examTypeLabel, Exam, ExamResult, ExamStatus, ExamType } from '../../models/Exam';
 import { formatPersonName, formatTime, toLocalDateKey } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
 
@@ -40,9 +40,7 @@ export const TodayExamsScreen = ({ navigation }: any) => {
   // Record result modal (X5)
   const [showResultModal, setShowResultModal] = useState(false);
   const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
-  const [result, setResult] = useState<ExamResult.PASSED | ExamResult.FAILED>(
-    ExamResult.PASSED
-  );
+  const [result, setResult] = useState<ExamResult.PASSED | ExamResult.FAILED>(ExamResult.PASSED);
   const [score, setScore] = useState('');
   const [notes, setNotes] = useState('');
 
@@ -134,7 +132,7 @@ export const TodayExamsScreen = ({ navigation }: any) => {
           </View>
 
           <View style={styles.examInfo}>
-            <Text style={styles.examType}>{EXAM_TYPE_LABELS[item.type] ?? item.type} Exam</Text>
+            <Text style={styles.examType}>{examTypeLabel(item.type) ?? item.type} Exam</Text>
             <Text style={styles.studentName}>{studentOf(item)}</Text>
             <View style={styles.detailRow}>
               <Ionicons name="time-outline" size={16} color={colors.text.tertiary} />
@@ -239,7 +237,12 @@ export const TodayExamsScreen = ({ navigation }: any) => {
       />
 
       {/* Record Result Modal (X5) */}
-      <Modal visible={showResultModal} transparent animationType="fade" onRequestClose={closeResult}>
+      <Modal
+        visible={showResultModal}
+        transparent
+        animationType="fade"
+        onRequestClose={closeResult}
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
@@ -251,7 +254,7 @@ export const TodayExamsScreen = ({ navigation }: any) => {
 
             {selectedExam && (
               <Text style={styles.modalSubtitle}>
-                {EXAM_TYPE_LABELS[selectedExam.type]} exam of {studentOf(selectedExam)} at{' '}
+                {examTypeLabel(selectedExam.type)} exam of {studentOf(selectedExam)} at{' '}
                 {formatTime(selectedExam.dateTime)}
               </Text>
             )}

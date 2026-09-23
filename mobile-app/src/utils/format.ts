@@ -1,6 +1,13 @@
 /**
  * Formatage d'affichage partagé par les écrans (montants, dates, noms).
+ * Dates, heures et textes suivent la langue choisie (D-47) ; les montants gardent les chiffres
+ * occidentaux et le code ISO de la devise (D-43).
  */
+
+import { getLanguage, t } from '../i18n';
+
+/** Locale de formatage des dates selon la langue courante. */
+const locale = (): string => (getLanguage() === 'ar' ? 'ar-TN' : 'fr-FR');
 
 /**
  * Montant dans la devise de l'école (D-43, code ISO 4217 lu par `useSchoolCurrency`). Tant que
@@ -10,7 +17,7 @@ export const formatAmount = (
   amount: number | null | undefined,
   currency: string | null | undefined
 ): string => {
-  if (amount === null || amount === undefined) return '—';
+  if (amount === null || amount === undefined) return t('format.empty');
   const value = amount.toFixed(2);
   return currency ? `${value} ${currency}` : value;
 };
@@ -21,24 +28,32 @@ const parse = (iso: string | null | undefined): Date | null => {
   return Number.isNaN(date.getTime()) ? null : date;
 };
 
-/** `Sep 22, 2026` ou le texte de repli si la date est absente. */
-export const formatDate = (iso: string | null | undefined, fallback = 'Date TBD'): string => {
+/** `22 sept. 2026` (langue courante) ou le texte de repli si la date est absente. */
+export const formatDate = (iso: string | null | undefined, fallback?: string): string => {
   const date = parse(iso);
   return date
-    ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-    : fallback;
+    ? date.toLocaleDateString(locale(), {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : (fallback ?? t('format.dateTBD'));
 };
 
 /** `09:30` ou le texte de repli. */
-export const formatTime = (iso: string | null | undefined, fallback = 'Time TBD'): string => {
+export const formatTime = (iso: string | null | undefined, fallback?: string): string => {
   const date = parse(iso);
-  return date ? date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : fallback;
+  return date
+    ? date.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })
+    : (fallback ?? t('format.timeTBD'));
 };
 
-/** `Sep 22, 2026 at 09:30` ou le texte de repli. */
-export const formatDateTime = (iso: string | null | undefined, fallback = 'Date TBD'): string => {
+/** `22 sept. 2026 à 09:30` ou le texte de repli. */
+export const formatDateTime = (iso: string | null | undefined, fallback?: string): string => {
   const date = parse(iso);
-  return date ? `${formatDate(iso)} at ${formatTime(iso)}` : fallback;
+  return date
+    ? `${formatDate(iso)} ${t('format.at')} ${formatTime(iso)}`
+    : (fallback ?? t('format.dateTBD'));
 };
 
 /**
@@ -48,18 +63,22 @@ export const formatDateTime = (iso: string | null | undefined, fallback = 'Date 
 export const formatCountdown = (
   iso: string | null | undefined,
   now: Date = new Date(),
-  fallback = 'Date TBD'
+  fallback?: string
 ): string => {
   const date = parse(iso);
-  if (!date) return fallback;
+  if (!date) return fallback ?? t('format.dateTBD');
   const diffMs = date.getTime() - now.getTime();
-  if (diffMs <= 0) return 'Started';
+  if (diffMs <= 0) return t('format.started');
   const minutes = Math.round(diffMs / 60000);
-  if (minutes < 60) return `in ${minutes} min`;
+  if (minutes < 60) return t('format.inMinutes', { minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `in ${hours} h ${String(minutes % 60).padStart(2, '0')} min`;
+  if (hours < 24)
+    return t('format.inHours', {
+      hours,
+      minutes: String(minutes % 60).padStart(2, '0'),
+    });
   const days = Math.max(1, Math.round(hours / 24));
-  return `in ${days} day${days === 1 ? '' : 's'}`;
+  return days === 1 ? t('format.inDay') : t('format.inDays', { days });
 };
 
 /** Jour local `YYYY-MM-DD` (filtre `date` de L1), sans passer par l'UTC d'`toISOString`. */

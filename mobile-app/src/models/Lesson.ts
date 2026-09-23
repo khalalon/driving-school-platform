@@ -4,6 +4,8 @@
  * Les dates sont des chaînes ISO 8601 telles que reçues en JSON.
  */
 
+import { t } from '../i18n';
+
 export enum LessonType {
   CODE = 'CODE',
   MANOEUVRE = 'Manœuvre',
@@ -16,11 +18,13 @@ export const LESSON_TYPES: readonly LessonType[] = [
   LessonType.PARC,
 ];
 
-export const LESSON_TYPE_LABELS: Record<LessonType, string> = {
-  [LessonType.CODE]: 'Code',
-  [LessonType.MANOEUVRE]: 'Manœuvre',
-  [LessonType.PARC]: 'Parc',
-};
+/** Libellé du type dans la langue courante (D-47) ; la valeur échangée ne change pas (D-18). */
+export const lessonTypeLabel = (type: LessonType): string =>
+  ({
+    [LessonType.CODE]: t('lesson.type.CODE'),
+    [LessonType.MANOEUVRE]: t('lesson.type.MANOEUVRE'),
+    [LessonType.PARC]: t('lesson.type.PARC'),
+  })[type] ?? type;
 
 /** Cycle D-21 : la demande de l'élève (`pending`) est planifiée (`scheduled`) ou refusée. */
 export enum LessonStatus {
@@ -31,13 +35,15 @@ export enum LessonStatus {
   REJECTED = 'rejected',
 }
 
-export const LESSON_STATUS_LABELS: Record<LessonStatus, string> = {
-  [LessonStatus.PENDING]: 'Pending',
-  [LessonStatus.SCHEDULED]: 'Scheduled',
-  [LessonStatus.COMPLETED]: 'Completed',
-  [LessonStatus.CANCELLED]: 'Cancelled',
-  [LessonStatus.REJECTED]: 'Rejected',
-};
+/** Libellé de l'état dans la langue courante. */
+export const lessonStatusLabel = (status: LessonStatus): string =>
+  ({
+    [LessonStatus.PENDING]: t('lesson.status.pending'),
+    [LessonStatus.SCHEDULED]: t('lesson.status.scheduled'),
+    [LessonStatus.COMPLETED]: t('lesson.status.completed'),
+    [LessonStatus.CANCELLED]: t('lesson.status.cancelled'),
+    [LessonStatus.REJECTED]: t('lesson.status.rejected'),
+  })[status] ?? status;
 
 /** Fenêtre d'annulation par l'élève (D-24) : jusqu'à 24 h avant `scheduledDate`. */
 export const LESSON_CANCEL_HOURS = 24;

@@ -19,12 +19,11 @@ import { studentProfileService } from '../../../../services/api/StudentProfileSe
 import { getApiErrorMessage } from '../../../../services/api/ApiError';
 import {
   LessonHistory,
-  PAYMENT_METHOD_LABELS,
+  paymentMethodLabel,
   PAYMENT_METHODS,
   PaymentMethod,
-  paymentMethodLabel,
 } from '../../../../models/Profile';
-import { LESSON_TYPE_LABELS, LessonType } from '../../../../models/Lesson';
+import { lessonTypeLabel, LessonType } from '../../../../models/Lesson';
 import { useSchoolCurrency } from '../../../../hooks/useSchoolCurrency';
 import { formatAmount, formatDate, formatDateTime } from '../../../../utils/format';
 import { colors, typography, spacing, shadows } from '../../../../theme';
@@ -107,7 +106,7 @@ export const StudentLessonsTab = ({ route }: any) => {
       <View style={styles.lessonHeader}>
         <View style={[styles.typeBadge, { backgroundColor: `${getLessonTypeColor(item.type)}20` }]}>
           <Text style={[styles.typeText, { color: getLessonTypeColor(item.type) }]}>
-            {LESSON_TYPE_LABELS[item.type] ?? item.type}
+            {lessonTypeLabel(item.type) ?? item.type}
             {item.status === 'cancelled' ? ' · Cancelled' : ''}
           </Text>
         </View>
@@ -268,10 +267,7 @@ export const StudentLessonsTab = ({ route }: any) => {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Mark Lesson as Paid</Text>
-              <TouchableOpacity
-                onPress={() => setShowPaymentModal(false)}
-                activeOpacity={0.7}
-              >
+              <TouchableOpacity onPress={() => setShowPaymentModal(false)} activeOpacity={0.7}>
                 <Ionicons name="close" size={24} color={colors.text.secondary} />
               </TouchableOpacity>
             </View>
@@ -299,12 +295,9 @@ export const StudentLessonsTab = ({ route }: any) => {
                   activeOpacity={0.7}
                 >
                   <Text
-                    style={[
-                      styles.methodText,
-                      paymentMethod === method && styles.methodTextActive,
-                    ]}
+                    style={[styles.methodText, paymentMethod === method && styles.methodTextActive]}
                   >
-                    {PAYMENT_METHOD_LABELS[method]}
+                    {paymentMethodLabel(method)}
                   </Text>
                 </TouchableOpacity>
               ))}

@@ -8,7 +8,7 @@
  * tarif pour ce type (D-30).
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -19,23 +19,19 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from "@react-navigation/native";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { useAuth } from "../../context/AuthContext";
-import { lessonService } from "../../services/api/LessonService";
-import { schoolService } from "../../services/api/SchoolService";
-import { getApiErrorMessage } from "../../services/api/ApiError";
-import {
-  LESSON_TYPE_LABELS,
-  LESSON_TYPES,
-  LessonType,
-} from "../../models/Lesson";
-import { SchoolPricing, SchoolStudent } from "../../models/School";
-import { useSchoolCurrency } from "../../hooks/useSchoolCurrency";
-import { formatAmount, formatPersonName } from "../../utils/format";
-import { colors, typography, spacing, shadows } from "../../theme";
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useAuth } from '../../context/AuthContext';
+import { lessonService } from '../../services/api/LessonService';
+import { schoolService } from '../../services/api/SchoolService';
+import { getApiErrorMessage } from '../../services/api/ApiError';
+import { lessonTypeLabel, LESSON_TYPES, LessonType } from '../../models/Lesson';
+import { SchoolPricing, SchoolStudent } from '../../models/School';
+import { useSchoolCurrency } from '../../hooks/useSchoolCurrency';
+import { formatAmount, formatPersonName } from '../../utils/format';
+import { colors, typography, spacing, shadows } from '../../theme';
 
 const DEFAULT_DURATION_MINUTES = 60;
 
@@ -55,10 +51,8 @@ export const BookForStudentScreen = ({ navigation }: any) => {
   const [loadingStudents, setLoadingStudents] = useState(true);
   const [students, setStudents] = useState<SchoolStudent[]>([]);
   const [pricing, setPricing] = useState<SchoolPricing[] | null>(null);
-  const [search, setSearch] = useState("");
-  const [selectedStudent, setSelectedStudent] = useState<SchoolStudent | null>(
-    null,
-  );
+  const [search, setSearch] = useState('');
+  const [selectedStudent, setSelectedStudent] = useState<SchoolStudent | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [lessonType, setLessonType] = useState<LessonType>(LessonType.CODE);
@@ -66,22 +60,22 @@ export const BookForStudentScreen = ({ navigation }: any) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [duration, setDuration] = useState(String(DEFAULT_DURATION_MINUTES));
-  const [price, setPrice] = useState("");
-  const [notes, setNotes] = useState("");
+  const [price, setPrice] = useState('');
+  const [notes, setNotes] = useState('');
 
   // Onglet (8.4) : la liste S6 est rechargée à chaque retour au premier plan
   useFocusEffect(
     useCallback(() => {
       loadSchoolData();
-    }, [schoolId]),
+    }, [schoolId])
   );
 
   const loadSchoolData = async () => {
     if (!schoolId) {
-      Alert.alert("No school", "Your account is not linked to a school yet.", [
+      Alert.alert('No school', 'Your account is not linked to a school yet.', [
         {
-          text: "OK",
-          onPress: () => navigation.navigate("InstructorDashboard"),
+          text: 'OK',
+          onPress: () => navigation.navigate('InstructorDashboard'),
         },
       ]);
       return;
@@ -96,19 +90,15 @@ export const BookForStudentScreen = ({ navigation }: any) => {
       setStudents(studentList);
       setPricing(pricingResult);
     } catch (error) {
-      Alert.alert(
-        "Error",
-        getApiErrorMessage(error, "Failed to load the school students"),
-      );
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load the school students'));
     } finally {
       setLoadingStudents(false);
     }
   };
 
   const rate = useMemo(
-    () =>
-      pricing ? pricing.find((p) => p.lessonType === lessonType) : undefined,
-    [pricing, lessonType],
+    () => (pricing ? pricing.find((p) => p.lessonType === lessonType) : undefined),
+    [pricing, lessonType]
   );
   const priceRequired = pricing !== null && !rate;
 
@@ -123,13 +113,13 @@ export const BookForStudentScreen = ({ navigation }: any) => {
     return students.filter(
       (s) =>
         `${s.firstName} ${s.lastName}`.toLowerCase().includes(needle) ||
-        s.email.toLowerCase().includes(needle),
+        s.email.toLowerCase().includes(needle)
     );
   }, [students, search]);
 
   /** Fiche élève (P1–P7) depuis la liste S6 : `studentId` = users.id (D-28). */
   const openStudentProfile = (student: SchoolStudent) => {
-    navigation.navigate("StudentProfile", {
+    navigation.navigate('StudentProfile', {
       studentId: student.studentId,
       schoolId,
       studentName: formatPersonName(student, student.email),
@@ -140,11 +130,7 @@ export const BookForStudentScreen = ({ navigation }: any) => {
     setShowDatePicker(false);
     if (selected) {
       const next = new Date(scheduledDate);
-      next.setFullYear(
-        selected.getFullYear(),
-        selected.getMonth(),
-        selected.getDate(),
-      );
+      next.setFullYear(selected.getFullYear(), selected.getMonth(), selected.getDate());
       setScheduledDate(next);
     }
   };
@@ -160,31 +146,27 @@ export const BookForStudentScreen = ({ navigation }: any) => {
 
   const handleBookLesson = async () => {
     if (!selectedStudent) {
-      Alert.alert("Required", "Please select a student");
+      Alert.alert('Required', 'Please select a student');
       return;
     }
     if (scheduledDate.getTime() <= Date.now()) {
-      Alert.alert("Invalid Date", "The lesson date must be in the future");
+      Alert.alert('Invalid Date', 'The lesson date must be in the future');
       return;
     }
     const durationMinutes = Number.parseInt(duration, 10);
     if (!Number.isInteger(durationMinutes) || durationMinutes <= 0) {
-      Alert.alert("Invalid Duration", "Please enter the duration in minutes");
+      Alert.alert('Invalid Duration', 'Please enter the duration in minutes');
       return;
     }
-    const priceValue =
-      price.trim() === "" ? undefined : Number(price.replace(",", "."));
-    if (
-      priceValue !== undefined &&
-      (Number.isNaN(priceValue) || priceValue < 0)
-    ) {
-      Alert.alert("Invalid Price", "Please enter a valid price");
+    const priceValue = price.trim() === '' ? undefined : Number(price.replace(',', '.'));
+    if (priceValue !== undefined && (Number.isNaN(priceValue) || priceValue < 0)) {
+      Alert.alert('Invalid Price', 'Please enter a valid price');
       return;
     }
     if (priceRequired && priceValue === undefined) {
       Alert.alert(
-        "Price Required",
-        `The school has no rate for ${LESSON_TYPE_LABELS[lessonType]} lessons: please enter the price.`,
+        'Price Required',
+        `The school has no rate for ${lessonTypeLabel(lessonType)} lessons: please enter the price.`
       );
       return;
     }
@@ -202,17 +184,17 @@ export const BookForStudentScreen = ({ navigation }: any) => {
       });
 
       Alert.alert(
-        "Success",
-        `Lesson booked for ${formatPersonName(selectedStudent, "the student")}`,
+        'Success',
+        `Lesson booked for ${formatPersonName(selectedStudent, 'the student')}`,
         [
           {
-            text: "OK",
-            onPress: () => navigation.navigate("InstructorDashboard"),
+            text: 'OK',
+            onPress: () => navigation.navigate('InstructorDashboard'),
           },
-        ],
+        ]
       );
     } catch (error) {
-      Alert.alert("Error", getApiErrorMessage(error, "Failed to book lesson"));
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to book lesson'));
     } finally {
       setLoading(false);
     }
@@ -224,19 +206,12 @@ export const BookForStudentScreen = ({ navigation }: any) => {
         <Text style={styles.headerTitle}>Students</Text>
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-      >
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.infoBox}>
-          <Ionicons
-            name="information-circle-outline"
-            size={24}
-            color={colors.primary[600]}
-          />
+          <Ionicons name="information-circle-outline" size={24} color={colors.primary[600]} />
           <Text style={styles.infoText}>
-            Book a lesson directly for an enrolled student (walk-in or phone
-            booking). You will be the instructor of this lesson.
+            Book a lesson directly for an enrolled student (walk-in or phone booking). You will be
+            the instructor of this lesson.
           </Text>
         </View>
 
@@ -249,12 +224,9 @@ export const BookForStudentScreen = ({ navigation }: any) => {
                 <Ionicons name="person" size={20} color={colors.primary[600]} />
               </View>
               <View style={styles.studentInfo}>
-                <Text style={styles.studentName}>
-                  {formatPersonName(selectedStudent)}
-                </Text>
+                <Text style={styles.studentName}>{formatPersonName(selectedStudent)}</Text>
                 <Text style={styles.studentMeta}>
-                  {selectedStudent.email} · {selectedStudent.completedLessons}{" "}
-                  lessons completed
+                  {selectedStudent.email} · {selectedStudent.completedLessons} lessons completed
                 </Text>
               </View>
               <TouchableOpacity
@@ -263,11 +235,7 @@ export const BookForStudentScreen = ({ navigation }: any) => {
                 activeOpacity={0.7}
                 accessibilityLabel="View student profile"
               >
-                <Ionicons
-                  name="person-circle-outline"
-                  size={24}
-                  color={colors.primary[600]}
-                />
+                <Ionicons name="person-circle-outline" size={24} color={colors.primary[600]} />
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setSelectedStudent(null)}
@@ -275,11 +243,7 @@ export const BookForStudentScreen = ({ navigation }: any) => {
                 activeOpacity={0.7}
                 accessibilityLabel="Change student"
               >
-                <Ionicons
-                  name="close-circle"
-                  size={22}
-                  color={colors.neutral[400]}
-                />
+                <Ionicons name="close-circle" size={22} color={colors.neutral[400]} />
               </TouchableOpacity>
             </View>
           ) : (
@@ -311,8 +275,8 @@ export const BookForStudentScreen = ({ navigation }: any) => {
                 ) : filteredStudents.length === 0 ? (
                   <Text style={styles.emptyText}>
                     {students.length === 0
-                      ? "No enrolled students in your school yet"
-                      : "No student matches your search"}
+                      ? 'No enrolled students in your school yet'
+                      : 'No student matches your search'}
                   </Text>
                 ) : (
                   filteredStudents.map((student) => (
@@ -323,19 +287,12 @@ export const BookForStudentScreen = ({ navigation }: any) => {
                       activeOpacity={0.7}
                     >
                       <View style={styles.studentAvatar}>
-                        <Ionicons
-                          name="person-outline"
-                          size={20}
-                          color={colors.primary[600]}
-                        />
+                        <Ionicons name="person-outline" size={20} color={colors.primary[600]} />
                       </View>
                       <View style={styles.studentInfo}>
-                        <Text style={styles.studentName}>
-                          {formatPersonName(student)}
-                        </Text>
+                        <Text style={styles.studentName}>{formatPersonName(student)}</Text>
                         <Text style={styles.studentMeta}>
-                          {student.email} · {student.completedLessons} lessons
-                          completed
+                          {student.email} · {student.completedLessons} lessons completed
                         </Text>
                       </View>
                       <TouchableOpacity
@@ -371,13 +328,8 @@ export const BookForStudentScreen = ({ navigation }: any) => {
                   onPress={() => setLessonType(type)}
                   activeOpacity={0.7}
                 >
-                  <Text
-                    style={[
-                      styles.typeButtonText,
-                      active && styles.typeButtonTextActive,
-                    ]}
-                  >
-                    {LESSON_TYPE_LABELS[type]}
+                  <Text style={[styles.typeButtonText, active && styles.typeButtonTextActive]}>
+                    {lessonTypeLabel(type)}
                   </Text>
                 </TouchableOpacity>
               );
@@ -394,29 +346,19 @@ export const BookForStudentScreen = ({ navigation }: any) => {
               onPress={() => setShowDatePicker(true)}
               activeOpacity={0.7}
             >
-              <Ionicons
-                name="calendar-outline"
-                size={20}
-                color={colors.text.secondary}
-              />
-              <Text style={styles.dateText}>
-                {scheduledDate.toLocaleDateString()}
-              </Text>
+              <Ionicons name="calendar-outline" size={20} color={colors.text.secondary} />
+              <Text style={styles.dateText}>{scheduledDate.toLocaleDateString()}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.dateButton}
               onPress={() => setShowTimePicker(true)}
               activeOpacity={0.7}
             >
-              <Ionicons
-                name="time-outline"
-                size={20}
-                color={colors.text.secondary}
-              />
+              <Ionicons name="time-outline" size={20} color={colors.text.secondary} />
               <Text style={styles.dateText}>
                 {scheduledDate.toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
+                  hour: '2-digit',
+                  minute: '2-digit',
                 })}
               </Text>
             </TouchableOpacity>
@@ -425,7 +367,7 @@ export const BookForStudentScreen = ({ navigation }: any) => {
             <DateTimePicker
               value={scheduledDate}
               mode="date"
-              display={Platform.OS === "ios" ? "spinner" : "default"}
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
               onValueChange={handleDateChange}
               onDismiss={() => setShowDatePicker(false)}
               minimumDate={new Date()}
@@ -435,7 +377,7 @@ export const BookForStudentScreen = ({ navigation }: any) => {
             <DateTimePicker
               value={scheduledDate}
               mode="time"
-              display={Platform.OS === "ios" ? "spinner" : "default"}
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
               onValueChange={handleTimeChange}
               onDismiss={() => setShowTimePicker(false)}
             />
@@ -466,13 +408,12 @@ export const BookForStudentScreen = ({ navigation }: any) => {
         {/* Price (D-30) */}
         <View style={styles.section}>
           <Text style={styles.label}>
-            Price{currency ? ` (${currency})` : ""}
-            {priceRequired ? " — required" : ""}
+            Price{currency ? ` (${currency})` : ''}
+            {priceRequired ? ' — required' : ''}
           </Text>
           {rate ? (
             <Text style={styles.rateText}>
-              School rate: {formatAmount(rate.price, currency)} (applied
-              automatically)
+              School rate: {formatAmount(rate.price, currency)} (applied automatically)
             </Text>
           ) : (
             <>
@@ -494,8 +435,8 @@ export const BookForStudentScreen = ({ navigation }: any) => {
               </View>
               <Text style={styles.hintText}>
                 {priceRequired
-                  ? "The school has no rate for this lesson type"
-                  : "Leave empty to apply the school rate"}
+                  ? 'The school has no rate for this lesson type'
+                  : 'Leave empty to apply the school rate'}
               </Text>
             </>
           )}
@@ -516,10 +457,7 @@ export const BookForStudentScreen = ({ navigation }: any) => {
         </View>
 
         <TouchableOpacity
-          style={[
-            styles.bookButton,
-            (loading || !selectedStudent) && styles.disabledButton,
-          ]}
+          style={[styles.bookButton, (loading || !selectedStudent) && styles.disabledButton]}
           onPress={handleBookLesson}
           disabled={loading || !selectedStudent}
           activeOpacity={0.8}
@@ -529,11 +467,7 @@ export const BookForStudentScreen = ({ navigation }: any) => {
           ) : (
             <>
               <Text style={styles.bookButtonText}>Book Lesson</Text>
-              <Ionicons
-                name="checkmark"
-                size={20}
-                color={colors.text.inverse}
-              />
+              <Ionicons name="checkmark" size={20} color={colors.text.inverse} />
             </>
           )}
         </TouchableOpacity>
@@ -548,10 +482,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.secondary,
   },
   header: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing["4xl"],
+    paddingTop: spacing['4xl'],
     paddingBottom: spacing.lg,
     backgroundColor: colors.background.primary,
     gap: spacing.md,
@@ -565,7 +499,7 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   infoBox: {
-    flexDirection: "row",
+    flexDirection: 'row',
     backgroundColor: colors.primary[50],
     padding: spacing.base,
     borderRadius: 12,
@@ -588,8 +522,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.background.primary,
     borderRadius: 12,
     borderWidth: 1,
@@ -612,14 +546,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border.default,
     maxHeight: 280,
-    overflow: "hidden",
+    overflow: 'hidden',
   },
   listLoader: {
     padding: spacing.lg,
   },
   studentRow: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.md,
     paddingHorizontal: spacing.base,
     paddingVertical: spacing.md,
@@ -627,8 +561,8 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border.light,
   },
   selectedStudent: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.md,
     backgroundColor: colors.background.primary,
     borderRadius: 12,
@@ -641,8 +575,8 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     backgroundColor: colors.primary[50],
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   studentInfo: {
     flex: 1,
@@ -662,18 +596,18 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     padding: spacing.lg,
-    textAlign: "center",
+    textAlign: 'center',
     fontSize: typography.size.sm,
     color: colors.text.tertiary,
   },
   typeContainer: {
-    flexDirection: "row",
+    flexDirection: 'row',
     gap: spacing.sm,
   },
   typeButton: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: colors.background.primary,
     borderRadius: 12,
     borderWidth: 1,
@@ -693,12 +627,12 @@ const styles = StyleSheet.create({
     color: colors.text.inverse,
   },
   dateRow: {
-    flexDirection: "row",
+    flexDirection: 'row',
     gap: spacing.sm,
   },
   dateButton: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.background.primary,
     paddingHorizontal: spacing.base,
     borderRadius: 12,
@@ -735,9 +669,9 @@ const styles = StyleSheet.create({
     minHeight: 100,
   },
   bookButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: colors.primary[600],
     paddingVertical: spacing.base,
     borderRadius: 12,

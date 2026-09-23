@@ -16,7 +16,11 @@ import { ar } from './ar';
 
 export type Language = 'fr' | 'ar';
 
-export const LANGUAGES: readonly { code: Language; labelKey: TranslationKey; rtl: boolean }[] = [
+export const LANGUAGES: readonly {
+  code: Language;
+  labelKey: TranslationKey;
+  rtl: boolean;
+}[] = [
   { code: 'fr', labelKey: 'language.french', rtl: false },
   { code: 'ar', labelKey: 'language.arabic', rtl: true },
 ];
@@ -50,8 +54,7 @@ export const onLanguageChange = (listener: (language: Language) => void): (() =>
   };
 };
 
-const isLanguage = (value: string | null): value is Language =>
-  value === 'fr' || value === 'ar';
+const isLanguage = (value: string | null): value is Language => value === 'fr' || value === 'ar';
 
 /**
  * Traduit une clé. `{param}` est remplacé par la valeur fournie ; une clé inconnue est renvoyée

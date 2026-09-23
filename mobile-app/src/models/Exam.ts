@@ -4,6 +4,8 @@
  * Les dates sont des chaînes ISO 8601 telles que reçues en JSON.
  */
 
+import { t } from '../i18n';
+
 export enum ExamType {
   THEORY = 'theory',
   PRACTICAL = 'practical',
@@ -11,10 +13,12 @@ export enum ExamType {
 
 export const EXAM_TYPES: readonly ExamType[] = [ExamType.THEORY, ExamType.PRACTICAL];
 
-export const EXAM_TYPE_LABELS: Record<ExamType, string> = {
-  [ExamType.THEORY]: 'Theory',
-  [ExamType.PRACTICAL]: 'Practical',
-};
+/** Libellé du type d'examen dans la langue courante (D-47). */
+export const examTypeLabel = (type: ExamType): string =>
+  ({
+    [ExamType.THEORY]: t('exam.type.theory'),
+    [ExamType.PRACTICAL]: t('exam.type.practical'),
+  })[type] ?? type;
 
 export enum ExamResult {
   PENDING = 'pending',
@@ -22,11 +26,13 @@ export enum ExamResult {
   FAILED = 'failed',
 }
 
-export const EXAM_RESULT_LABELS: Record<ExamResult, string> = {
-  [ExamResult.PENDING]: 'Pending',
-  [ExamResult.PASSED]: 'Passed',
-  [ExamResult.FAILED]: 'Failed',
-};
+/** Libellé du résultat dans la langue courante. */
+export const examResultLabel = (result: ExamResult | string): string =>
+  ({
+    [ExamResult.PENDING]: t('exam.result.pending'),
+    [ExamResult.PASSED]: t('exam.result.passed'),
+    [ExamResult.FAILED]: t('exam.result.failed'),
+  })[result as ExamResult] ?? String(result);
 
 /** Cycle D-01 / D-33 : demande (`pending`) planifiée, refusée (`rejected`), puis résultat (`completed`). */
 export enum ExamStatus {
@@ -37,13 +43,15 @@ export enum ExamStatus {
   REJECTED = 'rejected',
 }
 
-export const EXAM_STATUS_LABELS: Record<ExamStatus, string> = {
-  [ExamStatus.PENDING]: 'Pending',
-  [ExamStatus.SCHEDULED]: 'Scheduled',
-  [ExamStatus.COMPLETED]: 'Completed',
-  [ExamStatus.CANCELLED]: 'Cancelled',
-  [ExamStatus.REJECTED]: 'Rejected',
-};
+/** Libellé de l'état d'examen, hors procédure (voir `examStatusLabel` pour la vue élève). */
+export const examStatusText = (status: ExamStatus): string =>
+  ({
+    [ExamStatus.PENDING]: t('exam.status.pending'),
+    [ExamStatus.SCHEDULED]: t('exam.status.scheduled'),
+    [ExamStatus.COMPLETED]: t('exam.status.completed'),
+    [ExamStatus.CANCELLED]: t('exam.status.cancelled'),
+    [ExamStatus.REJECTED]: t('exam.status.rejected'),
+  })[status] ?? status;
 
 /**
  * Procédure d'examen selon le type (D-42). Théorie : l'école choisit la date (« Schedule » =
@@ -70,45 +78,44 @@ export interface ExamProcedureLabels {
   rejectedHint: string;
 }
 
-const SCHOOL_PROCEDURE: ExamProcedureLabels = {
-  scheduleAction: 'Schedule',
-  scheduleHint: 'Set the date, time and location of the exam',
-  dateLabel: 'Exam date',
-  locationLabel: 'Location',
-  locationPlaceholder: 'e.g., Main Driving Center',
-  rejectAction: 'Reject',
-  rejectHint: 'Explain why the school will not present the student to this exam',
-  scheduledStatus: 'Scheduled',
-  rejectedStatus: 'Rejected',
-  pendingHint: 'Waiting for the school to schedule your exam',
-  rejectedHint: 'The school did not present you to this exam',
-};
+const schoolProcedure = (): ExamProcedureLabels => ({
+  scheduleAction: t('exam.procedure.school.scheduleAction'),
+  scheduleHint: t('exam.procedure.school.scheduleHint'),
+  dateLabel: t('exam.procedure.school.dateLabel'),
+  locationLabel: t('exam.procedure.school.locationLabel'),
+  locationPlaceholder: t('exam.procedure.school.locationPlaceholder'),
+  rejectAction: t('exam.procedure.school.rejectAction'),
+  rejectHint: t('exam.procedure.school.rejectHint'),
+  scheduledStatus: t('exam.procedure.school.scheduledStatus'),
+  rejectedStatus: t('exam.procedure.school.rejectedStatus'),
+  pendingHint: t('exam.procedure.school.pendingHint'),
+  rejectedHint: t('exam.procedure.school.rejectedHint'),
+});
 
-const ATTT_SESSION_PROCEDURE: ExamProcedureLabels = {
-  scheduleAction: 'Record convocation',
-  scheduleHint: 'Enter the session date and the exam center received from the ATTT',
-  dateLabel: 'Session date (ATTT)',
-  locationLabel: 'Exam center (ATTT)',
-  locationPlaceholder: 'e.g., Centre ATTT Tunis',
-  rejectAction: 'File not ready',
-  rejectHint: 'Explain what is missing: the student can request again for the next session',
-  scheduledStatus: 'Convocation received',
-  rejectedStatus: 'File not ready',
-  pendingHint: 'Waiting for the next ATTT session',
-  rejectedHint: 'You can request again for the next session',
-};
+const atttSessionProcedure = (): ExamProcedureLabels => ({
+  scheduleAction: t('exam.procedure.attt.scheduleAction'),
+  scheduleHint: t('exam.procedure.attt.scheduleHint'),
+  dateLabel: t('exam.procedure.attt.dateLabel'),
+  locationLabel: t('exam.procedure.attt.locationLabel'),
+  locationPlaceholder: t('exam.procedure.attt.locationPlaceholder'),
+  rejectAction: t('exam.procedure.attt.rejectAction'),
+  rejectHint: t('exam.procedure.attt.rejectHint'),
+  scheduledStatus: t('exam.procedure.attt.scheduledStatus'),
+  rejectedStatus: t('exam.procedure.attt.rejectedStatus'),
+  pendingHint: t('exam.procedure.attt.pendingHint'),
+  rejectedHint: t('exam.procedure.attt.rejectedHint'),
+});
 
-export const EXAM_PROCEDURES: Record<ExamType, ExamProcedureLabels> = {
-  [ExamType.THEORY]: SCHOOL_PROCEDURE,
-  [ExamType.PRACTICAL]: ATTT_SESSION_PROCEDURE,
-};
+/** Procédure du type, dans la langue courante (D-42, D-47). */
+export const examProcedure = (type: ExamType): ExamProcedureLabels =>
+  type === ExamType.PRACTICAL ? atttSessionProcedure() : schoolProcedure();
 
 /** Libellé de statut vu par l'élève, selon la procédure du type (D-42). */
 export const examStatusLabel = (type: ExamType, status: ExamStatus): string => {
-  const procedure = EXAM_PROCEDURES[type];
-  if (status === ExamStatus.SCHEDULED) return procedure?.scheduledStatus ?? EXAM_STATUS_LABELS[status];
-  if (status === ExamStatus.REJECTED) return procedure?.rejectedStatus ?? EXAM_STATUS_LABELS[status];
-  return EXAM_STATUS_LABELS[status];
+  const procedure = examProcedure(type);
+  if (status === ExamStatus.SCHEDULED) return procedure.scheduledStatus;
+  if (status === ExamStatus.REJECTED) return procedure.rejectedStatus;
+  return examStatusText(status);
 };
 
 /**

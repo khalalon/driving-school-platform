@@ -3,6 +3,7 @@
  * vue élève (P8–P11). `id` = users.id (D-28). Les dates sont des chaînes ISO 8601.
  */
 
+import { t } from '../i18n';
 import { LessonType } from './Lesson';
 
 /** Leçons effectuées (présence marquée, D-33) par type (D-45) : même base que `completedLessons`. */
@@ -90,13 +91,14 @@ export type PaymentMethod = 'cash' | 'card' | 'bank_transfer';
 
 export const PAYMENT_METHODS: readonly PaymentMethod[] = ['cash', 'card', 'bank_transfer'];
 
-export const PAYMENT_METHOD_LABELS: Record<PaymentMethod | 'credit', string> = {
-  cash: 'Cash',
-  card: 'Card',
-  bank_transfer: 'Bank transfer',
-  credit: 'Student credit',
+/** Libellé d'un moyen de paiement dans la langue courante ; tel quel s'il est inconnu (D-47). */
+export const paymentMethodLabel = (method: string | null | undefined): string => {
+  if (!method) return t('payment.method.unknown');
+  const labels: Record<PaymentMethod | 'credit', string> = {
+    cash: t('payment.method.cash'),
+    card: t('payment.method.card'),
+    bank_transfer: t('payment.method.bank_transfer'),
+    credit: t('payment.method.credit'),
+  };
+  return labels[method as PaymentMethod | 'credit'] ?? method;
 };
-
-/** Libellé d'un moyen de paiement renvoyé par le backend, tel quel s'il est inconnu. */
-export const paymentMethodLabel = (method: string | null | undefined): string =>
-  method ? (PAYMENT_METHOD_LABELS[method as PaymentMethod | 'credit'] ?? method) : '—';

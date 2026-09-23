@@ -4,19 +4,12 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { studentSelfProfileService } from '../../../../services/api/StudentSelfProfileService';
 import { getApiErrorMessage } from '../../../../services/api/ApiError';
 import { LessonHistory, paymentMethodLabel } from '../../../../models/Profile';
-import { LESSON_TYPE_LABELS } from '../../../../models/Lesson';
+import { lessonTypeLabel } from '../../../../models/Lesson';
 import { useSchoolCurrency } from '../../../../hooks/useSchoolCurrency';
 import { formatAmount, formatDate, formatDateTime } from '../../../../utils/format';
 import { colors, typography, spacing } from '../../../../theme';
@@ -49,7 +42,7 @@ export const MyLessonsPaymentTab = ({ route }: any) => {
       <View style={styles.lessonHeader}>
         <View style={styles.lessonInfo}>
           <Text style={styles.lessonType}>
-            {LESSON_TYPE_LABELS[item.type] ?? item.type}
+            {lessonTypeLabel(item.type) ?? item.type}
             {item.status === 'cancelled' ? ' · Cancelled' : ''}
           </Text>
           <Text style={styles.lessonDate}>{formatDateTime(item.scheduledDate)}</Text>

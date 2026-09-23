@@ -15,7 +15,7 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LESSON_TYPE_LABELS, Lesson, MarkAttendanceData } from '../../../models/Lesson';
+import { lessonTypeLabel, Lesson, MarkAttendanceData } from '../../../models/Lesson';
 import { formatPersonName, formatTime } from '../../../utils/format';
 import { colors, typography, spacing, shadows } from '../../../theme';
 
@@ -71,7 +71,7 @@ export const AttendanceModal = ({
 
           <Text style={styles.modalSubtitle}>
             {lesson
-              ? `${LESSON_TYPE_LABELS[lesson.type]} lesson with ${formatPersonName(
+              ? `${lessonTypeLabel(lesson.type)} lesson with ${formatPersonName(
                   lesson.student,
                   'the student'
                 )} at ${formatTime(lesson.scheduledDate)}`

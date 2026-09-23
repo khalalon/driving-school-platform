@@ -18,9 +18,13 @@ import {
 } from '../index';
 import { storageService } from '../../services/storage/StorageService';
 
-jest.mock('expo-localization', () => ({ getLocales: jest.fn(() => [{ languageCode: 'fr' }]) }));
+jest.mock('expo-localization', () => ({
+  getLocales: jest.fn(() => [{ languageCode: 'fr' }]),
+}));
 
-const mockedLocales = Localization.getLocales as jest.MockedFunction<typeof Localization.getLocales>;
+const mockedLocales = Localization.getLocales as jest.MockedFunction<
+  typeof Localization.getLocales
+>;
 
 /** Seule `languageCode` est lue par `deviceLanguage` : le reste de `Locale` n'a pas à être simulé. */
 const localesOf = (languageCode: string) =>

@@ -4,10 +4,11 @@
  * rien n'est bloqué). Fonction pure, sans appel réseau : P8 (`completedLessonsByType`), X1 et L1.
  */
 
-import { EXAM_PROCEDURES, Exam, ExamResult, ExamStatus, ExamType } from './Exam';
-import { LESSON_TYPE_LABELS, Lesson, LessonStatus, LessonType } from './Lesson';
+import { examProcedure, Exam, ExamResult, ExamStatus, ExamType } from './Exam';
+import { lessonTypeLabel, Lesson, LessonStatus, LessonType } from './Lesson';
 import { CompletedLessonsByType } from './Profile';
 import { formatDate } from '../utils/format';
+import { t } from '../i18n';
 
 export type JourneyStepKey = 'code' | 'theory-exam' | 'manoeuvre' | 'parc' | 'practical-exam';
 
@@ -33,7 +34,11 @@ export interface JourneyStep {
   detail: string;
 }
 
-const ORDER: readonly { key: JourneyStepKey; lessonType?: LessonType; examType?: ExamType }[] = [
+const ORDER: readonly {
+  key: JourneyStepKey;
+  lessonType?: LessonType;
+  examType?: ExamType;
+}[] = [
   { key: 'code', lessonType: LessonType.CODE },
   { key: 'theory-exam', examType: ExamType.THEORY },
   { key: 'manoeuvre', lessonType: LessonType.MANOEUVRE },
@@ -41,12 +46,9 @@ const ORDER: readonly { key: JourneyStepKey; lessonType?: LessonType; examType?:
   { key: 'practical-exam', examType: ExamType.PRACTICAL },
 ];
 
-const EXAM_TITLES: Record<ExamType, string> = {
-  [ExamType.THEORY]: 'Theory exam',
-  [ExamType.PRACTICAL]: 'Practical exam',
-};
-
-const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`;
+/** Titre de l'étape examen dans la langue courante (D-47). */
+const examTitle = (type: ExamType): string =>
+  type === ExamType.PRACTICAL ? t('journey.step.practicalExam') : t('journey.step.theoryExam');
 
 /** Demande la plus récente (par `createdAt`) de ce type, hors annulées. */
 const latestExam = (exams: Exam[], type: ExamType): Exam | null =>
@@ -55,30 +57,45 @@ const latestExam = (exams: Exam[], type: ExamType): Exam | null =>
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] ?? null;
 
 const examDetail = (exam: Exam | null): string => {
-  if (!exam) return 'Not requested yet';
-  const procedure = EXAM_PROCEDURES[exam.type];
+  if (!exam) return t('journey.exam.notRequested');
+  const procedure = examProcedure(exam.type);
   switch (exam.status) {
     case ExamStatus.PENDING:
-      return `Requested — ${procedure.pendingHint.toLowerCase()}`;
+      return t('journey.exam.requested', { hint: procedure.pendingHint });
     case ExamStatus.SCHEDULED:
-      return `${procedure.scheduledStatus} · ${formatDate(exam.dateTime)}`;
+      return t('journey.exam.scheduled', {
+        status: procedure.scheduledStatus,
+        date: formatDate(exam.dateTime),
+      });
     case ExamStatus.REJECTED:
-      return `${procedure.rejectedStatus} — ${procedure.rejectedHint.toLowerCase()}`;
+      return t('journey.exam.rejected', {
+        status: procedure.rejectedStatus,
+        hint: procedure.rejectedHint,
+      });
     case ExamStatus.COMPLETED:
       if (exam.result === ExamResult.PASSED) {
-        return exam.score !== null ? `Passed · score ${exam.score}` : 'Passed';
+        return exam.score !== null
+          ? t('journey.exam.passedWithScore', { score: exam.score })
+          : t('journey.exam.passed');
       }
-      return 'Failed — you can request again';
+      return t('journey.exam.failed');
     default:
       return exam.status;
   }
 };
 
 const lessonsDetail = (completed: number, scheduled: number): string => {
-  if (completed === 0 && scheduled === 0) return 'Not started yet';
-  const parts = [plural(completed, 'lesson') + ' done'];
-  if (scheduled > 0) parts.push(`${scheduled} scheduled`);
-  return parts.join(' · ');
+  if (completed === 0 && scheduled === 0) return t('journey.lessons.none');
+  const done =
+    completed === 1
+      ? t('journey.lessons.doneOne')
+      : t('journey.lessons.doneMany', { count: completed });
+  if (scheduled === 0) return done;
+  const planned =
+    scheduled === 1
+      ? t('journey.lessons.scheduledOne')
+      : t('journey.lessons.scheduledMany', { count: scheduled });
+  return `${done} · ${planned}`;
 };
 
 /**
@@ -107,7 +124,7 @@ export const buildJourney = (
       const concluded = type === LessonType.CODE ? theoryPassed : practicalPassed;
       return {
         key: item.key,
-        title: LESSON_TYPE_LABELS[type],
+        title: lessonTypeLabel(type),
         kind: 'lessons',
         lessonType: type,
         completedLessons: completed,
@@ -121,7 +138,7 @@ export const buildJourney = (
     const concluded = examType === ExamType.THEORY ? theoryPassed : practicalPassed;
     return {
       key: item.key,
-      title: EXAM_TITLES[examType],
+      title: examTitle(examType),
       kind: 'exam',
       examType,
       exam,

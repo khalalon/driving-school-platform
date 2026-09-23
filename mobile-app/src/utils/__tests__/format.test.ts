@@ -2,21 +2,31 @@
  * Formatage d'affichage : montants dans la devise de l'école (D-43), noms, jour local.
  */
 import { formatAmount, formatCountdown, formatPersonName, toLocalDateKey } from '../format';
+import { applyLanguage } from '../../i18n';
+
+afterEach(() => applyLanguage('fr'));
 
 describe('formatCountdown', () => {
   const now = new Date('2026-09-20T10:00:00.000Z');
 
   it('minutes, puis heures et minutes, puis jours', () => {
-    expect(formatCountdown('2026-09-20T10:45:00.000Z', now)).toBe('in 45 min');
-    expect(formatCountdown('2026-09-20T12:05:00.000Z', now)).toBe('in 2 h 05 min');
-    expect(formatCountdown('2026-09-22T09:00:00.000Z', now)).toBe('in 2 days');
-    expect(formatCountdown('2026-09-21T10:30:00.000Z', now)).toBe('in 1 day');
-    expect(formatCountdown('2026-09-21T22:00:00.000Z', now)).toBe('in 2 days');
+    expect(formatCountdown('2026-09-20T10:45:00.000Z', now)).toBe('dans 45 min');
+    expect(formatCountdown('2026-09-20T12:05:00.000Z', now)).toBe('dans 2 h 05 min');
+    expect(formatCountdown('2026-09-22T09:00:00.000Z', now)).toBe('dans 2 jours');
+    expect(formatCountdown('2026-09-21T10:30:00.000Z', now)).toBe('dans 1 jour');
+    expect(formatCountdown('2026-09-21T22:00:00.000Z', now)).toBe('dans 2 jours');
   });
 
   it('déjà commencé, ou date absente', () => {
-    expect(formatCountdown('2026-09-20T09:00:00.000Z', now)).toBe('Started');
-    expect(formatCountdown(null, now)).toBe('Date TBD');
+    expect(formatCountdown('2026-09-20T09:00:00.000Z', now)).toBe('Commencée');
+    expect(formatCountdown(null, now)).toBe('Date à définir');
+  });
+
+  it('en arabe, le compte à rebours et le repli sont traduits (D-47)', () => {
+    applyLanguage('ar');
+    expect(formatCountdown('2026-09-20T10:45:00.000Z', now)).toBe('بعد 45 دقيقة');
+    expect(formatCountdown('2026-09-20T09:00:00.000Z', now)).toBe('انطلقت');
+    expect(formatCountdown(null, now)).toBe('التاريخ لم يُحدَّد');
   });
 });
 

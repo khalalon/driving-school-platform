@@ -9,7 +9,7 @@
  * un même créneau — un seul formulaire, puis un appel L5 par demande, avec récapitulatif.
  */
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -23,28 +23,19 @@ import {
   Modal,
   Platform,
   ScrollView,
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from "@react-navigation/native";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { useAuth } from "../../context/AuthContext";
-import { lessonService } from "../../services/api/LessonService";
-import { schoolService } from "../../services/api/SchoolService";
-import { getApiErrorMessage } from "../../services/api/ApiError";
-import {
-  LESSON_TYPE_LABELS,
-  Lesson,
-  LessonStatus,
-  LessonType,
-} from "../../models/Lesson";
-import { SchoolInstructor, SchoolPricing } from "../../models/School";
-import { useSchoolCurrency } from "../../hooks/useSchoolCurrency";
-import {
-  formatAmount,
-  formatDateTime,
-  formatPersonName,
-} from "../../utils/format";
-import { colors, typography, spacing, shadows } from "../../theme";
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useAuth } from '../../context/AuthContext';
+import { lessonService } from '../../services/api/LessonService';
+import { schoolService } from '../../services/api/SchoolService';
+import { getApiErrorMessage } from '../../services/api/ApiError';
+import { lessonTypeLabel, Lesson, LessonStatus, LessonType } from '../../models/Lesson';
+import { SchoolInstructor, SchoolPricing } from '../../models/School';
+import { useSchoolCurrency } from '../../hooks/useSchoolCurrency';
+import { formatAmount, formatDateTime, formatPersonName } from '../../utils/format';
+import { colors, typography, spacing, shadows } from '../../theme';
 
 /** Motif de refus : 10 à 500 caractères, même règle que le backend (D-29). */
 const REASON_MIN = 10;
@@ -63,10 +54,7 @@ const tomorrowMorning = (): Date => {
  * Créneau proposé au départ : la date souhaitée si elle est encore à venir, sinon la même
  * heure au prochain jour futur — une date passée serait refusée (400) et bloquerait l'écran.
  */
-const firstFutureSlot = (
-  wanted: string | null | undefined,
-  now: Date = new Date(),
-): Date => {
+const firstFutureSlot = (wanted: string | null | undefined, now: Date = new Date()): Date => {
   if (!wanted) return tomorrowMorning();
   const date = new Date(wanted);
   if (Number.isNaN(date.getTime())) return tomorrowMorning();
@@ -99,20 +87,20 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [duration, setDuration] = useState(String(DEFAULT_DURATION_MINUTES));
-  const [price, setPrice] = useState("");
-  const [adminNotes, setAdminNotes] = useState("");
+  const [price, setPrice] = useState('');
+  const [adminNotes, setAdminNotes] = useState('');
 
   // Reject modal
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<Lesson | null>(null);
-  const [rejectionReason, setRejectionReason] = useState("");
+  const [rejectionReason, setRejectionReason] = useState('');
 
   // Onglet (8.4) : rechargé à chaque retour au premier plan
   useFocusEffect(
     useCallback(() => {
       loadRequests();
       loadSchoolData();
-    }, [schoolId]),
+    }, [schoolId])
   );
 
   const loadRequests = async () => {
@@ -121,19 +109,13 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
       // L1 : file partagée des demandes pending de l'école
       const data = await lessonService.getMyLessons({
         status: [LessonStatus.PENDING],
-        scope: "school",
+        scope: 'school',
       });
       setRequests(data);
       // Une demande traitée entre-temps ne reste pas cochée
-      setCheckedIds(
-        (previous) =>
-          new Set(data.filter((l) => previous.has(l.id)).map((l) => l.id)),
-      );
+      setCheckedIds((previous) => new Set(data.filter((l) => previous.has(l.id)).map((l) => l.id)));
     } catch (error) {
-      Alert.alert(
-        "Error",
-        getApiErrorMessage(error, "Failed to load lesson requests"),
-      );
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load lesson requests'));
     } finally {
       setLoading(false);
     }
@@ -161,18 +143,12 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
 
   const preferredInstructorLabel = (request: Lesson): string | null => {
     if (!request.preferredInstructorId) return null;
-    if (request.preferredInstructorId === user?.instructorId) return "you";
-    const instructor = instructors.find(
-      (i) => i.id === request.preferredInstructorId,
-    );
-    return instructor
-      ? formatPersonName(instructor, "an instructor")
-      : "an instructor";
+    if (request.preferredInstructorId === user?.instructorId) return 'you';
+    const instructor = instructors.find((i) => i.id === request.preferredInstructorId);
+    return instructor ? formatPersonName(instructor, 'an instructor') : 'an instructor';
   };
 
-  const pricingFor = (
-    type: LessonType | undefined,
-  ): SchoolPricing | undefined =>
+  const pricingFor = (type: LessonType | undefined): SchoolPricing | undefined =>
     type && pricing ? pricing.find((p) => p.lessonType === type) : undefined;
 
   // ----- Sélection multiple (D-34 : demandes de code seulement) -----
@@ -196,13 +172,11 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
     setApproveTargets(targets);
     // Une seule demande : sa date souhaitée ; un lot : un créneau commun à choisir
     setScheduledDate(
-      targets.length === 1
-        ? firstFutureSlot(targets[0].requestedDate)
-        : tomorrowMorning(),
+      targets.length === 1 ? firstFutureSlot(targets[0].requestedDate) : tomorrowMorning()
     );
     setDuration(String(rate?.duration ?? DEFAULT_DURATION_MINUTES));
-    setPrice("");
-    setAdminNotes("");
+    setPrice('');
+    setAdminNotes('');
     setShowApproveModal(true);
   };
 
@@ -215,11 +189,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
     setShowDatePicker(false);
     if (selected) {
       const next = new Date(scheduledDate);
-      next.setFullYear(
-        selected.getFullYear(),
-        selected.getMonth(),
-        selected.getDate(),
-      );
+      next.setFullYear(selected.getFullYear(), selected.getMonth(), selected.getDate());
       setScheduledDate(next);
     }
   };
@@ -240,27 +210,23 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
     const priceRequired = pricing !== null && !rate;
 
     if (scheduledDate.getTime() <= Date.now()) {
-      Alert.alert("Invalid Date", "The lesson date must be in the future");
+      Alert.alert('Invalid Date', 'The lesson date must be in the future');
       return;
     }
     const durationMinutes = Number.parseInt(duration, 10);
     if (!Number.isInteger(durationMinutes) || durationMinutes <= 0) {
-      Alert.alert("Invalid Duration", "Please enter the duration in minutes");
+      Alert.alert('Invalid Duration', 'Please enter the duration in minutes');
       return;
     }
-    const priceValue =
-      price.trim() === "" ? undefined : Number(price.replace(",", "."));
-    if (
-      priceValue !== undefined &&
-      (Number.isNaN(priceValue) || priceValue < 0)
-    ) {
-      Alert.alert("Invalid Price", "Please enter a valid price");
+    const priceValue = price.trim() === '' ? undefined : Number(price.replace(',', '.'));
+    if (priceValue !== undefined && (Number.isNaN(priceValue) || priceValue < 0)) {
+      Alert.alert('Invalid Price', 'Please enter a valid price');
       return;
     }
     if (priceRequired && priceValue === undefined) {
       Alert.alert(
-        "Price Required",
-        `The school has no rate for ${LESSON_TYPE_LABELS[targetType]} lessons: please enter the price.`,
+        'Price Required',
+        `The school has no rate for ${lessonTypeLabel(targetType)} lessons: please enter the price.`
       );
       return;
     }
@@ -277,26 +243,22 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
       if (approveTargets.length === 1) {
         // L5 : l'appelant devient l'instructeur ; prix de la grille sinon celui saisi (D-30)
         await lessonService.approveLesson(approveTargets[0].id, data);
-        Alert.alert("Success", "Lesson scheduled: you are now its instructor");
+        Alert.alert('Success', 'Lesson scheduled: you are now its instructor');
       } else {
         // D-34 : un appel L5 par demande cochée, en séquence, puis récapitulatif
         const result = await lessonService.approveLessons(
           approveTargets.map((t) => t.id),
-          data,
+          data
         );
         const failures = result.failed.map(({ lessonId, error }) => {
           const request = approveTargets.find((t) => t.id === lessonId);
-          const who = request
-            ? formatPersonName(request.student, "Student")
-            : lessonId;
-          return `• ${who}: ${getApiErrorMessage(error, "request failed")}`;
+          const who = request ? formatPersonName(request.student, 'Student') : lessonId;
+          return `• ${who}: ${getApiErrorMessage(error, 'request failed')}`;
         });
         Alert.alert(
-          failures.length === 0 ? "Success" : "Partially scheduled",
+          failures.length === 0 ? 'Success' : 'Partially scheduled',
           `${result.succeeded.length} of ${approveTargets.length} lesson(s) scheduled` +
-            (failures.length > 0
-              ? `\n\nNot scheduled:\n${failures.join("\n")}`
-              : ""),
+            (failures.length > 0 ? `\n\nNot scheduled:\n${failures.join('\n')}` : '')
         );
         setCheckedIds(new Set());
       }
@@ -304,10 +266,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
       loadRequests();
     } catch (error) {
       // 409 : un collègue a déjà traité la demande ; 400 PRICE_REQUIRED : grille incomplète
-      Alert.alert(
-        "Error",
-        getApiErrorMessage(error, "Failed to approve lesson"),
-      );
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to approve lesson'));
       loadRequests();
     } finally {
       setProcessing(false);
@@ -318,13 +277,13 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
 
   const openReject = (request: Lesson) => {
     setSelectedRequest(request);
-    setRejectionReason("");
+    setRejectionReason('');
     setShowRejectModal(true);
   };
 
   const closeReject = () => {
     setShowRejectModal(false);
-    setRejectionReason("");
+    setRejectionReason('');
     setSelectedRequest(null);
   };
 
@@ -335,26 +294,20 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
     if (!selectedRequest) return;
     if (!reasonValid) {
       Alert.alert(
-        "Reason too short",
-        `Please explain the rejection in at least ${REASON_MIN} characters (the student will read it).`,
+        'Reason too short',
+        `Please explain the rejection in at least ${REASON_MIN} characters (the student will read it).`
       );
       return;
     }
 
     try {
       setProcessing(true);
-      await lessonService.rejectLesson(
-        selectedRequest.id,
-        rejectionReason.trim(),
-      );
-      Alert.alert("Success", "Lesson request rejected");
+      await lessonService.rejectLesson(selectedRequest.id, rejectionReason.trim());
+      Alert.alert('Success', 'Lesson request rejected');
       closeReject();
       loadRequests();
     } catch (error) {
-      Alert.alert(
-        "Error",
-        getApiErrorMessage(error, "Failed to reject lesson"),
-      );
+      Alert.alert('Error', getApiErrorMessage(error, 'Failed to reject lesson'));
       loadRequests();
     } finally {
       setProcessing(false);
@@ -382,58 +335,36 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
               accessibilityLabel="Select this code request for group scheduling"
             >
               <Ionicons
-                name={checked ? "checkbox" : "square-outline"}
+                name={checked ? 'checkbox' : 'square-outline'}
                 size={28}
                 color={checked ? colors.primary[600] : colors.neutral[400]}
               />
             </TouchableOpacity>
           ) : (
             <View style={styles.iconContainer}>
-              <Ionicons
-                name="person-outline"
-                size={28}
-                color={colors.primary[600]}
-              />
+              <Ionicons name="person-outline" size={28} color={colors.primary[600]} />
             </View>
           )}
 
           <View style={styles.requestInfo}>
-            <Text style={styles.studentName}>
-              {formatPersonName(item.student, "Student")}
-            </Text>
+            <Text style={styles.studentName}>{formatPersonName(item.student, 'Student')}</Text>
             <View style={styles.detailRow}>
-              <Ionicons
-                name="car-outline"
-                size={16}
-                color={colors.text.tertiary}
-              />
+              <Ionicons name="car-outline" size={16} color={colors.text.tertiary} />
               <Text style={styles.detailText}>
-                {LESSON_TYPE_LABELS[item.type] ?? item.type}
-                {rate
-                  ? ` · ${formatAmount(rate.price, currency)} · ${rate.duration} min`
-                  : ""}
+                {lessonTypeLabel(item.type) ?? item.type}
+                {rate ? ` · ${formatAmount(rate.price, currency)} · ${rate.duration} min` : ''}
               </Text>
             </View>
             <View style={styles.detailRow}>
-              <Ionicons
-                name="calendar-outline"
-                size={16}
-                color={colors.text.tertiary}
-              />
+              <Ionicons name="calendar-outline" size={16} color={colors.text.tertiary} />
               <Text style={styles.detailText}>
-                Requested: {formatDateTime(item.requestedDate, "no date given")}
+                Requested: {formatDateTime(item.requestedDate, 'no date given')}
               </Text>
             </View>
             {preferred && (
               <View style={styles.detailRow}>
-                <Ionicons
-                  name="star-outline"
-                  size={16}
-                  color={colors.warning[600]}
-                />
-                <Text style={[styles.detailText, styles.preferredText]}>
-                  Prefers {preferred}
-                </Text>
+                <Ionicons name="star-outline" size={16} color={colors.warning[600]} />
+                <Text style={[styles.detailText, styles.preferredText]}>Prefers {preferred}</Text>
               </View>
             )}
             {item.notes && (
@@ -451,11 +382,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
             activeOpacity={0.7}
             disabled={processing}
           >
-            <Ionicons
-              name="close-outline"
-              size={20}
-              color={colors.error[600]}
-            />
+            <Ionicons name="close-outline" size={20} color={colors.error[600]} />
             <Text style={styles.rejectButtonText}>Reject</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -464,11 +391,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
             activeOpacity={0.7}
             disabled={processing}
           >
-            <Ionicons
-              name="checkmark-outline"
-              size={20}
-              color={colors.text.inverse}
-            />
+            <Ionicons name="checkmark-outline" size={20} color={colors.text.inverse} />
             <Text style={styles.approveButtonText}>Schedule</Text>
           </TouchableOpacity>
         </View>
@@ -479,23 +402,16 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
       <View style={styles.emptyIconContainer}>
-        <Ionicons
-          name="document-text-outline"
-          size={64}
-          color={colors.neutral[300]}
-        />
+        <Ionicons name="document-text-outline" size={64} color={colors.neutral[300]} />
       </View>
       <Text style={styles.emptyTitle}>No Pending Requests</Text>
-      <Text style={styles.emptyText}>
-        New lesson requests from your school will appear here
-      </Text>
+      <Text style={styles.emptyText}>New lesson requests from your school will appear here</Text>
     </View>
   );
 
   const targetType = approveTargets[0]?.type;
   const selectedRate = pricingFor(targetType);
-  const priceRequired =
-    pricing !== null && targetType !== undefined && !selectedRate;
+  const priceRequired = pricing !== null && targetType !== undefined && !selectedRate;
   const isBatch = approveTargets.length > 1;
 
   if (loading) {
@@ -518,9 +434,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
         data={requests}
         renderItem={renderRequestCard}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={
-          requests.length === 0 ? styles.emptyList : styles.listContent
-        }
+        contentContainerStyle={requests.length === 0 ? styles.emptyList : styles.listContent}
         ListEmptyComponent={renderEmptyState}
         refreshControl={
           <RefreshControl
@@ -537,7 +451,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
         <View style={styles.batchBar}>
           <Text style={styles.batchText}>
             {checkedRequests.length} code request
-            {checkedRequests.length > 1 ? "s" : ""} selected
+            {checkedRequests.length > 1 ? 's' : ''} selected
           </Text>
           <TouchableOpacity
             style={styles.batchClear}
@@ -552,11 +466,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
             activeOpacity={0.8}
             disabled={processing}
           >
-            <Ionicons
-              name="calendar-outline"
-              size={18}
-              color={colors.text.inverse}
-            />
+            <Ionicons name="calendar-outline" size={18} color={colors.text.inverse} />
             <Text style={styles.batchButtonText}>Schedule together</Text>
           </TouchableOpacity>
         </View>
@@ -574,32 +484,24 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
             <ScrollView showsVerticalScrollIndicator={false}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>
-                  {isBatch
-                    ? `Schedule ${approveTargets.length} Lessons`
-                    : "Schedule Lesson"}
+                  {isBatch ? `Schedule ${approveTargets.length} Lessons` : 'Schedule Lesson'}
                 </Text>
                 <TouchableOpacity onPress={closeApprove}>
-                  <Ionicons
-                    name="close"
-                    size={24}
-                    color={colors.text.secondary}
-                  />
+                  <Ionicons name="close" size={24} color={colors.text.secondary} />
                 </TouchableOpacity>
               </View>
 
               <Text style={styles.modalSubtitle}>
                 {isBatch
-                  ? `One ${LESSON_TYPE_LABELS[LessonType.CODE]} lesson per student, same slot — ` +
+                  ? `One ${lessonTypeLabel(LessonType.CODE)} lesson per student, same slot — ` +
                     `you will be the instructor of each: ` +
-                    approveTargets
-                      .map((t) => formatPersonName(t.student, "Student"))
-                      .join(", ")
+                    approveTargets.map((t) => formatPersonName(t.student, 'Student')).join(', ')
                   : approveTargets[0]
-                    ? `${LESSON_TYPE_LABELS[approveTargets[0].type]} lesson for ${formatPersonName(
+                    ? `${lessonTypeLabel(approveTargets[0].type)} lesson for ${formatPersonName(
                         approveTargets[0].student,
-                        "the student",
+                        'the student'
                       )} — you will be the instructor`
-                    : ""}
+                    : ''}
               </Text>
 
               <View style={styles.section}>
@@ -610,29 +512,19 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
                     onPress={() => setShowDatePicker(true)}
                     activeOpacity={0.7}
                   >
-                    <Ionicons
-                      name="calendar-outline"
-                      size={20}
-                      color={colors.text.secondary}
-                    />
-                    <Text style={styles.dateText}>
-                      {scheduledDate.toLocaleDateString()}
-                    </Text>
+                    <Ionicons name="calendar-outline" size={20} color={colors.text.secondary} />
+                    <Text style={styles.dateText}>{scheduledDate.toLocaleDateString()}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.dateButton}
                     onPress={() => setShowTimePicker(true)}
                     activeOpacity={0.7}
                   >
-                    <Ionicons
-                      name="time-outline"
-                      size={20}
-                      color={colors.text.secondary}
-                    />
+                    <Ionicons name="time-outline" size={20} color={colors.text.secondary} />
                     <Text style={styles.dateText}>
                       {scheduledDate.toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
+                        hour: '2-digit',
+                        minute: '2-digit',
                       })}
                     </Text>
                   </TouchableOpacity>
@@ -641,7 +533,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
                   <DateTimePicker
                     value={scheduledDate}
                     mode="date"
-                    display={Platform.OS === "ios" ? "spinner" : "default"}
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                     onValueChange={handleDateChange}
                     onDismiss={() => setShowDatePicker(false)}
                     minimumDate={new Date()}
@@ -651,7 +543,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
                   <DateTimePicker
                     value={scheduledDate}
                     mode="time"
-                    display={Platform.OS === "ios" ? "spinner" : "default"}
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                     onValueChange={handleTimeChange}
                     onDismiss={() => setShowTimePicker(false)}
                   />
@@ -672,13 +564,13 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
 
               <View style={styles.section}>
                 <Text style={styles.label}>
-                  Price{currency ? ` (${currency})` : ""}
-                  {priceRequired ? " — required" : ""}
+                  Price{currency ? ` (${currency})` : ''}
+                  {priceRequired ? ' — required' : ''}
                 </Text>
                 {selectedRate ? (
                   <Text style={styles.rateText}>
-                    School rate: {formatAmount(selectedRate.price, currency)}{" "}
-                    (applied automatically)
+                    School rate: {formatAmount(selectedRate.price, currency)} (applied
+                    automatically)
                   </Text>
                 ) : (
                   <>
@@ -692,17 +584,15 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
                     />
                     <Text style={styles.hintText}>
                       {priceRequired
-                        ? "The school has no rate for this lesson type"
-                        : "Leave empty to apply the school rate"}
+                        ? 'The school has no rate for this lesson type'
+                        : 'Leave empty to apply the school rate'}
                     </Text>
                   </>
                 )}
               </View>
 
               <View style={styles.section}>
-                <Text style={styles.label}>
-                  Notes for the student (optional)
-                </Text>
+                <Text style={styles.label}>Notes for the student (optional)</Text>
                 <TextInput
                   style={styles.reasonInput}
                   placeholder="Meeting point, documents to bring..."
@@ -734,15 +624,10 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
                   activeOpacity={0.7}
                 >
                   {processing ? (
-                    <ActivityIndicator
-                      size="small"
-                      color={colors.text.inverse}
-                    />
+                    <ActivityIndicator size="small" color={colors.text.inverse} />
                   ) : (
                     <Text style={styles.modalApproveText}>
-                      {isBatch
-                        ? `Schedule ${approveTargets.length}`
-                        : "Confirm"}
+                      {isBatch ? `Schedule ${approveTargets.length}` : 'Confirm'}
                     </Text>
                   )}
                 </TouchableOpacity>
@@ -764,11 +649,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Reject Request</Text>
               <TouchableOpacity onPress={closeReject}>
-                <Ionicons
-                  name="close"
-                  size={24}
-                  color={colors.text.secondary}
-                />
+                <Ionicons name="close" size={24} color={colors.text.secondary} />
               </TouchableOpacity>
             </View>
 
@@ -832,15 +713,15 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: colors.background.secondary,
   },
   header: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing["4xl"],
+    paddingTop: spacing['4xl'],
     paddingBottom: spacing.lg,
     backgroundColor: colors.background.primary,
     gap: spacing.md,
@@ -873,12 +754,12 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 28,
     backgroundColor: colors.primary[50],
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   batchBar: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.sm,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
@@ -901,8 +782,8 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
   },
   batchButton: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.xs,
     paddingHorizontal: spacing.base,
     paddingVertical: spacing.sm,
@@ -915,17 +796,17 @@ const styles = StyleSheet.create({
     color: colors.text.inverse,
   },
   cardHeader: {
-    flexDirection: "row",
+    flexDirection: 'row',
     gap: spacing.md,
-    alignItems: "flex-start",
+    alignItems: 'flex-start',
   },
   iconContainer: {
     width: 56,
     height: 56,
     borderRadius: 28,
     backgroundColor: colors.primary[50],
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   requestInfo: {
     flex: 1,
@@ -937,8 +818,8 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
   },
   detailRow: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.xs,
   },
   detailText: {
@@ -957,17 +838,17 @@ const styles = StyleSheet.create({
   notesText: {
     fontSize: typography.size.sm,
     color: colors.text.secondary,
-    fontStyle: "italic",
+    fontStyle: 'italic',
   },
   actionRow: {
-    flexDirection: "row",
+    flexDirection: 'row',
     gap: spacing.sm,
   },
   actionButton: {
     flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: spacing.md,
     borderRadius: 8,
     gap: spacing.xs,
@@ -990,17 +871,17 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: spacing["4xl"],
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing['4xl'],
   },
   emptyIconContainer: {
     width: 120,
     height: 120,
     borderRadius: 60,
     backgroundColor: colors.neutral[100],
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: spacing.xl,
   },
   emptyTitle: {
@@ -1012,25 +893,25 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: typography.size.base,
     color: colors.text.secondary,
-    textAlign: "center",
+    textAlign: 'center',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
     padding: spacing.xl,
   },
   modalContent: {
     backgroundColor: colors.background.primary,
     borderRadius: 16,
     padding: spacing.xl,
-    maxHeight: "90%",
+    maxHeight: '90%',
     ...shadows.lg,
   },
   modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: spacing.md,
   },
   modalTitle: {
@@ -1053,12 +934,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   dateRow: {
-    flexDirection: "row",
+    flexDirection: 'row',
     gap: spacing.sm,
   },
   dateButton: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.background.secondary,
     borderRadius: 12,
     borderWidth: 1,
@@ -1108,7 +989,7 @@ const styles = StyleSheet.create({
     minHeight: 100,
   },
   modalActions: {
-    flexDirection: "row",
+    flexDirection: 'row',
     gap: spacing.sm,
     marginTop: spacing.md,
   },
@@ -1116,8 +997,8 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: spacing.md,
     borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalCancelButton: {
     backgroundColor: colors.background.tertiary,

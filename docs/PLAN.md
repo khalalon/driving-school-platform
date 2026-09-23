@@ -591,7 +591,7 @@ cd mobile-app && node -e "const p=require('./package.json').dependencies; if(!p[
 ```
 **Hors périmètre** : traduction des écrans (10.3, 10.4), préférence de langue stockée côté serveur (aucune route, hors contrat).
 
-### - [ ] 10.2 — Vocabulaire métier et formats traduits
+### - [x] 10.2 — Vocabulaire métier et formats traduits
 **Objectif** : les libellés des modèles ne sont plus des constantes anglaises mais des clés traduites — `LESSON_TYPE_LABELS`, `LESSON_STATUS_LABELS`, `EXAM_TYPE_LABELS`, `EXAM_STATUS_LABELS`, `EXAM_RESULT_LABELS`, `EXAM_PROCEDURES` (D-42), `PAYMENT_METHOD_LABELS`, textes du parcours (`models/Journey.ts`, D-45) ; `utils/format.ts` formate dates, heures et montants selon la langue courante (`fr-FR` / `ar`). Les **valeurs** échangées avec le backend restent celles du contrat (D-18) : seuls les mots affichés changent. Les termes arabes du métier sont regroupés dans `ar.ts` et **restent à valider par une école** (D-47).
 **Fichiers** : `mobile-app/src/models/{Lesson,Exam,Profile,Journey}.ts`, `mobile-app/src/utils/format.ts`, `mobile-app/src/i18n/{fr,ar}.ts`, les tests des modèles et de `format`.
 **Critère de validation** :
