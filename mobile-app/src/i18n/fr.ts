@@ -586,6 +586,19 @@ export const fr = {
   'common.cancelledSuffix': ' · Annulée',
   'studentExams.scoreOutOf': 'Note : {score}/100',
   'studentLessons.paidOnVia': 'Payée le {date} · {method}',
+
+  // Codes d'erreur du contrat (D-27)
+  'error.VALIDATION_ERROR': 'Données invalides : vérifiez le formulaire.',
+  'error.UNAUTHORIZED': 'Session expirée : reconnectez-vous.',
+  'error.FORBIDDEN': 'Vous n\'avez pas le droit de faire cette action.',
+  'error.FORBIDDEN_SCHOOL': 'Cette action ne concerne pas votre école.',
+  'error.NOT_FOUND': 'Élément introuvable.',
+  'error.CONFLICT': 'Cette action n\'est plus possible : la situation a changé.',
+  'error.NOT_ENROLLED': 'Vous devez être inscrit dans cette école.',
+  'error.CANCEL_WINDOW_CLOSED': 'L\'annulation n\'est plus possible : la leçon est trop proche.',
+  'error.PRICE_REQUIRED': 'L\'école n\'a pas de tarif pour ce type de leçon : saisissez le prix.',
+  'error.INVALID_SCHOOL_CODE': 'Code d\'école inconnu.',
+  'error.INTERNAL_ERROR': 'Le service a rencontré un problème. Réessayez.',
 } as const;
 
 /** Toutes les clés du catalogue : `ar.ts` doit les servir toutes. */

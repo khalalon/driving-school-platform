@@ -580,4 +580,17 @@ export const ar: Record<TranslationKey, string> = {
   'common.cancelledSuffix': ' · مُلغاة',
   'studentExams.scoreOutOf': 'النتيجة: {score}/100',
   'studentLessons.paidOnVia': 'خُلّصت في {date} · {method}',
+
+  // Codes d'erreur du contrat (D-27)
+  'error.VALIDATION_ERROR': 'بيانات غير صالحة: تحقّق من الاستمارة.',
+  'error.UNAUTHORIZED': 'انتهت الجلسة: أعد تسجيل الدخول.',
+  'error.FORBIDDEN': 'ليس لديك الحق في القيام بهذا الإجراء.',
+  'error.FORBIDDEN_SCHOOL': 'هذا الإجراء لا يخصّ مدرستك.',
+  'error.NOT_FOUND': 'العنصر غير موجود.',
+  'error.CONFLICT': 'لم يعد هذا الإجراء ممكناً: تغيّرت الوضعية.',
+  'error.NOT_ENROLLED': 'يجب أن تكون منخرطاً في هذه المدرسة.',
+  'error.CANCEL_WINDOW_CLOSED': 'لم يعد بالإمكان الإلغاء: أصبح الموعد قريباً جداً.',
+  'error.PRICE_REQUIRED': 'لا تملك المدرسة تعريفة لهذا النوع من الحصص: أدخل الثمن.',
+  'error.INVALID_SCHOOL_CODE': 'رمز المدرسة غير معروف.',
+  'error.INTERNAL_ERROR': 'حدث خلل في الخدمة. أعد المحاولة.',
 };

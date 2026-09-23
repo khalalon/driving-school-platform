@@ -618,7 +618,7 @@ cd mobile-app && test -z "$(grep -rL "useI18n\|from '../../i18n'\|from '../../..
 ```
 **Hors périmètre** : messages d'erreur du serveur (10.5).
 
-### - [ ] 10.5 — Messages d'erreur du serveur traduits par code
+### - [x] 10.5 — Messages d'erreur du serveur traduits par code
 **Objectif** : `getApiErrorMessage` traduit l'erreur à partir du **code stable** renvoyé par le backend (`error`, D-27) — `VALIDATION_ERROR`, `NOT_ENROLLED`, `CANCEL_WINDOW_CLOSED`, `FORBIDDEN_SCHOOL`, `FORBIDDEN`, `CONFLICT`, `NOT_FOUND`, `UNAUTHORIZED`, `INVALID_CREDENTIALS`, `EMAIL_TAKEN`, `SCHOOL_CODE_INVALID`… — et ne retombe sur le texte français du serveur que si le code est inconnu ; l'élève en arabe ne voit plus de phrase française. Les codes traduits sont ceux du contrat : un code absent du contrat n'est pas inventé.
 **Fichiers** : `mobile-app/src/services/api/ApiError.ts`, `mobile-app/src/services/api/__tests__/ApiError.test.ts` (nouveau), `mobile-app/src/i18n/{fr,ar}.ts`, `docs/API_CONTRACT.md` (note transverse : le mobile traduit par code).
 **Critère de validation** :
