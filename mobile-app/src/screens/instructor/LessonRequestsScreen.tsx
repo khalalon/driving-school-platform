@@ -59,6 +59,23 @@ const tomorrowMorning = (): Date => {
   return date;
 };
 
+/**
+ * Créneau proposé au départ : la date souhaitée si elle est encore à venir, sinon la même
+ * heure au prochain jour futur — une date passée serait refusée (400) et bloquerait l'écran.
+ */
+const firstFutureSlot = (
+  wanted: string | null | undefined,
+  now: Date = new Date(),
+): Date => {
+  if (!wanted) return tomorrowMorning();
+  const date = new Date(wanted);
+  if (Number.isNaN(date.getTime())) return tomorrowMorning();
+  while (date.getTime() <= now.getTime()) {
+    date.setDate(date.getDate() + 1);
+  }
+  return date;
+};
+
 export const LessonRequestsScreen = ({ navigation }: any) => {
   const { user } = useAuth();
   const schoolId = user?.schoolId;
@@ -179,8 +196,8 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
     setApproveTargets(targets);
     // Une seule demande : sa date souhaitée ; un lot : un créneau commun à choisir
     setScheduledDate(
-      targets.length === 1 && targets[0].requestedDate
-        ? new Date(targets[0].requestedDate)
+      targets.length === 1
+        ? firstFutureSlot(targets[0].requestedDate)
         : tomorrowMorning(),
     );
     setDuration(String(rate?.duration ?? DEFAULT_DURATION_MINUTES));

@@ -22,12 +22,20 @@ import { getApiErrorMessage } from "../../services/api/ApiError";
 import { EXAM_TYPE_LABELS, ExamType } from "../../models/Exam";
 import { colors, typography, spacing, shadows } from "../../theme";
 
+/** Demain à 9 h : première date proposée, dans le futur (exigé par X2). */
+const defaultPreferredDate = (): Date => {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  date.setHours(9, 0, 0, 0);
+  return date;
+};
+
 export const RequestExamScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(false);
   const [examType, setExamType] = useState<ExamType>(ExamType.THEORY);
-  const [date, setDate] = useState(new Date());
+  const [date, setDate] = useState(defaultPreferredDate);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [time, setTime] = useState(new Date());
+  const [time, setTime] = useState(defaultPreferredDate);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -51,13 +59,18 @@ export const RequestExamScreen = ({ navigation }: any) => {
       return;
     }
 
+    // Date et heure choisies, réunies en un instant
+    const preferredDateTime = new Date(date);
+    preferredDateTime.setHours(time.getHours(), time.getMinutes(), 0, 0);
+
+    // X2 exige une date à venir : on le dit ici plutôt que de laisser remonter l'erreur du serveur
+    if (preferredDateTime.getTime() <= Date.now()) {
+      Alert.alert("Invalid Date", "The preferred date must be in the future");
+      return;
+    }
+
     try {
       setLoading(true);
-
-      // Combine date and time
-      const preferredDateTime = new Date(date);
-      preferredDateTime.setHours(time.getHours());
-      preferredDateTime.setMinutes(time.getMinutes());
 
       // X2 : vocabulaire du backend (theory | practical, D-18)
       await examService.requestExam({

@@ -51,6 +51,23 @@ const tomorrowMorning = (): Date => {
   return date;
 };
 
+/**
+ * Créneau proposé au départ : la date souhaitée si elle est encore à venir, sinon la même
+ * heure au prochain jour futur — une date passée serait refusée (400) et bloquerait l'écran.
+ */
+const firstFutureSlot = (
+  wanted: string | null | undefined,
+  now: Date = new Date(),
+): Date => {
+  if (!wanted) return tomorrowMorning();
+  const date = new Date(wanted);
+  if (Number.isNaN(date.getTime())) return tomorrowMorning();
+  while (date.getTime() <= now.getTime()) {
+    date.setDate(date.getDate() + 1);
+  }
+  return date;
+};
+
 export const ExamRequestsScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -104,11 +121,7 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
 
   const openSchedule = (request: Exam) => {
     setSelectedRequest(request);
-    setDateTime(
-      request.preferredDate
-        ? new Date(request.preferredDate)
-        : tomorrowMorning(),
-    );
+    setDateTime(firstFutureSlot(request.preferredDate));
     setLocation("");
     setShowScheduleModal(true);
   };
