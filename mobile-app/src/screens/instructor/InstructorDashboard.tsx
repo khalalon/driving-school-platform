@@ -258,7 +258,10 @@ export const InstructorDashboard = ({ navigation }: any) => {
     return (
       <View key={lesson.id} style={styles.timelineRow}>
         <View style={styles.timeColumn}>
-          <Text style={[styles.timeText, isCurrent && styles.timeTextCurrent]}>
+          <Text
+            style={[styles.timeText, isCurrent && styles.timeTextCurrent]}
+            numberOfLines={1}
+          >
             {formatTime(lesson.scheduledDate)}
           </Text>
         </View>
@@ -377,7 +380,9 @@ export const InstructorDashboard = ({ navigation }: any) => {
             onPress={() => navigation.navigate('TodayExams')}
             activeOpacity={0.7}
           >
-            <Text style={styles.timeText}>{formatTime(exam.dateTime)}</Text>
+            <Text style={styles.timeText} numberOfLines={1}>
+              {formatTime(exam.dateTime)}
+            </Text>
             <View style={styles.examBody}>
               <Text style={styles.studentName}>
                 {formatPersonName(
@@ -662,7 +667,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   timeColumn: {
-    width: 56,
+    // « 10:00 AM » doit tenir sur une ligne
+    width: 68,
     paddingTop: spacing.md,
   },
   timeText: {
