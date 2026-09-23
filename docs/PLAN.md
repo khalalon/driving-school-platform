@@ -567,7 +567,7 @@ grep -q 'createBottomTabNavigator' mobile-app/src/navigation/AppNavigator.tsx &&
 
 Expo Go ne supporte qu'un seul SDK à la fois : le magasin l'a mis à jour en SDK 57 sur le téléphone de recette, le projet est en SDK 54 — l'application ne se charge plus (« Project is incompatible with this version of Expo Go »). Cette phase remet le mobile au niveau du dernier SDK. Aucun changement de contrat, aucune migration.
 
-### - [ ] 9.1 — Montée du mobile en Expo SDK 57
+### - [x] 9.1 — Montée du mobile en Expo SDK 57
 **Objectif** : `mobile-app` passe en **Expo SDK 57** (`expo@~57`, React Native et React aux versions du SDK, toutes les dépendances Expo alignées par `npx expo install --fix`, `jest-expo` et `babel-preset-expo` de la même génération) ; `npx expo-doctor` ne signale plus de version incompatible ; le `splash` de `app.json` (qui pointait vers un fichier absent, `assets/splash.png` — avertissement à chaque bundle) est remplacé par la configuration du SDK en vigueur sur `assets/splash-icon.png` ; le code applicatif n'est modifié **que** si le SDK le casse (aucune fonctionnalité ajoutée) ; `npx tsc --noEmit` et `npx jest` restent verts ; le bundle Android se charge dans Expo Go 57 (vérifié sur l'émulateur, écran de connexion atteint).
 **Fichiers** : `mobile-app/package.json`, `mobile-app/package-lock.json`, `mobile-app/app.json`, au besoin `mobile-app/jest.config.js`, `mobile-app/tsconfig.json` et les fichiers cassés par la montée de version ; `docs/ARCHITECTURE.md`, `CLAUDE.md` (version du SDK).
 **Critère de validation** :

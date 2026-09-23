@@ -23,7 +23,7 @@ Le backend implémente intégralement le contrat `docs/API_CONTRACT.md` (39 rout
 Vérifiées dans `package.json`, `Makefile` et `docker-compose.yml`. Il n'y a **pas** de workspace npm racine : `services/api`, `tests`, le mobile et le web ont chacun leur `package.json` et leur `node_modules`.
 
 ### Prérequis
-- Node 20+ (l'API tourne sur `node:20-alpine`, Expo 54 exige ≥ 20.19), npm, Docker Desktop avec `docker compose` v2.
+- Node 20.19.4+ (l'API tourne sur `node:20-alpine` ; React Native 0.86, livré par Expo SDK 57, exige `^20.19.4 || ^22.13 || ^24.3 || ≥ 25`), npm, Docker Desktop avec `docker compose` v2.
 - Sous Windows le shell principal est PowerShell ; les scripts `scripts/*.sh` demandent Git Bash.
 
 ### Racine (outillage git et tests de bout en bout)
@@ -69,9 +69,12 @@ Si le port 5432 est déjà pris sur la machine : `POSTGRES_PORT=5433 docker comp
 cd mobile-app
 npm install
 npm start              # expo start ; scanner le QR avec Expo Go (même Wi-Fi que le backend)
+npx expo-doctor        # 21/21 attendu ; à relancer après toute montée de SDK
 npx tsc --noEmit       # typecheck (strict: true), vert depuis 6.1 ; job CI `mobile` = typecheck + jest
 npm test               # jest-expo (ApiClient : refresh sur 401)
 ```
+**Expo SDK 57** (React Native 0.86, React 19.2, TypeScript 6 — 9.1). Expo Go ne charge qu'un seul SDK et se met à jour seul : le projet suit le dernier SDK (D-46), sinon plus aucun téléphone ne peut ouvrir l'application. Montée de version = une tâche du plan (`npx expo install expo@~<SDK> --fix`, réinstallation propre du `node_modules` pour que `expo-modules-core` soit bien à la racine, `npx expo-doctor` vert).
+
 Tests unitaires : `npm test` (jest-expo, `src/**/__tests__/*.test.ts`, AsyncStorage mocké via `jest.setup.js`) ; pas de lint. L'URL du backend vient de `app.json` → `expo.extra.API_BASE_URL`, surchargeable par `EXPO_PUBLIC_API_BASE_URL` dans `mobile-app/.env` (ignoré par git, modèle dans `mobile-app/.env.example`) ; `src/config/api.config.ts` ne contient aucune URL.
 
 ### Frontend web (`web-frontend/`) — gelé
