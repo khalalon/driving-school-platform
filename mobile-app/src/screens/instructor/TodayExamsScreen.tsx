@@ -28,6 +28,7 @@ import { useI18n } from '../../context/LanguageContext';
 import { examTypeLabel, Exam, ExamResult, ExamStatus, ExamType } from '../../models/Exam';
 import { formatPersonName, formatTime, toLocalDateKey } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
+import { mirrorIcon } from '../../utils/rtl';
 
 const studentOf = (exam: Exam) =>
   formatPersonName({ firstName: exam.studentFirstName, lastName: exam.studentLastName }, 'Student');
@@ -216,7 +217,7 @@ export const TodayExamsScreen = ({ navigation }: any) => {
           onPress={() => navigation.goBack()}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
+          <Ionicons name={mirrorIcon('arrow-back')} size={24} color={colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('todayExams.title')}</Text>
       </View>

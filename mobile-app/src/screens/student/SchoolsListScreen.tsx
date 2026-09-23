@@ -20,6 +20,7 @@ import { getApiErrorMessage } from '../../services/api/ApiError';
 import { useI18n } from '../../context/LanguageContext';
 import { School } from '../../models/School';
 import { colors, typography, spacing, shadows } from '../../theme';
+import { mirrorIcon } from '../../utils/rtl';
 
 export const SchoolsListScreen = ({ navigation }: any) => {
   const { t } = useI18n();
@@ -82,7 +83,7 @@ export const SchoolsListScreen = ({ navigation }: any) => {
         </View>
       </View>
 
-      <Ionicons name="chevron-forward" size={20} color={colors.neutral[400]} />
+      <Ionicons name={mirrorIcon('chevron-forward')} size={20} color={colors.neutral[400]} />
     </TouchableOpacity>
   );
 
@@ -113,7 +114,7 @@ export const SchoolsListScreen = ({ navigation }: any) => {
           onPress={() => navigation.goBack()}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
+          <Ionicons name={mirrorIcon('arrow-back')} size={24} color={colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('schools.title')}</Text>
       </View>

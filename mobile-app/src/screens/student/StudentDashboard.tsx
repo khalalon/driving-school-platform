@@ -213,7 +213,9 @@ export const StudentDashboard = ({ navigation }: any) => {
             </View>
             <Text style={styles.nextWhen}>
               {formatDate(next.scheduledDate)} · {formatTime(next.scheduledDate)}
-              {next.durationMinutes ? ` · ${t('format.minutes', { count: next.durationMinutes })}` : ''}
+              {next.durationMinutes
+                ? ` · ${t('format.minutes', { count: next.durationMinutes })}`
+                : ''}
             </Text>
             <Text style={styles.nextMeta}>
               {t('home.withInstructor', {
@@ -681,7 +683,7 @@ const styles = StyleSheet.create({
   },
   stepBody: {
     flex: 1,
-    marginLeft: spacing.md,
+    marginStart: spacing.md,
     paddingBottom: spacing.lg,
   },
   stepBodyCurrent: {

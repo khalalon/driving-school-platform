@@ -532,7 +532,7 @@ const styles = StyleSheet.create({
     height: 52,
   },
   inputIcon: {
-    marginRight: spacing.md,
+    marginEnd: spacing.md,
   },
   input: {
     flex: 1,

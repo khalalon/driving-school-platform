@@ -24,6 +24,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getApiErrorMessage } from '../../services/api/ApiError';
 import { useI18n } from '../../context/LanguageContext';
 import { colors, typography, spacing, shadows } from '../../theme';
+import { mirrorIcon } from '../../utils/rtl';
 
 export const InstructorRegistrationScreen = ({ navigation }: any) => {
   const { t } = useI18n();
@@ -99,7 +100,7 @@ export const InstructorRegistrationScreen = ({ navigation }: any) => {
             onPress={() => navigation.goBack()}
             activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
+            <Ionicons name={mirrorIcon('arrow-back')} size={24} color={colors.text.primary} />
           </TouchableOpacity>
         </View>
 
@@ -400,7 +401,7 @@ const styles = StyleSheet.create({
     height: 52,
   },
   inputIcon: {
-    marginRight: spacing.md,
+    marginEnd: spacing.md,
   },
   input: {
     flex: 1,

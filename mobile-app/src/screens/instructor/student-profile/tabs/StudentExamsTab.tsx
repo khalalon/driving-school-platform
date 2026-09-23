@@ -394,7 +394,7 @@ const styles = StyleSheet.create({
   scoreText: {
     fontSize: typography.size.sm,
     color: colors.text.secondary,
-    marginLeft: 'auto',
+    marginStart: 'auto',
   },
   notesContainer: {
     marginTop: spacing.sm,

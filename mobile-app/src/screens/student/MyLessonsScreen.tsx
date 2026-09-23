@@ -186,7 +186,9 @@ export const MyLessonsScreen = ({ navigation }: any) => {
               <Text style={styles.timeText}>
                 {isPending ? t('myLessons.requestedPrefix') : ''}
                 {formatTime(item.scheduledDate ?? item.requestedDate)}
-                {item.durationMinutes ? ` · ${t('format.minutes', { count: item.durationMinutes })}` : ''}
+                {item.durationMinutes
+                  ? ` · ${t('format.minutes', { count: item.durationMinutes })}`
+                  : ''}
               </Text>
             </View>
           </View>
@@ -480,7 +482,7 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
   },
   paidBadge: {
-    marginLeft: 'auto',
+    marginStart: 'auto',
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
     borderRadius: 6,

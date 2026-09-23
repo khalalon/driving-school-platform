@@ -39,6 +39,7 @@ import {
 import { examTypeLabel, Exam, ExamStatus } from '../../models/Exam';
 import { formatPersonName, formatTime, toLocalDateKey } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
+import { mirrorIcon } from '../../utils/rtl';
 import { AttendanceModal } from './components/AttendanceModal';
 
 interface TodayData {
@@ -240,7 +241,7 @@ export const InstructorDashboard = ({ navigation }: any) => {
               <Text style={styles.requestText}>{row.text}</Text>
               {row.hint ? <Text style={styles.requestHint}>{row.hint}</Text> : null}
             </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.warning[600]} />
+            <Ionicons name={mirrorIcon('chevron-forward')} size={18} color={colors.warning[600]} />
           </TouchableOpacity>
         ))}
       </View>
@@ -712,7 +713,7 @@ const styles = StyleSheet.create({
   },
   lessonCard: {
     flex: 1,
-    marginLeft: spacing.sm,
+    marginStart: spacing.sm,
     marginBottom: spacing.md,
     padding: spacing.md,
     borderRadius: 14,

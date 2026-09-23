@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
     fontSize: typography.size.lg,
     fontWeight: typography.weight.semibold,
     color: colors.text.primary,
-    marginLeft: spacing.sm,
+    marginStart: spacing.sm,
   },
   infoRow: {
     flexDirection: 'row',

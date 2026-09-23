@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
     fontSize: typography.size.base,
     fontWeight: typography.weight.semibold,
     color: colors.text.primary,
-    marginLeft: spacing.sm,
+    marginStart: spacing.sm,
   },
   cardContent: {
     gap: spacing.sm,

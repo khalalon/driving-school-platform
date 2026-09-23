@@ -25,6 +25,7 @@ import { EnrollmentStatusInfo, EnrollmentStatus } from '../../models/Enrollment'
 import { lessonTypeLabel } from '../../models/Lesson';
 import { formatAmount, formatPersonName } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
+import { mirrorIcon } from '../../utils/rtl';
 
 export const SchoolDetailScreen = ({ navigation, route }: any) => {
   const { t } = useI18n();
@@ -207,7 +208,7 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
             onPress={() => navigation.goBack()}
             activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
+            <Ionicons name={mirrorIcon('arrow-back')} size={24} color={colors.text.primary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle} numberOfLines={1}>
             {school.name}

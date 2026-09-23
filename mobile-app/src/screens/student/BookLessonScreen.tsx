@@ -26,6 +26,7 @@ import { getApiErrorMessage } from '../../services/api/ApiError';
 import { useI18n } from '../../context/LanguageContext';
 import { lessonTypeLabel, LESSON_TYPES, LessonType } from '../../models/Lesson';
 import { colors, typography, spacing, shadows } from '../../theme';
+import { mirrorIcon } from '../../utils/rtl';
 
 const LESSON_TYPE_ICONS: Record<LessonType, keyof typeof Ionicons.glyphMap> = {
   [LessonType.CODE]: 'book-outline',
@@ -149,7 +150,7 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
           onPress={() => navigation.goBack()}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
+          <Ionicons name={mirrorIcon('arrow-back')} size={24} color={colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Request Lesson</Text>
       </View>

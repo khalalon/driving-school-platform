@@ -627,7 +627,7 @@ cd mobile-app && npx jest ApiError -t 'code' --silent && npx tsc --noEmit && npx
 ```
 **Hors périmètre** : traduction des messages côté backend (ils restent français, D-27).
 
-### - [ ] 10.6 — RTL vérifié en arabe
+### - [x] 10.6 — RTL vérifié en arabe
 **Objectif** : l'app en arabe est utilisable : mises en page en miroir (barre d'onglets, cartes, timeline du parcours, en-têtes), icônes directionnelles retournées (chevrons, flèche retour), `textAlign` cohérent, aucune mise en page cassée. Les écarts trouvés sont corrigés (`I18nManager.isRTL` plutôt que des valeurs codées en dur ; `start`/`end` au lieu de `left`/`right`).
 **Fichiers** : les écrans et composants concernés, `mobile-app/src/i18n/index.ts`.
 **Critère de validation** :

@@ -26,6 +26,7 @@ import { useI18n } from '../../context/LanguageContext';
 import { lessonTypeLabel, Lesson, LessonStatus, MarkAttendanceData } from '../../models/Lesson';
 import { formatPersonName, formatTime, toLocalDateKey } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
+import { mirrorIcon } from '../../utils/rtl';
 import { AttendanceModal } from './components/AttendanceModal';
 
 type FilterType = 'upcoming' | 'completed';
@@ -195,7 +196,7 @@ export const TodayLessonsScreen = ({ navigation }: any) => {
           onPress={() => navigation.goBack()}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
+          <Ionicons name={mirrorIcon('arrow-back')} size={24} color={colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('todayLessons.title')}</Text>
       </View>

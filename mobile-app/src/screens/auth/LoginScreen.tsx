@@ -21,6 +21,7 @@ import { LanguagePicker } from '../../components/LanguagePicker';
 import { useI18n } from '../../context/LanguageContext';
 import { getApiErrorMessage } from '../../services/api/ApiError';
 import { colors, typography, spacing, shadows } from '../../theme';
+import { mirrorIcon } from '../../utils/rtl';
 
 export const LoginScreen = ({ navigation }: any) => {
   const { t } = useI18n();
@@ -134,7 +135,11 @@ export const LoginScreen = ({ navigation }: any) => {
             ) : (
               <>
                 <Text style={styles.primaryButtonText}>{t('auth.signIn')}</Text>
-                <Ionicons name="arrow-forward" size={20} color={colors.text.inverse} />
+                <Ionicons
+                  name={mirrorIcon('arrow-forward')}
+                  size={20}
+                  color={colors.text.inverse}
+                />
               </>
             )}
           </TouchableOpacity>
@@ -231,7 +236,7 @@ const styles = StyleSheet.create({
     height: 52,
   },
   inputIcon: {
-    marginRight: spacing.md,
+    marginEnd: spacing.md,
   },
   input: {
     flex: 1,

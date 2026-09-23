@@ -24,6 +24,7 @@ import { TranslationKey } from '../../i18n';
 import { EnrollmentRequest, EnrollmentStatus } from '../../models/Enrollment';
 import { formatDate, formatPersonName } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
+import { mirrorIcon } from '../../utils/rtl';
 
 type FilterType = 'pending' | 'all';
 
@@ -210,7 +211,7 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
         >
           <Ionicons name="person-circle-outline" size={20} color={colors.primary[600]} />
           <Text style={styles.profileButtonText}>{t('enrollments.viewProfile')}</Text>
-          <Ionicons name="chevron-forward" size={18} color={colors.primary[600]} />
+          <Ionicons name={mirrorIcon('chevron-forward')} size={18} color={colors.primary[600]} />
         </TouchableOpacity>
       )}
 
@@ -259,7 +260,7 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
           onPress={() => navigation.goBack()}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
+          <Ionicons name={mirrorIcon('arrow-back')} size={24} color={colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('enrollments.title')}</Text>
       </View>
@@ -392,7 +393,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: spacing.xs,
-    marginRight: spacing.sm,
+    marginEnd: spacing.sm,
   },
   headerTitle: {
     fontSize: typography.size.xl,
@@ -452,7 +453,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   studentDetails: {
-    marginLeft: spacing.sm,
+    marginStart: spacing.sm,
     flex: 1,
   },
   studentName: {

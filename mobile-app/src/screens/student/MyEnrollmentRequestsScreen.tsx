@@ -21,6 +21,7 @@ import { useI18n } from '../../context/LanguageContext';
 import { EnrollmentRequest, EnrollmentStatus } from '../../models/Enrollment';
 import { formatDate } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
+import { mirrorIcon } from '../../utils/rtl';
 
 export const MyEnrollmentRequestsScreen = ({ navigation }: any) => {
   const { t } = useI18n();
@@ -124,7 +125,7 @@ export const MyEnrollmentRequestsScreen = ({ navigation }: any) => {
             activeOpacity={0.7}
           >
             <Text style={styles.viewButtonText}>{t('enrollmentRequests.viewSchool')}</Text>
-            <Ionicons name="arrow-forward" size={16} color={colors.primary[600]} />
+            <Ionicons name={mirrorIcon('arrow-forward')} size={16} color={colors.primary[600]} />
           </TouchableOpacity>
         </View>
       </View>
@@ -166,7 +167,7 @@ export const MyEnrollmentRequestsScreen = ({ navigation }: any) => {
           onPress={() => navigation.goBack()}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
+          <Ionicons name={mirrorIcon('arrow-back')} size={24} color={colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('enrollmentRequests.title')}</Text>
       </View>

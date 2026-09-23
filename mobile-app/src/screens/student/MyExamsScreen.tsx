@@ -589,7 +589,7 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
   },
   paidBadge: {
-    marginLeft: 'auto',
+    marginStart: 'auto',
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
     borderRadius: 6,

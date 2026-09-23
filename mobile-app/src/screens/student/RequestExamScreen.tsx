@@ -22,6 +22,7 @@ import { getApiErrorMessage } from '../../services/api/ApiError';
 import { useI18n } from '../../context/LanguageContext';
 import { examTypeLabel, ExamType } from '../../models/Exam';
 import { colors, typography, spacing, shadows } from '../../theme';
+import { mirrorIcon } from '../../utils/rtl';
 
 /** Demain à 9 h : première date proposée, dans le futur (exigé par X2). */
 const defaultPreferredDate = (): Date => {
@@ -102,7 +103,7 @@ export const RequestExamScreen = ({ navigation }: any) => {
           onPress={() => navigation.goBack()}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
+          <Ionicons name={mirrorIcon('arrow-back')} size={24} color={colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Request Exam</Text>
       </View>

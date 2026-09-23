@@ -12,6 +12,7 @@ import { StudentLessonsTab } from './tabs/StudentLessonsTab';
 import { StudentExamsTab } from './tabs/StudentExamsTab';
 import { colors, typography, spacing } from '../../../theme';
 import { useI18n } from '../../../context/LanguageContext';
+import { mirrorIcon } from '../../../utils/rtl';
 
 const Tab = createMaterialTopTabNavigator();
 
@@ -28,7 +29,7 @@ export const StudentProfileScreen = ({ route, navigation }: any) => {
           onPress={() => navigation.goBack()}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
+          <Ionicons name={mirrorIcon('arrow-back')} size={24} color={colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>
           {studentName}
@@ -98,7 +99,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: spacing.xs,
-    marginRight: spacing.sm,
+    marginEnd: spacing.sm,
   },
   headerTitle: {
     fontSize: typography.size.xl,
