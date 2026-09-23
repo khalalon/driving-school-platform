@@ -6,7 +6,7 @@
  * la date souhaitée est obligatoire (D-21) et le type est l'un des trois de D-18.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -17,19 +17,23 @@ import {
   Alert,
   TextInput,
   Platform,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { lessonService } from '../../services/api/LessonService';
-import { enrollmentService } from '../../services/api/EnrollmentService';
-import { getApiErrorMessage } from '../../services/api/ApiError';
-import { LESSON_TYPE_LABELS, LESSON_TYPES, LessonType } from '../../models/Lesson';
-import { colors, typography, spacing, shadows } from '../../theme';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { lessonService } from "../../services/api/LessonService";
+import { enrollmentService } from "../../services/api/EnrollmentService";
+import { getApiErrorMessage } from "../../services/api/ApiError";
+import {
+  LESSON_TYPE_LABELS,
+  LESSON_TYPES,
+  LessonType,
+} from "../../models/Lesson";
+import { colors, typography, spacing, shadows } from "../../theme";
 
 const LESSON_TYPE_ICONS: Record<LessonType, keyof typeof Ionicons.glyphMap> = {
-  [LessonType.CODE]: 'book-outline',
-  [LessonType.MANOEUVRE]: 'car-outline',
-  [LessonType.PARC]: 'car-sport-outline',
+  [LessonType.CODE]: "book-outline",
+  [LessonType.MANOEUVRE]: "car-outline",
+  [LessonType.PARC]: "car-sport-outline",
 };
 
 /** Demain à 9 h : premier créneau proposé, dans le futur (exigé par L2). */
@@ -48,11 +52,14 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
   const [canBook, setCanBook] = useState(false);
 
   const [lessonType, setLessonType] = useState<LessonType>(LessonType.CODE);
-  const [instructorId, setInstructorId] = useState<string | undefined>(preferredInstructorId);
-  const [requestedDate, setRequestedDate] = useState<Date>(defaultRequestedDate);
+  const [instructorId, setInstructorId] = useState<string | undefined>(
+    preferredInstructorId,
+  );
+  const [requestedDate, setRequestedDate] =
+    useState<Date>(defaultRequestedDate);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState("");
 
   useEffect(() => {
     checkEnrollmentStatus();
@@ -65,15 +72,18 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
 
       if (!status.canBook) {
         Alert.alert(
-          'Enrollment Required',
-          'You must be enrolled in this school to request lessons.',
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
+          "Enrollment Required",
+          "You must be enrolled in this school to request lessons.",
+          [{ text: "OK", onPress: () => navigation.goBack() }],
         );
       }
 
       setCanBook(status.canBook);
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to check enrollment status'));
+      Alert.alert(
+        "Error",
+        getApiErrorMessage(error, "Failed to check enrollment status"),
+      );
       navigation.goBack();
     } finally {
       setCheckingEnrollment(false);
@@ -84,7 +94,11 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
     setShowDatePicker(false);
     if (selected) {
       const next = new Date(requestedDate);
-      next.setFullYear(selected.getFullYear(), selected.getMonth(), selected.getDate());
+      next.setFullYear(
+        selected.getFullYear(),
+        selected.getMonth(),
+        selected.getDate(),
+      );
       setRequestedDate(next);
     }
   };
@@ -100,7 +114,7 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
 
   const handleRequestLesson = async () => {
     if (requestedDate.getTime() <= Date.now()) {
-      Alert.alert('Invalid Date', 'The requested date must be in the future');
+      Alert.alert("Invalid Date", "The requested date must be in the future");
       return;
     }
 
@@ -116,12 +130,21 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
       });
 
       Alert.alert(
-        'Request Sent!',
-        'Your lesson request has been submitted. An instructor will review and schedule it soon.',
-        [{ text: 'OK', onPress: () => navigation.navigate('StudentTabs', { screen: 'MyLessons' }) }]
+        "Request Sent!",
+        "Your lesson request has been submitted. An instructor will review and schedule it soon.",
+        [
+          {
+            text: "OK",
+            onPress: () =>
+              navigation.navigate("StudentTabs", { screen: "MyLessons" }),
+          },
+        ],
       );
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to request lesson'));
+      Alert.alert(
+        "Error",
+        getApiErrorMessage(error, "Failed to request lesson"),
+      );
     } finally {
       setLoading(false);
     }
@@ -156,12 +179,17 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
       <ScrollView contentContainerStyle={styles.content}>
         {/* Info Card */}
         <View style={styles.infoCard}>
-          <Ionicons name="information-circle-outline" size={24} color={colors.primary[600]} />
+          <Ionicons
+            name="information-circle-outline"
+            size={24}
+            color={colors.primary[600]}
+          />
           <View style={styles.infoContent}>
             <Text style={styles.infoTitle}>How it works</Text>
             <Text style={styles.infoText}>
-              Choose a lesson type and the date you would like. Your request goes to the school:
-              the instructor who approves it confirms the final date and time.
+              Choose a lesson type and the date you would like. Your request
+              goes to the school: the instructor who approves it confirms the
+              final date and time.
             </Text>
           </View>
         </View>
@@ -184,7 +212,12 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
                     size={22}
                     color={active ? colors.text.inverse : colors.text.secondary}
                   />
-                  <Text style={[styles.typeButtonText, active && styles.typeButtonTextActive]}>
+                  <Text
+                    style={[
+                      styles.typeButtonText,
+                      active && styles.typeButtonTextActive,
+                    ]}
+                  >
                     {LESSON_TYPE_LABELS[type]}
                   </Text>
                 </TouchableOpacity>
@@ -202,17 +235,30 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
               onPress={() => setShowDatePicker(true)}
               activeOpacity={0.7}
             >
-              <Ionicons name="calendar-outline" size={20} color={colors.text.secondary} />
-              <Text style={styles.dateText}>{requestedDate.toLocaleDateString()}</Text>
+              <Ionicons
+                name="calendar-outline"
+                size={20}
+                color={colors.text.secondary}
+              />
+              <Text style={styles.dateText}>
+                {requestedDate.toLocaleDateString()}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.dateButton}
               onPress={() => setShowTimePicker(true)}
               activeOpacity={0.7}
             >
-              <Ionicons name="time-outline" size={20} color={colors.text.secondary} />
+              <Ionicons
+                name="time-outline"
+                size={20}
+                color={colors.text.secondary}
+              />
               <Text style={styles.dateText}>
-                {requestedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {requestedDate.toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
               </Text>
             </TouchableOpacity>
           </View>
@@ -220,8 +266,9 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
             <DateTimePicker
               value={requestedDate}
               mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={handleDateChange}
+              display={Platform.OS === "ios" ? "spinner" : "default"}
+              onValueChange={handleDateChange}
+              onDismiss={() => setShowDatePicker(false)}
               minimumDate={new Date()}
             />
           )}
@@ -229,12 +276,14 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
             <DateTimePicker
               value={requestedDate}
               mode="time"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={handleTimeChange}
+              display={Platform.OS === "ios" ? "spinner" : "default"}
+              onValueChange={handleTimeChange}
+              onDismiss={() => setShowTimePicker(false)}
             />
           )}
           <Text style={styles.helperText}>
-            This is the date you would like — the instructor confirms the actual schedule
+            This is the date you would like — the instructor confirms the actual
+            schedule
           </Text>
         </View>
 
@@ -244,11 +293,19 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
           {instructorId ? (
             <View style={styles.instructorCard}>
               <View style={styles.instructorIconContainer}>
-                <Ionicons name="person-outline" size={24} color={colors.primary[600]} />
+                <Ionicons
+                  name="person-outline"
+                  size={24}
+                  color={colors.primary[600]}
+                />
               </View>
               <View style={styles.instructorInfo}>
-                <Text style={styles.instructorName}>{instructorName || 'Instructor'}</Text>
-                <Text style={styles.instructorHint}>Preference only, any instructor may approve</Text>
+                <Text style={styles.instructorName}>
+                  {instructorName || "Instructor"}
+                </Text>
+                <Text style={styles.instructorHint}>
+                  Preference only, any instructor may approve
+                </Text>
               </View>
               <TouchableOpacity
                 onPress={() => setInstructorId(undefined)}
@@ -256,13 +313,21 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
                 activeOpacity={0.7}
                 accessibilityLabel="Remove preferred instructor"
               >
-                <Ionicons name="close-circle" size={22} color={colors.neutral[400]} />
+                <Ionicons
+                  name="close-circle"
+                  size={22}
+                  color={colors.neutral[400]}
+                />
               </TouchableOpacity>
             </View>
           ) : (
             <View style={styles.instructorCard}>
               <View style={styles.instructorIconContainer}>
-                <Ionicons name="people-outline" size={24} color={colors.text.tertiary} />
+                <Ionicons
+                  name="people-outline"
+                  size={24}
+                  color={colors.text.tertiary}
+                />
               </View>
               <View style={styles.instructorInfo}>
                 <Text style={styles.instructorName}>No preference</Text>
@@ -301,7 +366,11 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
           ) : (
             <>
               <Text style={styles.submitButtonText}>Send Request</Text>
-              <Ionicons name="send-outline" size={20} color={colors.text.inverse} />
+              <Ionicons
+                name="send-outline"
+                size={20}
+                color={colors.text.inverse}
+              />
             </>
           )}
         </TouchableOpacity>
@@ -317,8 +386,8 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     backgroundColor: colors.background.secondary,
     gap: spacing.md,
   },
@@ -327,10 +396,10 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing['4xl'],
+    paddingTop: spacing["4xl"],
     paddingBottom: spacing.lg,
     backgroundColor: colors.background.primary,
     gap: spacing.md,
@@ -340,8 +409,8 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     backgroundColor: colors.background.tertiary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   headerTitle: {
     fontSize: typography.size.xl,
@@ -352,7 +421,7 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   infoCard: {
-    flexDirection: 'row',
+    flexDirection: "row",
     backgroundColor: colors.primary[50],
     padding: spacing.base,
     borderRadius: 12,
@@ -383,13 +452,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   typeContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: spacing.sm,
   },
   typeButton: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: colors.background.primary,
     borderRadius: 12,
     borderWidth: 1,
@@ -410,13 +479,13 @@ const styles = StyleSheet.create({
     color: colors.text.inverse,
   },
   dateRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: spacing.sm,
     marginBottom: spacing.sm,
   },
   dateButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: colors.background.primary,
     borderRadius: 12,
     borderWidth: 1,
@@ -433,8 +502,8 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
   },
   instructorCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: colors.background.primary,
     padding: spacing.base,
     borderRadius: 12,
@@ -447,8 +516,8 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     backgroundColor: colors.primary[50],
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   instructorInfo: {
     flex: 1,
@@ -480,12 +549,12 @@ const styles = StyleSheet.create({
   helperText: {
     fontSize: typography.size.xs,
     color: colors.text.tertiary,
-    fontStyle: 'italic',
+    fontStyle: "italic",
   },
   submitButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: colors.primary[600],
     paddingVertical: spacing.base,
     borderRadius: 12,

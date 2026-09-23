@@ -3,7 +3,7 @@
  * Single Responsibility: Request exam booking
  */
 
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -14,13 +14,13 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { examService } from '../../services/api/ExamService';
-import { getApiErrorMessage } from '../../services/api/ApiError';
-import { EXAM_TYPE_LABELS, ExamType } from '../../models/Exam';
-import { colors, typography, spacing, shadows } from '../../theme';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { examService } from "../../services/api/ExamService";
+import { getApiErrorMessage } from "../../services/api/ApiError";
+import { EXAM_TYPE_LABELS, ExamType } from "../../models/Exam";
+import { colors, typography, spacing, shadows } from "../../theme";
 
 export const RequestExamScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(false);
@@ -29,7 +29,7 @@ export const RequestExamScreen = ({ navigation }: any) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [time, setTime] = useState(new Date());
   const [showTimePicker, setShowTimePicker] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(false);
@@ -47,13 +47,13 @@ export const RequestExamScreen = ({ navigation }: any) => {
 
   const handleSubmit = async () => {
     if (!message.trim()) {
-      Alert.alert('Required', 'Please add a message about your preparation');
+      Alert.alert("Required", "Please add a message about your preparation");
       return;
     }
 
     try {
       setLoading(true);
-      
+
       // Combine date and time
       const preferredDateTime = new Date(date);
       preferredDateTime.setHours(time.getHours());
@@ -67,12 +67,21 @@ export const RequestExamScreen = ({ navigation }: any) => {
       });
 
       Alert.alert(
-        'Request Sent!',
-        'Your exam request has been submitted. The instructor will review and schedule it for you.',
-        [{ text: 'OK', onPress: () => navigation.navigate('StudentTabs', { screen: 'MyExams' }) }]
+        "Request Sent!",
+        "Your exam request has been submitted. The instructor will review and schedule it for you.",
+        [
+          {
+            text: "OK",
+            onPress: () =>
+              navigation.navigate("StudentTabs", { screen: "MyExams" }),
+          },
+        ],
       );
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to submit request'));
+      Alert.alert(
+        "Error",
+        getApiErrorMessage(error, "Failed to submit request"),
+      );
     } finally {
       setLoading(false);
     }
@@ -94,11 +103,16 @@ export const RequestExamScreen = ({ navigation }: any) => {
       <ScrollView contentContainerStyle={styles.content}>
         {/* Info Card */}
         <View style={styles.infoCard}>
-          <Ionicons name="information-circle-outline" size={24} color={colors.primary[600]} />
+          <Ionicons
+            name="information-circle-outline"
+            size={24}
+            color={colors.primary[600]}
+          />
           <View style={styles.infoContent}>
             <Text style={styles.infoTitle}>How it works</Text>
             <Text style={styles.infoText}>
-              Submit your exam request with preferred date and time. The instructor will review and confirm the actual schedule.
+              Submit your exam request with preferred date and time. The
+              instructor will review and confirm the actual schedule.
             </Text>
           </View>
         </View>
@@ -119,7 +133,9 @@ export const RequestExamScreen = ({ navigation }: any) => {
                 name="book-outline"
                 size={24}
                 color={
-                  examType === ExamType.THEORY ? colors.text.inverse : colors.text.secondary
+                  examType === ExamType.THEORY
+                    ? colors.text.inverse
+                    : colors.text.secondary
                 }
               />
               <Text
@@ -144,13 +160,16 @@ export const RequestExamScreen = ({ navigation }: any) => {
                 name="car-sport-outline"
                 size={24}
                 color={
-                  examType === ExamType.PRACTICAL ? colors.text.inverse : colors.text.secondary
+                  examType === ExamType.PRACTICAL
+                    ? colors.text.inverse
+                    : colors.text.secondary
                 }
               />
               <Text
                 style={[
                   styles.typeButtonText,
-                  examType === ExamType.PRACTICAL && styles.typeButtonTextActive,
+                  examType === ExamType.PRACTICAL &&
+                    styles.typeButtonTextActive,
                 ]}
               >
                 {EXAM_TYPE_LABELS[ExamType.PRACTICAL]}
@@ -167,20 +186,26 @@ export const RequestExamScreen = ({ navigation }: any) => {
             onPress={() => setShowDatePicker(true)}
             activeOpacity={0.7}
           >
-            <Ionicons name="calendar-outline" size={20} color={colors.text.secondary} />
+            <Ionicons
+              name="calendar-outline"
+              size={20}
+              color={colors.text.secondary}
+            />
             <Text style={styles.dateText}>{date.toLocaleDateString()}</Text>
           </TouchableOpacity>
           {showDatePicker && (
             <DateTimePicker
               value={date}
               mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={handleDateChange}
+              display={Platform.OS === "ios" ? "spinner" : "default"}
+              onValueChange={handleDateChange}
+              onDismiss={() => setShowDatePicker(false)}
               minimumDate={new Date()}
             />
           )}
           <Text style={styles.helperText}>
-            This is your preferred date - the instructor will confirm the actual schedule
+            This is your preferred date - the instructor will confirm the actual
+            schedule
           </Text>
         </View>
 
@@ -192,17 +217,25 @@ export const RequestExamScreen = ({ navigation }: any) => {
             onPress={() => setShowTimePicker(true)}
             activeOpacity={0.7}
           >
-            <Ionicons name="time-outline" size={20} color={colors.text.secondary} />
+            <Ionicons
+              name="time-outline"
+              size={20}
+              color={colors.text.secondary}
+            />
             <Text style={styles.dateText}>
-              {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {time.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
             </Text>
           </TouchableOpacity>
           {showTimePicker && (
             <DateTimePicker
               value={time}
               mode="time"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={handleTimeChange}
+              display={Platform.OS === "ios" ? "spinner" : "default"}
+              onValueChange={handleTimeChange}
+              onDismiss={() => setShowTimePicker(false)}
             />
           )}
         </View>
@@ -221,7 +254,8 @@ export const RequestExamScreen = ({ navigation }: any) => {
             textAlignVertical="top"
           />
           <Text style={styles.helperText}>
-            Let the instructor know about your progress and any special requirements
+            Let the instructor know about your progress and any special
+            requirements
           </Text>
         </View>
 
@@ -237,7 +271,11 @@ export const RequestExamScreen = ({ navigation }: any) => {
           ) : (
             <>
               <Text style={styles.submitButtonText}>Send Request</Text>
-              <Ionicons name="send-outline" size={20} color={colors.text.inverse} />
+              <Ionicons
+                name="send-outline"
+                size={20}
+                color={colors.text.inverse}
+              />
             </>
           )}
         </TouchableOpacity>
@@ -252,10 +290,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.secondary,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing['4xl'],
+    paddingTop: spacing["4xl"],
     paddingBottom: spacing.lg,
     backgroundColor: colors.background.primary,
     gap: spacing.md,
@@ -265,8 +303,8 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     backgroundColor: colors.background.tertiary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   headerTitle: {
     fontSize: typography.size.xl,
@@ -277,7 +315,7 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   infoCard: {
-    flexDirection: 'row',
+    flexDirection: "row",
     backgroundColor: colors.primary[50],
     padding: spacing.base,
     borderRadius: 12,
@@ -308,14 +346,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   typeContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: spacing.md,
   },
   typeButton: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: spacing.base,
     borderRadius: 12,
     gap: spacing.sm,
@@ -336,8 +374,8 @@ const styles = StyleSheet.create({
     color: colors.text.inverse,
   },
   dateButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: colors.background.primary,
     padding: spacing.base,
     borderRadius: 12,
@@ -354,7 +392,7 @@ const styles = StyleSheet.create({
   helperText: {
     fontSize: typography.size.xs,
     color: colors.text.tertiary,
-    fontStyle: 'italic',
+    fontStyle: "italic",
   },
   messageInput: {
     backgroundColor: colors.background.primary,
@@ -368,9 +406,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   submitButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: colors.primary[600],
     paddingVertical: spacing.base,
     borderRadius: 12,
