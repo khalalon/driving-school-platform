@@ -17,6 +17,7 @@ import { MyProgressTab } from './tabs/MyProgressTab';
 import { MyLessonsPaymentTab } from './tabs/MyLessonsPaymentTab';
 import { MyExamsPaymentTab } from './tabs/MyExamsPaymentTab';
 import { LanguagePicker } from '../../../components/LanguagePicker';
+import { useI18n } from '../../../context/LanguageContext';
 import { enrollmentService } from '../../../services/api/EnrollmentService';
 import { getApiErrorMessage } from '../../../services/api/ApiError';
 import { EnrollmentStatus } from '../../../models/Enrollment';
@@ -25,6 +26,7 @@ import { colors, typography, spacing } from '../../../theme';
 const Tab = createMaterialTopTabNavigator();
 
 export const MyProfileScreen = ({ route, navigation }: any) => {
+  const { t } = useI18n();
   const paramSchoolId: string | undefined = route.params?.schoolId;
   // `undefined` = pas encore résolue, `null` = aucune inscription approuvée
   const [schoolId, setSchoolId] = useState<string | null | undefined>(paramSchoolId);
@@ -48,7 +50,7 @@ export const MyProfileScreen = ({ route, navigation }: any) => {
         })
         .catch((err) => {
           if (cancelled) return;
-          setError(getApiErrorMessage(err, 'Failed to load your enrollment'));
+          setError(getApiErrorMessage(err, t('profile.enrollmentFailed')));
           setSchoolId((current) => current ?? null);
         });
       return () => {
@@ -69,15 +71,13 @@ export const MyProfileScreen = ({ route, navigation }: any) => {
       return (
         <View style={styles.center}>
           <Ionicons name="school-outline" size={40} color={colors.text.tertiary} />
-          <Text style={styles.emptyTitle}>Not enrolled yet</Text>
-          <Text style={styles.emptyText}>
-            {error ?? 'Your profile is available once a school has approved your enrollment.'}
-          </Text>
+          <Text style={styles.emptyTitle}>{t('profile.notEnrolled')}</Text>
+          <Text style={styles.emptyText}>{error ?? t('profile.notEnrolledText')}</Text>
           <TouchableOpacity
             style={styles.primaryButton}
             onPress={() => navigation.navigate('SchoolsList')}
           >
-            <Text style={styles.primaryButtonText}>Browse schools</Text>
+            <Text style={styles.primaryButtonText}>{t('home.browseSchools')}</Text>
           </TouchableOpacity>
         </View>
       );
@@ -106,9 +106,24 @@ export const MyProfileScreen = ({ route, navigation }: any) => {
           },
         }}
       >
-        <Tab.Screen name="Progress" component={MyProgressTab} initialParams={{ schoolId }} />
-        <Tab.Screen name="Lessons" component={MyLessonsPaymentTab} initialParams={{ schoolId }} />
-        <Tab.Screen name="Exams" component={MyExamsPaymentTab} initialParams={{ schoolId }} />
+        <Tab.Screen
+          name="Progress"
+          component={MyProgressTab}
+          initialParams={{ schoolId }}
+          options={{ title: t('profile.tab.progress') }}
+        />
+        <Tab.Screen
+          name="Lessons"
+          component={MyLessonsPaymentTab}
+          initialParams={{ schoolId }}
+          options={{ title: t('profile.tab.lessons') }}
+        />
+        <Tab.Screen
+          name="Exams"
+          component={MyExamsPaymentTab}
+          initialParams={{ schoolId }}
+          options={{ title: t('profile.tab.exams') }}
+        />
       </Tab.Navigator>
     );
   };
@@ -117,7 +132,7 @@ export const MyProfileScreen = ({ route, navigation }: any) => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Profile</Text>
+        <Text style={styles.headerTitle}>{t('profile.title')}</Text>
         <LanguagePicker compact />
       </View>
 

@@ -11,10 +11,12 @@ import { getApiErrorMessage } from '../../../../services/api/ApiError';
 import { ExamHistory } from '../../../../models/Profile';
 import { examResultLabel, examTypeLabel, ExamResult, ExamType } from '../../../../models/Exam';
 import { useSchoolCurrency } from '../../../../hooks/useSchoolCurrency';
+import { useI18n } from '../../../../context/LanguageContext';
 import { formatAmount, formatDate, formatDateTime } from '../../../../utils/format';
 import { colors, typography, spacing } from '../../../../theme';
 
 export const MyExamsPaymentTab = ({ route }: any) => {
+  const { t } = useI18n();
   const { schoolId } = route.params;
   const currency = useSchoolCurrency(schoolId);
   const [loading, setLoading] = useState(true);
@@ -30,7 +32,7 @@ export const MyExamsPaymentTab = ({ route }: any) => {
       const data = await studentSelfProfileService.getMyExams(schoolId);
       setExams(data);
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load exams'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('myExams.loadFailed')));
     } finally {
       setLoading(false);
     }
@@ -96,7 +98,7 @@ export const MyExamsPaymentTab = ({ route }: any) => {
       {/* Notes */}
       {item.notes && (
         <View style={styles.notesContainer}>
-          <Text style={styles.notesLabel}>Notes:</Text>
+          <Text style={styles.notesLabel}>{t('profile.notes')}</Text>
           <Text style={styles.notesText}>{item.notes}</Text>
         </View>
       )}
@@ -110,7 +112,9 @@ export const MyExamsPaymentTab = ({ route }: any) => {
               size={20}
               color={item.paid ? colors.success[500] : colors.warning[500]}
             />
-            <Text style={styles.paymentLabelText}>{item.paid ? 'Paid' : 'Pending Payment'}</Text>
+            <Text style={styles.paymentLabelText}>
+              {item.paid ? t('profile.paid') : t('profile.pendingPayment')}
+            </Text>
           </View>
           {(item.amount !== null || item.price !== null) && (
             <Text
@@ -142,7 +146,7 @@ export const MyExamsPaymentTab = ({ route }: any) => {
     return (
       <View style={styles.centerContainer}>
         <Ionicons name="document-text-outline" size={48} color={colors.text.tertiary} />
-        <Text style={styles.emptyText}>No exams recorded yet</Text>
+        <Text style={styles.emptyText}>{t('profile.noExams')}</Text>
       </View>
     );
   }

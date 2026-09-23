@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { schoolService } from '../../services/api/SchoolService';
 import { enrollmentService } from '../../services/api/EnrollmentService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
+import { useI18n } from '../../context/LanguageContext';
 import { School, SchoolInstructor, SchoolPricing } from '../../models/School';
 import { EnrollmentStatusInfo, EnrollmentStatus } from '../../models/Enrollment';
 import { lessonTypeLabel } from '../../models/Lesson';
@@ -26,6 +27,7 @@ import { formatAmount, formatPersonName } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
 
 export const SchoolDetailScreen = ({ navigation, route }: any) => {
+  const { t } = useI18n();
   const { schoolId } = route.params;
   const [loading, setLoading] = useState(true);
   const [school, setSchool] = useState<School | null>(null);
@@ -56,7 +58,7 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
       setPricing(pricingData);
       setEnrollmentStatus(statusData);
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load school details'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('school.loadFailed')));
     } finally {
       setLoading(false);
     }
@@ -64,7 +66,7 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
 
   const handleEnrollRequest = async () => {
     if (!enrollMessage.trim()) {
-      Alert.alert('Message Required', 'Please add a message with your enrollment request');
+      Alert.alert(t('school.messageRequired'), t('school.messageRequiredText'));
       return;
     }
 
@@ -75,7 +77,7 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
         message: enrollMessage,
       });
 
-      Alert.alert('Request Sent!', 'Your enrollment request has been sent to the school.', [
+      Alert.alert(t('school.requestSent'), t('school.enrollmentSentText'), [
         {
           text: 'OK',
           onPress: () => {
@@ -86,7 +88,7 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
         },
       ]);
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to send enrollment request'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('school.enrollmentFailed')));
     } finally {
       setEnrolling(false);
     }
@@ -107,17 +109,16 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
   /** L2 : la demande est adressée à l'école ; l'instructeur choisi n'est qu'une préférence (D-32). */
   const handleRequestLesson = (instructor?: SchoolInstructor) => {
     if (!enrollmentStatus?.canBook) {
-      Alert.alert(
-        'Enrollment Required',
-        'You must be enrolled in this school before requesting lessons.'
-      );
+      Alert.alert(t('school.enrollmentRequired'), t('school.enrollmentRequiredLesson'));
       return;
     }
 
     navigation.navigate('BookLesson', {
       schoolId,
       preferredInstructorId: instructor?.id,
-      instructorName: instructor ? formatPersonName(instructor, 'Instructor') : undefined,
+      instructorName: instructor
+        ? formatPersonName(instructor, t('myLessons.instructorFallback'))
+        : undefined,
     });
   };
 
@@ -128,7 +129,7 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
       return (
         <View style={[styles.banner, styles.enrolledBanner]}>
           <Ionicons name="checkmark-circle" size={20} color={colors.success[600]} />
-          <Text style={styles.bannerText}>You are enrolled</Text>
+          <Text style={styles.bannerText}>{t('school.enrolled')}</Text>
           {enrollmentStatus.canBook && (
             <TouchableOpacity
               style={styles.requestLessonButton}
@@ -136,7 +137,7 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
               activeOpacity={0.7}
             >
               <Ionicons name="add-circle-outline" size={16} color={colors.text.inverse} />
-              <Text style={styles.requestLessonButtonText}>Request Lesson</Text>
+              <Text style={styles.requestLessonButtonText}>{t('myLessons.requestLesson')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -147,7 +148,7 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
       return (
         <View style={[styles.banner, styles.pendingBanner]}>
           <Ionicons name="time-outline" size={20} color={colors.warning[600]} />
-          <Text style={styles.bannerText}>Request pending</Text>
+          <Text style={styles.bannerText}>{t('school.requestPending')}</Text>
         </View>
       );
     }
@@ -156,13 +157,13 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
       return (
         <View style={[styles.banner, styles.rejectedBanner]}>
           <Ionicons name="close-circle" size={20} color={colors.error[600]} />
-          <Text style={styles.bannerText}>Request rejected</Text>
+          <Text style={styles.bannerText}>{t('school.requestRejected')}</Text>
           <TouchableOpacity
             style={styles.retryButton}
             onPress={() => setShowEnrollModal(true)}
             activeOpacity={0.7}
           >
-            <Text style={styles.retryButtonText}>Try Again</Text>
+            <Text style={styles.retryButtonText}>{t('school.tryAgain')}</Text>
           </TouchableOpacity>
         </View>
       );
@@ -175,7 +176,7 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
         activeOpacity={0.8}
       >
         <Ionicons name="school-outline" size={20} color={colors.text.inverse} />
-        <Text style={styles.enrollButtonText}>Request Enrollment</Text>
+        <Text style={styles.enrollButtonText}>{t('school.requestEnrollment')}</Text>
       </TouchableOpacity>
     );
   };
@@ -191,7 +192,7 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
   if (!school) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>School not found</Text>
+        <Text style={styles.errorText}>{t('school.notFound')}</Text>
       </View>
     );
   }
@@ -233,7 +234,7 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
             activeOpacity={0.7}
           >
             <Text style={[styles.tabText, activeTab === 'instructors' && styles.activeTabText]}>
-              Instructors
+              {t('school.instructors')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -242,7 +243,7 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
             activeOpacity={0.7}
           >
             <Text style={[styles.tabText, activeTab === 'pricing' && styles.activeTabText]}>
-              Pricing
+              {t('school.pricing')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -271,13 +272,13 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
           {activeTab === 'instructors' && (
             <View style={styles.tabContent}>
               {instructors.length === 0 ? (
-                <Text style={styles.emptyText}>No instructors available</Text>
+                <Text style={styles.emptyText}>{t('school.noInstructors')}</Text>
               ) : (
                 instructors.map((instructor) => (
                   <View key={instructor.id} style={styles.instructorCard}>
                     <View style={styles.instructorInfo}>
                       <Text style={styles.instructorName}>
-                        {formatPersonName(instructor, 'Instructor')}
+                        {formatPersonName(instructor, t('myLessons.instructorFallback'))}
                       </Text>
                       {instructor.specialties.length > 0 && (
                         <Text style={styles.instructorSpecialties}>
@@ -294,7 +295,7 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
                       disabled={!enrollmentStatus?.canBook}
                       activeOpacity={0.7}
                     >
-                      <Text style={styles.bookButtonText}>Request</Text>
+                      <Text style={styles.bookButtonText}>{t('school.request')}</Text>
                     </TouchableOpacity>
                   </View>
                 ))
@@ -305,7 +306,7 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
           {activeTab === 'pricing' && (
             <View style={styles.tabContent}>
               {pricing.length === 0 ? (
-                <Text style={styles.emptyText}>No pricing information available</Text>
+                <Text style={styles.emptyText}>{t('school.noPricing')}</Text>
               ) : (
                 pricing.map((price) => (
                   <View key={price.id} style={styles.pricingCard}>
@@ -329,7 +330,7 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Request Enrollment</Text>
+              <Text style={styles.modalTitle}>{t('school.requestEnrollment')}</Text>
               <TouchableOpacity
                 onPress={() => {
                   setShowEnrollModal(false);
@@ -340,11 +341,11 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.modalSubtitle}>Tell the school why you'd like to enroll</Text>
+            <Text style={styles.modalSubtitle}>{t('school.modalSubtitle')}</Text>
 
             <TextInput
               style={styles.messageInput}
-              placeholder="I am interested in enrolling because..."
+              placeholder={t('school.modalPlaceholder')}
               placeholderTextColor={colors.neutral[400]}
               value={enrollMessage}
               onChangeText={setEnrollMessage}
@@ -362,7 +363,7 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
                 }}
                 activeOpacity={0.7}
               >
-                <Text style={styles.modalCancelText}>Cancel</Text>
+                <Text style={styles.modalCancelText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
@@ -377,7 +378,7 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
                 {enrolling ? (
                   <ActivityIndicator size="small" color={colors.text.inverse} />
                 ) : (
-                  <Text style={styles.modalSubmitText}>Send Request</Text>
+                  <Text style={styles.modalSubmitText}>{t('school.sendRequest')}</Text>
                 )}
               </TouchableOpacity>
             </View>

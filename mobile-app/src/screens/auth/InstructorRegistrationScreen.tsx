@@ -22,9 +22,11 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { getApiErrorMessage } from '../../services/api/ApiError';
+import { useI18n } from '../../context/LanguageContext';
 import { colors, typography, spacing, shadows } from '../../theme';
 
 export const InstructorRegistrationScreen = ({ navigation }: any) => {
+  const { t } = useI18n();
   const { register } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -49,17 +51,17 @@ export const InstructorRegistrationScreen = ({ navigation }: any) => {
       !licenseNumber.trim() ||
       !schoolCode.trim()
     ) {
-      Alert.alert('Required', 'Please fill in all fields');
+      Alert.alert(t('common.required'), t('auth.fillAllFields'));
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      Alert.alert(t('common.error'), t('auth.passwordsMismatch'));
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+      Alert.alert(t('common.error'), t('auth.passwordTooShort'));
       return;
     }
 
@@ -77,8 +79,8 @@ export const InstructorRegistrationScreen = ({ navigation }: any) => {
       });
     } catch (error) {
       Alert.alert(
-        'Registration Failed',
-        getApiErrorMessage(error, 'Please check your details and school code')
+        t('auth.registrationFailed'),
+        getApiErrorMessage(error, t('auth.checkDetailsAndCode'))
       );
     } finally {
       setLoading(false);
@@ -103,8 +105,8 @@ export const InstructorRegistrationScreen = ({ navigation }: any) => {
 
         <View style={styles.content}>
           <View style={styles.titleContainer}>
-            <Text style={styles.title}>Join Your School</Text>
-            <Text style={styles.subtitle}>Instructor account</Text>
+            <Text style={styles.title}>{t('auth.instructor.title')}</Text>
+            <Text style={styles.subtitle}>{t('auth.instructor.subtitle')}</Text>
           </View>
 
           <View style={styles.infoBox}>
@@ -119,11 +121,11 @@ export const InstructorRegistrationScreen = ({ navigation }: any) => {
             {/* Name Row */}
             <View style={styles.row}>
               <View style={[styles.inputGroup, styles.halfWidth]}>
-                <Text style={styles.label}>First Name</Text>
+                <Text style={styles.label}>{t('auth.firstName')}</Text>
                 <View style={styles.inputContainer}>
                   <TextInput
                     style={styles.input}
-                    placeholder="John"
+                    placeholder={t('auth.firstNamePlaceholder')}
                     placeholderTextColor={colors.neutral[400]}
                     value={firstName}
                     onChangeText={setFirstName}
@@ -133,11 +135,11 @@ export const InstructorRegistrationScreen = ({ navigation }: any) => {
               </View>
 
               <View style={[styles.inputGroup, styles.halfWidth]}>
-                <Text style={styles.label}>Last Name</Text>
+                <Text style={styles.label}>{t('auth.lastName')}</Text>
                 <View style={styles.inputContainer}>
                   <TextInput
                     style={styles.input}
-                    placeholder="Doe"
+                    placeholder={t('auth.lastNamePlaceholder')}
                     placeholderTextColor={colors.neutral[400]}
                     value={lastName}
                     onChangeText={setLastName}
@@ -148,7 +150,7 @@ export const InstructorRegistrationScreen = ({ navigation }: any) => {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email</Text>
+              <Text style={styles.label}>{t('auth.email')}</Text>
               <View style={styles.inputContainer}>
                 <Ionicons
                   name="mail-outline"
@@ -158,7 +160,7 @@ export const InstructorRegistrationScreen = ({ navigation }: any) => {
                 />
                 <TextInput
                   style={styles.input}
-                  placeholder="your@email.com"
+                  placeholder={t('auth.emailPlaceholder')}
                   placeholderTextColor={colors.neutral[400]}
                   value={email}
                   onChangeText={setEmail}
@@ -170,7 +172,7 @@ export const InstructorRegistrationScreen = ({ navigation }: any) => {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Password</Text>
+              <Text style={styles.label}>{t('auth.password')}</Text>
               <View style={styles.inputContainer}>
                 <Ionicons
                   name="lock-closed-outline"
@@ -180,7 +182,7 @@ export const InstructorRegistrationScreen = ({ navigation }: any) => {
                 />
                 <TextInput
                   style={styles.input}
-                  placeholder="Min. 6 characters"
+                  placeholder={t('auth.passwordMinPlaceholder')}
                   placeholderTextColor={colors.neutral[400]}
                   value={password}
                   onChangeText={setPassword}
@@ -200,7 +202,7 @@ export const InstructorRegistrationScreen = ({ navigation }: any) => {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Confirm Password</Text>
+              <Text style={styles.label}>{t('auth.confirmPassword')}</Text>
               <View style={styles.inputContainer}>
                 <Ionicons
                   name="lock-closed-outline"
@@ -210,7 +212,7 @@ export const InstructorRegistrationScreen = ({ navigation }: any) => {
                 />
                 <TextInput
                   style={styles.input}
-                  placeholder="Re-enter password"
+                  placeholder={t('auth.confirmPasswordPlaceholder')}
                   placeholderTextColor={colors.neutral[400]}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
@@ -230,7 +232,7 @@ export const InstructorRegistrationScreen = ({ navigation }: any) => {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Phone</Text>
+              <Text style={styles.label}>{t('auth.phone')}</Text>
               <View style={styles.inputContainer}>
                 <Ionicons
                   name="call-outline"
@@ -250,7 +252,7 @@ export const InstructorRegistrationScreen = ({ navigation }: any) => {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>License Number</Text>
+              <Text style={styles.label}>{t('auth.licenseNumber')}</Text>
               <View style={styles.inputContainer}>
                 <Ionicons
                   name="card-outline"
@@ -260,7 +262,7 @@ export const InstructorRegistrationScreen = ({ navigation }: any) => {
                 />
                 <TextInput
                   style={styles.input}
-                  placeholder="Instructor license number"
+                  placeholder={t('auth.licensePlaceholder')}
                   placeholderTextColor={colors.neutral[400]}
                   value={licenseNumber}
                   onChangeText={setLicenseNumber}
@@ -271,7 +273,7 @@ export const InstructorRegistrationScreen = ({ navigation }: any) => {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>School Code</Text>
+              <Text style={styles.label}>{t('auth.schoolCode')}</Text>
               <View style={styles.inputContainer}>
                 <Ionicons
                   name="key-outline"
@@ -301,14 +303,14 @@ export const InstructorRegistrationScreen = ({ navigation }: any) => {
                 <ActivityIndicator size="small" color={colors.text.inverse} />
               ) : (
                 <>
-                  <Text style={styles.buttonText}>Create Instructor Account</Text>
+                  <Text style={styles.buttonText}>{t('auth.createInstructorAccount')}</Text>
                   <Ionicons name="checkmark" size={20} color={colors.text.inverse} />
                 </>
               )}
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.skipLink}>
-              <Text style={styles.skipLinkText}>Already have an account? Sign in</Text>
+              <Text style={styles.skipLinkText}>{t('auth.alreadyHaveAccountSignIn')}</Text>
             </TouchableOpacity>
           </View>
         </View>

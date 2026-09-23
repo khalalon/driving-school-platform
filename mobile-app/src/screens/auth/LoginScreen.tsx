@@ -18,10 +18,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { LanguagePicker } from '../../components/LanguagePicker';
+import { useI18n } from '../../context/LanguageContext';
 import { getApiErrorMessage } from '../../services/api/ApiError';
 import { colors, typography, spacing, shadows } from '../../theme';
 
 export const LoginScreen = ({ navigation }: any) => {
+  const { t } = useI18n();
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -30,7 +32,7 @@ export const LoginScreen = ({ navigation }: any) => {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Required', 'Please enter email and password');
+      Alert.alert(t('common.required'), t('auth.missingCredentials'));
       return;
     }
 
@@ -38,7 +40,7 @@ export const LoginScreen = ({ navigation }: any) => {
       setLoading(true);
       await login(email.trim(), password);
     } catch (error) {
-      Alert.alert('Login Failed', getApiErrorMessage(error, 'Invalid credentials'));
+      Alert.alert(t('auth.loginFailed'), getApiErrorMessage(error, t('auth.invalidCredentials')));
     } finally {
       setLoading(false);
     }
@@ -60,15 +62,15 @@ export const LoginScreen = ({ navigation }: any) => {
           <View style={styles.iconContainer}>
             <Ionicons name="car-sport-outline" size={40} color={colors.primary[600]} />
           </View>
-          <Text style={styles.title}>Welcome Back</Text>
-          <Text style={styles.subtitle}>Sign in to continue</Text>
+          <Text style={styles.title}>{t('auth.login.title')}</Text>
+          <Text style={styles.subtitle}>{t('auth.login.subtitle')}</Text>
         </View>
 
         {/* Form */}
         <View style={styles.form}>
           {/* Email Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={styles.label}>{t('auth.email')}</Text>
             <View style={styles.inputContainer}>
               <Ionicons
                 name="mail-outline"
@@ -78,7 +80,7 @@ export const LoginScreen = ({ navigation }: any) => {
               />
               <TextInput
                 style={styles.input}
-                placeholder="your@email.com"
+                placeholder={t('auth.emailPlaceholder')}
                 placeholderTextColor={colors.neutral[400]}
                 value={email}
                 onChangeText={setEmail}
@@ -91,7 +93,7 @@ export const LoginScreen = ({ navigation }: any) => {
 
           {/* Password Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Password</Text>
+            <Text style={styles.label}>{t('auth.password')}</Text>
             <View style={styles.inputContainer}>
               <Ionicons
                 name="lock-closed-outline"
@@ -101,7 +103,7 @@ export const LoginScreen = ({ navigation }: any) => {
               />
               <TextInput
                 style={styles.input}
-                placeholder="Enter password"
+                placeholder={t('auth.passwordPlaceholder')}
                 placeholderTextColor={colors.neutral[400]}
                 value={password}
                 onChangeText={setPassword}
@@ -131,7 +133,7 @@ export const LoginScreen = ({ navigation }: any) => {
               <ActivityIndicator size="small" color={colors.text.inverse} />
             ) : (
               <>
-                <Text style={styles.primaryButtonText}>Sign In</Text>
+                <Text style={styles.primaryButtonText}>{t('auth.signIn')}</Text>
                 <Ionicons name="arrow-forward" size={20} color={colors.text.inverse} />
               </>
             )}
@@ -140,7 +142,7 @@ export const LoginScreen = ({ navigation }: any) => {
           {/* Divider */}
           <View style={styles.divider}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
+            <Text style={styles.dividerText}>{t('auth.or')}</Text>
             <View style={styles.dividerLine} />
           </View>
 
@@ -151,7 +153,7 @@ export const LoginScreen = ({ navigation }: any) => {
             activeOpacity={0.8}
           >
             <Ionicons name="person-add-outline" size={20} color={colors.primary[600]} />
-            <Text style={styles.secondaryButtonText}>Create Student Account</Text>
+            <Text style={styles.secondaryButtonText}>{t('auth.createStudent')}</Text>
           </TouchableOpacity>
 
           {/* Instructor Registration */}
@@ -161,7 +163,7 @@ export const LoginScreen = ({ navigation }: any) => {
             activeOpacity={0.8}
           >
             <Ionicons name="school-outline" size={20} color={colors.neutral[600]} />
-            <Text style={styles.tertiaryButtonText}>Register as Instructor</Text>
+            <Text style={styles.tertiaryButtonText}>{t('auth.registerInstructor')}</Text>
           </TouchableOpacity>
         </View>
       </View>

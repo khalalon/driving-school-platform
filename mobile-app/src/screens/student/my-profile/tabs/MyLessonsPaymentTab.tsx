@@ -11,10 +11,12 @@ import { getApiErrorMessage } from '../../../../services/api/ApiError';
 import { LessonHistory, paymentMethodLabel } from '../../../../models/Profile';
 import { lessonTypeLabel } from '../../../../models/Lesson';
 import { useSchoolCurrency } from '../../../../hooks/useSchoolCurrency';
+import { useI18n } from '../../../../context/LanguageContext';
 import { formatAmount, formatDate, formatDateTime } from '../../../../utils/format';
 import { colors, typography, spacing } from '../../../../theme';
 
 export const MyLessonsPaymentTab = ({ route }: any) => {
+  const { t } = useI18n();
   const { schoolId } = route.params;
   const currency = useSchoolCurrency(schoolId);
   const [loading, setLoading] = useState(true);
@@ -30,7 +32,7 @@ export const MyLessonsPaymentTab = ({ route }: any) => {
       const data = await studentSelfProfileService.getMyLessons(schoolId);
       setLessons(data);
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load lessons'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('myLessons.loadFailed')));
     } finally {
       setLoading(false);
     }
@@ -55,7 +57,7 @@ export const MyLessonsPaymentTab = ({ route }: any) => {
             ]}
           >
             <Text style={styles.statusText}>
-              {item.attended ? 'Attended' : 'Missed — not billed'}
+              {item.attended ? t('profile.attended') : t('profile.missedNotBilled')}
             </Text>
           </View>
         )}
@@ -78,7 +80,7 @@ export const MyLessonsPaymentTab = ({ route }: any) => {
       {/* Feedback & Rating */}
       {item.feedback && (
         <View style={styles.feedbackContainer}>
-          <Text style={styles.feedbackLabel}>Feedback:</Text>
+          <Text style={styles.feedbackLabel}>{t('profile.feedback')}</Text>
           <Text style={styles.feedbackText}>{item.feedback}</Text>
         </View>
       )}
@@ -118,10 +120,10 @@ export const MyLessonsPaymentTab = ({ route }: any) => {
             />
             <Text style={styles.paymentLabelText}>
               {item.attended === false && !item.paid
-                ? 'Not billed'
+                ? t('profile.notBilled')
                 : item.paid
-                  ? 'Paid'
-                  : 'Pending Payment'}
+                  ? t('profile.paid')
+                  : t('profile.pendingPayment')}
             </Text>
           </View>
           {(item.amount !== null || item.price !== null) && (
@@ -137,8 +139,8 @@ export const MyLessonsPaymentTab = ({ route }: any) => {
         </View>
         {item.paid && item.paymentDate && (
           <Text style={styles.paymentDate}>
-            Paid on {formatDate(item.paymentDate)}
-            {item.paymentMethod === 'credit' ? ' with your credit' : ''}
+            {t('profile.paidOn', { date: formatDate(item.paymentDate) })}
+            {item.paymentMethod === 'credit' ? t('profile.withYourCredit') : ''}
             {item.paymentMethod && item.paymentMethod !== 'credit'
               ? ` (${paymentMethodLabel(item.paymentMethod)})`
               : ''}
@@ -146,11 +148,11 @@ export const MyLessonsPaymentTab = ({ route }: any) => {
         )}
         {!item.paid && item.creditApplied > 0 && (
           <Text style={styles.paymentDate}>
-            Credit applied: {formatAmount(item.creditApplied, currency)}
+            {t('profile.creditApplied', { amount: formatAmount(item.creditApplied, currency) })}
           </Text>
         )}
         {item.attended === false && (item.paid || item.creditApplied > 0) && (
-          <Text style={styles.paymentDate}>Your prepayment was returned to your credit</Text>
+          <Text style={styles.paymentDate}>{t('profile.refundedAsCredit')}</Text>
         )}
       </View>
     </View>
@@ -168,7 +170,7 @@ export const MyLessonsPaymentTab = ({ route }: any) => {
     return (
       <View style={styles.centerContainer}>
         <Ionicons name="calendar-outline" size={48} color={colors.text.tertiary} />
-        <Text style={styles.emptyText}>No lessons recorded yet</Text>
+        <Text style={styles.emptyText}>{t('profile.noLessons')}</Text>
       </View>
     );
   }

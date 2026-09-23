@@ -31,22 +31,24 @@ import {
   paymentNote,
 } from '../../models/Lesson';
 import { useSchoolCurrency } from '../../hooks/useSchoolCurrency';
+import { useI18n } from '../../context/LanguageContext';
+import { TranslationKey } from '../../i18n';
 import { formatAmount, formatPersonName, formatTime } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
 
 type FilterType = 'pending' | 'upcoming' | 'completed' | 'closed';
 
-const FILTERS: { key: FilterType; label: string; statuses: LessonStatus[] }[] = [
-  { key: 'pending', label: 'Pending', statuses: [LessonStatus.PENDING] },
-  { key: 'upcoming', label: 'Upcoming', statuses: [LessonStatus.SCHEDULED] },
+const FILTERS: { key: FilterType; labelKey: TranslationKey; statuses: LessonStatus[] }[] = [
+  { key: 'pending', labelKey: 'filter.pending', statuses: [LessonStatus.PENDING] },
+  { key: 'upcoming', labelKey: 'filter.upcoming', statuses: [LessonStatus.SCHEDULED] },
   {
     key: 'completed',
-    label: 'Completed',
+    labelKey: 'filter.completed',
     statuses: [LessonStatus.COMPLETED],
   },
   {
     key: 'closed',
-    label: 'Closed',
+    labelKey: 'filter.closed',
     statuses: [LessonStatus.CANCELLED, LessonStatus.REJECTED],
   },
 ];
@@ -58,6 +60,7 @@ const lessonDateOf = (lesson: Lesson): Date | null => {
 };
 
 export const MyLessonsScreen = ({ navigation }: any) => {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -78,7 +81,7 @@ export const MyLessonsScreen = ({ navigation }: any) => {
       const data = await lessonService.getMyLessons();
       setLessons(data);
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load lessons'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('myLessons.loadFailed')));
     } finally {
       setLoading(false);
     }
@@ -93,14 +96,12 @@ export const MyLessonsScreen = ({ navigation }: any) => {
   const handleCancelLesson = (lesson: Lesson) => {
     const isRequest = lesson.status === LessonStatus.PENDING;
     Alert.alert(
-      isRequest ? 'Cancel Request' : 'Cancel Lesson',
-      isRequest
-        ? 'Are you sure you want to withdraw this lesson request?'
-        : 'Are you sure you want to cancel this lesson?',
+      isRequest ? t('myLessons.withdrawTitle') : t('myLessons.cancelTitle'),
+      isRequest ? t('myLessons.withdrawConfirm') : t('myLessons.cancelConfirm'),
       [
-        { text: 'No', style: 'cancel' },
+        { text: t('home.cancelNo'), style: 'cancel' },
         {
-          text: 'Yes, Cancel',
+          text: t('home.cancelYes'),
           style: 'destructive',
           onPress: () => confirmCancelLesson(lesson.id),
         },
@@ -111,22 +112,19 @@ export const MyLessonsScreen = ({ navigation }: any) => {
   const confirmCancelLesson = async (lessonId: string) => {
     try {
       await lessonService.cancelLesson(lessonId);
-      Alert.alert('Success', 'Lesson cancelled successfully');
+      Alert.alert(t('common.success'), t('myLessons.cancelled'));
       loadLessons();
     } catch (error) {
       // Fenêtre de 24 h (D-24) contrôlée par le serveur : le bouton n'est qu'un confort
       if (getApiErrorCode(error) === 'CANCEL_WINDOW_CLOSED') {
         Alert.alert(
-          'Too late to cancel',
-          getApiErrorMessage(
-            error,
-            `A lesson can only be cancelled up to ${LESSON_CANCEL_HOURS} hours before it starts. Please contact your instructor.`
-          )
+          t('home.tooLateTitle'),
+          getApiErrorMessage(error, t('home.tooLateText', { hours: LESSON_CANCEL_HOURS }))
         );
         loadLessons();
         return;
       }
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to cancel lesson'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('home.cancelFailed')));
     }
   };
 
@@ -177,18 +175,18 @@ export const MyLessonsScreen = ({ navigation }: any) => {
               <Ionicons name="person-outline" size={16} color={colors.text.tertiary} />
               <Text style={styles.instructorText}>
                 {item.instructor
-                  ? formatPersonName(item.instructor, 'Instructor')
+                  ? formatPersonName(item.instructor, t('myLessons.instructorFallback'))
                   : isPending
-                    ? 'Awaiting an instructor'
-                    : 'No instructor'}
+                    ? t('myLessons.awaitingInstructor')
+                    : t('myLessons.noInstructor')}
               </Text>
             </View>
             <View style={styles.timeRow}>
               <Ionicons name="time-outline" size={16} color={colors.text.tertiary} />
               <Text style={styles.timeText}>
-                {isPending ? 'Requested: ' : ''}
+                {isPending ? t('myLessons.requestedPrefix') : ''}
                 {formatTime(item.scheduledDate ?? item.requestedDate)}
-                {item.durationMinutes ? ` · ${item.durationMinutes} min` : ''}
+                {item.durationMinutes ? ` · ${t('format.minutes', { count: item.durationMinutes })}` : ''}
               </Text>
             </View>
           </View>
@@ -207,13 +205,13 @@ export const MyLessonsScreen = ({ navigation }: any) => {
             <Text style={styles.priceText}>{formatAmount(item.price, currency)}</Text>
             <View style={[styles.paidBadge, item.paid ? styles.paidBadgeOn : styles.paidBadgeOff]}>
               <Text style={[styles.paidText, item.paid ? styles.paidTextOn : styles.paidTextOff]}>
-                {item.paid ? 'Paid' : 'Unpaid'}
+                {item.paid ? t('myLessons.paid') : t('myLessons.unpaid')}
               </Text>
             </View>
           </View>
         )}
         {paymentNote(item) === 'paid-with-credit' && (
-          <Text style={styles.paymentNote}>Paid with your credit</Text>
+          <Text style={styles.paymentNote}>{t('myLessons.paidWithCredit')}</Text>
         )}
         {paymentNote(item) === 'credit-applied' && (
           <Text style={styles.paymentNote}>
@@ -222,12 +220,12 @@ export const MyLessonsScreen = ({ navigation }: any) => {
           </Text>
         )}
         {paymentNote(item) === 'refunded-as-credit' && (
-          <Text style={styles.paymentNote}>Your payment was returned to your credit</Text>
+          <Text style={styles.paymentNote}>{t('myLessons.refundedAsCredit')}</Text>
         )}
         {item.status === LessonStatus.COMPLETED && item.attended === false && (
           <View style={styles.reasonBox}>
             <Ionicons name="alert-circle-outline" size={18} color={colors.error[600]} />
-            <Text style={styles.reasonText}>Marked absent — this lesson is not billed</Text>
+            <Text style={styles.reasonText}>{t('myLessons.absentNotBilled')}</Text>
           </View>
         )}
 
@@ -253,7 +251,7 @@ export const MyLessonsScreen = ({ navigation }: any) => {
           >
             <Ionicons name="close-circle-outline" size={20} color={colors.error[600]} />
             <Text style={styles.cancelButtonText}>
-              {isPending ? 'Withdraw Request' : 'Cancel Lesson'}
+              {isPending ? t('myLessons.withdrawAction') : t('myLessons.cancelAction')}
             </Text>
           </TouchableOpacity>
         ) : (
@@ -274,11 +272,13 @@ export const MyLessonsScreen = ({ navigation }: any) => {
       <View style={styles.emptyIconContainer}>
         <Ionicons name="calendar-outline" size={64} color={colors.neutral[300]} />
       </View>
-      <Text style={styles.emptyTitle}>No {activeFilter.label.toLowerCase()} lessons</Text>
+      <Text style={styles.emptyTitle}>
+        {t('myLessons.emptyTitle', { filter: t(activeFilter.labelKey) })}
+      </Text>
       <Text style={styles.emptyText}>
         {filter === 'upcoming' || filter === 'pending'
-          ? 'Request a lesson from your school to get started'
-          : `You don't have any ${activeFilter.label.toLowerCase()} lessons yet`}
+          ? t('myLessons.emptyRequest')
+          : t('myLessons.emptyOther')}
       </Text>
       {(filter === 'upcoming' || filter === 'pending') && (
         <TouchableOpacity
@@ -287,7 +287,7 @@ export const MyLessonsScreen = ({ navigation }: any) => {
           activeOpacity={0.8}
         >
           <Ionicons name="add-circle-outline" size={20} color={colors.text.inverse} />
-          <Text style={styles.bookButtonText}>Request Lesson</Text>
+          <Text style={styles.bookButtonText}>{t('myLessons.requestLesson')}</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -305,7 +305,7 @@ export const MyLessonsScreen = ({ navigation }: any) => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Lessons</Text>
+        <Text style={styles.headerTitle}>{t('myLessons.title')}</Text>
       </View>
 
       {/* Filter Tabs */}
@@ -318,7 +318,7 @@ export const MyLessonsScreen = ({ navigation }: any) => {
             activeOpacity={0.7}
           >
             <Text style={[styles.filterTabText, filter === tab.key && styles.filterTabTextActive]}>
-              {tab.label}
+              {t(tab.labelKey)}
             </Text>
           </TouchableOpacity>
         ))}

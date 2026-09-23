@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { examService } from '../../services/api/ExamService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
+import { useI18n } from '../../context/LanguageContext';
 import { examTypeLabel, ExamType } from '../../models/Exam';
 import { colors, typography, spacing, shadows } from '../../theme';
 
@@ -31,6 +32,7 @@ const defaultPreferredDate = (): Date => {
 };
 
 export const RequestExamScreen = ({ navigation }: any) => {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
   const [examType, setExamType] = useState<ExamType>(ExamType.THEORY);
   const [date, setDate] = useState(defaultPreferredDate);
@@ -55,7 +57,7 @@ export const RequestExamScreen = ({ navigation }: any) => {
 
   const handleSubmit = async () => {
     if (!message.trim()) {
-      Alert.alert('Required', 'Please add a message about your preparation');
+      Alert.alert(t('common.required'), t('requestExam.messageRequired'));
       return;
     }
 
@@ -65,7 +67,7 @@ export const RequestExamScreen = ({ navigation }: any) => {
 
     // X2 exige une date à venir : on le dit ici plutôt que de laisser remonter l'erreur du serveur
     if (preferredDateTime.getTime() <= Date.now()) {
-      Alert.alert('Invalid Date', 'The preferred date must be in the future');
+      Alert.alert(t('book.invalidDate'), t('requestExam.dateMustBeFuture'));
       return;
     }
 
@@ -79,18 +81,14 @@ export const RequestExamScreen = ({ navigation }: any) => {
         message: message.trim(),
       });
 
-      Alert.alert(
-        'Request Sent!',
-        'Your exam request has been submitted. The instructor will review and schedule it for you.',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.navigate('StudentTabs', { screen: 'MyExams' }),
-          },
-        ]
-      );
+      Alert.alert(t('school.requestSent'), t('requestExam.requestSentText'), [
+        {
+          text: 'OK',
+          onPress: () => navigation.navigate('StudentTabs', { screen: 'MyExams' }),
+        },
+      ]);
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to submit request'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('requestExam.requestFailed')));
     } finally {
       setLoading(false);
     }
@@ -114,17 +112,14 @@ export const RequestExamScreen = ({ navigation }: any) => {
         <View style={styles.infoCard}>
           <Ionicons name="information-circle-outline" size={24} color={colors.primary[600]} />
           <View style={styles.infoContent}>
-            <Text style={styles.infoTitle}>How it works</Text>
-            <Text style={styles.infoText}>
-              Submit your exam request with preferred date and time. The instructor will review and
-              confirm the actual schedule.
-            </Text>
+            <Text style={styles.infoTitle}>{t('book.howItWorks')}</Text>
+            <Text style={styles.infoText}>{t('requestExam.howItWorksText')}</Text>
           </View>
         </View>
 
         {/* Exam Type Selection */}
         <View style={styles.section}>
-          <Text style={styles.label}>Exam Type</Text>
+          <Text style={styles.label}>{t('requestExam.examType')}</Text>
           <View style={styles.typeContainer}>
             <TouchableOpacity
               style={[styles.typeButton, examType === ExamType.THEORY && styles.typeButtonActive]}
@@ -175,7 +170,7 @@ export const RequestExamScreen = ({ navigation }: any) => {
 
         {/* Preferred Date */}
         <View style={styles.section}>
-          <Text style={styles.label}>Preferred Date</Text>
+          <Text style={styles.label}>{t('requestExam.preferredDate')}</Text>
           <TouchableOpacity
             style={styles.dateButton}
             onPress={() => setShowDatePicker(true)}
@@ -194,14 +189,12 @@ export const RequestExamScreen = ({ navigation }: any) => {
               minimumDate={new Date()}
             />
           )}
-          <Text style={styles.helperText}>
-            This is your preferred date - the instructor will confirm the actual schedule
-          </Text>
+          <Text style={styles.helperText}>{t('requestExam.dateHelper')}</Text>
         </View>
 
         {/* Preferred Time */}
         <View style={styles.section}>
-          <Text style={styles.label}>Preferred Time</Text>
+          <Text style={styles.label}>{t('requestExam.preferredTime')}</Text>
           <TouchableOpacity
             style={styles.dateButton}
             onPress={() => setShowTimePicker(true)}
@@ -228,10 +221,10 @@ export const RequestExamScreen = ({ navigation }: any) => {
 
         {/* Message */}
         <View style={styles.section}>
-          <Text style={styles.label}>Message</Text>
+          <Text style={styles.label}>{t('requestExam.message')}</Text>
           <TextInput
             style={styles.messageInput}
-            placeholder="Tell us about your preparation and readiness..."
+            placeholder={t('requestExam.messagePlaceholder')}
             placeholderTextColor={colors.neutral[400]}
             value={message}
             onChangeText={setMessage}
@@ -239,9 +232,7 @@ export const RequestExamScreen = ({ navigation }: any) => {
             numberOfLines={4}
             textAlignVertical="top"
           />
-          <Text style={styles.helperText}>
-            Let the instructor know about your progress and any special requirements
-          </Text>
+          <Text style={styles.helperText}>{t('requestExam.messageHelper')}</Text>
         </View>
 
         {/* Submit Button */}
@@ -255,7 +246,7 @@ export const RequestExamScreen = ({ navigation }: any) => {
             <ActivityIndicator size="small" color={colors.text.inverse} />
           ) : (
             <>
-              <Text style={styles.submitButtonText}>Send Request</Text>
+              <Text style={styles.submitButtonText}>{t('book.sendRequest')}</Text>
               <Ionicons name="send-outline" size={20} color={colors.text.inverse} />
             </>
           )}

@@ -23,6 +23,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { lessonService } from '../../services/api/LessonService';
 import { enrollmentService } from '../../services/api/EnrollmentService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
+import { useI18n } from '../../context/LanguageContext';
 import { lessonTypeLabel, LESSON_TYPES, LessonType } from '../../models/Lesson';
 import { colors, typography, spacing, shadows } from '../../theme';
 
@@ -41,6 +42,7 @@ const defaultRequestedDate = (): Date => {
 };
 
 export const BookLessonScreen = ({ navigation, route }: any) => {
+  const { t } = useI18n();
   const { schoolId, preferredInstructorId, instructorName } = route.params;
 
   const [loading, setLoading] = useState(false);
@@ -64,16 +66,14 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
       const status = await enrollmentService.checkEnrollmentStatus(schoolId);
 
       if (!status.canBook) {
-        Alert.alert(
-          'Enrollment Required',
-          'You must be enrolled in this school to request lessons.',
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
-        );
+        Alert.alert(t('school.enrollmentRequired'), t('school.enrollmentRequiredLesson'), [
+          { text: 'OK', onPress: () => navigation.goBack() },
+        ]);
       }
 
       setCanBook(status.canBook);
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to check enrollment status'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('book.checkFailed')));
       navigation.goBack();
     } finally {
       setCheckingEnrollment(false);
@@ -100,7 +100,7 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
 
   const handleRequestLesson = async () => {
     if (requestedDate.getTime() <= Date.now()) {
-      Alert.alert('Invalid Date', 'The requested date must be in the future');
+      Alert.alert(t('book.invalidDate'), t('book.dateMustBeFuture'));
       return;
     }
 
@@ -115,18 +115,14 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
         notes: notes.trim() || undefined,
       });
 
-      Alert.alert(
-        'Request Sent!',
-        'Your lesson request has been submitted. An instructor will review and schedule it soon.',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.navigate('StudentTabs', { screen: 'MyLessons' }),
-          },
-        ]
-      );
+      Alert.alert(t('school.requestSent'), t('book.requestSentText'), [
+        {
+          text: 'OK',
+          onPress: () => navigation.navigate('StudentTabs', { screen: 'MyLessons' }),
+        },
+      ]);
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to request lesson'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('book.requestFailed')));
     } finally {
       setLoading(false);
     }
@@ -136,7 +132,7 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary[600]} />
-        <Text style={styles.loadingText}>Checking enrollment...</Text>
+        <Text style={styles.loadingText}>{t('book.checkingEnrollment')}</Text>
       </View>
     );
   }
@@ -163,17 +159,14 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
         <View style={styles.infoCard}>
           <Ionicons name="information-circle-outline" size={24} color={colors.primary[600]} />
           <View style={styles.infoContent}>
-            <Text style={styles.infoTitle}>How it works</Text>
-            <Text style={styles.infoText}>
-              Choose a lesson type and the date you would like. Your request goes to the school: the
-              instructor who approves it confirms the final date and time.
-            </Text>
+            <Text style={styles.infoTitle}>{t('book.howItWorks')}</Text>
+            <Text style={styles.infoText}>{t('book.howItWorksText')}</Text>
           </View>
         </View>
 
         {/* Lesson Type */}
         <View style={styles.section}>
-          <Text style={styles.label}>Lesson Type</Text>
+          <Text style={styles.label}>{t('book.lessonType')}</Text>
           <View style={styles.typeContainer}>
             {LESSON_TYPES.map((type) => {
               const active = lessonType === type;
@@ -200,7 +193,7 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
 
         {/* Requested Date */}
         <View style={styles.section}>
-          <Text style={styles.label}>Requested Date</Text>
+          <Text style={styles.label}>{t('book.requestedDate')}</Text>
           <View style={styles.dateRow}>
             <TouchableOpacity
               style={[styles.dateButton, styles.dateButtonGrow]}
@@ -243,21 +236,21 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
               onDismiss={() => setShowTimePicker(false)}
             />
           )}
-          <Text style={styles.helperText}>
-            This is the date you would like — the instructor confirms the actual schedule
-          </Text>
+          <Text style={styles.helperText}>{t('book.dateHelper')}</Text>
         </View>
 
         {/* Preferred Instructor (optional) */}
         <View style={styles.section}>
-          <Text style={styles.label}>Preferred Instructor (Optional)</Text>
+          <Text style={styles.label}>{t('book.preferredInstructor')}</Text>
           {instructorId ? (
             <View style={styles.instructorCard}>
               <View style={styles.instructorIconContainer}>
                 <Ionicons name="person-outline" size={24} color={colors.primary[600]} />
               </View>
               <View style={styles.instructorInfo}>
-                <Text style={styles.instructorName}>{instructorName || 'Instructor'}</Text>
+                <Text style={styles.instructorName}>
+                  {instructorName || t('myLessons.instructorFallback')}
+                </Text>
                 <Text style={styles.instructorHint}>
                   Preference only, any instructor may approve
                 </Text>
@@ -277,7 +270,7 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
                 <Ionicons name="people-outline" size={24} color={colors.text.tertiary} />
               </View>
               <View style={styles.instructorInfo}>
-                <Text style={styles.instructorName}>No preference</Text>
+                <Text style={styles.instructorName}>{t('book.noPreference')}</Text>
                 <Text style={styles.instructorHint}>
                   Pick an instructor from the school page to set one
                 </Text>
@@ -288,10 +281,10 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
 
         {/* Notes */}
         <View style={styles.section}>
-          <Text style={styles.label}>Additional Notes (Optional)</Text>
+          <Text style={styles.label}>{t('book.notes')}</Text>
           <TextInput
             style={styles.notesInput}
-            placeholder="Preferred times, special requests, etc..."
+            placeholder={t('book.notesPlaceholder')}
             placeholderTextColor={colors.neutral[400]}
             value={notes}
             onChangeText={setNotes}
@@ -312,7 +305,7 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
             <ActivityIndicator size="small" color={colors.text.inverse} />
           ) : (
             <>
-              <Text style={styles.submitButtonText}>Send Request</Text>
+              <Text style={styles.submitButtonText}>{t('book.sendRequest')}</Text>
               <Ionicons name="send-outline" size={20} color={colors.text.inverse} />
             </>
           )}

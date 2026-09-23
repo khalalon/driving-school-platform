@@ -34,19 +34,26 @@ import {
   examStatusLabel,
 } from '../../models/Exam';
 import { useSchoolCurrency } from '../../hooks/useSchoolCurrency';
+import { useI18n } from '../../context/LanguageContext';
+import { TranslationKey } from '../../i18n';
 import { formatAmount, formatDate, formatTime } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
 
 type FilterType = 'pending' | 'scheduled' | 'completed' | 'closed';
 
-const FILTERS: { key: FilterType; label: string; statuses: ExamStatus[] }[] = [
-  { key: 'pending', label: 'Pending', statuses: [ExamStatus.PENDING] },
-  { key: 'scheduled', label: 'Scheduled', statuses: [ExamStatus.SCHEDULED] },
-  { key: 'completed', label: 'Completed', statuses: [ExamStatus.COMPLETED] },
-  { key: 'closed', label: 'Closed', statuses: [ExamStatus.CANCELLED, ExamStatus.REJECTED] },
+const FILTERS: { key: FilterType; labelKey: TranslationKey; statuses: ExamStatus[] }[] = [
+  { key: 'pending', labelKey: 'filter.pending', statuses: [ExamStatus.PENDING] },
+  { key: 'scheduled', labelKey: 'filter.scheduled', statuses: [ExamStatus.SCHEDULED] },
+  { key: 'completed', labelKey: 'filter.completed', statuses: [ExamStatus.COMPLETED] },
+  {
+    key: 'closed',
+    labelKey: 'filter.closed',
+    statuses: [ExamStatus.CANCELLED, ExamStatus.REJECTED],
+  },
 ];
 
 export const MyExamsScreen = ({ navigation }: any) => {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [exams, setExams] = useState<Exam[]>([]);
@@ -67,7 +74,7 @@ export const MyExamsScreen = ({ navigation }: any) => {
       const data = await examService.getMyExams();
       setExams(data);
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load exams'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('myExams.loadFailed')));
     } finally {
       setLoading(false);
     }
@@ -125,7 +132,9 @@ export const MyExamsScreen = ({ navigation }: any) => {
           </View>
 
           <View style={styles.examInfo}>
-            <Text style={styles.examType}>{examTypeLabel(item.type) ?? item.type} Exam</Text>
+            <Text style={styles.examType}>
+              {t('myExams.examSuffix', { type: examTypeLabel(item.type) })}
+            </Text>
 
             {/* Status Badge */}
             <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
@@ -151,12 +160,12 @@ export const MyExamsScreen = ({ navigation }: any) => {
           <View style={styles.requestInfo}>
             <View style={styles.infoRow}>
               <Ionicons name="calendar-outline" size={16} color={colors.text.tertiary} />
-              <Text style={styles.infoLabel}>Preferred Date:</Text>
+              <Text style={styles.infoLabel}>{t('myExams.preferredDate')}</Text>
               <Text style={styles.infoText}>{formatDate(item.preferredDate)}</Text>
             </View>
             {item.message && (
               <View style={styles.messageBox}>
-                <Text style={styles.messageLabel}>Your Message:</Text>
+                <Text style={styles.messageLabel}>{t('myExams.yourMessage')}</Text>
                 <Text style={styles.messageText}>{item.message}</Text>
               </View>
             )}
@@ -195,7 +204,7 @@ export const MyExamsScreen = ({ navigation }: any) => {
             {item.score !== null && (
               <View style={styles.scoreBox}>
                 <View style={styles.scoreHeader}>
-                  <Text style={styles.scoreLabel}>Score</Text>
+                  <Text style={styles.scoreLabel}>{t('myExams.score')}</Text>
                   <Text style={styles.scoreValue}>{item.score}/100</Text>
                 </View>
               </View>
@@ -203,7 +212,7 @@ export const MyExamsScreen = ({ navigation }: any) => {
 
             {item.notes && (
               <View style={styles.notesBox}>
-                <Text style={styles.notesLabel}>Instructor Notes:</Text>
+                <Text style={styles.notesLabel}>{t('myExams.instructorNotes')}</Text>
                 <Text style={styles.notesText}>{item.notes}</Text>
               </View>
             )}
@@ -229,11 +238,11 @@ export const MyExamsScreen = ({ navigation }: any) => {
           <View style={styles.paymentRow}>
             <Ionicons name="cash-outline" size={16} color={colors.text.secondary} />
             <Text style={styles.paymentText}>
-              {item.amount !== null ? formatAmount(item.amount, currency) : 'Exam fee'}
+              {item.amount !== null ? formatAmount(item.amount, currency) : t('myExams.examFee')}
             </Text>
             <View style={[styles.paidBadge, item.paid ? styles.paidBadgeOn : styles.paidBadgeOff]}>
               <Text style={[styles.paidText, item.paid ? styles.paidTextOn : styles.paidTextOff]}>
-                {item.paid ? 'Paid' : 'Unpaid'}
+                {item.paid ? t('myLessons.paid') : t('myLessons.unpaid')}
               </Text>
             </View>
           </View>
@@ -247,15 +256,17 @@ export const MyExamsScreen = ({ navigation }: any) => {
       <View style={styles.emptyIconContainer}>
         <Ionicons name="trophy-outline" size={64} color={colors.neutral[300]} />
       </View>
-      <Text style={styles.emptyTitle}>No {activeFilter.label.toLowerCase()} exams</Text>
+      <Text style={styles.emptyTitle}>
+        {t('myExams.emptyTitle', { filter: t(activeFilter.labelKey) })}
+      </Text>
       <Text style={styles.emptyText}>
         {filter === 'pending'
-          ? 'Request your first exam to get started'
+          ? t('myExams.emptyPending')
           : filter === 'scheduled'
-            ? 'No upcoming exams scheduled yet'
+            ? t('myExams.emptyScheduled')
             : filter === 'completed'
-              ? 'Your completed exams will appear here'
-              : 'Rejected or cancelled exams will appear here'}
+              ? t('myExams.emptyCompleted')
+              : t('myExams.emptyClosed')}
       </Text>
       {filter === 'pending' && (
         <TouchableOpacity
@@ -264,7 +275,7 @@ export const MyExamsScreen = ({ navigation }: any) => {
           activeOpacity={0.8}
         >
           <Ionicons name="add-circle-outline" size={20} color={colors.text.inverse} />
-          <Text style={styles.requestButtonText}>Request Exam</Text>
+          <Text style={styles.requestButtonText}>{t('myExams.requestExam')}</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -282,7 +293,7 @@ export const MyExamsScreen = ({ navigation }: any) => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Exams</Text>
+        <Text style={styles.headerTitle}>{t('myExams.title')}</Text>
       </View>
 
       {/* Filter Tabs */}
@@ -295,7 +306,7 @@ export const MyExamsScreen = ({ navigation }: any) => {
             activeOpacity={0.7}
           >
             <Text style={[styles.filterTabText, filter === tab.key && styles.filterTabTextActive]}>
-              {tab.label}
+              {t(tab.labelKey)}
             </Text>
           </TouchableOpacity>
         ))}

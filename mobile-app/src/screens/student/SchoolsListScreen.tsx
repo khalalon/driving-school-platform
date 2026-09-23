@@ -17,10 +17,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { schoolService } from '../../services/api/SchoolService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
+import { useI18n } from '../../context/LanguageContext';
 import { School } from '../../models/School';
 import { colors, typography, spacing, shadows } from '../../theme';
 
 export const SchoolsListScreen = ({ navigation }: any) => {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [schools, setSchools] = useState<School[]>([]);
@@ -35,7 +37,7 @@ export const SchoolsListScreen = ({ navigation }: any) => {
       const data = await schoolService.getAllSchools();
       setSchools(data);
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load schools'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('schools.loadFailed')));
     } finally {
       setLoading(false);
     }
@@ -89,8 +91,8 @@ export const SchoolsListScreen = ({ navigation }: any) => {
       <View style={styles.emptyIconContainer}>
         <Ionicons name="business-outline" size={64} color={colors.neutral[300]} />
       </View>
-      <Text style={styles.emptyTitle}>No Schools Found</Text>
-      <Text style={styles.emptyText}>Check back later for driving schools</Text>
+      <Text style={styles.emptyTitle}>{t('schools.emptyTitle')}</Text>
+      <Text style={styles.emptyText}>{t('schools.emptyText')}</Text>
     </View>
   );
 
@@ -113,7 +115,7 @@ export const SchoolsListScreen = ({ navigation }: any) => {
         >
           <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Driving Schools</Text>
+        <Text style={styles.headerTitle}>{t('schools.title')}</Text>
       </View>
 
       {/* Schools List */}

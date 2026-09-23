@@ -17,11 +17,13 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { enrollmentService } from '../../services/api/EnrollmentService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
+import { useI18n } from '../../context/LanguageContext';
 import { EnrollmentRequest, EnrollmentStatus } from '../../models/Enrollment';
 import { formatDate } from '../../utils/format';
 import { colors, typography, spacing, shadows } from '../../theme';
 
 export const MyEnrollmentRequestsScreen = ({ navigation }: any) => {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [requests, setRequests] = useState<EnrollmentRequest[]>([]);
@@ -36,7 +38,7 @@ export const MyEnrollmentRequestsScreen = ({ navigation }: any) => {
       const data = await enrollmentService.getMyRequests();
       setRequests(data);
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load enrollment requests'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('enrollmentRequests.loadFailed')));
     } finally {
       setLoading(false);
     }
@@ -55,21 +57,21 @@ export const MyEnrollmentRequestsScreen = ({ navigation }: any) => {
           icon: 'time-outline',
           color: colors.warning[500],
           bg: colors.warning[50],
-          text: 'Pending',
+          text: t('enrollmentRequests.pending'),
         };
       case EnrollmentStatus.APPROVED:
         return {
           icon: 'checkmark-circle',
           color: colors.success[500],
           bg: colors.success[50],
-          text: 'Approved',
+          text: t('enrollmentRequests.approved'),
         };
       case EnrollmentStatus.REJECTED:
         return {
           icon: 'close-circle',
           color: colors.error[500],
           bg: colors.error[50],
-          text: 'Rejected',
+          text: t('enrollmentRequests.rejected'),
         };
     }
   };
@@ -99,7 +101,7 @@ export const MyEnrollmentRequestsScreen = ({ navigation }: any) => {
 
         {item.message && (
           <View style={styles.messageBox}>
-            <Text style={styles.messageLabel}>Your message:</Text>
+            <Text style={styles.messageLabel}>{t('enrollmentRequests.yourMessage')}</Text>
             <Text style={styles.messageText}>{item.message}</Text>
           </View>
         )}
@@ -108,7 +110,7 @@ export const MyEnrollmentRequestsScreen = ({ navigation }: any) => {
           <View style={styles.rejectionBox}>
             <Ionicons name="information-circle-outline" size={20} color={colors.error[600]} />
             <View style={styles.rejectionContent}>
-              <Text style={styles.rejectionLabel}>Reason:</Text>
+              <Text style={styles.rejectionLabel}>{t('enrollmentRequests.reason')}</Text>
               <Text style={styles.rejectionText}>{item.rejectionReason}</Text>
             </View>
           </View>
@@ -121,7 +123,7 @@ export const MyEnrollmentRequestsScreen = ({ navigation }: any) => {
             onPress={() => navigation.navigate('SchoolDetail', { schoolId: item.schoolId })}
             activeOpacity={0.7}
           >
-            <Text style={styles.viewButtonText}>View School</Text>
+            <Text style={styles.viewButtonText}>{t('enrollmentRequests.viewSchool')}</Text>
             <Ionicons name="arrow-forward" size={16} color={colors.primary[600]} />
           </TouchableOpacity>
         </View>
@@ -134,15 +136,15 @@ export const MyEnrollmentRequestsScreen = ({ navigation }: any) => {
       <View style={styles.emptyIconContainer}>
         <Ionicons name="document-text-outline" size={64} color={colors.neutral[300]} />
       </View>
-      <Text style={styles.emptyTitle}>No Enrollment Requests</Text>
-      <Text style={styles.emptyText}>Browse schools and request enrollment to get started</Text>
+      <Text style={styles.emptyTitle}>{t('enrollmentRequests.emptyTitle')}</Text>
+      <Text style={styles.emptyText}>{t('enrollmentRequests.emptyText')}</Text>
       <TouchableOpacity
         style={styles.browseButton}
         onPress={() => navigation.navigate('SchoolsList')}
         activeOpacity={0.8}
       >
         <Ionicons name="business-outline" size={20} color={colors.text.inverse} />
-        <Text style={styles.browseButtonText}>Browse Schools</Text>
+        <Text style={styles.browseButtonText}>{t('enrollmentRequests.browse')}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -166,7 +168,7 @@ export const MyEnrollmentRequestsScreen = ({ navigation }: any) => {
         >
           <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Requests</Text>
+        <Text style={styles.headerTitle}>{t('enrollmentRequests.title')}</Text>
       </View>
 
       {/* Requests List */}

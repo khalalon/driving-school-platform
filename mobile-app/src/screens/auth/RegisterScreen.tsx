@@ -19,9 +19,11 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { getApiErrorMessage } from '../../services/api/ApiError';
+import { useI18n } from '../../context/LanguageContext';
 import { colors, typography, spacing, shadows } from '../../theme';
 
 export const RegisterScreen = ({ navigation }: any) => {
+  const { t } = useI18n();
   const { register } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -35,17 +37,17 @@ export const RegisterScreen = ({ navigation }: any) => {
 
   const handleRegister = async () => {
     if (!email || !password || !firstName || !lastName) {
-      Alert.alert('Required', 'Please fill in all fields');
+      Alert.alert(t('common.required'), t('auth.fillAllFields'));
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      Alert.alert(t('common.error'), t('auth.passwordsMismatch'));
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+      Alert.alert(t('common.error'), t('auth.passwordTooShort'));
       return;
     }
 
@@ -54,7 +56,7 @@ export const RegisterScreen = ({ navigation }: any) => {
       // A2 sans schoolCode : le compte créé est un élève (D-17)
       await register({ email: email.trim(), password, firstName, lastName });
     } catch (error) {
-      Alert.alert('Registration Failed', getApiErrorMessage(error, 'Please try again'));
+      Alert.alert(t('auth.registrationFailed'), getApiErrorMessage(error, t('auth.tryAgain')));
     } finally {
       setLoading(false);
     }
@@ -80,8 +82,8 @@ export const RegisterScreen = ({ navigation }: any) => {
         <View style={styles.content}>
           {/* Title */}
           <View style={styles.titleContainer}>
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Join as a student and start learning</Text>
+            <Text style={styles.title}>{t('auth.register.title')}</Text>
+            <Text style={styles.subtitle}>{t('auth.register.subtitle')}</Text>
           </View>
 
           {/* Form */}
@@ -89,11 +91,11 @@ export const RegisterScreen = ({ navigation }: any) => {
             {/* Name Row */}
             <View style={styles.row}>
               <View style={[styles.inputGroup, styles.halfWidth]}>
-                <Text style={styles.label}>First Name</Text>
+                <Text style={styles.label}>{t('auth.firstName')}</Text>
                 <View style={styles.inputContainer}>
                   <TextInput
                     style={styles.input}
-                    placeholder="John"
+                    placeholder={t('auth.firstNamePlaceholder')}
                     placeholderTextColor={colors.neutral[400]}
                     value={firstName}
                     onChangeText={setFirstName}
@@ -103,11 +105,11 @@ export const RegisterScreen = ({ navigation }: any) => {
               </View>
 
               <View style={[styles.inputGroup, styles.halfWidth]}>
-                <Text style={styles.label}>Last Name</Text>
+                <Text style={styles.label}>{t('auth.lastName')}</Text>
                 <View style={styles.inputContainer}>
                   <TextInput
                     style={styles.input}
-                    placeholder="Doe"
+                    placeholder={t('auth.lastNamePlaceholder')}
                     placeholderTextColor={colors.neutral[400]}
                     value={lastName}
                     onChangeText={setLastName}
@@ -119,7 +121,7 @@ export const RegisterScreen = ({ navigation }: any) => {
 
             {/* Email */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email</Text>
+              <Text style={styles.label}>{t('auth.email')}</Text>
               <View style={styles.inputContainer}>
                 <Ionicons
                   name="mail-outline"
@@ -129,7 +131,7 @@ export const RegisterScreen = ({ navigation }: any) => {
                 />
                 <TextInput
                   style={styles.input}
-                  placeholder="your@email.com"
+                  placeholder={t('auth.emailPlaceholder')}
                   placeholderTextColor={colors.neutral[400]}
                   value={email}
                   onChangeText={setEmail}
@@ -141,7 +143,7 @@ export const RegisterScreen = ({ navigation }: any) => {
 
             {/* Password */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Password</Text>
+              <Text style={styles.label}>{t('auth.password')}</Text>
               <View style={styles.inputContainer}>
                 <Ionicons
                   name="lock-closed-outline"
@@ -151,7 +153,7 @@ export const RegisterScreen = ({ navigation }: any) => {
                 />
                 <TextInput
                   style={styles.input}
-                  placeholder="Min. 6 characters"
+                  placeholder={t('auth.passwordMinPlaceholder')}
                   placeholderTextColor={colors.neutral[400]}
                   value={password}
                   onChangeText={setPassword}
@@ -172,7 +174,7 @@ export const RegisterScreen = ({ navigation }: any) => {
 
             {/* Confirm Password */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Confirm Password</Text>
+              <Text style={styles.label}>{t('auth.confirmPassword')}</Text>
               <View style={styles.inputContainer}>
                 <Ionicons
                   name="lock-closed-outline"
@@ -182,7 +184,7 @@ export const RegisterScreen = ({ navigation }: any) => {
                 />
                 <TextInput
                   style={styles.input}
-                  placeholder="Re-enter password"
+                  placeholder={t('auth.confirmPasswordPlaceholder')}
                   placeholderTextColor={colors.neutral[400]}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
@@ -212,7 +214,7 @@ export const RegisterScreen = ({ navigation }: any) => {
                 <ActivityIndicator size="small" color={colors.text.inverse} />
               ) : (
                 <>
-                  <Text style={styles.buttonText}>Create Account</Text>
+                  <Text style={styles.buttonText}>{t('auth.createAccount')}</Text>
                   <Ionicons name="arrow-forward" size={20} color={colors.text.inverse} />
                 </>
               )}
@@ -221,7 +223,8 @@ export const RegisterScreen = ({ navigation }: any) => {
             {/* Login Link */}
             <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.loginLink}>
               <Text style={styles.loginLinkText}>
-                Already have an account? <Text style={styles.loginLinkTextBold}>Sign in</Text>
+                {t('auth.alreadyHaveAccount')}{' '}
+                <Text style={styles.loginLinkTextBold}>{t('auth.signInLink')}</Text>
               </Text>
             </TouchableOpacity>
           </View>

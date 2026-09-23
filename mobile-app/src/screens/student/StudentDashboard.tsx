@@ -22,6 +22,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
+import { useI18n } from '../../context/LanguageContext';
 import { enrollmentService } from '../../services/api/EnrollmentService';
 import { lessonService } from '../../services/api/LessonService';
 import { examService } from '../../services/api/ExamService';
@@ -67,6 +68,7 @@ const findNextLesson = (lessons: Lesson[], now: Date = new Date()): Lesson | nul
   null;
 
 export const StudentDashboard = ({ navigation }: any) => {
+  const { t } = useI18n();
   const { user, logout } = useAuth();
   // `undefined` = pas encore chargé, `null` = aucune inscription approuvée
   const [enrollment, setEnrollment] = useState<EnrollmentRequest | null | undefined>(undefined);
@@ -99,7 +101,7 @@ export const StudentDashboard = ({ navigation }: any) => {
       ]);
       setData({ lessons, exams, profile, financial });
     } catch (err) {
-      setError(getApiErrorMessage(err, 'Failed to load your home screen'));
+      setError(getApiErrorMessage(err, t('home.loadFailed')));
     } finally {
       setLoading(false);
     }
@@ -123,10 +125,10 @@ export const StudentDashboard = ({ navigation }: any) => {
   };
 
   const handleCancelLesson = (lesson: Lesson) => {
-    Alert.alert('Cancel lesson', 'Are you sure you want to cancel this lesson?', [
-      { text: 'No', style: 'cancel' },
+    Alert.alert(t('home.cancelTitle'), t('home.cancelConfirm'), [
+      { text: t('home.cancelNo'), style: 'cancel' },
       {
-        text: 'Yes, cancel',
+        text: t('home.cancelYes'),
         style: 'destructive',
         onPress: async () => {
           try {
@@ -136,16 +138,13 @@ export const StudentDashboard = ({ navigation }: any) => {
             // Fenêtre de 24 h (D-24) contrôlée par le serveur : le bouton n'est qu'un confort
             if (getApiErrorCode(err) === 'CANCEL_WINDOW_CLOSED') {
               Alert.alert(
-                'Too late to cancel',
-                getApiErrorMessage(
-                  err,
-                  `A lesson can only be cancelled up to ${LESSON_CANCEL_HOURS} hours before it starts. Please contact your instructor.`
-                )
+                t('home.tooLateTitle'),
+                getApiErrorMessage(err, t('home.tooLateText', { hours: LESSON_CANCEL_HOURS }))
               );
               load();
               return;
             }
-            Alert.alert('Error', getApiErrorMessage(err, 'Failed to cancel lesson'));
+            Alert.alert(t('common.error'), getApiErrorMessage(err, t('home.cancelFailed')));
           }
         },
       },
@@ -165,8 +164,8 @@ export const StudentDashboard = ({ navigation }: any) => {
   const renderHeader = () => (
     <View style={styles.header}>
       <View style={styles.headerText}>
-        <Text style={styles.greeting}>Hello,</Text>
-        <Text style={styles.userName}>{user?.firstName || 'Student'}</Text>
+        <Text style={styles.greeting}>{t('home.hello')}</Text>
+        <Text style={styles.userName}>{user?.firstName || t('home.student')}</Text>
         {enrollment?.schoolName ? (
           <Text style={styles.schoolName}>{enrollment.schoolName}</Text>
         ) : null}
@@ -180,21 +179,19 @@ export const StudentDashboard = ({ navigation }: any) => {
   const renderNotEnrolled = () => (
     <View style={styles.heroCard}>
       <Ionicons name="school-outline" size={36} color={colors.primary[600]} />
-      <Text style={styles.heroTitle}>Find your driving school</Text>
-      <Text style={styles.heroText}>
-        Your journey starts once a school has approved your enrollment request.
-      </Text>
+      <Text style={styles.heroTitle}>{t('home.findSchool')}</Text>
+      <Text style={styles.heroText}>{t('home.findSchoolText')}</Text>
       <TouchableOpacity
         style={styles.primaryButton}
         onPress={() => navigation.navigate('SchoolsList')}
       >
-        <Text style={styles.primaryButtonText}>Browse schools</Text>
+        <Text style={styles.primaryButtonText}>{t('home.browseSchools')}</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.secondaryButton}
         onPress={() => navigation.navigate('MyEnrollmentRequests')}
       >
-        <Text style={styles.secondaryButtonText}>Enrollment status</Text>
+        <Text style={styles.secondaryButtonText}>{t('home.enrollmentStatus')}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -204,7 +201,7 @@ export const StudentDashboard = ({ navigation }: any) => {
     const pendingCount = lessons.filter((l) => l.status === LessonStatus.PENDING).length;
     return (
       <View style={styles.nextCard}>
-        <Text style={styles.nextLabel}>NEXT LESSON</Text>
+        <Text style={styles.nextLabel}>{t('home.nextLesson')}</Text>
         {next ? (
           <>
             <View style={styles.nextRow}>
@@ -216,46 +213,50 @@ export const StudentDashboard = ({ navigation }: any) => {
             </View>
             <Text style={styles.nextWhen}>
               {formatDate(next.scheduledDate)} · {formatTime(next.scheduledDate)}
-              {next.durationMinutes ? ` · ${next.durationMinutes} min` : ''}
+              {next.durationMinutes ? ` · ${t('format.minutes', { count: next.durationMinutes })}` : ''}
             </Text>
             <Text style={styles.nextMeta}>
-              with {formatPersonName(next.instructor, 'your instructor')}
+              {t('home.withInstructor', {
+                name: formatPersonName(next.instructor, t('home.yourInstructor')),
+              })}
             </Text>
             <View style={styles.nextActions}>
               <TouchableOpacity
                 style={styles.inverseButton}
                 onPress={() => navigation.navigate('MyLessons')}
               >
-                <Text style={styles.inverseButtonText}>All lessons</Text>
+                <Text style={styles.inverseButtonText}>{t('home.allLessons')}</Text>
               </TouchableOpacity>
               {canStudentCancel(next) ? (
                 <TouchableOpacity
                   style={styles.ghostButton}
                   onPress={() => handleCancelLesson(next)}
                 >
-                  <Text style={styles.ghostButtonText}>Cancel</Text>
+                  <Text style={styles.ghostButtonText}>{t('home.cancel')}</Text>
                 </TouchableOpacity>
               ) : null}
             </View>
           </>
         ) : (
           <>
-            <Text style={styles.nextTitle}>No lesson scheduled</Text>
+            <Text style={styles.nextTitle}>{t('home.noLesson')}</Text>
             <Text style={styles.nextMeta}>
-              {pendingCount > 0
-                ? `${pendingCount} request${pendingCount === 1 ? '' : 's'} waiting for your school`
-                : 'Ask your school for your next lesson.'}
+              {pendingCount === 0
+                ? t('home.askLesson')
+                : pendingCount === 1
+                  ? t('home.pendingOne')
+                  : t('home.pendingMany', { count: pendingCount })}
             </Text>
             <View style={styles.nextActions}>
               <TouchableOpacity style={styles.inverseButton} onPress={requestLesson}>
-                <Text style={styles.inverseButtonText}>Request a lesson</Text>
+                <Text style={styles.inverseButtonText}>{t('home.requestLesson')}</Text>
               </TouchableOpacity>
               {pendingCount > 0 ? (
                 <TouchableOpacity
                   style={styles.ghostButton}
                   onPress={() => navigation.navigate('MyLessons')}
                 >
-                  <Text style={styles.ghostButtonText}>My requests</Text>
+                  <Text style={styles.ghostButtonText}>{t('home.myRequests')}</Text>
                 </TouchableOpacity>
               ) : null}
             </View>
@@ -304,7 +305,7 @@ export const StudentDashboard = ({ navigation }: any) => {
             </Text>
             {step.state === 'current' ? (
               <View style={styles.currentPill}>
-                <Text style={styles.currentPillText}>Now</Text>
+                <Text style={styles.currentPillText}>{t('home.now')}</Text>
               </View>
             ) : null}
           </View>
@@ -319,9 +320,9 @@ export const StudentDashboard = ({ navigation }: any) => {
     return (
       <View style={styles.card}>
         <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>My journey</Text>
+          <Text style={styles.cardTitle}>{t('home.myJourney')}</Text>
           <TouchableOpacity onPress={() => navigation.navigate('MyExams')}>
-            <Text style={styles.cardLink}>My exams</Text>
+            <Text style={styles.cardLink}>{t('home.myExams')}</Text>
           </TouchableOpacity>
         </View>
         {steps.map((step, index) => renderStep(step, index, steps.length))}
@@ -332,13 +333,13 @@ export const StudentDashboard = ({ navigation }: any) => {
   const renderMoney = (financial: FinancialSummary | null) => (
     <View style={styles.tilesRow}>
       <TouchableOpacity style={styles.tile} onPress={openMyProfile} activeOpacity={0.7}>
-        <Text style={styles.tileLabel}>Amount due</Text>
+        <Text style={styles.tileLabel}>{t('home.amountDue')}</Text>
         <Text style={[styles.tileValue, (financial?.totalDue ?? 0) > 0 && styles.tileValueDue]}>
           {formatAmount(financial?.totalDue ?? 0, currency)}
         </Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.tile} onPress={openMyProfile} activeOpacity={0.7}>
-        <Text style={styles.tileLabel}>Your credit</Text>
+        <Text style={styles.tileLabel}>{t('home.yourCredit')}</Text>
         <Text style={[styles.tileValue, (financial?.credit ?? 0) > 0 && styles.tileValueCredit]}>
           {formatAmount(financial?.credit ?? 0, currency)}
         </Text>
@@ -350,7 +351,7 @@ export const StudentDashboard = ({ navigation }: any) => {
     <View style={styles.actionsRow}>
       <TouchableOpacity style={styles.actionButton} onPress={requestLesson} activeOpacity={0.8}>
         <Ionicons name="calendar-outline" size={20} color={colors.text.inverse} />
-        <Text style={styles.actionText}>Request a lesson</Text>
+        <Text style={styles.actionText}>{t('home.requestLesson')}</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={[styles.actionButton, styles.actionButtonAlt]}
@@ -358,7 +359,7 @@ export const StudentDashboard = ({ navigation }: any) => {
         activeOpacity={0.8}
       >
         <Ionicons name="ribbon-outline" size={20} color={colors.primary[700]} />
-        <Text style={[styles.actionText, styles.actionTextAlt]}>Request an exam</Text>
+        <Text style={[styles.actionText, styles.actionTextAlt]}>{t('home.requestExam')}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -366,14 +367,14 @@ export const StudentDashboard = ({ navigation }: any) => {
   const renderLinks = () => (
     <View style={styles.linksRow}>
       {[
-        { label: 'My lessons', route: 'MyLessons', icon: 'list-outline' },
-        { label: 'My profile', route: 'MyProfile', icon: 'person-outline' },
+        { label: t('home.link.myLessons'), route: 'MyLessons', icon: 'list-outline' },
+        { label: t('home.link.myProfile'), route: 'MyProfile', icon: 'person-outline' },
         {
-          label: 'Enrollment',
+          label: t('home.link.enrollment'),
           route: 'MyEnrollmentRequests',
           icon: 'school-outline',
         },
-        { label: 'Schools', route: 'SchoolsList', icon: 'business-outline' },
+        { label: t('home.link.schools'), route: 'SchoolsList', icon: 'business-outline' },
       ].map((link) => (
         <TouchableOpacity
           key={link.route}
@@ -405,7 +406,7 @@ export const StudentDashboard = ({ navigation }: any) => {
           <Ionicons name="cloud-offline-outline" size={32} color={colors.error[600]} />
           <Text style={styles.heroText}>{error}</Text>
           <TouchableOpacity style={styles.primaryButton} onPress={load}>
-            <Text style={styles.primaryButtonText}>Retry</Text>
+            <Text style={styles.primaryButtonText}>{t('common.retry')}</Text>
           </TouchableOpacity>
         </View>
       );

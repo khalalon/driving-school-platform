@@ -600,7 +600,7 @@ cd mobile-app && npx jest models utils -t 'arabe' --silent && npx tsc --noEmit &
 ```
 **Hors périmètre** : traduction des écrans.
 
-### - [ ] 10.3 — Écrans élève traduits
+### - [x] 10.3 — Écrans élève traduits
 **Objectif** : plus une seule chaîne visible en dur dans les écrans d'authentification et d'élève : `Login`, `Register`, `InstructorRegistration`, `StudentDashboard`, `SchoolsList`, `SchoolDetail`, `BookLesson`, `MyLessons`, `RequestExam`, `MyExams`, `MyEnrollmentRequests`, `MyProfile` et ses trois onglets. Chaque écran lit ses textes par `t(...)` (titres, boutons, états vides, alertes, textes d'aide).
 **Fichiers** : `mobile-app/src/screens/auth/*`, `mobile-app/src/screens/student/**`, `mobile-app/src/i18n/{fr,ar}.ts`.
 **Critère de validation** :

@@ -10,10 +10,12 @@ import { studentSelfProfileService } from '../../../../services/api/StudentSelfP
 import { getApiErrorMessage } from '../../../../services/api/ApiError';
 import { FinancialSummary, MyProfile } from '../../../../models/Profile';
 import { useSchoolCurrency } from '../../../../hooks/useSchoolCurrency';
+import { useI18n } from '../../../../context/LanguageContext';
 import { formatAmount, formatDate, formatPersonName } from '../../../../utils/format';
 import { colors, typography, spacing } from '../../../../theme';
 
 export const MyProgressTab = ({ route }: any) => {
+  const { t } = useI18n();
   const { schoolId } = route.params;
   const currency = useSchoolCurrency(schoolId);
   const [loading, setLoading] = useState(true);
@@ -34,7 +36,7 @@ export const MyProgressTab = ({ route }: any) => {
       setProfile(profileData);
       setFinancial(financialData);
     } catch (error) {
-      Alert.alert('Error', getApiErrorMessage(error, 'Failed to load profile data'));
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('profile.loadFailed')));
     } finally {
       setLoading(false);
     }
@@ -52,7 +54,7 @@ export const MyProgressTab = ({ route }: any) => {
     return (
       <View style={styles.centerContainer}>
         <Ionicons name="alert-circle-outline" size={48} color={colors.text.tertiary} />
-        <Text style={styles.emptyText}>Failed to load profile data</Text>
+        <Text style={styles.emptyText}>{t('profile.loadFailed')}</Text>
       </View>
     );
   }
@@ -71,17 +73,20 @@ export const MyProgressTab = ({ route }: any) => {
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <Ionicons name="person-outline" size={20} color={colors.primary[600]} />
-          <Text style={styles.cardTitle}>Personal Information</Text>
+          <Text style={styles.cardTitle}>{t('profile.personalInfo')}</Text>
         </View>
         <View style={styles.cardContent}>
-          <InfoRow label="Name" value={formatPersonName(profile)} />
-          <InfoRow label="Email" value={profile.email} />
-          {profile.phone && <InfoRow label="Phone" value={profile.phone} />}
+          <InfoRow label={t('profile.name')} value={formatPersonName(profile)} />
+          <InfoRow label={t('profile.email')} value={profile.email} />
+          {profile.phone && <InfoRow label={t('profile.phone')} value={profile.phone} />}
           {profile.licenseNumber && (
-            <InfoRow label="License Number" value={profile.licenseNumber} />
+            <InfoRow label={t('profile.licenseNumber')} value={profile.licenseNumber} />
           )}
           {profile.enrollmentDate && (
-            <InfoRow label="Enrolled Since" value={formatDate(profile.enrollmentDate)} />
+            <InfoRow
+              label={t('profile.enrolledSince')}
+              value={formatDate(profile.enrollmentDate)}
+            />
           )}
         </View>
       </View>
@@ -90,23 +95,27 @@ export const MyProgressTab = ({ route }: any) => {
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <Ionicons name="bar-chart-outline" size={20} color={colors.primary[600]} />
-          <Text style={styles.cardTitle}>Progress Statistics</Text>
+          <Text style={styles.cardTitle}>{t('profile.statistics')}</Text>
         </View>
         <View style={styles.cardContent}>
           {/* Lessons Progress */}
           <View style={styles.progressSection}>
-            <Text style={styles.progressLabel}>Lessons Completion</Text>
+            <Text style={styles.progressLabel}>{t('profile.lessonsCompletion')}</Text>
             <View style={styles.progressBar}>
               <View style={[styles.progressFill, { width: `${completionRate}%` }]} />
             </View>
             <Text style={styles.progressText}>
-              {profile.completedLessons} of {profile.totalLessons} completed ({completionRate}%)
+              {t('profile.ofCompleted', {
+                done: profile.completedLessons,
+                total: profile.totalLessons,
+                rate: completionRate,
+              })}
             </Text>
           </View>
 
           {/* Exams Progress */}
           <View style={styles.progressSection}>
-            <Text style={styles.progressLabel}>Exam Pass Rate</Text>
+            <Text style={styles.progressLabel}>{t('profile.examPassRate')}</Text>
             <View style={styles.progressBar}>
               <View
                 style={[
@@ -116,7 +125,11 @@ export const MyProgressTab = ({ route }: any) => {
               />
             </View>
             <Text style={styles.progressText}>
-              {profile.passedExams} of {profile.totalExams} passed ({examPassRate}%)
+              {t('profile.ofCompleted', {
+                done: profile.passedExams,
+                total: profile.totalExams,
+                rate: examPassRate,
+              })}
             </Text>
           </View>
         </View>
@@ -126,38 +139,34 @@ export const MyProgressTab = ({ route }: any) => {
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <Ionicons name="cash-outline" size={20} color={colors.primary[600]} />
-          <Text style={styles.cardTitle}>Financial Summary</Text>
+          <Text style={styles.cardTitle}>{t('profile.financialSummary')}</Text>
         </View>
         <View style={styles.cardContent}>
           <FinancialRow
-            label="Total Paid"
+            label={t('profile.totalPaid')}
             amount={financial.totalRevenue}
             currency={currency}
             icon="checkmark-circle-outline"
             iconColor={colors.success[500]}
           />
           <FinancialRow
-            label="Amount Due"
+            label={t('profile.amountDue')}
             amount={financial.totalDue}
             currency={currency}
             icon="alert-circle-outline"
             iconColor={colors.warning[500]}
           />
           <FinancialRow
-            label="Credit Available"
+            label={t('profile.creditAvailable')}
             amount={financial.credit}
             currency={currency}
             icon="gift-outline"
             iconColor={colors.primary[600]}
           />
-          {financial.credit > 0 && (
-            <Text style={styles.creditHint}>
-              Your credit is applied automatically to your next scheduled lesson.
-            </Text>
-          )}
+          {financial.credit > 0 && <Text style={styles.creditHint}>{t('profile.creditHint')}</Text>}
           {financial.lastPaymentDate && (
             <View style={styles.lastPaymentContainer}>
-              <Text style={styles.lastPaymentLabel}>Last Payment:</Text>
+              <Text style={styles.lastPaymentLabel}>{t('profile.lastPayment')}</Text>
               <Text style={styles.lastPaymentValue}>
                 {new Date(financial.lastPaymentDate).toLocaleDateString()}
               </Text>
