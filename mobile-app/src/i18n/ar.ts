@@ -13,7 +13,7 @@ export const ar: Record<TranslationKey, string> = {
   'language.title': 'اللغة',
   'language.french': 'Français',
   'language.arabic': 'العربية',
-  'language.hint': 'يُعاد تشغيل التطبيق عند تغيير اتجاه القراءة.',
+  'language.hint': 'يغيّر اختيار العربية اتجاه العرض: أغلق التطبيق ثم افتحه إن لم يتغيّر وحده.',
 
   // Vocabulaire commun
   'common.ok': 'حسناً',
@@ -133,7 +133,7 @@ export const ar: Record<TranslationKey, string> = {
   'auth.lastName': 'اللقب',
   'auth.firstNamePlaceholder': 'محمد',
   'auth.lastNamePlaceholder': 'بن علي',
-  'auth.passwordMinPlaceholder': '6 أحرف على الأقل',
+  'auth.passwordMinPlaceholder': '{min} أحرف على الأقل',
   'auth.confirmPassword': 'تأكيد كلمة السر',
   'auth.confirmPasswordPlaceholder': 'أعد إدخال كلمة السر',
   'auth.createAccount': 'إنشاء الحساب',
@@ -141,7 +141,7 @@ export const ar: Record<TranslationKey, string> = {
   'auth.signInLink': 'تسجيل الدخول',
   'auth.fillAllFields': 'املأ جميع الحقول',
   'auth.passwordsMismatch': 'كلمتا السر غير متطابقتين',
-  'auth.passwordTooShort': 'يجب أن تحتوي كلمة السر على 6 أحرف على الأقل',
+  'auth.passwordTooShort': 'يجب أن تحتوي كلمة السر على {min} أحرف على الأقل',
   'auth.registrationFailed': 'تعذّر إنشاء الحساب',
   'auth.tryAgain': 'أعد المحاولة',
 
@@ -593,4 +593,8 @@ export const ar: Record<TranslationKey, string> = {
   'error.PRICE_REQUIRED': 'لا تملك المدرسة تعريفة لهذا النوع من الحصص: أدخل الثمن.',
   'error.INVALID_SCHOOL_CODE': 'رمز المدرسة غير معروف.',
   'error.INTERNAL_ERROR': 'حدث خلل في الخدمة. أعد المحاولة.',
+
+  // Redemarrage apres changement de sens
+  'language.restartTitle': 'إعادة التشغيل مطلوبة',
+  'language.restartText': 'أغلق التطبيق ثم افتحه لإتمام تغيير اتجاه القراءة.',
 };

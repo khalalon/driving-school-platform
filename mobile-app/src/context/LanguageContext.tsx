@@ -6,6 +6,7 @@
  */
 
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { Alert, I18nManager } from 'react-native';
 import * as Updates from 'expo-updates';
 import {
   Language,
@@ -36,7 +37,15 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
 
   useEffect(() => {
     const unsubscribe = onLanguageChange(setLanguageState);
-    initLanguage().finally(() => setIsLoading(false));
+    initLanguage()
+      .then((current) => {
+        // Le sens de lecture n'est relu qu'au démarrage du moteur natif : si l'application a
+        // seulement rechargé son JavaScript, la mise en page est encore dans l'ancien sens.
+        if (I18nManager.isRTL !== isRTL(current)) {
+          Alert.alert(translate('language.restartTitle'), translate('language.restartText'));
+        }
+      })
+      .finally(() => setIsLoading(false));
     return unsubscribe;
   }, []);
 

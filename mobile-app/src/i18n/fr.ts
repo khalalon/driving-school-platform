@@ -8,7 +8,7 @@ export const fr = {
   'language.title': 'Langue',
   'language.french': 'Français',
   'language.arabic': 'العربية',
-  'language.hint': "L'application redémarre lorsque le sens de lecture change.",
+  'language.hint': "Passer à l'arabe retourne la mise en page : fermez puis rouvrez l'application si elle ne se retourne pas toute seule.",
 
   // Vocabulaire commun
   'common.ok': 'OK',
@@ -130,7 +130,7 @@ export const fr = {
   'auth.lastName': 'Nom',
   'auth.firstNamePlaceholder': 'Mohamed',
   'auth.lastNamePlaceholder': 'Ben Ali',
-  'auth.passwordMinPlaceholder': '6 caractères minimum',
+  'auth.passwordMinPlaceholder': '{min} caractères minimum',
   'auth.confirmPassword': 'Confirmer le mot de passe',
   'auth.confirmPasswordPlaceholder': 'Saisissez à nouveau le mot de passe',
   'auth.createAccount': 'Créer le compte',
@@ -138,7 +138,7 @@ export const fr = {
   'auth.signInLink': 'Se connecter',
   'auth.fillAllFields': 'Remplissez tous les champs',
   'auth.passwordsMismatch': 'Les mots de passe ne correspondent pas',
-  'auth.passwordTooShort': 'Le mot de passe doit faire au moins 6 caractères',
+  'auth.passwordTooShort': 'Le mot de passe doit faire au moins {min} caractères',
   'auth.registrationFailed': 'Inscription impossible',
   'auth.tryAgain': 'Réessayez',
 
@@ -599,6 +599,10 @@ export const fr = {
   'error.PRICE_REQUIRED': 'L\'école n\'a pas de tarif pour ce type de leçon : saisissez le prix.',
   'error.INVALID_SCHOOL_CODE': 'Code d\'école inconnu.',
   'error.INTERNAL_ERROR': 'Le service a rencontré un problème. Réessayez.',
+
+  // Redemarrage apres changement de sens
+  'language.restartTitle': 'Redémarrage nécessaire',
+  'language.restartText': 'Fermez puis rouvrez l\'application pour terminer le changement de sens de lecture.',
 } as const;
 
 /** Toutes les clés du catalogue : `ar.ts` doit les servir toutes. */

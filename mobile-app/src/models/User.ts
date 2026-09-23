@@ -26,6 +26,12 @@ export interface LoginRequest {
 }
 
 /**
+ * Longueur minimale du mot de passe, telle que le backend l'exige (A2 : `Joi.string().min(8)`).
+ * Les écrans d'inscription la contrôlent avant l'envoi : sinon l'élève reçoit un 400.
+ */
+export const PASSWORD_MIN_LENGTH = 8;
+
+/**
  * A2 (D-17) : sans `schoolCode` → compte `student` ; avec un code valide → rôle du code,
  * `phone` et `licenseNumber` requis. Le champ `role` n'est plus accepté par le backend.
  */

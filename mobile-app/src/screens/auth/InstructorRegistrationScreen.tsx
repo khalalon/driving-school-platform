@@ -21,6 +21,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
+import { PASSWORD_MIN_LENGTH } from '../../models/User';
 import { getApiErrorMessage } from '../../services/api/ApiError';
 import { useI18n } from '../../context/LanguageContext';
 import { colors, typography, spacing, shadows } from '../../theme';
@@ -61,8 +62,8 @@ export const InstructorRegistrationScreen = ({ navigation }: any) => {
       return;
     }
 
-    if (password.length < 6) {
-      Alert.alert(t('common.error'), t('auth.passwordTooShort'));
+    if (password.length < PASSWORD_MIN_LENGTH) {
+      Alert.alert(t('common.error'), t('auth.passwordTooShort', { min: PASSWORD_MIN_LENGTH }));
       return;
     }
 
@@ -183,7 +184,7 @@ export const InstructorRegistrationScreen = ({ navigation }: any) => {
                 />
                 <TextInput
                   style={styles.input}
-                  placeholder={t('auth.passwordMinPlaceholder')}
+                  placeholder={t('auth.passwordMinPlaceholder', { min: PASSWORD_MIN_LENGTH })}
                   placeholderTextColor={colors.neutral[400]}
                   value={password}
                   onChangeText={setPassword}
