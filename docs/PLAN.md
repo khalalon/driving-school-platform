@@ -3,7 +3,7 @@
 Règles de lecture (voir `CLAUDE.md`, règles d'or 3 et 5) :
 - On travaille dans l'ordre, sur la première tâche non cochée. Une tâche = un commit (message Conventional Commits, scope = domaine ou `infra` / `mobile` / `docs` / `e2e`), poussé sur `origin/main` aussitôt. Les tâches d'une même phase s'enchaînent sans validation intermédiaire ; arrêt obligatoire en fin de phase, sur question ouverte non tranchée, sur échec de critère non réparable dans la tâche, ou sur choix produit non tranché (D-36, 18/09/2026).
 - Une tâche est cochée **seulement** quand sa commande « Critère de validation » a été exécutée et que sa sortie a été montrée. Pas d'exception.
-- Si une tâche indique « Dépend de : Q-xx » et que la question n'est pas tranchée dans `DECISIONS.md`, on **s'arrête** et on demande. Au 20/09/2026 aucune question n'est ouverte : Q-17 à Q-21 → D-40 à D-44 (Phase 7 ; D-44 = statu quo de D-42, sans tâche) ; la Phase 8 applique D-45 (accueils « wow »).
+- Si une tâche indique « Dépend de : Q-xx » et que la question n'est pas tranchée dans `DECISIONS.md`, on **s'arrête** et on demande. Au 23/09/2026 aucune question n'est ouverte : Q-17 à Q-21 → D-40 à D-44 (Phase 7 ; D-44 = statu quo de D-42, sans tâche) ; la Phase 8 applique D-45 (accueils « wow »), la Phase 9 applique D-46 (Expo SDK 57).
 - Chaque tâche livrée ajoute une ligne dans `CHANGELOG.md` et, si elle touche une route, met à jour `docs/API_CONTRACT.md` dans le même commit.
 - Les commandes sont écrites pour Git Bash (Windows) ou un shell POSIX, depuis la racine du dépôt sauf `cd` explicite.
 
@@ -563,6 +563,21 @@ grep -q 'createBottomTabNavigator' mobile-app/src/navigation/AppNavigator.tsx &&
 
 ---
 
-## Après la Phase 8
+## Phase 9 — Expo SDK 57 (D-46)
+
+Expo Go ne supporte qu'un seul SDK à la fois : le magasin l'a mis à jour en SDK 57 sur le téléphone de recette, le projet est en SDK 54 — l'application ne se charge plus (« Project is incompatible with this version of Expo Go »). Cette phase remet le mobile au niveau du dernier SDK. Aucun changement de contrat, aucune migration.
+
+### - [ ] 9.1 — Montée du mobile en Expo SDK 57
+**Objectif** : `mobile-app` passe en **Expo SDK 57** (`expo@~57`, React Native et React aux versions du SDK, toutes les dépendances Expo alignées par `npx expo install --fix`, `jest-expo` et `babel-preset-expo` de la même génération) ; `npx expo-doctor` ne signale plus de version incompatible ; le `splash` de `app.json` (qui pointait vers un fichier absent, `assets/splash.png` — avertissement à chaque bundle) est remplacé par la configuration du SDK en vigueur sur `assets/splash-icon.png` ; le code applicatif n'est modifié **que** si le SDK le casse (aucune fonctionnalité ajoutée) ; `npx tsc --noEmit` et `npx jest` restent verts ; le bundle Android se charge dans Expo Go 57 (vérifié sur l'émulateur, écran de connexion atteint).
+**Fichiers** : `mobile-app/package.json`, `mobile-app/package-lock.json`, `mobile-app/app.json`, au besoin `mobile-app/jest.config.js`, `mobile-app/tsconfig.json` et les fichiers cassés par la montée de version ; `docs/ARCHITECTURE.md`, `CLAUDE.md` (version du SDK).
+**Critère de validation** :
+```bash
+cd mobile-app && node -e "const v=require('./package.json').dependencies.expo; if(!/^[~^]?57\./.test(v)) { console.error('expo='+v); process.exit(1) }" && npx expo-doctor && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : nouvelle architecture activée explicitement, EAS Build, passage à `expo-router`, mise à jour des écrans.
+
+---
+
+## Après la Phase 9
 
 La recette finale (parcours D-15 sur un téléphone via Expo Go, backend en Docker) est faite **par l'humain**, hors de cette liste. Les fonctionnalités hors contrat (paiement en ligne, web, gestion des codes par écran) ne sont pas dans la v1.

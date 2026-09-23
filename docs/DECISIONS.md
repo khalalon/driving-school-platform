@@ -88,7 +88,13 @@ Deux sections. « Décisions prises » fait autorité : on ne la rediscute pas d
 | ID | Ex-question | Décision | Justification | Note d'application |
 |---|---|---|---|---|
 | **D-45** | — | **Accueils qui racontent le parcours.** Élève : la prochaine leçon, puis le **parcours** dans l'ordre **Code → examen théorique → Manœuvre → Parc → examen pratique**, purement informatif : chaque étape leçon affiche le nombre de leçons effectuées (présence marquée, D-33) de ce type, **sans objectif ni seuil** (D-26) ; chaque étape examen affiche l'état de la dernière demande (demandé, planifié / convocation reçue, réussi, ajourné, dossier pas prêt) ; une étape est **conclue** quand un examen de cette famille est réussi (théorie → conclut aussi Code ; pratique → conclut Manœuvre et Parc) ; l'**étape courante** est la dernière étape non conclue portant une activité (leçon effectuée ou planifiée, demande d'examen), sinon la première ; rien n'est bloqué : l'élève peut demander n'importe quel type de leçon ou d'examen. Instructeur : la journée = ses leçons planifiées ou passées du jour local (L1 `scope=mine`) ; la leçon **en cours** est celle dont `[scheduledDate, scheduledDate + durationMinutes[` contient l'instant présent, à défaut la prochaine du jour ; présence marquée depuis l'accueil (L7). Puis barre d'onglets par rôle. | Proposition de design acceptée par l'auteur le 20/09/2026 (artefact « Amélioration wow »). Les grilles de menus n'aidaient ni l'élève à se situer ni l'instructeur à agir vite. | Aucune route nouvelle : P8 / P1 gagnent `completedLessonsByType` (8.1), le reste vient de L1, X1, P11, E3 / E4. Phase 8 du plan. |
+### Décision du 23/09/2026 (Phase 9)
+
+| ID | Ex-question | Décision | Justification | Note d'application |
+|---|---|---|---|---|
+| **D-46** | — | **Le mobile suit le dernier SDK Expo** (aujourd'hui **57**). Expo Go ne charge qu'un seul SDK à la fois et se met à jour tout seul depuis le magasin : un projet en retard d'un SDK n'est plus testable sur un vrai téléphone. La montée de version est donc une tâche du plan dès qu'Expo Go de la machine de recette passe au SDK suivant, pas un chantier « quand on aura le temps ». | Recette du 21/09/2026 bloquée : Expo Go SDK 57 contre projet SDK 54 (« Project is incompatible with this version of Expo Go »). Rétrograder Expo Go n'est qu'un dépannage : le magasin le remet à jour. | Une tâche, un commit (Phase 9) : `npx expo install expo@~<SDK> --fix`, `npx expo-doctor` propre, typecheck et tests verts, bundle vérifié dans Expo Go. Le code applicatif ne change que si le SDK le casse. |
+
 
 ## Questions ouvertes
 
-Aucune au 20/09/2026 : Q-17 → D-40, Q-18 → D-41, Q-19 → D-42, Q-20 → D-43, Q-21 → D-44 ; D-45 prise sans question (design accepté).
+Aucune au 23/09/2026 : Q-17 → D-40, Q-18 → D-41, Q-19 → D-42, Q-20 → D-43, Q-21 → D-44 ; D-45 (design accepté) et D-46 (SDK Expo) prises sans question.
