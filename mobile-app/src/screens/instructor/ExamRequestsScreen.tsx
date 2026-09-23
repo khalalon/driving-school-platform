@@ -172,7 +172,13 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
         dateTime: dateTime.toISOString(),
         location: location.trim(),
       });
-      Alert.alert("Success", "Exam scheduled");
+      // Confirmation dans les mots de la procédure du type (D-42)
+      Alert.alert(
+        "Success",
+        selectedRequest.type === ExamType.PRACTICAL
+          ? "Convocation recorded: the student sees the session date and center"
+          : "Exam scheduled: the student sees the date and location",
+      );
       closeSchedule();
       loadRequests();
     } catch (error) {
@@ -220,7 +226,12 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
         selectedRequest.id,
         rejectionReason.trim(),
       );
-      Alert.alert("Success", "Exam request rejected");
+      Alert.alert(
+        "Success",
+        selectedRequest.type === ExamType.PRACTICAL
+          ? "File marked as not ready: the student can request again for the next session"
+          : "Exam request rejected: the student has been given your reason",
+      );
       closeReject();
       loadRequests();
     } catch (error) {
