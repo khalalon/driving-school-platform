@@ -8,14 +8,10 @@ import { Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-n
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { IoniconName } from '../../utils/rtl';
-import { MIN_TOUCH_TARGET } from '../../theme/tokens';
 import { Tone, toneColors } from './tones';
 
 /** Hauteur visible d'une pastille : ~34 px ; le débord porte la zone touchable à 44 px (11.6). */
 const CHIP_HIT_SLOP = { top: 6, bottom: 6, left: 4, right: 4 };
-/** Hauteur touchable effective, relue par le test d'accessibilité. */
-export const CHIP_TOUCH_HEIGHT = MIN_TOUCH_TARGET;
-
 interface ChipProps {
   label: string;
   onPress?: () => void;
