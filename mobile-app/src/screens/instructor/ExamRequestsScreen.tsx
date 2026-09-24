@@ -25,6 +25,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { examService } from '../../services/api/ExamService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
 import { useI18n } from '../../context/LanguageContext';
+import { useToast } from '../../context/ToastContext';
 import { useTheme } from '../../context/ThemeContext';
 import { AppBar, Button, Card, EmptyState, Field, SkeletonCard } from '../../components/ui';
 import { examProcedure, examTypeLabel, Exam, ExamStatus, ExamType } from '../../models/Exam';
@@ -59,6 +60,7 @@ const firstFutureSlot = (wanted: string | null | undefined, now: Date = new Date
 
 export const ExamRequestsScreen = ({ navigation }: any) => {
   const { t } = useI18n();
+  const { showToast } = useToast();
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [loading, setLoading] = useState(true);
@@ -162,8 +164,7 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
         location: location.trim(),
       });
       // Confirmation dans les mots de la procédure du type (D-42)
-      Alert.alert(
-        t('common.success'),
+      showToast(
         selectedRequest.type === ExamType.PRACTICAL
           ? t('examRequests.convocationRecorded')
           : t('examRequests.examScheduled')
@@ -209,8 +210,7 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
     try {
       setProcessing(true);
       await examService.rejectExamRequest(selectedRequest.id, rejectionReason.trim());
-      Alert.alert(
-        t('common.success'),
+      showToast(
         selectedRequest.type === ExamType.PRACTICAL
           ? t('examRequests.fileNotReadyDone')
           : t('examRequests.rejectedDone')

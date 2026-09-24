@@ -18,6 +18,7 @@ import { examResultLabel, examTypeLabel, ExamResult, ExamType } from '../../../.
 import { useSchoolCurrency } from '../../../../hooks/useSchoolCurrency';
 import { formatAmount, formatDate, formatDateTime } from '../../../../utils/format';
 import { useI18n } from '../../../../context/LanguageContext';
+import { useToast } from '../../../../context/ToastContext';
 import { useTheme } from '../../../../context/ThemeContext';
 import {
   Badge,
@@ -56,6 +57,7 @@ const resultIcon = (result: string): IoniconName => {
 
 export const StudentExamsTab = ({ route }: any) => {
   const { t } = useI18n();
+  const { showToast } = useToast();
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { studentId, schoolId } = route.params;
@@ -100,7 +102,7 @@ export const StudentExamsTab = ({ route }: any) => {
     try {
       setProcessing(true);
       await studentProfileService.markExamPaid(selectedExam.id, parseFloat(amount), paymentMethod);
-      Alert.alert(t('common.success'), t('studentExams.markedPaid'));
+      showToast(t('studentExams.markedPaid'));
       setShowPaymentModal(false);
       setSelectedExam(null);
       setAmount('');

@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { enrollmentService } from '../../services/api/EnrollmentService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
 import { useI18n } from '../../context/LanguageContext';
+import { useToast } from '../../context/ToastContext';
 import { useTheme } from '../../context/ThemeContext';
 import {
   AppBar,
@@ -42,6 +43,7 @@ const STATUS: Record<EnrollmentStatus, { tone: Tone; labelKey: TranslationKey }>
 
 export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
   const { t } = useI18n();
+  const { showToast } = useToast();
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { schoolId } = route.params || {};
@@ -103,7 +105,7 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
             try {
               setProcessing(true);
               await enrollmentService.approveRequest(request.id);
-              Alert.alert(t('common.success'), t('enrollments.approved'));
+              showToast(t('enrollments.approved'));
               loadRequests();
             } catch (error) {
               Alert.alert(
@@ -135,7 +137,7 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
     try {
       setProcessing(true);
       await enrollmentService.rejectRequest(selectedRequest.id, rejectionReason.trim());
-      Alert.alert(t('common.success'), t('enrollments.rejected'));
+      showToast(t('enrollments.rejected'));
       closeReject();
       loadRequests();
     } catch (error) {

@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { lessonService } from '../../services/api/LessonService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
 import { useI18n } from '../../context/LanguageContext';
+import { useToast } from '../../context/ToastContext';
 import { useTheme } from '../../context/ThemeContext';
 import { AppBar, Badge, Button, Card, Chip, EmptyState, SkeletonCard } from '../../components/ui';
 import { lessonTypeLabel, Lesson, LessonStatus, MarkAttendanceData } from '../../models/Lesson';
@@ -29,6 +30,7 @@ const FILTERS: { key: FilterType; labelKey: TranslationKey }[] = [
 
 export const TodayLessonsScreen = ({ navigation }: any) => {
   const { t } = useI18n();
+  const { showToast } = useToast();
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [loading, setLoading] = useState(true);
@@ -75,10 +77,7 @@ export const TodayLessonsScreen = ({ navigation }: any) => {
       setProcessing(true);
       // L7 : par identifiant de leçon, uniquement par son instructeur
       await lessonService.markAttendance(selectedLesson.id, data);
-      Alert.alert(
-        t('common.success'),
-        data.attended ? t('attendance.recorded') : t('attendance.absenceRecorded')
-      );
+      showToast(data.attended ? t('attendance.recorded') : t('attendance.absenceRecorded'));
       closeAttendance();
       loadTodayLessons();
     } catch (error) {

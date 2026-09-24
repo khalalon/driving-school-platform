@@ -679,7 +679,7 @@ cd mobile-app && test -z "$(grep -rnE "(^|[^.a-zA-Z])colors\." src/screens/instr
 ```
 **Hors périmètre** : retours et animations (11.5).
 
-### - [ ] 11.5 — Retours d'action, chargements et états vides
+### - [x] 11.5 — Retours d'action, chargements et états vides
 **Objectif** : une action réussie ne bloque plus l'écran avec une fenêtre système — un **toast** l'annonce (`Toast` de 11.2) ; les `Alert` ne restent que pour ce qui demande une vraie confirmation (annuler une leçon, refuser une demande) et pour les erreurs bloquantes. Les chargements affichent des **squelettes** à la forme du contenu au lieu d'un rond centré ; chaque liste vide a un `EmptyState` avec une action ; les pressions ont un retour visuel (`Pressable`, opacité et échelle).
 **Fichiers** : `mobile-app/src/components/ui/Toast.tsx`, `mobile-app/src/context/ToastContext.tsx` (nouveau), les écrans concernés.
 **Critère de validation** :

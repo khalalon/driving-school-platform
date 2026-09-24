@@ -26,6 +26,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../../context/AuthContext';
 import { useI18n } from '../../context/LanguageContext';
+import { useToast } from '../../context/ToastContext';
 import { useTheme } from '../../context/ThemeContext';
 import { AppBar, Button, Card, EmptyState, Field, SkeletonCard } from '../../components/ui';
 import { lessonService } from '../../services/api/LessonService';
@@ -66,6 +67,7 @@ const firstFutureSlot = (wanted: string | null | undefined, now: Date = new Date
 
 export const LessonRequestsScreen = ({ navigation }: any) => {
   const { t } = useI18n();
+  const { showToast } = useToast();
   const { user } = useAuth();
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -248,7 +250,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
       if (approveTargets.length === 1) {
         // L5 : l'appelant devient l'instructeur ; prix de la grille sinon celui saisi (D-30)
         await lessonService.approveLesson(approveTargets[0].id, data);
-        Alert.alert(t('common.success'), t('lessonRequests.scheduled'));
+        showToast(t('lessonRequests.scheduled'));
       } else {
         // D-34 : un appel L5 par demande cochée, en séquence, puis récapitulatif
         const result = await lessonService.approveLessons(
@@ -260,16 +262,20 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
           const who = request ? formatPersonName(request.student, t('today.student')) : lessonId;
           return `• ${who}: ${getApiErrorMessage(error, t('lessonRequests.requestFailed'))}`;
         });
-        Alert.alert(
-          failures.length === 0 ? t('common.success') : t('lessonRequests.partiallyScheduled'),
-          t('lessonRequests.batchResult', {
-            done: result.succeeded.length,
-            total: approveTargets.length,
-          }) +
-            (failures.length > 0
-              ? `\n\n${t('lessonRequests.notScheduled')}\n${failures.join('\n')}`
-              : '')
-        );
+        const summary = t('lessonRequests.batchResult', {
+          done: result.succeeded.length,
+          total: approveTargets.length,
+        });
+        if (failures.length === 0) {
+          // Tout est passé : un toast suffit, l'écran reste utilisable (11.5)
+          showToast(summary);
+        } else {
+          // Des demandes restent sur le carreau : il faut les lire, donc une vraie fenêtre
+          Alert.alert(
+            t('lessonRequests.partiallyScheduled'),
+            `${summary}\n\n${t('lessonRequests.notScheduled')}\n${failures.join('\n')}`
+          );
+        }
         setCheckedIds(new Set());
       }
       closeApprove();
@@ -313,7 +319,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
     try {
       setProcessing(true);
       await lessonService.rejectLesson(selectedRequest.id, rejectionReason.trim());
-      Alert.alert(t('common.success'), t('lessonRequests.rejected'));
+      showToast(t('lessonRequests.rejected'));
       closeReject();
       loadRequests();
     } catch (error) {

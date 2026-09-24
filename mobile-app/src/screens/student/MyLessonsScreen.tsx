@@ -23,6 +23,7 @@ import {
 } from '../../models/Lesson';
 import { useSchoolCurrency } from '../../hooks/useSchoolCurrency';
 import { useI18n } from '../../context/LanguageContext';
+import { useToast } from '../../context/ToastContext';
 import { useTheme } from '../../context/ThemeContext';
 import {
   AppBar,
@@ -74,6 +75,7 @@ const lessonDateOf = (lesson: Lesson): Date | null => {
 
 export const MyLessonsScreen = ({ navigation }: any) => {
   const { t } = useI18n();
+  const { showToast } = useToast();
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [loading, setLoading] = useState(true);
@@ -127,7 +129,7 @@ export const MyLessonsScreen = ({ navigation }: any) => {
   const confirmCancelLesson = async (lessonId: string) => {
     try {
       await lessonService.cancelLesson(lessonId);
-      Alert.alert(t('common.success'), t('myLessons.cancelled'));
+      showToast(t('myLessons.cancelled'));
       loadLessons();
     } catch (error) {
       // Fenêtre de 24 h (D-24) contrôlée par le serveur : le bouton n'est qu'un confort

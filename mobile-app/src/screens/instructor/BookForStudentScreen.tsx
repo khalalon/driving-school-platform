@@ -14,6 +14,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../../context/AuthContext';
 import { useI18n } from '../../context/LanguageContext';
+import { useToast } from '../../context/ToastContext';
 import { useTheme } from '../../context/ThemeContext';
 import { AppBar, Button, Card, Chip, Field, ListRow, Screen, Skeleton } from '../../components/ui';
 import { lessonService } from '../../services/api/LessonService';
@@ -37,6 +38,7 @@ const tomorrowMorning = (): Date => {
 
 export const BookForStudentScreen = ({ navigation }: any) => {
   const { t } = useI18n();
+  const { showToast } = useToast();
   const { user } = useAuth();
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -175,13 +177,12 @@ export const BookForStudentScreen = ({ navigation }: any) => {
         notes: notes.trim() || undefined,
       });
 
-      Alert.alert(
-        t('common.success'),
+      showToast(
         t('bookFor.booked', {
           student: formatPersonName(selectedStudent, t('attendance.theStudent')),
-        }),
-        [{ text: t('common.ok'), onPress: () => navigation.navigate('InstructorDashboard') }]
+        })
       );
+      navigation.navigate('InstructorDashboard');
     } catch (error) {
       Alert.alert(t('common.error'), getApiErrorMessage(error, t('bookFor.bookFailed')));
     } finally {

@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { examService } from '../../services/api/ExamService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
 import { useI18n } from '../../context/LanguageContext';
+import { useToast } from '../../context/ToastContext';
 import { useTheme } from '../../context/ThemeContext';
 import { AppBar, Badge, Button, Card, EmptyState, Field, SkeletonCard } from '../../components/ui';
 import {
@@ -27,6 +28,7 @@ import { Theme } from '../../theme';
 
 export const TodayExamsScreen = ({ navigation }: any) => {
   const { t } = useI18n();
+  const { showToast } = useToast();
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [loading, setLoading] = useState(true);
@@ -109,7 +111,7 @@ export const TodayExamsScreen = ({ navigation }: any) => {
         score: scoreValue,
         notes: notes.trim() || undefined,
       });
-      Alert.alert(t('common.success'), t('todayExams.recorded'));
+      showToast(t('todayExams.recorded'));
       closeResult();
       loadTodayExams();
     } catch (error) {

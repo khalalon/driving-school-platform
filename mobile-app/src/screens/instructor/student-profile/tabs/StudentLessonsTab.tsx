@@ -18,6 +18,7 @@ import { lessonTypeLabel, LessonType } from '../../../../models/Lesson';
 import { useSchoolCurrency } from '../../../../hooks/useSchoolCurrency';
 import { formatAmount, formatDate, formatDateTime } from '../../../../utils/format';
 import { useI18n } from '../../../../context/LanguageContext';
+import { useToast } from '../../../../context/ToastContext';
 import { useTheme } from '../../../../context/ThemeContext';
 import {
   Badge,
@@ -47,6 +48,7 @@ const typeTone = (type: LessonType): Tone => {
 
 export const StudentLessonsTab = ({ route }: any) => {
   const { t } = useI18n();
+  const { showToast } = useToast();
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { studentId, schoolId } = route.params;
@@ -96,7 +98,7 @@ export const StudentLessonsTab = ({ route }: any) => {
         parseFloat(amount),
         paymentMethod
       );
-      Alert.alert(t('common.success'), t('studentLessons.markedPaid'));
+      showToast(t('studentLessons.markedPaid'));
       setShowPaymentModal(false);
       setSelectedLesson(null);
       setAmount('');

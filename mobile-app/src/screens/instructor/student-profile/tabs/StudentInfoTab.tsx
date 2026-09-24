@@ -11,6 +11,7 @@ import { FinancialSummary, StudentProfile } from '../../../../models/Profile';
 import { useSchoolCurrency } from '../../../../hooks/useSchoolCurrency';
 import { formatAmount, formatDate, formatPersonName } from '../../../../utils/format';
 import { useI18n } from '../../../../context/LanguageContext';
+import { useToast } from '../../../../context/ToastContext';
 import { useTheme } from '../../../../context/ThemeContext';
 import {
   Button,
@@ -25,6 +26,7 @@ import { Theme } from '../../../../theme';
 
 export const StudentInfoTab = ({ route }: any) => {
   const { t } = useI18n();
+  const { showToast } = useToast();
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { studentId, schoolId } = route.params;
@@ -62,7 +64,7 @@ export const StudentInfoTab = ({ route }: any) => {
     try {
       setSavingNotes(true);
       await studentProfileService.updateNotes(studentId, notes);
-      Alert.alert(t('common.success'), t('studentInfo.notesSaved'));
+      showToast(t('studentInfo.notesSaved'));
       setShowNotesModal(false);
       loadData();
     } catch (error) {
