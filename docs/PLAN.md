@@ -651,7 +651,7 @@ cd mobile-app && npx jest theme -t 'contraste' && npx jest theme && npx tsc --no
 ```
 **Hors périmètre** : refonte des écrans (11.3, 11.4), sélecteur manuel de thème (le réglage du téléphone fait foi, D-48).
 
-### - [ ] 11.2 — Bibliothèque de composants partagés
+### - [x] 11.2 — Bibliothèque de composants partagés
 **Objectif** : `src/components/ui/` fournit ce que les écrans réécrivent aujourd'hui à la main : `Screen` (fond, marges, zone sûre), `AppBar` (titre, retour, action), `Button` (`primary` / `secondary` / `ghost` / `danger`, état chargement, désactivé), `Card`, `Chip`, `Badge`, `Field` (libellé, saisie, erreur), `SectionHeader`, `ListRow`, `EmptyState` (icône, titre, texte, action), `Skeleton`, `Toast`. Tous lisent le thème, aucun ne code une couleur en dur. Chaque composant a un test de rendu (clair et sombre).
 **Fichiers** : `mobile-app/src/components/ui/*` et `mobile-app/src/components/ui/__tests__/*` (nouveaux).
 **Critère de validation** :

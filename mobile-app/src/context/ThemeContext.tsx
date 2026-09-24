@@ -5,13 +5,22 @@
 
 import React, { createContext, useContext, useMemo } from 'react';
 import { useColorScheme } from 'react-native';
-import { Theme, themes } from '../theme';
+import { Theme, ThemeName, themes } from '../theme';
 
 const ThemeContext = createContext<Theme | undefined>(undefined);
 
-export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
+interface ThemeProviderProps {
+  children: React.ReactNode;
+  /** Force un thème au lieu du réglage du téléphone. Sert aux tests de rendu (11.2). */
+  name?: ThemeName;
+}
+
+export const ThemeProvider = ({ children, name }: ThemeProviderProps) => {
   const scheme = useColorScheme();
-  const theme = useMemo(() => themes[scheme === 'dark' ? 'dark' : 'light'], [scheme]);
+  const theme = useMemo(
+    () => themes[name ?? (scheme === 'dark' ? 'dark' : 'light')],
+    [name, scheme]
+  );
 
   return <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>;
 };
