@@ -688,7 +688,7 @@ cd mobile-app && test -z "$(grep -rn "Alert.alert(t('common.success')" src/scree
 ```
 **Hors périmètre** : notifications système (hors v1, D-35).
 
-### - [ ] 11.6 — Thème sombre et accessibilité vérifiés écran par écran
+### - [x] 11.6 — Thème sombre et accessibilité vérifiés écran par écran
 **Objectif** : chaque écran est vu dans les deux thèmes sur l'émulateur (captures) ; les écarts sont corrigés ; les cibles tactiles font au moins 44 px, les actions principales portent `accessibilityRole` et `accessibilityLabel`, et aucun texte ne passe sous le seuil de contraste. L'icône et l'écran de démarrage suivent la nouvelle palette.
 **Fichiers** : les écrans concernés, `mobile-app/app.json`, `mobile-app/assets/*`.
 **Critère de validation** :
