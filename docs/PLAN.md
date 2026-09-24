@@ -3,7 +3,7 @@
 Règles de lecture (voir `CLAUDE.md`, règles d'or 3 et 5) :
 - On travaille dans l'ordre, sur la première tâche non cochée. Une tâche = un commit (message Conventional Commits, scope = domaine ou `infra` / `mobile` / `docs` / `e2e`), poussé sur `origin/main` aussitôt. Les tâches d'une même phase s'enchaînent sans validation intermédiaire ; arrêt obligatoire en fin de phase, sur question ouverte non tranchée, sur échec de critère non réparable dans la tâche, ou sur choix produit non tranché (D-36, 18/09/2026).
 - Une tâche est cochée **seulement** quand sa commande « Critère de validation » a été exécutée et que sa sortie a été montrée. Pas d'exception.
-- Si une tâche indique « Dépend de : Q-xx » et que la question n'est pas tranchée dans `DECISIONS.md`, on **s'arrête** et on demande. Au 23/09/2026 aucune question n'est ouverte : Q-17 à Q-21 → D-40 à D-44 (Phase 7 ; D-44 = statu quo de D-42, sans tâche) ; la Phase 8 applique D-45 (accueils « wow »), la Phase 9 D-46 (Expo SDK 57), la Phase 10 D-47 (français et arabe).
+- Si une tâche indique « Dépend de : Q-xx » et que la question n'est pas tranchée dans `DECISIONS.md`, on **s'arrête** et on demande. Au 23/09/2026 aucune question n'est ouverte : Q-17 à Q-21 → D-40 à D-44 (Phase 7 ; D-44 = statu quo de D-42, sans tâche) ; la Phase 8 applique D-45 (accueils « wow »), la Phase 9 D-46 (Expo SDK 57), la Phase 10 D-47 (français et arabe), la Phase 11 D-48 (design system et thèmes).
 - Chaque tâche livrée ajoute une ligne dans `CHANGELOG.md` et, si elle touche une route, met à jour `docs/API_CONTRACT.md` dans le même commit.
 - Les commandes sont écrites pour Git Bash (Windows) ou un shell POSIX, depuis la racine du dépôt sauf `cd` explicite.
 
@@ -638,6 +638,66 @@ cd mobile-app && test -z "$(grep -rn "marginLeft\|marginRight\|paddingLeft\|padd
 
 ---
 
-## Après la Phase 10
+## Phase 11 — Front dédié : design system, thèmes clair et sombre (D-48)
+
+Les écrans marchent mais se ressemblent tous : chacun redéclare ses couleurs et ses styles, les retours d'action passent par des fenêtres système, les chargements par un rond qui tourne. Cette phase donne à l'application un **système** (jetons, composants, états) et deux thèmes, sans changer une seule route ni une seule règle métier.
+
+### - [ ] 11.1 — Jetons de couleur, typographie et thèmes clair / sombre
+**Objectif** : `src/theme` devient un jeu de **jetons sémantiques** (`surface`, `surfaceRaised`, `surfaceMuted`, `border`, `textPrimary`, `textSecondary`, `textMuted`, `textOnAccent`, `accent`, `accentSoft`, `success`, `warning`, `danger`, `overlay`, `skeleton`) déclinés en **clair** et **sombre**, plus une échelle typographique (tailles, graisses, interlignes), des rayons et des ombres ; palette retravaillée (le bleu par défaut de React Native laisse place à une identité propre, nom de l'app inchangé — D-48). `ThemeProvider` + `useTheme()` suivent le réglage du téléphone (`useColorScheme`). Deux tests : parité des jetons entre les thèmes (aucun jeton absent d'un côté) et **contraste** ≥ 4,5:1 pour les paires texte/fond de chaque thème.
+**Fichiers** : `mobile-app/src/theme/{tokens.ts,light.ts,dark.ts,index.ts}`, `mobile-app/src/theme/__tests__/theme.test.ts` (nouveaux), `mobile-app/src/context/ThemeContext.tsx` (nouveau), `mobile-app/App.tsx`, `docs/ARCHITECTURE.md`.
+**Critère de validation** :
+```bash
+cd mobile-app && npx jest theme -t 'contraste' && npx jest theme && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : refonte des écrans (11.3, 11.4), sélecteur manuel de thème (le réglage du téléphone fait foi, D-48).
+
+### - [ ] 11.2 — Bibliothèque de composants partagés
+**Objectif** : `src/components/ui/` fournit ce que les écrans réécrivent aujourd'hui à la main : `Screen` (fond, marges, zone sûre), `AppBar` (titre, retour, action), `Button` (`primary` / `secondary` / `ghost` / `danger`, état chargement, désactivé), `Card`, `Chip`, `Badge`, `Field` (libellé, saisie, erreur), `SectionHeader`, `ListRow`, `EmptyState` (icône, titre, texte, action), `Skeleton`, `Toast`. Tous lisent le thème, aucun ne code une couleur en dur. Chaque composant a un test de rendu (clair et sombre).
+**Fichiers** : `mobile-app/src/components/ui/*` et `mobile-app/src/components/ui/__tests__/*` (nouveaux).
+**Critère de validation** :
+```bash
+cd mobile-app && npx jest components && test -z "$(grep -rn "#[0-9a-fA-F]\{6\}" src/components --include='*.tsx')" && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : remplacement dans les écrans (11.3, 11.4).
+
+### - [ ] 11.3 — Écrans élève refondus sur le système
+**Objectif** : authentification, accueil « Mon parcours », écoles, fiche école, demandes de leçon et d'examen, mes leçons, mes examens, suivi d'inscription, « Mon profil » et ses onglets passent par les composants de 11.2 et les jetons de 11.1 : plus aucune couleur codée en dur, plus de `StyleSheet` dupliqué pour les cartes, les boutons ou les en-têtes ; hiérarchie visuelle retravaillée (titres, densité, respiration).
+**Fichiers** : `mobile-app/src/screens/auth/*`, `mobile-app/src/screens/student/**`.
+**Critère de validation** :
+```bash
+cd mobile-app && test -z "$(grep -rn "colors\." src/screens/auth src/screens/student --include='*.tsx')" && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : écrans instructeur (11.4).
+
+### - [ ] 11.4 — Écrans instructeur refondus sur le système
+**Objectif** : même travail pour l'accueil « Aujourd'hui », les leçons du jour, les demandes de leçon et d'examen, les examens du jour, la réservation pour un élève, les demandes d'inscription, la fiche élève et ses onglets, et la modale de présence.
+**Fichiers** : `mobile-app/src/screens/instructor/**`.
+**Critère de validation** :
+```bash
+cd mobile-app && test -z "$(grep -rn "colors\." src/screens/instructor --include='*.tsx')" && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : retours et animations (11.5).
+
+### - [ ] 11.5 — Retours d'action, chargements et états vides
+**Objectif** : une action réussie ne bloque plus l'écran avec une fenêtre système — un **toast** l'annonce (`Toast` de 11.2) ; les `Alert` ne restent que pour ce qui demande une vraie confirmation (annuler une leçon, refuser une demande) et pour les erreurs bloquantes. Les chargements affichent des **squelettes** à la forme du contenu au lieu d'un rond centré ; chaque liste vide a un `EmptyState` avec une action ; les pressions ont un retour visuel (`Pressable`, opacité et échelle).
+**Fichiers** : `mobile-app/src/components/ui/Toast.tsx`, `mobile-app/src/context/ToastContext.tsx` (nouveau), les écrans concernés.
+**Critère de validation** :
+```bash
+cd mobile-app && test -z "$(grep -rn "Alert.alert(t('common.success')" src/screens --include='*.tsx')" && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : notifications système (hors v1, D-35).
+
+### - [ ] 11.6 — Thème sombre et accessibilité vérifiés écran par écran
+**Objectif** : chaque écran est vu dans les deux thèmes sur l'émulateur (captures) ; les écarts sont corrigés ; les cibles tactiles font au moins 44 px, les actions principales portent `accessibilityRole` et `accessibilityLabel`, et aucun texte ne passe sous le seuil de contraste. L'icône et l'écran de démarrage suivent la nouvelle palette.
+**Fichiers** : les écrans concernés, `mobile-app/app.json`, `mobile-app/assets/*`.
+**Critère de validation** :
+```bash
+cd mobile-app && npx jest theme -t 'contraste' && test -z "$(grep -rn "accessibilityRole=\"button\"" src/components/ui --include='*.tsx' | wc -l | grep '^0$')" && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : refonte des illustrations, mode sombre du site web (gelé, D-05).
+
+---
+
+## Après la Phase 11
 
 La recette finale (parcours D-15 sur un téléphone via Expo Go, backend en Docker) est faite **par l'humain**, hors de cette liste. Les fonctionnalités hors contrat (paiement en ligne, web, gestion des codes par écran) ne sont pas dans la v1.
