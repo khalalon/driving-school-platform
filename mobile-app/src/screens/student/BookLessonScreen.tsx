@@ -1,34 +1,24 @@
 /**
- * Book Lesson Screen - Minimal & Elegant
- * Single Responsibility: Student requests a lesson from the school (L2)
- *
- * La demande est adressée à l'école (D-32) : l'instructeur n'est qu'une préférence facultative,
- * la date souhaitée est obligatoire (D-21) et le type est l'un des trois de D-18.
+ * Demander une leçon (11.3) — L2 : la demande est adressée à l'école (D-32), l'instructeur n'est
+ * qu'une préférence facultative, la date souhaitée est obligatoire (D-21) et le type est l'un des
+ * trois de D-18. Le formulaire tient en une page : type, quand, avec qui, remarques.
  */
 
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  ActivityIndicator,
-  Alert,
-  TextInput,
-  Platform,
-} from 'react-native';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { lessonService } from '../../services/api/LessonService';
 import { enrollmentService } from '../../services/api/EnrollmentService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
 import { useI18n } from '../../context/LanguageContext';
+import { useTheme } from '../../context/ThemeContext';
+import { AppBar, Button, Card, Chip, Field, Screen, SkeletonCard } from '../../components/ui';
 import { lessonTypeLabel, LESSON_TYPES, LessonType } from '../../models/Lesson';
-import { colors, typography, spacing, shadows } from '../../theme';
-import { mirrorIcon } from '../../utils/rtl';
+import { Theme } from '../../theme';
+import { IoniconName } from '../../utils/rtl';
 
-const LESSON_TYPE_ICONS: Record<LessonType, keyof typeof Ionicons.glyphMap> = {
+const LESSON_TYPE_ICONS: Record<LessonType, IoniconName> = {
   [LessonType.CODE]: 'book-outline',
   [LessonType.MANOEUVRE]: 'car-outline',
   [LessonType.PARC]: 'car-sport-outline',
@@ -44,6 +34,8 @@ const defaultRequestedDate = (): Date => {
 
 export const BookLessonScreen = ({ navigation, route }: any) => {
   const { t } = useI18n();
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { schoolId, preferredInstructorId, instructorName } = route.params;
 
   const [loading, setLoading] = useState(false);
@@ -68,7 +60,7 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
 
       if (!status.canBook) {
         Alert.alert(t('school.enrollmentRequired'), t('school.enrollmentRequiredLesson'), [
-          { text: 'OK', onPress: () => navigation.goBack() },
+          { text: t('common.ok'), onPress: () => navigation.goBack() },
         ]);
       }
 
@@ -118,7 +110,7 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
 
       Alert.alert(t('school.requestSent'), t('book.requestSentText'), [
         {
-          text: 'OK',
+          text: t('common.ok'),
           onPress: () => navigation.navigate('StudentTabs', { screen: 'MyLessons' }),
         },
       ]);
@@ -129,382 +121,207 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
     }
   };
 
-  if (checkingEnrollment) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary[600]} />
-        <Text style={styles.loadingText}>{t('book.checkingEnrollment')}</Text>
-      </View>
-    );
-  }
-
-  if (!canBook) {
+  if (!checkingEnrollment && !canBook) {
     return null;
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name={mirrorIcon('arrow-back')} size={24} color={colors.text.primary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Request Lesson</Text>
-      </View>
+    <View style={styles.flex}>
+      <AppBar
+        title={t('book.title')}
+        onBack={() => navigation.goBack()}
+        backLabel={t('common.back')}
+      />
 
-      <ScrollView contentContainerStyle={styles.content}>
-        {/* Info Card */}
-        <View style={styles.infoCard}>
-          <Ionicons name="information-circle-outline" size={24} color={colors.primary[600]} />
-          <View style={styles.infoContent}>
-            <Text style={styles.infoTitle}>{t('book.howItWorks')}</Text>
-            <Text style={styles.infoText}>{t('book.howItWorksText')}</Text>
-          </View>
-        </View>
+      <Screen contentContainerStyle={styles.content} edges={[]}>
+        {checkingEnrollment ? (
+          <>
+            <SkeletonCard lines={2} />
+            <SkeletonCard lines={3} />
+          </>
+        ) : (
+          <>
+            <Card highlighted elevation="none" style={styles.info}>
+              <Ionicons name="information-circle" size={22} color={theme.colors.accentText} />
+              <View style={styles.infoBody}>
+                <Text style={styles.infoTitle}>{t('book.howItWorks')}</Text>
+                <Text style={styles.infoText}>{t('book.howItWorksText')}</Text>
+              </View>
+            </Card>
 
-        {/* Lesson Type */}
-        <View style={styles.section}>
-          <Text style={styles.label}>{t('book.lessonType')}</Text>
-          <View style={styles.typeContainer}>
-            {LESSON_TYPES.map((type) => {
-              const active = lessonType === type;
-              return (
-                <TouchableOpacity
-                  key={type}
-                  style={[styles.typeButton, active && styles.typeButtonActive]}
-                  onPress={() => setLessonType(type)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons
-                    name={LESSON_TYPE_ICONS[type]}
-                    size={22}
-                    color={active ? colors.text.inverse : colors.text.secondary}
+            <View style={styles.section}>
+              <Text style={styles.label}>{t('book.lessonType')}</Text>
+              <View style={styles.types}>
+                {LESSON_TYPES.map((type) => (
+                  <Chip
+                    key={type}
+                    label={lessonTypeLabel(type)}
+                    icon={LESSON_TYPE_ICONS[type]}
+                    selected={lessonType === type}
+                    onPress={() => setLessonType(type)}
                   />
-                  <Text style={[styles.typeButtonText, active && styles.typeButtonTextActive]}>
-                    {lessonTypeLabel(type)}
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.label}>{t('book.requestedDate')}</Text>
+              <View style={styles.dateRow}>
+                <Pressable
+                  onPress={() => setShowDatePicker(true)}
+                  accessibilityRole="button"
+                  style={({ pressed }) => [
+                    styles.dateButton,
+                    styles.grow,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Ionicons name="calendar-outline" size={20} color={theme.colors.textSecondary} />
+                  <Text style={styles.dateText}>{requestedDate.toLocaleDateString()}</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setShowTimePicker(true)}
+                  accessibilityRole="button"
+                  style={({ pressed }) => [styles.dateButton, pressed && styles.pressed]}
+                >
+                  <Ionicons name="time-outline" size={20} color={theme.colors.textSecondary} />
+                  <Text style={styles.dateText}>
+                    {requestedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* Requested Date */}
-        <View style={styles.section}>
-          <Text style={styles.label}>{t('book.requestedDate')}</Text>
-          <View style={styles.dateRow}>
-            <TouchableOpacity
-              style={[styles.dateButton, styles.dateButtonGrow]}
-              onPress={() => setShowDatePicker(true)}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="calendar-outline" size={20} color={colors.text.secondary} />
-              <Text style={styles.dateText}>{requestedDate.toLocaleDateString()}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.dateButton}
-              onPress={() => setShowTimePicker(true)}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="time-outline" size={20} color={colors.text.secondary} />
-              <Text style={styles.dateText}>
-                {requestedDate.toLocaleTimeString([], {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </Text>
-            </TouchableOpacity>
-          </View>
-          {showDatePicker && (
-            <DateTimePicker
-              value={requestedDate}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onValueChange={handleDateChange}
-              onDismiss={() => setShowDatePicker(false)}
-              minimumDate={new Date()}
-            />
-          )}
-          {showTimePicker && (
-            <DateTimePicker
-              value={requestedDate}
-              mode="time"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onValueChange={handleTimeChange}
-              onDismiss={() => setShowTimePicker(false)}
-            />
-          )}
-          <Text style={styles.helperText}>{t('book.dateHelper')}</Text>
-        </View>
-
-        {/* Preferred Instructor (optional) */}
-        <View style={styles.section}>
-          <Text style={styles.label}>{t('book.preferredInstructor')}</Text>
-          {instructorId ? (
-            <View style={styles.instructorCard}>
-              <View style={styles.instructorIconContainer}>
-                <Ionicons name="person-outline" size={24} color={colors.primary[600]} />
+                </Pressable>
               </View>
-              <View style={styles.instructorInfo}>
-                <Text style={styles.instructorName}>
-                  {instructorName || t('myLessons.instructorFallback')}
-                </Text>
-                <Text style={styles.instructorHint}>
-                  Preference only, any instructor may approve
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => setInstructorId(undefined)}
-                style={styles.clearButton}
-                activeOpacity={0.7}
-                accessibilityLabel="Remove preferred instructor"
-              >
-                <Ionicons name="close-circle" size={22} color={colors.neutral[400]} />
-              </TouchableOpacity>
+              {showDatePicker && (
+                <DateTimePicker
+                  value={requestedDate}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onValueChange={handleDateChange}
+                  onDismiss={() => setShowDatePicker(false)}
+                  minimumDate={new Date()}
+                />
+              )}
+              {showTimePicker && (
+                <DateTimePicker
+                  value={requestedDate}
+                  mode="time"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onValueChange={handleTimeChange}
+                  onDismiss={() => setShowTimePicker(false)}
+                />
+              )}
+              <Text style={styles.helper}>{t('book.dateHelper')}</Text>
             </View>
-          ) : (
-            <View style={styles.instructorCard}>
-              <View style={styles.instructorIconContainer}>
-                <Ionicons name="people-outline" size={24} color={colors.text.tertiary} />
-              </View>
-              <View style={styles.instructorInfo}>
-                <Text style={styles.instructorName}>{t('book.noPreference')}</Text>
-                <Text style={styles.instructorHint}>
-                  Pick an instructor from the school page to set one
-                </Text>
-              </View>
+
+            <View style={styles.section}>
+              <Text style={styles.label}>{t('book.preferredInstructor')}</Text>
+              <Card style={styles.instructorCard} elevation="none">
+                <View style={styles.instructorIcon}>
+                  <Ionicons
+                    name={instructorId ? 'person' : 'people-outline'}
+                    size={22}
+                    color={instructorId ? theme.colors.accentText : theme.colors.textMuted}
+                  />
+                </View>
+                <View style={styles.instructorBody}>
+                  <Text style={styles.instructorName}>
+                    {instructorId
+                      ? instructorName || t('myLessons.instructorFallback')
+                      : t('book.noPreference')}
+                  </Text>
+                  <Text style={styles.helper}>
+                    {instructorId ? t('book.preferenceHint') : t('book.pickInstructorHint')}
+                  </Text>
+                </View>
+                {instructorId ? (
+                  <Pressable
+                    onPress={() => setInstructorId(undefined)}
+                    hitSlop={12}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('book.removePreferred')}
+                  >
+                    <Ionicons name="close-circle" size={22} color={theme.colors.textMuted} />
+                  </Pressable>
+                ) : null}
+              </Card>
             </View>
-          )}
-        </View>
 
-        {/* Notes */}
-        <View style={styles.section}>
-          <Text style={styles.label}>{t('book.notes')}</Text>
-          <TextInput
-            style={styles.notesInput}
-            placeholder={t('book.notesPlaceholder')}
-            placeholderTextColor={colors.neutral[400]}
-            value={notes}
-            onChangeText={setNotes}
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
-          />
-        </View>
+            <Field
+              label={t('book.notes')}
+              placeholder={t('book.notesPlaceholder')}
+              value={notes}
+              onChangeText={setNotes}
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+              style={styles.notes}
+            />
 
-        {/* Submit Button */}
-        <TouchableOpacity
-          style={[styles.submitButton, loading && styles.disabledButton]}
-          onPress={handleRequestLesson}
-          disabled={loading}
-          activeOpacity={0.8}
-        >
-          {loading ? (
-            <ActivityIndicator size="small" color={colors.text.inverse} />
-          ) : (
-            <>
-              <Text style={styles.submitButtonText}>{t('book.sendRequest')}</Text>
-              <Ionicons name="send-outline" size={20} color={colors.text.inverse} />
-            </>
-          )}
-        </TouchableOpacity>
-      </ScrollView>
+            <Button
+              title={t('book.sendRequest')}
+              onPress={handleRequestLesson}
+              loading={loading}
+              icon="send"
+              iconPosition="trailing"
+              fullWidth
+              style={styles.submit}
+            />
+          </>
+        )}
+      </Screen>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.secondary,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.background.secondary,
-    gap: spacing.md,
-  },
-  loadingText: {
-    fontSize: typography.size.base,
-    color: colors.text.secondary,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing['4xl'],
-    paddingBottom: spacing.lg,
-    backgroundColor: colors.background.primary,
-    gap: spacing.md,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.background.tertiary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.bold,
-    color: colors.text.primary,
-  },
-  content: {
-    padding: spacing.xl,
-  },
-  infoCard: {
-    flexDirection: 'row',
-    backgroundColor: colors.primary[50],
-    padding: spacing.base,
-    borderRadius: 12,
-    gap: spacing.md,
-    marginBottom: spacing.xl,
-  },
-  infoContent: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  infoTitle: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-    color: colors.primary[600],
-  },
-  infoText: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-    lineHeight: typography.size.sm * typography.lineHeight.normal,
-  },
-  section: {
-    marginBottom: spacing.xl,
-  },
-  label: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.medium,
-    color: colors.text.primary,
-    marginBottom: spacing.sm,
-  },
-  typeContainer: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  typeButton: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.background.primary,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    paddingVertical: spacing.md,
-    gap: spacing.xs,
-  },
-  typeButtonActive: {
-    backgroundColor: colors.primary[600],
-    borderColor: colors.primary[600],
-  },
-  typeButtonText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.medium,
-    color: colors.text.secondary,
-  },
-  typeButtonTextActive: {
-    color: colors.text.inverse,
-  },
-  dateRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  dateButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background.primary,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    paddingHorizontal: spacing.base,
-    height: 52,
-    gap: spacing.sm,
-  },
-  dateButtonGrow: {
-    flex: 1,
-  },
-  dateText: {
-    fontSize: typography.size.base,
-    color: colors.text.primary,
-  },
-  instructorCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background.primary,
-    padding: spacing.base,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    gap: spacing.md,
-  },
-  instructorIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.primary[50],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  instructorInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  instructorName: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.primary,
-  },
-  instructorHint: {
-    fontSize: typography.size.xs,
-    color: colors.text.tertiary,
-  },
-  clearButton: {
-    padding: spacing.xs,
-  },
-  notesInput: {
-    backgroundColor: colors.background.primary,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    padding: spacing.base,
-    fontSize: typography.size.base,
-    color: colors.text.primary,
-    minHeight: 100,
-    marginBottom: spacing.sm,
-  },
-  helperText: {
-    fontSize: typography.size.xs,
-    color: colors.text.tertiary,
-    fontStyle: 'italic',
-  },
-  submitButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary[600],
-    paddingVertical: spacing.base,
-    borderRadius: 12,
-    gap: spacing.sm,
-    marginTop: spacing.base,
-    ...shadows.sm,
-  },
-  submitButtonText: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.inverse,
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    flex: { flex: 1, backgroundColor: theme.colors.surface },
+    content: { paddingTop: theme.spacing.base, gap: theme.spacing.lg },
+    info: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.md },
+    infoBody: { flex: 1, gap: 2 },
+    infoTitle: {
+      fontSize: theme.typography.size.sm,
+      fontWeight: theme.typography.weight.semibold,
+      color: theme.colors.accentText,
+    },
+    infoText: { fontSize: theme.typography.size.sm, color: theme.colors.accentText },
+    section: { gap: theme.spacing.sm },
+    label: {
+      fontSize: theme.typography.size.sm,
+      fontWeight: theme.typography.weight.medium,
+      color: theme.colors.textSecondary,
+    },
+    types: { flexDirection: 'row', gap: theme.spacing.sm, flexWrap: 'wrap' },
+    dateRow: { flexDirection: 'row', gap: theme.spacing.md },
+    dateButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+      backgroundColor: theme.colors.surfaceRaised,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: theme.radius.md,
+      paddingHorizontal: theme.spacing.base,
+      paddingVertical: theme.spacing.md,
+    },
+    grow: { flex: 1 },
+    pressed: { opacity: 0.7 },
+    dateText: { fontSize: theme.typography.size.base, color: theme.colors.textPrimary },
+    helper: { fontSize: theme.typography.size.xs, color: theme.colors.textMuted },
+    instructorCard: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md },
+    instructorIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: theme.radius.pill,
+      backgroundColor: theme.colors.surfaceMuted,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    instructorBody: { flex: 1, gap: 2 },
+    instructorName: {
+      fontSize: theme.typography.size.base,
+      fontWeight: theme.typography.weight.medium,
+      color: theme.colors.textPrimary,
+    },
+    notes: { minHeight: 96 },
+    submit: { marginTop: theme.spacing.sm },
+  });

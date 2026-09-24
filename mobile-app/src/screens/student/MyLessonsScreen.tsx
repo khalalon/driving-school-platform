@@ -1,22 +1,13 @@
 /**
- * My Lessons Screen - Minimal & Elegant
- * Single Responsibility: Display student's lessons (L1) and let them cancel (L3)
+ * Mes leçons (11.3) — L1, annulation L3.
  *
  * Une leçon naît d'une demande (`pending`, date souhaitée), est planifiée par l'instructeur
- * (`scheduled`, date confirmée), puis passe `completed` ; l'élève voit l'état de paiement (D-32).
+ * (`scheduled`, date confirmée), puis passe `completed` ; l'élève voit l'état de paiement (D-32)
+ * et son avoir (D-40). Le filtre est une rangée de `Chip`, le statut un `Badge` d'intention.
  */
 
-import React, { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  FlatList,
-  ActivityIndicator,
-  Alert,
-  RefreshControl,
-} from 'react-native';
+import React, { useState, useCallback, useMemo } from 'react';
+import { Alert, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { lessonService } from '../../services/api/LessonService';
@@ -32,26 +23,48 @@ import {
 } from '../../models/Lesson';
 import { useSchoolCurrency } from '../../hooks/useSchoolCurrency';
 import { useI18n } from '../../context/LanguageContext';
+import { useTheme } from '../../context/ThemeContext';
+import {
+  AppBar,
+  Badge,
+  Button,
+  Card,
+  Chip,
+  EmptyState,
+  SkeletonCard,
+  Tone,
+} from '../../components/ui';
 import { TranslationKey } from '../../i18n';
 import { formatAmount, formatPersonName, formatTime } from '../../utils/format';
-import { colors, typography, spacing, shadows } from '../../theme';
+import { Theme } from '../../theme';
 
 type FilterType = 'pending' | 'upcoming' | 'completed' | 'closed';
 
 const FILTERS: { key: FilterType; labelKey: TranslationKey; statuses: LessonStatus[] }[] = [
   { key: 'pending', labelKey: 'filter.pending', statuses: [LessonStatus.PENDING] },
   { key: 'upcoming', labelKey: 'filter.upcoming', statuses: [LessonStatus.SCHEDULED] },
-  {
-    key: 'completed',
-    labelKey: 'filter.completed',
-    statuses: [LessonStatus.COMPLETED],
-  },
+  { key: 'completed', labelKey: 'filter.completed', statuses: [LessonStatus.COMPLETED] },
   {
     key: 'closed',
     labelKey: 'filter.closed',
     statuses: [LessonStatus.CANCELLED, LessonStatus.REJECTED],
   },
 ];
+
+/** Statut → intention de couleur : le thème décide du rendu. */
+const statusTone = (status: LessonStatus): Tone => {
+  switch (status) {
+    case LessonStatus.PENDING:
+      return 'warning';
+    case LessonStatus.SCHEDULED:
+      return 'accent';
+    case LessonStatus.COMPLETED:
+      return 'success';
+    case LessonStatus.CANCELLED:
+    case LessonStatus.REJECTED:
+      return 'danger';
+  }
+};
 
 /** Date affichée : celle confirmée par l'instructeur, sinon celle souhaitée par l'élève. */
 const lessonDateOf = (lesson: Lesson): Date | null => {
@@ -61,6 +74,8 @@ const lessonDateOf = (lesson: Lesson): Date | null => {
 
 export const MyLessonsScreen = ({ navigation }: any) => {
   const { t } = useI18n();
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -131,22 +146,7 @@ export const MyLessonsScreen = ({ navigation }: any) => {
   const activeFilter = FILTERS.find((f) => f.key === filter) ?? FILTERS[0];
   const filteredLessons = lessons.filter((lesson) => activeFilter.statuses.includes(lesson.status));
 
-  const getStatusConfig = (status: LessonStatus) => {
-    switch (status) {
-      case LessonStatus.PENDING:
-        return { color: colors.warning[500], bg: colors.warning[50] };
-      case LessonStatus.SCHEDULED:
-        return { color: colors.primary[600], bg: colors.primary[50] };
-      case LessonStatus.COMPLETED:
-        return { color: colors.success[500], bg: colors.success[50] };
-      case LessonStatus.CANCELLED:
-      case LessonStatus.REJECTED:
-        return { color: colors.error[500], bg: colors.error[50] };
-    }
-  };
-
   const renderLessonCard = ({ item }: { item: Lesson }) => {
-    const statusConfig = getStatusConfig(item.status);
     const lessonDate = lessonDateOf(item);
     const isPending = item.status === LessonStatus.PENDING;
     // D-24 : demande pending toujours ; leçon planifiée jusqu'à 24 h avant (masquage de confort)
@@ -156,24 +156,23 @@ export const MyLessonsScreen = ({ navigation }: any) => {
       item.status === LessonStatus.SCHEDULED &&
       !!item.scheduledDate &&
       new Date(item.scheduledDate).getTime() + (item.durationMinutes ?? 60) * 60000 <= Date.now();
+    const note = paymentNote(item);
 
     return (
-      <View style={styles.lessonCard}>
-        <View style={styles.cardHeader}>
+      <Card style={styles.card}>
+        <View style={styles.head}>
           <View style={styles.dateBox}>
             <Text style={styles.dateMonth}>
-              {lessonDate
-                ? lessonDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()
-                : '—'}
+              {lessonDate ? lessonDate.toLocaleDateString(undefined, { month: 'short' }) : '—'}
             </Text>
             <Text style={styles.dateDay}>{lessonDate ? lessonDate.getDate() : '?'}</Text>
           </View>
 
-          <View style={styles.lessonInfo}>
-            <Text style={styles.lessonType}>{lessonTypeLabel(item.type) ?? item.type}</Text>
-            <View style={styles.instructorRow}>
-              <Ionicons name="person-outline" size={16} color={colors.text.tertiary} />
-              <Text style={styles.instructorText}>
+          <View style={styles.info}>
+            <Text style={styles.type}>{lessonTypeLabel(item.type) ?? item.type}</Text>
+            <View style={styles.metaRow}>
+              <Ionicons name="person-outline" size={15} color={theme.colors.textMuted} />
+              <Text style={styles.meta} numberOfLines={1}>
                 {item.instructor
                   ? formatPersonName(item.instructor, t('myLessons.instructorFallback'))
                   : isPending
@@ -181,9 +180,9 @@ export const MyLessonsScreen = ({ navigation }: any) => {
                     : t('myLessons.noInstructor')}
               </Text>
             </View>
-            <View style={styles.timeRow}>
-              <Ionicons name="time-outline" size={16} color={colors.text.tertiary} />
-              <Text style={styles.timeText}>
+            <View style={styles.metaRow}>
+              <Ionicons name="time-outline" size={15} color={theme.colors.textMuted} />
+              <Text style={styles.meta}>
                 {isPending ? t('myLessons.requestedPrefix') : ''}
                 {formatTime(item.scheduledDate ?? item.requestedDate)}
                 {item.durationMinutes
@@ -193,396 +192,194 @@ export const MyLessonsScreen = ({ navigation }: any) => {
             </View>
           </View>
 
-          <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
-            <Text style={[styles.statusText, { color: statusConfig.color }]}>
-              {lessonStatusLabel(item.status)}
-            </Text>
-          </View>
+          <Badge label={lessonStatusLabel(item.status)} tone={statusTone(item.status)} />
         </View>
 
         {/* Prix et état de paiement (D-32), avoir (D-40) */}
-        {(item.price !== null || item.paid) && (
+        {item.price !== null || item.paid ? (
           <View style={styles.priceRow}>
-            <Ionicons name="cash-outline" size={16} color={colors.text.secondary} />
-            <Text style={styles.priceText}>{formatAmount(item.price, currency)}</Text>
-            <View style={[styles.paidBadge, item.paid ? styles.paidBadgeOn : styles.paidBadgeOff]}>
-              <Text style={[styles.paidText, item.paid ? styles.paidTextOn : styles.paidTextOff]}>
-                {item.paid ? t('myLessons.paid') : t('myLessons.unpaid')}
-              </Text>
-            </View>
+            <Ionicons name="cash-outline" size={16} color={theme.colors.textSecondary} />
+            <Text style={styles.price}>{formatAmount(item.price, currency)}</Text>
+            <Badge
+              label={item.paid ? t('myLessons.paid') : t('myLessons.unpaid')}
+              tone={item.paid ? 'success' : 'neutral'}
+            />
           </View>
-        )}
-        {paymentNote(item) === 'paid-with-credit' && (
-          <Text style={styles.paymentNote}>{t('myLessons.paidWithCredit')}</Text>
-        )}
-        {paymentNote(item) === 'credit-applied' && (
-          <Text style={styles.paymentNote}>
-            Credit applied: {formatAmount(item.creditApplied, currency)} · remaining{' '}
-            {formatAmount(item.amount, currency)}
+        ) : null}
+
+        {note === 'paid-with-credit' ? (
+          <Text style={styles.note}>{t('myLessons.paidWithCredit')}</Text>
+        ) : null}
+        {note === 'credit-applied' ? (
+          <Text style={styles.note}>
+            {t('myLessons.creditAppliedNote', {
+              credit: formatAmount(item.creditApplied, currency),
+              remaining: formatAmount(item.amount, currency),
+            })}
           </Text>
-        )}
-        {paymentNote(item) === 'refunded-as-credit' && (
-          <Text style={styles.paymentNote}>{t('myLessons.refundedAsCredit')}</Text>
-        )}
-        {item.status === LessonStatus.COMPLETED && item.attended === false && (
-          <View style={styles.reasonBox}>
-            <Ionicons name="alert-circle-outline" size={18} color={colors.error[600]} />
+        ) : null}
+        {note === 'refunded-as-credit' ? (
+          <Text style={styles.note}>{t('myLessons.refundedAsCredit')}</Text>
+        ) : null}
+
+        {item.status === LessonStatus.COMPLETED && item.attended === false ? (
+          <View style={styles.reason}>
+            <Ionicons name="alert-circle" size={18} color={theme.colors.dangerText} />
             <Text style={styles.reasonText}>{t('myLessons.absentNotBilled')}</Text>
           </View>
-        )}
+        ) : null}
 
-        {item.status === LessonStatus.REJECTED && item.rejectionReason && (
-          <View style={styles.reasonBox}>
-            <Ionicons name="information-circle-outline" size={18} color={colors.error[600]} />
+        {item.status === LessonStatus.REJECTED && item.rejectionReason ? (
+          <View style={styles.reason}>
+            <Ionicons name="information-circle" size={18} color={theme.colors.dangerText} />
             <Text style={styles.reasonText}>{item.rejectionReason}</Text>
           </View>
-        )}
+        ) : null}
 
-        {item.status === LessonStatus.CANCELLED && item.cancellationReason && (
-          <View style={styles.reasonBox}>
-            <Ionicons name="information-circle-outline" size={18} color={colors.error[600]} />
+        {item.status === LessonStatus.CANCELLED && item.cancellationReason ? (
+          <View style={styles.reason}>
+            <Ionicons name="information-circle" size={18} color={theme.colors.dangerText} />
             <Text style={styles.reasonText}>{item.cancellationReason}</Text>
           </View>
-        )}
+        ) : null}
 
         {canCancel ? (
-          <TouchableOpacity
-            style={styles.cancelButton}
+          <Button
+            title={isPending ? t('myLessons.withdrawAction') : t('myLessons.cancelAction')}
             onPress={() => handleCancelLesson(item)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="close-circle-outline" size={20} color={colors.error[600]} />
-            <Text style={styles.cancelButtonText}>
-              {isPending ? t('myLessons.withdrawAction') : t('myLessons.cancelAction')}
-            </Text>
-          </TouchableOpacity>
-        ) : (
-          item.status === LessonStatus.SCHEDULED && (
-            <Text style={styles.cancelHint}>
-              {isAwaitingAttendance
-                ? 'This lesson has passed — waiting for your instructor to record attendance'
-                : `Cancellation closed (less than ${LESSON_CANCEL_HOURS} h before the lesson) — contact your instructor`}
-            </Text>
-          )
-        )}
-      </View>
+            variant="ghost"
+            size="sm"
+            icon="close-circle-outline"
+          />
+        ) : item.status === LessonStatus.SCHEDULED ? (
+          <Text style={styles.hint}>
+            {isAwaitingAttendance
+              ? t('myLessons.awaitingAttendance')
+              : t('myLessons.cancelClosed', { hours: LESSON_CANCEL_HOURS })}
+          </Text>
+        ) : null}
+      </Card>
     );
   };
 
-  const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
-      <View style={styles.emptyIconContainer}>
-        <Ionicons name="calendar-outline" size={64} color={colors.neutral[300]} />
-      </View>
-      <Text style={styles.emptyTitle}>
-        {t('myLessons.emptyTitle', { filter: t(activeFilter.labelKey) })}
-      </Text>
-      <Text style={styles.emptyText}>
-        {filter === 'upcoming' || filter === 'pending'
-          ? t('myLessons.emptyRequest')
-          : t('myLessons.emptyOther')}
-      </Text>
-      {(filter === 'upcoming' || filter === 'pending') && (
-        <TouchableOpacity
-          style={styles.bookButton}
-          onPress={() => navigation.navigate('SchoolsList')}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="add-circle-outline" size={20} color={colors.text.inverse} />
-          <Text style={styles.bookButtonText}>{t('myLessons.requestLesson')}</Text>
-        </TouchableOpacity>
-      )}
-    </View>
-  );
-
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary[600]} />
-      </View>
-    );
-  }
-
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t('myLessons.title')}</Text>
-      </View>
+    <View style={styles.flex}>
+      <AppBar title={t('myLessons.title')} large />
 
-      {/* Filter Tabs */}
-      <View style={styles.filterContainer}>
+      <View style={styles.filters}>
         {FILTERS.map((tab) => (
-          <TouchableOpacity
+          <Chip
             key={tab.key}
-            style={[styles.filterTab, filter === tab.key && styles.filterTabActive]}
+            label={t(tab.labelKey)}
+            selected={filter === tab.key}
             onPress={() => setFilter(tab.key)}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.filterTabText, filter === tab.key && styles.filterTabTextActive]}>
-              {t(tab.labelKey)}
-            </Text>
-          </TouchableOpacity>
+          />
         ))}
       </View>
 
-      {/* Lessons List */}
-      <FlatList
-        data={filteredLessons}
-        renderItem={renderLessonCard}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={filteredLessons.length === 0 ? styles.emptyList : styles.listContent}
-        ListEmptyComponent={renderEmptyState}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary[600]}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-      />
+      {loading && lessons.length === 0 ? (
+        <View style={styles.skeletons}>
+          <SkeletonCard lines={3} />
+          <SkeletonCard lines={3} />
+        </View>
+      ) : (
+        <FlatList
+          data={filteredLessons}
+          renderItem={renderLessonCard}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={
+            filteredLessons.length === 0 ? styles.emptyList : styles.listContent
+          }
+          ListEmptyComponent={
+            <EmptyState
+              icon="calendar-outline"
+              title={t('myLessons.emptyTitle', { filter: t(activeFilter.labelKey) })}
+              message={
+                filter === 'upcoming' || filter === 'pending'
+                  ? t('myLessons.emptyRequest')
+                  : t('myLessons.emptyOther')
+              }
+              action={
+                filter === 'upcoming' || filter === 'pending'
+                  ? {
+                      label: t('myLessons.requestLesson'),
+                      onPress: () => navigation.navigate('SchoolsList'),
+                    }
+                  : undefined
+              }
+            />
+          }
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[theme.colors.accent]}
+              tintColor={theme.colors.accent}
+            />
+          }
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.secondary,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.background.secondary,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing['4xl'],
-    paddingBottom: spacing.lg,
-    backgroundColor: colors.background.primary,
-    gap: spacing.md,
-  },
-  headerTitle: {
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.bold,
-    color: colors.text.primary,
-  },
-  filterContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.background.primary,
-    gap: spacing.sm,
-  },
-  filterTab: {
-    flex: 1,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.xs,
-    borderRadius: 8,
-    alignItems: 'center',
-    backgroundColor: colors.background.tertiary,
-  },
-  filterTabActive: {
-    backgroundColor: colors.primary[600],
-  },
-  filterTabText: {
-    fontSize: typography.size.xs,
-    fontWeight: typography.weight.medium,
-    color: colors.text.secondary,
-  },
-  filterTabTextActive: {
-    color: colors.text.inverse,
-  },
-  listContent: {
-    padding: spacing.xl,
-    gap: spacing.md,
-  },
-  emptyList: {
-    flexGrow: 1,
-  },
-  lessonCard: {
-    backgroundColor: colors.background.primary,
-    borderRadius: 16,
-    padding: spacing.lg,
-    gap: spacing.md,
-    ...shadows.sm,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    alignItems: 'flex-start',
-  },
-  dateBox: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
-    backgroundColor: colors.primary[50],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dateMonth: {
-    fontSize: typography.size.xs,
-    fontWeight: typography.weight.semibold,
-    color: colors.primary[600],
-  },
-  dateDay: {
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.bold,
-    color: colors.primary[600],
-  },
-  lessonInfo: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  lessonType: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.primary,
-  },
-  instructorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  instructorText: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-  },
-  timeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  timeText: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-  },
-  statusBadge: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
-  },
-  statusText: {
-    fontSize: typography.size.xs,
-    fontWeight: typography.weight.semibold,
-  },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  priceText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.secondary,
-  },
-  paidBadge: {
-    marginStart: 'auto',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  paidBadgeOn: {
-    backgroundColor: colors.success[50],
-  },
-  paidBadgeOff: {
-    backgroundColor: colors.warning[50],
-  },
-  paidText: {
-    fontSize: typography.size.xs,
-    fontWeight: typography.weight.semibold,
-  },
-  paidTextOn: {
-    color: colors.success[600],
-  },
-  paidTextOff: {
-    color: colors.warning[600],
-  },
-  paymentNote: {
-    fontSize: typography.size.xs,
-    color: colors.success[600],
-    fontStyle: 'italic',
-  },
-  reasonBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-    backgroundColor: colors.error[50],
-    padding: spacing.md,
-    borderRadius: 8,
-  },
-  reasonText: {
-    flex: 1,
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-  },
-  cancelButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.md,
-    borderRadius: 8,
-    backgroundColor: colors.error[50],
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-  },
-  cancelButtonText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-    color: colors.error[600],
-  },
-  cancelHint: {
-    fontSize: typography.size.xs,
-    color: colors.text.tertiary,
-    fontStyle: 'italic',
-    marginTop: spacing.xs,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing['4xl'],
-  },
-  emptyIconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: colors.neutral[100],
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xl,
-  },
-  emptyTitle: {
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.primary,
-    marginBottom: spacing.sm,
-  },
-  emptyText: {
-    fontSize: typography.size.base,
-    color: colors.text.secondary,
-    textAlign: 'center',
-    marginBottom: spacing.xl,
-  },
-  bookButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary[600],
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    borderRadius: 12,
-    gap: spacing.sm,
-    ...shadows.sm,
-  },
-  bookButtonText: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.inverse,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    flex: { flex: 1, backgroundColor: theme.colors.surface },
+    filters: {
+      flexDirection: 'row',
+      gap: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.base,
+      paddingVertical: theme.spacing.md,
+      flexWrap: 'wrap',
+    },
+    skeletons: { padding: theme.spacing.base, gap: theme.spacing.md },
+    listContent: { padding: theme.spacing.base, paddingTop: 0, gap: theme.spacing.md },
+    emptyList: { flexGrow: 1, justifyContent: 'center' },
+    card: { gap: theme.spacing.md },
+    head: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.md },
+    dateBox: {
+      width: 52,
+      paddingVertical: theme.spacing.sm,
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.colors.accentSoft,
+      alignItems: 'center',
+    },
+    dateMonth: {
+      fontSize: theme.typography.size.xs,
+      fontWeight: theme.typography.weight.semibold,
+      color: theme.colors.accentText,
+      textTransform: 'uppercase',
+    },
+    dateDay: {
+      fontSize: theme.typography.size.xl,
+      fontWeight: theme.typography.weight.bold,
+      color: theme.colors.accentText,
+    },
+    info: { flex: 1, gap: 2 },
+    type: {
+      fontSize: theme.typography.size.base,
+      fontWeight: theme.typography.weight.semibold,
+      color: theme.colors.textPrimary,
+    },
+    metaRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
+    meta: { flex: 1, fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    priceRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
+    price: {
+      flex: 1,
+      fontSize: theme.typography.size.base,
+      fontWeight: theme.typography.weight.medium,
+      color: theme.colors.textPrimary,
+    },
+    note: { fontSize: theme.typography.size.sm, color: theme.colors.successText },
+    reason: {
+      flexDirection: 'row',
+      gap: theme.spacing.sm,
+      backgroundColor: theme.colors.dangerSoft,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing.md,
+    },
+    reasonText: { flex: 1, fontSize: theme.typography.size.sm, color: theme.colors.dangerText },
+    hint: { fontSize: theme.typography.size.xs, color: theme.colors.textMuted },
+  });

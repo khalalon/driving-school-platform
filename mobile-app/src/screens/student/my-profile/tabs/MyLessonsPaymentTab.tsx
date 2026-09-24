@@ -1,10 +1,11 @@
 /**
- * My Lessons & Payment Tab
- * Single Responsibility: Display lesson history with payment status
+ * Onglet « Leçons » de Mon profil (11.3) — P9 : l'historique des leçons avec leur règlement.
+ * Une absence n'est pas facturée (D-41) et un versement rendu revient en avoir (D-40) : la carte
+ * le dit sous le montant plutôt que de laisser l'élève deviner.
  */
 
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, Alert } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Alert, FlatList, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { studentSelfProfileService } from '../../../../services/api/StudentSelfProfileService';
 import { getApiErrorMessage } from '../../../../services/api/ApiError';
@@ -12,11 +13,15 @@ import { LessonHistory, paymentMethodLabel } from '../../../../models/Profile';
 import { lessonTypeLabel } from '../../../../models/Lesson';
 import { useSchoolCurrency } from '../../../../hooks/useSchoolCurrency';
 import { useI18n } from '../../../../context/LanguageContext';
+import { useTheme } from '../../../../context/ThemeContext';
+import { Badge, Card, EmptyState, SkeletonCard } from '../../../../components/ui';
 import { formatAmount, formatDate, formatDateTime } from '../../../../utils/format';
-import { colors, typography, spacing } from '../../../../theme';
+import { Theme } from '../../../../theme';
 
 export const MyLessonsPaymentTab = ({ route }: any) => {
   const { t } = useI18n();
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { schoolId } = route.params;
   const currency = useSchoolCurrency(schoolId);
   const [loading, setLoading] = useState(true);
@@ -38,139 +43,130 @@ export const MyLessonsPaymentTab = ({ route }: any) => {
     }
   };
 
-  const renderLesson = ({ item }: { item: LessonHistory }) => (
-    <View style={styles.lessonCard}>
-      {/* Header */}
-      <View style={styles.lessonHeader}>
-        <View style={styles.lessonInfo}>
-          <Text style={styles.lessonType}>
-            {lessonTypeLabel(item.type) ?? item.type}
-            {item.status === 'cancelled' ? ' · Cancelled' : ''}
-          </Text>
-          <Text style={styles.lessonDate}>{formatDateTime(item.scheduledDate)}</Text>
+  const renderLesson = ({ item }: { item: LessonHistory }) => {
+    const notBilled = item.attended === false && !item.paid;
+    const instructor = `${item.instructorFirstName} ${item.instructorLastName}`.trim();
+
+    return (
+      <Card style={styles.card}>
+        <View style={styles.head}>
+          <View style={styles.info}>
+            <Text style={styles.type}>
+              {lessonTypeLabel(item.type) ?? item.type}
+              {item.status === 'cancelled' ? t('common.cancelledSuffix') : ''}
+            </Text>
+            <Text style={styles.date}>{formatDateTime(item.scheduledDate)}</Text>
+          </View>
+          {item.attended !== null ? (
+            <Badge
+              label={item.attended ? t('profile.attended') : t('profile.missedNotBilled')}
+              tone={item.attended ? 'success' : 'danger'}
+            />
+          ) : null}
         </View>
-        {item.attended !== null && (
-          <View
-            style={[
-              styles.statusBadge,
-              item.attended ? styles.statusAttended : styles.statusMissed,
-            ]}
-          >
-            <Text style={styles.statusText}>
-              {item.attended ? t('profile.attended') : t('profile.missedNotBilled')}
+
+        <View style={styles.details}>
+          <View style={styles.metaRow}>
+            <Ionicons name="person-outline" size={16} color={theme.colors.textMuted} />
+            <Text style={styles.meta}>{instructor || t('format.empty')}</Text>
+          </View>
+          <View style={styles.metaRow}>
+            <Ionicons name="time-outline" size={16} color={theme.colors.textMuted} />
+            <Text style={styles.meta}>
+              {item.durationMinutes
+                ? t('format.minutes', { count: item.durationMinutes })
+                : t('format.empty')}
             </Text>
           </View>
-        )}
-      </View>
+        </View>
 
-      {/* Details */}
-      <View style={styles.lessonDetails}>
-        <View style={styles.detailRow}>
-          <Ionicons name="person-outline" size={16} color={colors.text.secondary} />
-          <Text style={styles.detailText}>
-            {`${item.instructorFirstName} ${item.instructorLastName}`.trim() || '—'}
-          </Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Ionicons name="time-outline" size={16} color={colors.text.secondary} />
-          <Text style={styles.detailText}>{item.durationMinutes ?? '—'} minutes</Text>
-        </View>
-      </View>
-
-      {/* Feedback & Rating */}
-      {item.feedback && (
-        <View style={styles.feedbackContainer}>
-          <Text style={styles.feedbackLabel}>{t('profile.feedback')}</Text>
-          <Text style={styles.feedbackText}>{item.feedback}</Text>
-        </View>
-      )}
-      {item.rating && (
-        <View style={styles.ratingContainer}>
-          {[1, 2, 3, 4, 5].map((star) => (
-            <Ionicons
-              key={star}
-              name={star <= item.rating! ? 'star' : 'star-outline'}
-              size={16}
-              color={colors.warning[500]}
-            />
-          ))}
-        </View>
-      )}
-
-      {/* Payment Status */}
-      <View style={styles.paymentSection}>
-        <View style={styles.paymentRow}>
-          <View style={styles.paymentLabel}>
-            <Ionicons
-              name={
-                item.attended === false && !item.paid
-                  ? 'remove-circle-outline'
-                  : item.paid
-                    ? 'checkmark-circle'
-                    : 'alert-circle-outline'
-              }
-              size={20}
-              color={
-                item.attended === false && !item.paid
-                  ? colors.text.tertiary
-                  : item.paid
-                    ? colors.success[500]
-                    : colors.warning[500]
-              }
-            />
-            <Text style={styles.paymentLabelText}>
-              {item.attended === false && !item.paid
-                ? t('profile.notBilled')
-                : item.paid
-                  ? t('profile.paid')
-                  : t('profile.pendingPayment')}
-            </Text>
+        {item.feedback ? (
+          <View style={styles.quote}>
+            <Text style={styles.quoteLabel}>{t('profile.feedback')}</Text>
+            <Text style={styles.quoteText}>{item.feedback}</Text>
           </View>
-          {(item.amount !== null || item.price !== null) && (
-            <Text
-              style={[
-                styles.paymentAmount,
-                { color: item.paid ? colors.success[500] : colors.warning[500] },
-              ]}
-            >
-              {formatAmount(item.amount ?? item.price, currency)}
+        ) : null}
+
+        {item.rating ? (
+          <View style={styles.rating}>
+            {[1, 2, 3, 4, 5].map((star) => (
+              <Ionicons
+                key={star}
+                name={star <= item.rating! ? 'star' : 'star-outline'}
+                size={16}
+                color={theme.colors.warning}
+              />
+            ))}
+          </View>
+        ) : null}
+
+        <View style={styles.payment}>
+          <View style={styles.paymentRow}>
+            <View style={styles.paymentLabel}>
+              <Ionicons
+                name={
+                  notBilled
+                    ? 'remove-circle-outline'
+                    : item.paid
+                      ? 'checkmark-circle'
+                      : 'alert-circle-outline'
+                }
+                size={20}
+                color={
+                  notBilled
+                    ? theme.colors.textMuted
+                    : item.paid
+                      ? theme.colors.successText
+                      : theme.colors.warningText
+                }
+              />
+              <Text style={styles.paymentLabelText}>
+                {notBilled
+                  ? t('profile.notBilled')
+                  : item.paid
+                    ? t('profile.paid')
+                    : t('profile.pendingPayment')}
+              </Text>
+            </View>
+            {item.amount !== null || item.price !== null ? (
+              <Text
+                style={[
+                  styles.amount,
+                  { color: item.paid ? theme.colors.successText : theme.colors.warningText },
+                ]}
+              >
+                {formatAmount(item.amount ?? item.price, currency)}
+              </Text>
+            ) : null}
+          </View>
+
+          {item.paid && item.paymentDate ? (
+            <Text style={styles.note}>
+              {t('profile.paidOn', { date: formatDate(item.paymentDate) })}
+              {item.paymentMethod === 'credit' ? t('profile.withYourCredit') : ''}
+              {item.paymentMethod && item.paymentMethod !== 'credit'
+                ? ` (${paymentMethodLabel(item.paymentMethod)})`
+                : ''}
             </Text>
-          )}
+          ) : null}
+          {!item.paid && item.creditApplied > 0 ? (
+            <Text style={styles.note}>
+              {t('profile.creditApplied', { amount: formatAmount(item.creditApplied, currency) })}
+            </Text>
+          ) : null}
+          {item.attended === false && (item.paid || item.creditApplied > 0) ? (
+            <Text style={styles.note}>{t('profile.refundedAsCredit')}</Text>
+          ) : null}
         </View>
-        {item.paid && item.paymentDate && (
-          <Text style={styles.paymentDate}>
-            {t('profile.paidOn', { date: formatDate(item.paymentDate) })}
-            {item.paymentMethod === 'credit' ? t('profile.withYourCredit') : ''}
-            {item.paymentMethod && item.paymentMethod !== 'credit'
-              ? ` (${paymentMethodLabel(item.paymentMethod)})`
-              : ''}
-          </Text>
-        )}
-        {!item.paid && item.creditApplied > 0 && (
-          <Text style={styles.paymentDate}>
-            {t('profile.creditApplied', { amount: formatAmount(item.creditApplied, currency) })}
-          </Text>
-        )}
-        {item.attended === false && (item.paid || item.creditApplied > 0) && (
-          <Text style={styles.paymentDate}>{t('profile.refundedAsCredit')}</Text>
-        )}
-      </View>
-    </View>
-  );
+      </Card>
+    );
+  };
 
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={colors.primary[600]} />
-      </View>
-    );
-  }
-
-  if (lessons.length === 0) {
-    return (
-      <View style={styles.centerContainer}>
-        <Ionicons name="calendar-outline" size={48} color={colors.text.tertiary} />
-        <Text style={styles.emptyText}>{t('profile.noLessons')}</Text>
+      <View style={styles.skeletons}>
+        <SkeletonCard lines={4} />
+        <SkeletonCard lines={4} />
       </View>
     );
   }
@@ -180,137 +176,73 @@ export const MyLessonsPaymentTab = ({ route }: any) => {
       data={lessons}
       renderItem={renderLesson}
       keyExtractor={(item) => item.id}
-      contentContainerStyle={styles.listContainer}
+      style={styles.flex}
+      contentContainerStyle={lessons.length === 0 ? styles.emptyList : styles.listContent}
+      ListEmptyComponent={
+        <EmptyState icon="calendar-outline" title={t('profile.noLessons')} tone="neutral" />
+      }
       showsVerticalScrollIndicator={false}
     />
   );
 };
 
-const styles = StyleSheet.create({
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.background.secondary,
-  },
-  emptyText: {
-    fontSize: typography.size.base,
-    color: colors.text.tertiary,
-    marginTop: spacing.md,
-  },
-  listContainer: {
-    padding: spacing.md,
-    backgroundColor: colors.background.secondary,
-  },
-  lessonCard: {
-    backgroundColor: colors.background.primary,
-    borderRadius: 12,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    shadowColor: colors.neutral[900],
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  lessonHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: spacing.sm,
-  },
-  lessonInfo: {
-    flex: 1,
-  },
-  lessonType: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.primary,
-    marginBottom: spacing.xs / 2,
-  },
-  lessonDate: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-  },
-  statusBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs / 2,
-    borderRadius: 12,
-  },
-  statusAttended: {
-    backgroundColor: colors.success[50],
-  },
-  statusMissed: {
-    backgroundColor: colors.error[50],
-  },
-  statusText: {
-    fontSize: typography.size.xs,
-    fontWeight: typography.weight.medium,
-    color: colors.text.primary,
-  },
-  lessonDetails: {
-    gap: spacing.xs,
-    marginBottom: spacing.sm,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  detailText: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-  },
-  feedbackContainer: {
-    marginTop: spacing.sm,
-    padding: spacing.sm,
-    backgroundColor: colors.neutral[50],
-    borderRadius: 8,
-  },
-  feedbackLabel: {
-    fontSize: typography.size.xs,
-    fontWeight: typography.weight.medium,
-    color: colors.text.secondary,
-    marginBottom: spacing.xs / 2,
-  },
-  feedbackText: {
-    fontSize: typography.size.sm,
-    color: colors.text.primary,
-    lineHeight: 20,
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    gap: spacing.xs / 2,
-    marginTop: spacing.sm,
-  },
-  paymentSection: {
-    marginTop: spacing.sm,
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.neutral[200],
-  },
-  paymentRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  paymentLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  paymentLabelText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.medium,
-    color: colors.text.primary,
-  },
-  paymentAmount: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-  },
-  paymentDate: {
-    fontSize: typography.size.xs,
-    color: colors.text.secondary,
-    marginTop: spacing.xs / 2,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    flex: { flex: 1, backgroundColor: theme.colors.surface },
+    skeletons: {
+      flex: 1,
+      backgroundColor: theme.colors.surface,
+      padding: theme.spacing.base,
+      gap: theme.spacing.md,
+    },
+    listContent: { padding: theme.spacing.base, gap: theme.spacing.md },
+    emptyList: { flexGrow: 1, justifyContent: 'center' },
+    card: { gap: theme.spacing.sm },
+    head: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm },
+    info: { flex: 1, gap: 2 },
+    type: {
+      fontSize: theme.typography.size.base,
+      fontWeight: theme.typography.weight.semibold,
+      color: theme.colors.textPrimary,
+    },
+    date: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    details: { gap: theme.spacing.xs },
+    metaRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
+    meta: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    quote: {
+      backgroundColor: theme.colors.surfaceMuted,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing.md,
+      gap: theme.spacing.xs,
+    },
+    quoteLabel: {
+      fontSize: theme.typography.size.xs,
+      fontWeight: theme.typography.weight.medium,
+      color: theme.colors.textMuted,
+    },
+    quoteText: { fontSize: theme.typography.size.sm, color: theme.colors.textPrimary },
+    rating: { flexDirection: 'row', gap: 2 },
+    payment: {
+      paddingTop: theme.spacing.sm,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.colors.border,
+      gap: theme.spacing.xs,
+    },
+    paymentRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+    },
+    paymentLabel: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
+    paymentLabelText: {
+      fontSize: theme.typography.size.sm,
+      fontWeight: theme.typography.weight.medium,
+      color: theme.colors.textPrimary,
+    },
+    amount: {
+      fontSize: theme.typography.size.base,
+      fontWeight: theme.typography.weight.semibold,
+    },
+    note: { fontSize: theme.typography.size.xs, color: theme.colors.textSecondary },
+  });

@@ -1,5 +1,5 @@
 /**
- * Student Dashboard — « My journey » (D-45, 8.2)
+ * Accueil de l'élève — « Mon parcours » (D-45, 8.2), refondu sur le système (11.3).
  * Single Responsibility: l'accueil de l'élève raconte son parcours.
  *
  * L'école active est celle de l'inscription approuvée (une seule, D-22), retrouvée par E3 à
@@ -8,21 +8,24 @@
  * Sans inscription approuvée : accueil réduit à la recherche d'école et au suivi des demandes.
  */
 
-import React, { useCallback, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
-  RefreshControl,
-} from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Alert, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { useI18n } from '../../context/LanguageContext';
+import { useTheme } from '../../context/ThemeContext';
+import {
+  AppBar,
+  Badge,
+  Button,
+  Card,
+  Chip,
+  EmptyState,
+  Screen,
+  SectionHeader,
+  SkeletonCard,
+} from '../../components/ui';
 import { enrollmentService } from '../../services/api/EnrollmentService';
 import { lessonService } from '../../services/api/LessonService';
 import { examService } from '../../services/api/ExamService';
@@ -47,7 +50,9 @@ import {
   formatPersonName,
   formatTime,
 } from '../../utils/format';
-import { colors, typography, spacing, shadows } from '../../theme';
+import { Theme } from '../../theme';
+import { MIN_TOUCH_TARGET } from '../../theme/tokens';
+import { IoniconName } from '../../utils/rtl';
 
 interface HomeData {
   lessons: Lesson[];
@@ -70,6 +75,8 @@ const findNextLesson = (lessons: Lesson[], now: Date = new Date()): Lesson | nul
 export const StudentDashboard = ({ navigation }: any) => {
   const { t } = useI18n();
   const { user, logout } = useAuth();
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   // `undefined` = pas encore chargé, `null` = aucune inscription approuvée
   const [enrollment, setEnrollment] = useState<EnrollmentRequest | null | undefined>(undefined);
   const [data, setData] = useState<HomeData | null>(null);
@@ -121,7 +128,7 @@ export const StudentDashboard = ({ navigation }: any) => {
 
   const handleLogout = async () => {
     await logout();
-    // No need to navigate - AuthContext will trigger navigator rebuild
+    // Pas de navigation : AuthContext reconstruit le navigateur
   };
 
   const handleCancelLesson = (lesson: Lesson) => {
@@ -161,56 +168,20 @@ export const StudentDashboard = ({ navigation }: any) => {
     navigation.navigate('BookLesson', { schoolId });
   };
 
-  const renderHeader = () => (
-    <View style={styles.header}>
-      <View style={styles.headerText}>
-        <Text style={styles.greeting}>{t('home.hello')}</Text>
-        <Text style={styles.userName}>{user?.firstName || t('home.student')}</Text>
-        {enrollment?.schoolName ? (
-          <Text style={styles.schoolName}>{enrollment.schoolName}</Text>
-        ) : null}
-      </View>
-      <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-        <Ionicons name="log-out-outline" size={24} color={colors.text.secondary} />
-      </TouchableOpacity>
-    </View>
-  );
-
-  const renderNotEnrolled = () => (
-    <View style={styles.heroCard}>
-      <Ionicons name="school-outline" size={36} color={colors.primary[600]} />
-      <Text style={styles.heroTitle}>{t('home.findSchool')}</Text>
-      <Text style={styles.heroText}>{t('home.findSchoolText')}</Text>
-      <TouchableOpacity
-        style={styles.primaryButton}
-        onPress={() => navigation.navigate('SchoolsList')}
-      >
-        <Text style={styles.primaryButtonText}>{t('home.browseSchools')}</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.secondaryButton}
-        onPress={() => navigation.navigate('MyEnrollmentRequests')}
-      >
-        <Text style={styles.secondaryButtonText}>{t('home.enrollmentStatus')}</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
   const renderNextLesson = (lessons: Lesson[]) => {
     const next = findNextLesson(lessons);
     const pendingCount = lessons.filter((l) => l.status === LessonStatus.PENDING).length;
+
     return (
-      <View style={styles.nextCard}>
-        <Text style={styles.nextLabel}>{t('home.nextLesson')}</Text>
+      <Card highlighted style={styles.nextCard}>
+        <View style={styles.nextHead}>
+          <Text style={styles.nextLabel}>{t('home.nextLesson')}</Text>
+          {next ? <Badge label={formatCountdown(next.scheduledDate)} tone="accent" dot /> : null}
+        </View>
+
         {next ? (
           <>
-            <View style={styles.nextRow}>
-              <Text style={styles.nextTitle}>{lessonTypeLabel(next.type)}</Text>
-              <View style={styles.countdownPill}>
-                <Ionicons name="time-outline" size={14} color={colors.primary[700]} />
-                <Text style={styles.countdownText}>{formatCountdown(next.scheduledDate)}</Text>
-              </View>
-            </View>
+            <Text style={styles.nextTitle}>{lessonTypeLabel(next.type)}</Text>
             <Text style={styles.nextWhen}>
               {formatDate(next.scheduledDate)} · {formatTime(next.scheduledDate)}
               {next.durationMinutes
@@ -223,19 +194,19 @@ export const StudentDashboard = ({ navigation }: any) => {
               })}
             </Text>
             <View style={styles.nextActions}>
-              <TouchableOpacity
-                style={styles.inverseButton}
+              <Button
+                title={t('home.allLessons')}
                 onPress={() => navigation.navigate('MyLessons')}
-              >
-                <Text style={styles.inverseButtonText}>{t('home.allLessons')}</Text>
-              </TouchableOpacity>
+                variant="secondary"
+                size="sm"
+              />
               {canStudentCancel(next) ? (
-                <TouchableOpacity
-                  style={styles.ghostButton}
+                <Button
+                  title={t('home.cancel')}
                   onPress={() => handleCancelLesson(next)}
-                >
-                  <Text style={styles.ghostButtonText}>{t('home.cancel')}</Text>
-                </TouchableOpacity>
+                  variant="ghost"
+                  size="sm"
+                />
               ) : null}
             </View>
           </>
@@ -250,40 +221,35 @@ export const StudentDashboard = ({ navigation }: any) => {
                   : t('home.pendingMany', { count: pendingCount })}
             </Text>
             <View style={styles.nextActions}>
-              <TouchableOpacity style={styles.inverseButton} onPress={requestLesson}>
-                <Text style={styles.inverseButtonText}>{t('home.requestLesson')}</Text>
-              </TouchableOpacity>
+              <Button title={t('home.requestLesson')} onPress={requestLesson} size="sm" />
               {pendingCount > 0 ? (
-                <TouchableOpacity
-                  style={styles.ghostButton}
+                <Button
+                  title={t('home.myRequests')}
                   onPress={() => navigation.navigate('MyLessons')}
-                >
-                  <Text style={styles.ghostButtonText}>{t('home.myRequests')}</Text>
-                </TouchableOpacity>
+                  variant="ghost"
+                  size="sm"
+                />
               ) : null}
             </View>
           </>
         )}
-      </View>
+      </Card>
     );
   };
 
   const renderStep = (step: JourneyStep, index: number, count: number) => {
     const isLast = index === count - 1;
-    const iconName =
-      step.state === 'done'
-        ? 'checkmark-circle'
-        : step.kind === 'exam'
-          ? 'ribbon-outline'
-          : 'car-outline';
+    const icon: IoniconName =
+      step.state === 'done' ? 'checkmark-circle' : step.kind === 'exam' ? 'ribbon' : 'car';
     const iconColor =
       step.state === 'done'
-        ? colors.success[600]
+        ? theme.colors.success
         : step.state === 'current'
-          ? colors.primary[600]
+          ? theme.colors.accent
           : step.state === 'started'
-            ? colors.warning[600]
-            : colors.neutral[400];
+            ? theme.colors.warning
+            : theme.colors.textMuted;
+
     return (
       <View key={step.key} style={styles.stepRow}>
         <View style={styles.stepRail}>
@@ -294,22 +260,19 @@ export const StudentDashboard = ({ navigation }: any) => {
               step.state === 'done' && styles.stepDotDone,
             ]}
           >
-            <Ionicons name={iconName as any} size={18} color={iconColor} />
+            <Ionicons name={icon} size={18} color={iconColor} />
           </View>
           {!isLast ? (
             <View style={[styles.stepLine, step.state === 'done' && styles.stepLineDone]} />
           ) : null}
         </View>
+
         <View style={[styles.stepBody, step.state === 'current' && styles.stepBodyCurrent]}>
           <View style={styles.stepTitleRow}>
             <Text style={[styles.stepTitle, step.state === 'upcoming' && styles.stepTitleMuted]}>
               {step.title}
             </Text>
-            {step.state === 'current' ? (
-              <View style={styles.currentPill}>
-                <Text style={styles.currentPillText}>{t('home.now')}</Text>
-              </View>
-            ) : null}
+            {step.state === 'current' ? <Badge label={t('home.now')} tone="accent" /> : null}
           </View>
           <Text style={styles.stepDetail}>{step.detail}</Text>
         </View>
@@ -320,101 +283,124 @@ export const StudentDashboard = ({ navigation }: any) => {
   const renderJourney = (home: HomeData) => {
     const steps = buildJourney(home.profile?.completedLessonsByType, home.exams, home.lessons);
     return (
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>{t('home.myJourney')}</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('MyExams')}>
-            <Text style={styles.cardLink}>{t('home.myExams')}</Text>
-          </TouchableOpacity>
-        </View>
+      <Card>
+        <SectionHeader
+          title={t('home.myJourney')}
+          action={{ label: t('home.myExams'), onPress: () => navigation.navigate('MyExams') }}
+          style={styles.journeyHeader}
+        />
         {steps.map((step, index) => renderStep(step, index, steps.length))}
-      </View>
+      </Card>
     );
   };
 
   const renderMoney = (financial: FinancialSummary | null) => (
     <View style={styles.tilesRow}>
-      <TouchableOpacity style={styles.tile} onPress={openMyProfile} activeOpacity={0.7}>
+      <Card onPress={openMyProfile} style={styles.tile} accessibilityLabel={t('home.amountDue')}>
         <Text style={styles.tileLabel}>{t('home.amountDue')}</Text>
         <Text style={[styles.tileValue, (financial?.totalDue ?? 0) > 0 && styles.tileValueDue]}>
           {formatAmount(financial?.totalDue ?? 0, currency)}
         </Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.tile} onPress={openMyProfile} activeOpacity={0.7}>
+      </Card>
+      <Card onPress={openMyProfile} style={styles.tile} accessibilityLabel={t('home.yourCredit')}>
         <Text style={styles.tileLabel}>{t('home.yourCredit')}</Text>
         <Text style={[styles.tileValue, (financial?.credit ?? 0) > 0 && styles.tileValueCredit]}>
           {formatAmount(financial?.credit ?? 0, currency)}
         </Text>
-      </TouchableOpacity>
+      </Card>
     </View>
   );
 
   const renderActions = () => (
     <View style={styles.actionsRow}>
-      <TouchableOpacity style={styles.actionButton} onPress={requestLesson} activeOpacity={0.8}>
-        <Ionicons name="calendar-outline" size={20} color={colors.text.inverse} />
-        <Text style={styles.actionText}>{t('home.requestLesson')}</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.actionButton, styles.actionButtonAlt]}
+      <Button
+        title={t('home.requestLesson')}
+        onPress={requestLesson}
+        icon="calendar-outline"
+        style={styles.action}
+      />
+      <Button
+        title={t('home.requestExam')}
         onPress={() => navigation.navigate('RequestExam')}
-        activeOpacity={0.8}
-      >
-        <Ionicons name="ribbon-outline" size={20} color={colors.primary[700]} />
-        <Text style={[styles.actionText, styles.actionTextAlt]}>{t('home.requestExam')}</Text>
-      </TouchableOpacity>
+        variant="secondary"
+        icon="ribbon-outline"
+        style={styles.action}
+      />
     </View>
   );
 
   const renderLinks = () => (
     <View style={styles.linksRow}>
-      {[
-        { label: t('home.link.myLessons'), route: 'MyLessons', icon: 'list-outline' },
-        { label: t('home.link.myProfile'), route: 'MyProfile', icon: 'person-outline' },
-        {
-          label: t('home.link.enrollment'),
-          route: 'MyEnrollmentRequests',
-          icon: 'school-outline',
-        },
-        { label: t('home.link.schools'), route: 'SchoolsList', icon: 'business-outline' },
-      ].map((link) => (
-        <TouchableOpacity
+      {(
+        [
+          { label: t('home.link.myLessons'), route: 'MyLessons', icon: 'list-outline' },
+          { label: t('home.link.myProfile'), route: 'MyProfile', icon: 'person-outline' },
+          {
+            label: t('home.link.enrollment'),
+            route: 'MyEnrollmentRequests',
+            icon: 'school-outline',
+          },
+          { label: t('home.link.schools'), route: 'SchoolsList', icon: 'business-outline' },
+        ] as { label: string; route: string; icon: IoniconName }[]
+      ).map((link) => (
+        <Chip
           key={link.route}
-          style={styles.linkChip}
+          label={link.label}
+          icon={link.icon}
+          tone="neutral"
           onPress={() =>
             link.route === 'MyProfile' ? openMyProfile() : navigation.navigate(link.route)
           }
-        >
-          <Ionicons name={link.icon as any} size={16} color={colors.text.secondary} />
-          <Text style={styles.linkText}>{link.label}</Text>
-        </TouchableOpacity>
+        />
       ))}
     </View>
   );
 
   const renderBody = () => {
     // Tant que l'école n'est pas connue, ou que ses données arrivent, on n'annonce rien :
-    // afficher « Find your driving school » à un élève inscrit serait faux (recette 23/09).
+    // afficher « Trouvez votre auto-école » à un élève inscrit serait faux (recette 23/09).
     if (loading && !data) {
       return (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.primary[600]} />
+        <View style={styles.skeletons}>
+          <SkeletonCard lines={3} />
+          <SkeletonCard lines={4} />
+          <SkeletonCard lines={1} />
         </View>
       );
     }
     if (error && !data) {
       return (
-        <View style={styles.heroCard}>
-          <Ionicons name="cloud-offline-outline" size={32} color={colors.error[600]} />
-          <Text style={styles.heroText}>{error}</Text>
-          <TouchableOpacity style={styles.primaryButton} onPress={load}>
-            <Text style={styles.primaryButtonText}>{t('common.retry')}</Text>
-          </TouchableOpacity>
-        </View>
+        <Card>
+          <EmptyState
+            icon="cloud-offline-outline"
+            title={t('home.loadFailed')}
+            message={error}
+            tone="danger"
+            action={{ label: t('common.retry'), onPress: load }}
+          />
+        </Card>
       );
     }
     if (!enrollment || !data) {
-      return renderNotEnrolled();
+      return (
+        <Card>
+          <EmptyState
+            icon="school-outline"
+            title={t('home.findSchool')}
+            message={t('home.findSchoolText')}
+            action={{
+              label: t('home.browseSchools'),
+              onPress: () => navigation.navigate('SchoolsList'),
+            }}
+          />
+          <Button
+            title={t('home.enrollmentStatus')}
+            onPress={() => navigation.navigate('MyEnrollmentRequests')}
+            variant="ghost"
+            fullWidth
+          />
+        </Card>
+      );
     }
     return (
       <>
@@ -429,375 +415,149 @@ export const StudentDashboard = ({ navigation }: any) => {
   };
 
   return (
-    <View style={styles.container}>
-      {renderHeader()}
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+    <View style={styles.flex}>
+      <AppBar
+        title={`${t('home.hello')} ${user?.firstName || t('home.student')}`}
+        subtitle={enrollment?.schoolName ?? undefined}
+        large
+        right={
+          <Pressable
+            onPress={handleLogout}
+            accessibilityRole="button"
+            accessibilityLabel={t('common.logout')}
+            hitSlop={8}
+            style={styles.logout}
+          >
+            <Ionicons name="log-out-outline" size={22} color={theme.colors.textSecondary} />
+          </Pressable>
+        }
+      />
+      <Screen
+        contentContainerStyle={styles.content}
+        edges={[]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[colors.primary[600]]}
+            colors={[theme.colors.accent]}
+            tintColor={theme.colors.accent}
           />
         }
       >
         {renderBody()}
-      </ScrollView>
+      </Screen>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.secondary,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing['4xl'],
-    paddingBottom: spacing.lg,
-    backgroundColor: colors.background.primary,
-  },
-  headerText: {
-    flex: 1,
-  },
-  greeting: {
-    fontSize: typography.size.base,
-    color: colors.text.secondary,
-  },
-  userName: {
-    fontSize: typography.size['2xl'],
-    fontWeight: typography.weight.bold,
-    color: colors.text.primary,
-  },
-  schoolName: {
-    marginTop: spacing.xs,
-    fontSize: typography.size.sm,
-    color: colors.text.tertiary,
-  },
-  logoutButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.background.tertiary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: spacing.xl,
-    gap: spacing.base,
-    paddingBottom: spacing['3xl'],
-  },
-  center: {
-    paddingVertical: spacing['5xl'],
-    alignItems: 'center',
-  },
-  errorBanner: {
-    color: colors.error[600],
-    fontSize: typography.size.sm,
-  },
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    flex: { flex: 1, backgroundColor: theme.colors.surface },
+    content: { paddingTop: theme.spacing.base, gap: theme.spacing.base },
+    logout: {
+      width: MIN_TOUCH_TARGET,
+      height: MIN_TOUCH_TARGET,
+      borderRadius: theme.radius.pill,
+      backgroundColor: theme.colors.surfaceMuted,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    skeletons: { gap: theme.spacing.base },
 
-  // Hors inscription / erreur
-  heroCard: {
-    backgroundColor: colors.background.primary,
-    borderRadius: 20,
-    padding: spacing.xl,
-    alignItems: 'center',
-    gap: spacing.md,
-    ...shadows.sm,
-  },
-  heroTitle: {
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.bold,
-    color: colors.text.primary,
-  },
-  heroText: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-    textAlign: 'center',
-    lineHeight: typography.size.sm * typography.lineHeight.normal,
-  },
-  primaryButton: {
-    alignSelf: 'stretch',
-    backgroundColor: colors.primary[600],
-    borderRadius: 12,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  primaryButtonText: {
-    color: colors.text.inverse,
-    fontWeight: typography.weight.semibold,
-    fontSize: typography.size.base,
-  },
-  secondaryButton: {
-    alignSelf: 'stretch',
-    borderRadius: 12,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  secondaryButtonText: {
-    color: colors.text.primary,
-    fontWeight: typography.weight.medium,
-  },
+    // Prochaine leçon
+    nextCard: { gap: theme.spacing.xs },
+    nextHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: theme.spacing.xs,
+    },
+    nextLabel: {
+      fontSize: theme.typography.size.sm,
+      color: theme.colors.accentText,
+      fontWeight: theme.typography.weight.semibold,
+    },
+    nextTitle: {
+      fontSize: theme.typography.size['2xl'],
+      fontWeight: theme.typography.weight.bold,
+      color: theme.colors.textPrimary,
+    },
+    nextWhen: { fontSize: theme.typography.size.base, color: theme.colors.textSecondary },
+    nextMeta: { fontSize: theme.typography.size.sm, color: theme.colors.textMuted },
+    nextActions: {
+      flexDirection: 'row',
+      gap: theme.spacing.sm,
+      marginTop: theme.spacing.md,
+      flexWrap: 'wrap',
+    },
 
-  // Prochaine leçon
-  nextCard: {
-    backgroundColor: colors.primary[600],
-    borderRadius: 20,
-    padding: spacing.xl,
-    ...shadows.md,
-  },
-  nextLabel: {
-    color: colors.primary[100],
-    fontSize: typography.size.xs,
-    fontWeight: typography.weight.semibold,
-    letterSpacing: 1,
-    marginBottom: spacing.sm,
-  },
-  nextRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  nextTitle: {
-    color: colors.text.inverse,
-    fontSize: typography.size['2xl'],
-    fontWeight: typography.weight.bold,
-  },
-  countdownPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: colors.primary[50],
-    borderRadius: 999,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-  },
-  countdownText: {
-    color: colors.primary[700],
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-  },
-  nextWhen: {
-    color: colors.text.inverse,
-    fontSize: typography.size.base,
-    marginTop: spacing.sm,
-  },
-  nextMeta: {
-    color: colors.primary[100],
-    fontSize: typography.size.sm,
-    marginTop: spacing.xs,
-  },
-  nextActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.lg,
-  },
-  inverseButton: {
-    backgroundColor: colors.background.primary,
-    borderRadius: 12,
-    paddingVertical: spacing.sm + 2,
-    paddingHorizontal: spacing.lg,
-  },
-  inverseButtonText: {
-    color: colors.primary[700],
-    fontWeight: typography.weight.semibold,
-  },
-  ghostButton: {
-    borderRadius: 12,
-    paddingVertical: spacing.sm + 2,
-    paddingHorizontal: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.primary[300],
-  },
-  ghostButtonText: {
-    color: colors.text.inverse,
-    fontWeight: typography.weight.medium,
-  },
+    // Parcours
+    journeyHeader: { marginBottom: theme.spacing.md },
+    stepRow: { flexDirection: 'row', gap: theme.spacing.md },
+    stepRail: { alignItems: 'center', width: 36 },
+    stepDot: {
+      width: 36,
+      height: 36,
+      borderRadius: theme.radius.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.colors.surfaceMuted,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    stepDotCurrent: {
+      backgroundColor: theme.colors.accentSoft,
+      borderColor: theme.colors.accent,
+    },
+    stepDotDone: {
+      backgroundColor: theme.colors.successSoft,
+      borderColor: theme.colors.success,
+    },
+    stepLine: { flex: 1, width: 2, backgroundColor: theme.colors.border, marginVertical: 2 },
+    stepLineDone: { backgroundColor: theme.colors.success },
+    stepBody: {
+      flex: 1,
+      paddingBottom: theme.spacing.lg,
+      gap: 2,
+    },
+    stepBodyCurrent: {},
+    stepTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: theme.spacing.sm,
+    },
+    stepTitle: {
+      fontSize: theme.typography.size.base,
+      fontWeight: theme.typography.weight.semibold,
+      color: theme.colors.textPrimary,
+      flexShrink: 1,
+    },
+    stepTitleMuted: { color: theme.colors.textMuted, fontWeight: theme.typography.weight.medium },
+    stepDetail: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
 
-  // Parcours
-  card: {
-    backgroundColor: colors.background.primary,
-    borderRadius: 20,
-    padding: spacing.xl,
-    ...shadows.sm,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.base,
-  },
-  cardTitle: {
-    fontSize: typography.size.lg,
-    fontWeight: typography.weight.bold,
-    color: colors.text.primary,
-  },
-  cardLink: {
-    fontSize: typography.size.sm,
-    color: colors.primary[600],
-    fontWeight: typography.weight.medium,
-  },
-  stepRow: {
-    flexDirection: 'row',
-  },
-  stepRail: {
-    width: 36,
-    alignItems: 'center',
-  },
-  stepDot: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.background.tertiary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepDotCurrent: {
-    backgroundColor: colors.primary[50],
-    borderWidth: 2,
-    borderColor: colors.primary[600],
-  },
-  stepDotDone: {
-    backgroundColor: colors.success[50],
-  },
-  stepLine: {
-    flex: 1,
-    width: 2,
-    minHeight: spacing.base,
-    backgroundColor: colors.border.default,
-    marginVertical: spacing.xs,
-  },
-  stepLineDone: {
-    backgroundColor: colors.success[500],
-  },
-  stepBody: {
-    flex: 1,
-    marginStart: spacing.md,
-    paddingBottom: spacing.lg,
-  },
-  stepBodyCurrent: {
-    backgroundColor: colors.primary[50],
-    borderRadius: 12,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    paddingBottom: spacing.md,
-  },
-  stepTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  stepTitle: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.primary,
-  },
-  stepTitleMuted: {
-    color: colors.text.tertiary,
-  },
-  currentPill: {
-    backgroundColor: colors.primary[600],
-    borderRadius: 999,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-  },
-  currentPillText: {
-    color: colors.text.inverse,
-    fontSize: typography.size.xs,
-    fontWeight: typography.weight.semibold,
-  },
-  stepDetail: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-    marginTop: 2,
-  },
+    // Dû et avoir
+    tilesRow: { flexDirection: 'row', gap: theme.spacing.md },
+    tile: { flex: 1, gap: theme.spacing.xs },
+    tileLabel: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    tileValue: {
+      fontSize: theme.typography.size.xl,
+      fontWeight: theme.typography.weight.bold,
+      color: theme.colors.textPrimary,
+    },
+    tileValueDue: { color: theme.colors.dangerText },
+    tileValueCredit: { color: theme.colors.successText },
 
-  // Dû / avoir
-  tilesRow: {
-    flexDirection: 'row',
-    gap: spacing.base,
-  },
-  tile: {
-    flex: 1,
-    backgroundColor: colors.background.primary,
-    borderRadius: 16,
-    padding: spacing.lg,
-    ...shadows.sm,
-  },
-  tileLabel: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-    marginBottom: spacing.xs,
-  },
-  tileValue: {
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.bold,
-    color: colors.text.primary,
-  },
-  tileValueDue: {
-    color: colors.warning[600],
-  },
-  tileValueCredit: {
-    color: colors.success[600],
-  },
+    // Actions et raccourcis
+    actionsRow: { flexDirection: 'row', gap: theme.spacing.md },
+    action: { flex: 1 },
+    linksRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
 
-  // Actions
-  actionsRow: {
-    flexDirection: 'row',
-    gap: spacing.base,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.primary[600],
-    borderRadius: 14,
-    paddingVertical: spacing.md + 2,
-  },
-  actionButtonAlt: {
-    backgroundColor: colors.primary[50],
-  },
-  actionText: {
-    color: colors.text.inverse,
-    fontWeight: typography.weight.semibold,
-    fontSize: typography.size.sm,
-  },
-  actionTextAlt: {
-    color: colors.primary[700],
-  },
-
-  // Liens
-  linksRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  linkChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: colors.background.primary,
-    borderRadius: 999,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  linkText: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-  },
-});
+    errorBanner: {
+      fontSize: theme.typography.size.sm,
+      color: theme.colors.dangerText,
+      backgroundColor: theme.colors.dangerSoft,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing.md,
+    },
+  });

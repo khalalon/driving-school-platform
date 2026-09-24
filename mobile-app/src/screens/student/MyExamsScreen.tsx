@@ -1,24 +1,14 @@
 /**
- * My Exams Screen - Minimal & Elegant
- * Single Responsibility: Display student's exam requests, schedule and results (X1)
+ * Mes examens (11.3) — X1 : demandes, convocations et résultats.
  *
  * Un examen est une demande (`pending`) que l'école planifie (`scheduled`, date et centre),
  * refuse (`rejected`) ou clôt avec un résultat (`completed`) ; l'élève voit l'état de paiement.
  * Les mots dépendent du type (D-42) : théorie planifiée par l'école, pratique convoquée par la
- * session ATTT (`examProcedure`).
+ * session ATTT (`examProcedure`) — aucun libellé n'est écrit dans cet écran.
  */
 
-import React, { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  FlatList,
-  ActivityIndicator,
-  Alert,
-  RefreshControl,
-} from 'react-native';
+import React, { useState, useCallback, useMemo } from 'react';
+import { Alert, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { examService } from '../../services/api/ExamService';
@@ -35,9 +25,11 @@ import {
 } from '../../models/Exam';
 import { useSchoolCurrency } from '../../hooks/useSchoolCurrency';
 import { useI18n } from '../../context/LanguageContext';
+import { useTheme } from '../../context/ThemeContext';
+import { AppBar, Badge, Card, Chip, EmptyState, SkeletonCard, Tone } from '../../components/ui';
 import { TranslationKey } from '../../i18n';
 import { formatAmount, formatDate, formatTime } from '../../utils/format';
-import { colors, typography, spacing, shadows } from '../../theme';
+import { Theme } from '../../theme';
 
 type FilterType = 'pending' | 'scheduled' | 'completed' | 'closed';
 
@@ -52,8 +44,24 @@ const FILTERS: { key: FilterType; labelKey: TranslationKey; statuses: ExamStatus
   },
 ];
 
+const statusTone = (status: ExamStatus): Tone => {
+  switch (status) {
+    case ExamStatus.PENDING:
+      return 'warning';
+    case ExamStatus.SCHEDULED:
+      return 'accent';
+    case ExamStatus.COMPLETED:
+      return 'success';
+    case ExamStatus.CANCELLED:
+    case ExamStatus.REJECTED:
+      return 'danger';
+  }
+};
+
 export const MyExamsScreen = ({ navigation }: any) => {
   const { t } = useI18n();
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [exams, setExams] = useState<Exam[]>([]);
@@ -89,568 +97,278 @@ export const MyExamsScreen = ({ navigation }: any) => {
   const activeFilter = FILTERS.find((f) => f.key === filter) ?? FILTERS[0];
   const filteredExams = exams.filter((exam) => activeFilter.statuses.includes(exam.status));
 
-  const getStatusConfig = (status: ExamStatus) => {
-    switch (status) {
-      case ExamStatus.PENDING:
-        return { icon: 'time-outline', color: colors.warning[500], bg: colors.warning[50] };
-      case ExamStatus.SCHEDULED:
-        return { icon: 'calendar-outline', color: colors.primary[600], bg: colors.primary[50] };
-      case ExamStatus.COMPLETED:
-        return { icon: 'checkmark-circle', color: colors.success[500], bg: colors.success[50] };
-      case ExamStatus.CANCELLED:
-      case ExamStatus.REJECTED:
-        return { icon: 'close-circle', color: colors.error[500], bg: colors.error[50] };
-    }
-  };
-
-  const getResultConfig = (result: ExamResult) => {
-    switch (result) {
-      case ExamResult.PASSED:
-        return { icon: 'checkmark-circle', color: colors.success[500], bg: colors.success[50] };
-      case ExamResult.FAILED:
-        return { icon: 'close-circle', color: colors.error[500], bg: colors.error[50] };
-      default:
-        return null;
-    }
-  };
-
   const renderExamCard = ({ item }: { item: Exam }) => {
-    const statusConfig = getStatusConfig(item.status);
-    const resultConfig = getResultConfig(item.result);
-    const rejected = item.status === ExamStatus.REJECTED;
+    const theory = item.type === ExamType.THEORY;
     const procedure = examProcedure(item.type);
+    const rejected = item.status === ExamStatus.REJECTED;
 
     return (
-      <View style={styles.examCard}>
-        <View style={styles.cardHeader}>
-          <View style={styles.iconContainer}>
+      <Card style={styles.card}>
+        <View style={styles.head}>
+          <View style={[styles.icon, theory ? styles.iconTheory : styles.iconPractical]}>
             <Ionicons
-              name={item.type === ExamType.THEORY ? 'book-outline' : 'car-sport-outline'}
-              size={28}
-              color={item.type === ExamType.THEORY ? colors.primary[600] : colors.warning[600]}
+              name={theory ? 'book' : 'car-sport'}
+              size={24}
+              color={theory ? theme.colors.accentText : theme.colors.warningText}
             />
           </View>
 
-          <View style={styles.examInfo}>
-            <Text style={styles.examType}>
+          <View style={styles.info}>
+            <Text style={styles.type}>
               {t('myExams.examSuffix', { type: examTypeLabel(item.type) })}
             </Text>
-
-            {/* Status Badge */}
-            <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
-              <Ionicons name={statusConfig.icon as any} size={14} color={statusConfig.color} />
-              <Text style={[styles.statusText, { color: statusConfig.color }]}>
-                {examStatusLabel(item.type, item.status)}
-              </Text>
-            </View>
+            <Badge
+              label={examStatusLabel(item.type, item.status)}
+              tone={statusTone(item.status)}
+              dot
+            />
           </View>
 
-          {resultConfig && (
-            <View style={[styles.resultBadge, { backgroundColor: resultConfig.bg }]}>
-              <Ionicons name={resultConfig.icon as any} size={20} color={resultConfig.color} />
-              <Text style={[styles.resultText, { color: resultConfig.color }]}>
-                {examResultLabel(item.result)}
-              </Text>
-            </View>
-          )}
+          {item.result === ExamResult.PASSED || item.result === ExamResult.FAILED ? (
+            <Badge
+              label={examResultLabel(item.result)}
+              tone={item.result === ExamResult.PASSED ? 'success' : 'danger'}
+            />
+          ) : null}
         </View>
 
-        {/* Pending State - Show Request Info */}
-        {item.status === ExamStatus.PENDING && (
-          <View style={styles.requestInfo}>
-            <View style={styles.infoRow}>
-              <Ionicons name="calendar-outline" size={16} color={colors.text.tertiary} />
-              <Text style={styles.infoLabel}>{t('myExams.preferredDate')}</Text>
-              <Text style={styles.infoText}>{formatDate(item.preferredDate)}</Text>
+        {item.status === ExamStatus.PENDING ? (
+          <View style={styles.block}>
+            <View style={styles.metaRow}>
+              <Ionicons name="calendar-outline" size={16} color={theme.colors.textMuted} />
+              <Text style={styles.metaLabel}>{t('myExams.preferredDate')}</Text>
+              <Text style={styles.meta}>{formatDate(item.preferredDate)}</Text>
             </View>
-            {item.message && (
-              <View style={styles.messageBox}>
-                <Text style={styles.messageLabel}>{t('myExams.yourMessage')}</Text>
-                <Text style={styles.messageText}>{item.message}</Text>
+            {item.message ? (
+              <View style={styles.quote}>
+                <Text style={styles.quoteLabel}>{t('myExams.yourMessage')}</Text>
+                <Text style={styles.quoteText}>{item.message}</Text>
               </View>
-            )}
-            <Text style={styles.helperText}>{procedure.pendingHint}</Text>
+            ) : null}
+            <Text style={styles.hint}>{procedure.pendingHint}</Text>
           </View>
-        )}
+        ) : null}
 
-        {/* Scheduled State - Show Schedule Info */}
-        {item.status === ExamStatus.SCHEDULED && (
-          <View style={styles.scheduleInfo}>
-            <View style={styles.dateRow}>
-              <Ionicons name="calendar-outline" size={16} color={colors.text.tertiary} />
-              <Text style={styles.dateText}>{formatDate(item.dateTime)}</Text>
+        {item.status === ExamStatus.SCHEDULED ? (
+          <View style={styles.block}>
+            <View style={styles.metaRow}>
+              <Ionicons name="calendar-outline" size={16} color={theme.colors.textMuted} />
+              <Text style={styles.meta}>{formatDate(item.dateTime)}</Text>
             </View>
-            <View style={styles.timeRow}>
-              <Ionicons name="time-outline" size={16} color={colors.text.tertiary} />
-              <Text style={styles.timeText}>{formatTime(item.dateTime)}</Text>
+            <View style={styles.metaRow}>
+              <Ionicons name="time-outline" size={16} color={theme.colors.textMuted} />
+              <Text style={styles.meta}>{formatTime(item.dateTime)}</Text>
             </View>
-            {item.location && (
-              <View style={styles.locationRow}>
-                <Ionicons name="location-outline" size={16} color={colors.text.secondary} />
-                <Text style={styles.locationText}>{item.location}</Text>
+            {item.location ? (
+              <View style={styles.metaRow}>
+                <Ionicons name="location-outline" size={16} color={theme.colors.textMuted} />
+                <Text style={styles.meta}>{item.location}</Text>
               </View>
-            )}
+            ) : null}
           </View>
-        )}
+        ) : null}
 
-        {/* Completed State - Show Results */}
-        {item.status === ExamStatus.COMPLETED && (
-          <View style={styles.resultInfo}>
-            <View style={styles.dateRow}>
-              <Ionicons name="calendar-outline" size={16} color={colors.text.tertiary} />
-              <Text style={styles.dateText}>{formatDate(item.dateTime)}</Text>
+        {item.status === ExamStatus.COMPLETED ? (
+          <View style={styles.block}>
+            <View style={styles.metaRow}>
+              <Ionicons name="calendar-outline" size={16} color={theme.colors.textMuted} />
+              <Text style={styles.meta}>{formatDate(item.dateTime)}</Text>
             </View>
-
-            {item.score !== null && (
-              <View style={styles.scoreBox}>
-                <View style={styles.scoreHeader}>
-                  <Text style={styles.scoreLabel}>{t('myExams.score')}</Text>
-                  <Text style={styles.scoreValue}>{item.score}/100</Text>
-                </View>
+            {item.score !== null ? (
+              <View style={styles.score}>
+                <Text style={styles.scoreLabel}>{t('myExams.score')}</Text>
+                <Text style={styles.scoreValue}>{item.score}/100</Text>
               </View>
-            )}
-
-            {item.notes && (
-              <View style={styles.notesBox}>
-                <Text style={styles.notesLabel}>{t('myExams.instructorNotes')}</Text>
-                <Text style={styles.notesText}>{item.notes}</Text>
+            ) : null}
+            {item.notes ? (
+              <View style={styles.quote}>
+                <Text style={styles.quoteLabel}>{t('myExams.instructorNotes')}</Text>
+                <Text style={styles.quoteText}>{item.notes}</Text>
               </View>
-            )}
+            ) : null}
           </View>
-        )}
+        ) : null}
 
-        {/* Rejected State - Show Reason (D-42 : « File not ready » pour la pratique) */}
-        {rejected && (
-          <View style={styles.rejectionBox}>
-            <Ionicons name="information-circle-outline" size={20} color={colors.error[600]} />
-            <View style={styles.rejectionContent}>
-              <Text style={styles.rejectionLabel}>{procedure.rejectedStatus}:</Text>
-              {item.rejectionReason && (
-                <Text style={styles.rejectionText}>{item.rejectionReason}</Text>
-              )}
-              <Text style={styles.rejectionHint}>{procedure.rejectedHint}</Text>
+        {/* Refus : les mots viennent de la procédure du type (D-42) */}
+        {rejected ? (
+          <View style={styles.reason}>
+            <Ionicons name="information-circle" size={20} color={theme.colors.dangerText} />
+            <View style={styles.reasonBody}>
+              <Text style={styles.reasonLabel}>{procedure.rejectedStatus}</Text>
+              {item.rejectionReason ? (
+                <Text style={styles.reasonText}>{item.rejectionReason}</Text>
+              ) : null}
+              <Text style={styles.reasonHint}>{procedure.rejectedHint}</Text>
             </View>
           </View>
-        )}
+        ) : null}
 
         {/* État de paiement (D-32) : planifié ou passé */}
-        {(item.status === ExamStatus.SCHEDULED || item.status === ExamStatus.COMPLETED) && (
+        {item.status === ExamStatus.SCHEDULED || item.status === ExamStatus.COMPLETED ? (
           <View style={styles.paymentRow}>
-            <Ionicons name="cash-outline" size={16} color={colors.text.secondary} />
-            <Text style={styles.paymentText}>
+            <Ionicons name="cash-outline" size={16} color={theme.colors.textSecondary} />
+            <Text style={styles.payment}>
               {item.amount !== null ? formatAmount(item.amount, currency) : t('myExams.examFee')}
             </Text>
-            <View style={[styles.paidBadge, item.paid ? styles.paidBadgeOn : styles.paidBadgeOff]}>
-              <Text style={[styles.paidText, item.paid ? styles.paidTextOn : styles.paidTextOff]}>
-                {item.paid ? t('myLessons.paid') : t('myLessons.unpaid')}
-              </Text>
-            </View>
+            <Badge
+              label={item.paid ? t('myLessons.paid') : t('myLessons.unpaid')}
+              tone={item.paid ? 'success' : 'neutral'}
+            />
           </View>
-        )}
-      </View>
+        ) : null}
+      </Card>
     );
   };
 
-  const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
-      <View style={styles.emptyIconContainer}>
-        <Ionicons name="trophy-outline" size={64} color={colors.neutral[300]} />
-      </View>
-      <Text style={styles.emptyTitle}>
-        {t('myExams.emptyTitle', { filter: t(activeFilter.labelKey) })}
-      </Text>
-      <Text style={styles.emptyText}>
-        {filter === 'pending'
-          ? t('myExams.emptyPending')
-          : filter === 'scheduled'
-            ? t('myExams.emptyScheduled')
-            : filter === 'completed'
-              ? t('myExams.emptyCompleted')
-              : t('myExams.emptyClosed')}
-      </Text>
-      {filter === 'pending' && (
-        <TouchableOpacity
-          style={styles.requestButton}
-          onPress={() => navigation.navigate('RequestExam')}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="add-circle-outline" size={20} color={colors.text.inverse} />
-          <Text style={styles.requestButtonText}>{t('myExams.requestExam')}</Text>
-        </TouchableOpacity>
-      )}
-    </View>
-  );
-
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary[600]} />
-      </View>
-    );
-  }
-
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t('myExams.title')}</Text>
-      </View>
+    <View style={styles.flex}>
+      <AppBar title={t('myExams.title')} large />
 
-      {/* Filter Tabs */}
-      <View style={styles.filterContainer}>
+      <View style={styles.filters}>
         {FILTERS.map((tab) => (
-          <TouchableOpacity
+          <Chip
             key={tab.key}
-            style={[styles.filterTab, filter === tab.key && styles.filterTabActive]}
+            label={t(tab.labelKey)}
+            selected={filter === tab.key}
             onPress={() => setFilter(tab.key)}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.filterTabText, filter === tab.key && styles.filterTabTextActive]}>
-              {t(tab.labelKey)}
-            </Text>
-          </TouchableOpacity>
+          />
         ))}
       </View>
 
-      {/* Exams List */}
-      <FlatList
-        data={filteredExams}
-        renderItem={renderExamCard}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={filteredExams.length === 0 ? styles.emptyList : styles.listContent}
-        ListEmptyComponent={renderEmptyState}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary[600]}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-      />
+      {loading && exams.length === 0 ? (
+        <View style={styles.skeletons}>
+          <SkeletonCard lines={3} />
+          <SkeletonCard lines={3} />
+        </View>
+      ) : (
+        <FlatList
+          data={filteredExams}
+          renderItem={renderExamCard}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={filteredExams.length === 0 ? styles.emptyList : styles.listContent}
+          ListEmptyComponent={
+            <EmptyState
+              icon="ribbon-outline"
+              title={t('myExams.emptyTitle', { filter: t(activeFilter.labelKey) })}
+              message={
+                filter === 'pending'
+                  ? t('myExams.emptyPending')
+                  : filter === 'scheduled'
+                    ? t('myExams.emptyScheduled')
+                    : filter === 'completed'
+                      ? t('myExams.emptyCompleted')
+                      : t('myExams.emptyClosed')
+              }
+              action={
+                filter === 'pending'
+                  ? {
+                      label: t('myExams.requestExam'),
+                      onPress: () => navigation.navigate('RequestExam'),
+                    }
+                  : undefined
+              }
+            />
+          }
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[theme.colors.accent]}
+              tintColor={theme.colors.accent}
+            />
+          }
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.secondary,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.background.secondary,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing['4xl'],
-    paddingBottom: spacing.lg,
-    backgroundColor: colors.background.primary,
-    gap: spacing.md,
-  },
-  headerTitle: {
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.bold,
-    color: colors.text.primary,
-  },
-  filterContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.background.primary,
-    gap: spacing.sm,
-  },
-  filterTab: {
-    flex: 1,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.xs,
-    borderRadius: 8,
-    alignItems: 'center',
-    backgroundColor: colors.background.tertiary,
-  },
-  filterTabActive: {
-    backgroundColor: colors.primary[600],
-  },
-  filterTabText: {
-    fontSize: typography.size.xs,
-    fontWeight: typography.weight.medium,
-    color: colors.text.secondary,
-  },
-  filterTabTextActive: {
-    color: colors.text.inverse,
-  },
-  listContent: {
-    padding: spacing.xl,
-    gap: spacing.md,
-  },
-  emptyList: {
-    flexGrow: 1,
-  },
-  examCard: {
-    backgroundColor: colors.background.primary,
-    borderRadius: 16,
-    padding: spacing.lg,
-    gap: spacing.md,
-    ...shadows.sm,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    alignItems: 'flex-start',
-  },
-  iconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary[50],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  examInfo: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  examType: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.primary,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: 6,
-    gap: spacing.xs,
-  },
-  statusText: {
-    fontSize: typography.size.xs,
-    fontWeight: typography.weight.semibold,
-  },
-  resultBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 8,
-    gap: spacing.xs,
-  },
-  resultText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-  },
-  requestInfo: {
-    gap: spacing.sm,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  infoLabel: {
-    fontSize: typography.size.sm,
-    color: colors.text.tertiary,
-  },
-  infoText: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-    fontWeight: typography.weight.medium,
-  },
-  messageBox: {
-    backgroundColor: colors.neutral[50],
-    padding: spacing.md,
-    borderRadius: 8,
-    gap: spacing.xs,
-  },
-  messageLabel: {
-    fontSize: typography.size.xs,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.secondary,
-    textTransform: 'uppercase',
-  },
-  messageText: {
-    fontSize: typography.size.sm,
-    color: colors.text.primary,
-    lineHeight: typography.size.sm * typography.lineHeight.normal,
-  },
-  helperText: {
-    fontSize: typography.size.xs,
-    color: colors.text.tertiary,
-    fontStyle: 'italic',
-  },
-  scheduleInfo: {
-    gap: spacing.sm,
-  },
-  dateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  dateText: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-  },
-  timeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  timeText: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-  },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  locationText: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-  },
-  resultInfo: {
-    gap: spacing.md,
-  },
-  scoreBox: {
-    backgroundColor: colors.neutral[50],
-    padding: spacing.md,
-    borderRadius: 8,
-  },
-  scoreHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  scoreLabel: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.secondary,
-  },
-  scoreValue: {
-    fontSize: typography.size['2xl'],
-    fontWeight: typography.weight.bold,
-    color: colors.primary[600],
-  },
-  notesBox: {
-    gap: spacing.xs,
-  },
-  notesLabel: {
-    fontSize: typography.size.xs,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.secondary,
-    textTransform: 'uppercase',
-  },
-  notesText: {
-    fontSize: typography.size.sm,
-    color: colors.text.primary,
-    lineHeight: typography.size.sm * typography.lineHeight.normal,
-  },
-  rejectionBox: {
-    flexDirection: 'row',
-    backgroundColor: colors.error[50],
-    padding: spacing.md,
-    borderRadius: 8,
-    gap: spacing.md,
-  },
-  rejectionContent: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  rejectionLabel: {
-    fontSize: typography.size.xs,
-    fontWeight: typography.weight.semibold,
-    color: colors.error[600],
-    textTransform: 'uppercase',
-  },
-  rejectionText: {
-    fontSize: typography.size.sm,
-    color: colors.error[600],
-    lineHeight: typography.size.sm * typography.lineHeight.normal,
-  },
-  rejectionHint: {
-    fontSize: typography.size.xs,
-    color: colors.text.tertiary,
-    fontStyle: 'italic',
-    marginTop: spacing.xs,
-  },
-  paymentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  paymentText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.secondary,
-  },
-  paidBadge: {
-    marginStart: 'auto',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  paidBadgeOn: {
-    backgroundColor: colors.success[50],
-  },
-  paidBadgeOff: {
-    backgroundColor: colors.warning[50],
-  },
-  paidText: {
-    fontSize: typography.size.xs,
-    fontWeight: typography.weight.semibold,
-  },
-  paidTextOn: {
-    color: colors.success[600],
-  },
-  paidTextOff: {
-    color: colors.warning[600],
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing['4xl'],
-  },
-  emptyIconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: colors.neutral[100],
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xl,
-  },
-  emptyTitle: {
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.primary,
-    marginBottom: spacing.sm,
-  },
-  emptyText: {
-    fontSize: typography.size.base,
-    color: colors.text.secondary,
-    textAlign: 'center',
-    marginBottom: spacing.xl,
-  },
-  requestButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary[600],
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    borderRadius: 12,
-    gap: spacing.sm,
-    ...shadows.sm,
-  },
-  requestButtonText: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.inverse,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    flex: { flex: 1, backgroundColor: theme.colors.surface },
+    filters: {
+      flexDirection: 'row',
+      gap: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.base,
+      paddingVertical: theme.spacing.md,
+      flexWrap: 'wrap',
+    },
+    skeletons: { padding: theme.spacing.base, gap: theme.spacing.md },
+    listContent: { padding: theme.spacing.base, paddingTop: 0, gap: theme.spacing.md },
+    emptyList: { flexGrow: 1, justifyContent: 'center' },
+    card: { gap: theme.spacing.md },
+    head: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.md },
+    icon: {
+      width: 48,
+      height: 48,
+      borderRadius: theme.radius.lg,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    iconTheory: { backgroundColor: theme.colors.accentSoft },
+    iconPractical: { backgroundColor: theme.colors.warningSoft },
+    info: { flex: 1, gap: theme.spacing.xs, alignItems: 'flex-start' },
+    type: {
+      fontSize: theme.typography.size.base,
+      fontWeight: theme.typography.weight.semibold,
+      color: theme.colors.textPrimary,
+    },
+    block: { gap: theme.spacing.sm },
+    metaRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
+    metaLabel: { fontSize: theme.typography.size.sm, color: theme.colors.textMuted },
+    meta: { flex: 1, fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    hint: { fontSize: theme.typography.size.xs, color: theme.colors.textMuted },
+    quote: {
+      backgroundColor: theme.colors.surfaceMuted,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing.md,
+      gap: theme.spacing.xs,
+    },
+    quoteLabel: {
+      fontSize: theme.typography.size.xs,
+      color: theme.colors.textMuted,
+      fontWeight: theme.typography.weight.medium,
+    },
+    quoteText: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    score: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: theme.colors.successSoft,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing.md,
+    },
+    scoreLabel: {
+      fontSize: theme.typography.size.sm,
+      color: theme.colors.successText,
+      fontWeight: theme.typography.weight.medium,
+    },
+    scoreValue: {
+      fontSize: theme.typography.size.lg,
+      fontWeight: theme.typography.weight.bold,
+      color: theme.colors.successText,
+    },
+    reason: {
+      flexDirection: 'row',
+      gap: theme.spacing.sm,
+      backgroundColor: theme.colors.dangerSoft,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing.md,
+    },
+    reasonBody: { flex: 1, gap: 2 },
+    reasonLabel: {
+      fontSize: theme.typography.size.sm,
+      fontWeight: theme.typography.weight.semibold,
+      color: theme.colors.dangerText,
+    },
+    reasonText: { fontSize: theme.typography.size.sm, color: theme.colors.dangerText },
+    reasonHint: { fontSize: theme.typography.size.xs, color: theme.colors.dangerText },
+    paymentRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
+    payment: {
+      flex: 1,
+      fontSize: theme.typography.size.base,
+      fontWeight: theme.typography.weight.medium,
+      color: theme.colors.textPrimary,
+    },
+  });

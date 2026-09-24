@@ -33,6 +33,8 @@ interface ButtonProps {
   loading?: boolean;
   disabled?: boolean;
   icon?: IoniconName;
+  /** Côté de l'icône : `trailing` pour une flèche qui pousse vers la suite. */
+  iconPosition?: 'leading' | 'trailing';
   /** Occupe toute la largeur disponible (barre d'actions, formulaire). */
   fullWidth?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -89,6 +91,7 @@ export const Button = ({
   loading = false,
   disabled = false,
   icon,
+  iconPosition = 'leading',
   fullWidth = false,
   style,
   testID,
@@ -126,7 +129,9 @@ export const Button = ({
         <ActivityIndicator color={palette.text} size="small" />
       ) : (
         <View style={[styles.row, { gap: theme.spacing.sm }]}>
-          {icon ? <Ionicons name={icon} size={small ? 16 : 18} color={palette.text} /> : null}
+          {icon && iconPosition === 'leading' ? (
+            <Ionicons name={icon} size={small ? 16 : 18} color={palette.text} />
+          ) : null}
           <Text
             style={{
               color: palette.text,
@@ -137,6 +142,9 @@ export const Button = ({
           >
             {title}
           </Text>
+          {icon && iconPosition === 'trailing' ? (
+            <Ionicons name={icon} size={small ? 16 : 18} color={palette.text} />
+          ) : null}
         </View>
       )}
     </Pressable>

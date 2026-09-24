@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { MIN_TOUCH_TARGET } from '../../theme/tokens';
@@ -21,6 +22,9 @@ interface AppBarProps {
   right?: React.ReactNode;
   /** Titre plus grand, pour un accueil. */
   large?: boolean;
+  /** La barre occupe le haut de l'écran et protège donc la zone d'état ; `false` si elle est
+   *  posée sous un en-tête de navigation. */
+  topInset?: boolean;
   style?: StyleProp<ViewStyle>;
   testID?: string;
 }
@@ -32,10 +36,12 @@ export const AppBar = ({
   backLabel,
   right,
   large = false,
+  topInset = true,
   style,
   testID,
 }: AppBarProps) => {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <View
@@ -46,7 +52,8 @@ export const AppBar = ({
           backgroundColor: theme.colors.surfaceRaised,
           borderBottomColor: theme.colors.border,
           paddingHorizontal: theme.spacing.base,
-          paddingVertical: theme.spacing.md,
+          paddingTop: (topInset ? insets.top : 0) + theme.spacing.md,
+          paddingBottom: theme.spacing.md,
           gap: theme.spacing.md,
         },
         style,

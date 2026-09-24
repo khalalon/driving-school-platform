@@ -660,21 +660,22 @@ cd mobile-app && npx jest components && test -z "$(grep -rn "#[0-9a-fA-F]\{6\}" 
 ```
 **Hors périmètre** : remplacement dans les écrans (11.3, 11.4).
 
-### - [ ] 11.3 — Écrans élève refondus sur le système
+### - [x] 11.3 — Écrans élève refondus sur le système
 **Objectif** : authentification, accueil « Mon parcours », écoles, fiche école, demandes de leçon et d'examen, mes leçons, mes examens, suivi d'inscription, « Mon profil » et ses onglets passent par les composants de 11.2 et les jetons de 11.1 : plus aucune couleur codée en dur, plus de `StyleSheet` dupliqué pour les cartes, les boutons ou les en-têtes ; hiérarchie visuelle retravaillée (titres, densité, respiration).
 **Fichiers** : `mobile-app/src/screens/auth/*`, `mobile-app/src/screens/student/**`.
 **Critère de validation** :
 ```bash
-cd mobile-app && test -z "$(grep -rn "colors\." src/screens/auth src/screens/student --include='*.tsx')" && npx tsc --noEmit && npx jest --silent && echo OK
+cd mobile-app && test -z "$(grep -rnE "(^|[^.a-zA-Z])colors\." src/screens/auth src/screens/student --include='*.tsx')" && npx tsc --noEmit && npx jest --silent && echo OK
 ```
 **Hors périmètre** : écrans instructeur (11.4).
+**Note sur le critère** : le `grep` d'origine (`"colors\."`) interdisait aussi `theme.colors.`, c'est-à-dire l'écriture visée par 11.1 ; il cherche désormais un `colors.` **non précédé d'un point**, soit l'ancienne constante seule.
 
 ### - [ ] 11.4 — Écrans instructeur refondus sur le système
 **Objectif** : même travail pour l'accueil « Aujourd'hui », les leçons du jour, les demandes de leçon et d'examen, les examens du jour, la réservation pour un élève, les demandes d'inscription, la fiche élève et ses onglets, et la modale de présence.
 **Fichiers** : `mobile-app/src/screens/instructor/**`.
 **Critère de validation** :
 ```bash
-cd mobile-app && test -z "$(grep -rn "colors\." src/screens/instructor --include='*.tsx')" && npx tsc --noEmit && npx jest --silent && echo OK
+cd mobile-app && test -z "$(grep -rnE "(^|[^.a-zA-Z])colors\." src/screens/instructor --include='*.tsx')" && npx tsc --noEmit && npx jest --silent && echo OK
 ```
 **Hors périmètre** : retours et animations (11.5).
 

@@ -1,29 +1,25 @@
 /**
- * Schools List Screen - Minimal & Elegant
- * Single Responsibility: Display list of schools
+ * Liste des auto-écoles (11.3) — S1 : le point de départ d'un élève sans inscription.
+ * Une carte par école, ouverte d'un doigt ; le chargement montre des squelettes à la forme
+ * des cartes, la liste vide propose de réessayer plutôt que de constater le vide.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  FlatList,
-  ActivityIndicator,
-  Alert,
-  RefreshControl,
-} from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Alert, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { schoolService } from '../../services/api/SchoolService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
 import { useI18n } from '../../context/LanguageContext';
+import { useTheme } from '../../context/ThemeContext';
+import { AppBar, Card, EmptyState, SkeletonCard } from '../../components/ui';
 import { School } from '../../models/School';
-import { colors, typography, spacing, shadows } from '../../theme';
+import { Theme } from '../../theme';
 import { mirrorIcon } from '../../utils/rtl';
 
 export const SchoolsListScreen = ({ navigation }: any) => {
   const { t } = useI18n();
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [schools, setSchools] = useState<School[]>([]);
@@ -50,209 +46,102 @@ export const SchoolsListScreen = ({ navigation }: any) => {
     setRefreshing(false);
   }, []);
 
-  const handleSchoolPress = (schoolId: string) => {
-    navigation.navigate('SchoolDetail', { schoolId });
-  };
-
   const renderSchoolCard = ({ item }: { item: School }) => (
-    <TouchableOpacity
+    <Card
+      onPress={() => navigation.navigate('SchoolDetail', { schoolId: item.id })}
+      accessibilityLabel={item.name}
       style={styles.schoolCard}
-      onPress={() => handleSchoolPress(item.id)}
-      activeOpacity={0.7}
     >
-      <View style={styles.schoolIconContainer}>
-        <Ionicons name="business-outline" size={28} color={colors.primary[600]} />
+      <View style={styles.logo}>
+        <Ionicons name="business" size={26} color={theme.colors.accentText} />
       </View>
 
-      <View style={styles.schoolInfo}>
-        <Text style={styles.schoolName} numberOfLines={1}>
+      <View style={styles.info}>
+        <Text style={styles.name} numberOfLines={1}>
           {item.name}
         </Text>
-        <View style={styles.locationRow}>
-          <Ionicons name="location-outline" size={16} color={colors.text.tertiary} />
-          <Text style={styles.schoolAddress} numberOfLines={1}>
+        <View style={styles.metaRow}>
+          <Ionicons name="location-outline" size={15} color={theme.colors.textMuted} />
+          <Text style={styles.meta} numberOfLines={1}>
             {item.address}
           </Text>
         </View>
-
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Ionicons name="call-outline" size={16} color={colors.text.tertiary} />
-            <Text style={styles.statText}>{item.phone}</Text>
-          </View>
+        <View style={styles.metaRow}>
+          <Ionicons name="call-outline" size={15} color={theme.colors.textMuted} />
+          <Text style={styles.meta} numberOfLines={1}>
+            {item.phone}
+          </Text>
         </View>
       </View>
 
-      <Ionicons name={mirrorIcon('chevron-forward')} size={20} color={colors.neutral[400]} />
-    </TouchableOpacity>
+      <Ionicons name={mirrorIcon('chevron-forward')} size={20} color={theme.colors.textMuted} />
+    </Card>
   );
-
-  const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
-      <View style={styles.emptyIconContainer}>
-        <Ionicons name="business-outline" size={64} color={colors.neutral[300]} />
-      </View>
-      <Text style={styles.emptyTitle}>{t('schools.emptyTitle')}</Text>
-      <Text style={styles.emptyText}>{t('schools.emptyText')}</Text>
-    </View>
-  );
-
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary[600]} />
-      </View>
-    );
-  }
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name={mirrorIcon('arrow-back')} size={24} color={colors.text.primary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{t('schools.title')}</Text>
-      </View>
-
-      {/* Schools List */}
-      <FlatList
-        data={schools}
-        renderItem={renderSchoolCard}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={schools.length === 0 ? styles.emptyList : styles.listContent}
-        ListEmptyComponent={renderEmptyState}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary[600]}
-          />
-        }
-        showsVerticalScrollIndicator={false}
+    <View style={styles.flex}>
+      <AppBar
+        title={t('schools.title')}
+        onBack={() => navigation.goBack()}
+        backLabel={t('common.back')}
       />
+
+      {loading && schools.length === 0 ? (
+        <View style={styles.skeletons}>
+          <SkeletonCard lines={2} />
+          <SkeletonCard lines={2} />
+          <SkeletonCard lines={2} />
+        </View>
+      ) : (
+        <FlatList
+          data={schools}
+          renderItem={renderSchoolCard}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={schools.length === 0 ? styles.emptyList : styles.listContent}
+          ListEmptyComponent={
+            <EmptyState
+              icon="business-outline"
+              title={t('schools.emptyTitle')}
+              message={t('schools.emptyText')}
+              action={{ label: t('common.retry'), onPress: loadSchools }}
+            />
+          }
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[theme.colors.accent]}
+              tintColor={theme.colors.accent}
+            />
+          }
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.secondary,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.background.secondary,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing['4xl'],
-    paddingBottom: spacing.lg,
-    backgroundColor: colors.background.primary,
-    gap: spacing.md,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.background.tertiary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.bold,
-    color: colors.text.primary,
-  },
-  listContent: {
-    padding: spacing.xl,
-    gap: spacing.md,
-  },
-  emptyList: {
-    flexGrow: 1,
-  },
-  schoolCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background.primary,
-    borderRadius: 16,
-    padding: spacing.lg,
-    gap: spacing.md,
-    ...shadows.sm,
-  },
-  schoolIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary[50],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  schoolInfo: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  schoolName: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.primary,
-  },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  schoolAddress: {
-    flex: 1,
-    fontSize: typography.size.sm,
-    color: colors.text.tertiary,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  statText: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing['4xl'],
-  },
-  emptyIconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: colors.neutral[100],
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xl,
-  },
-  emptyTitle: {
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.primary,
-    marginBottom: spacing.sm,
-  },
-  emptyText: {
-    fontSize: typography.size.base,
-    color: colors.text.secondary,
-    textAlign: 'center',
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    flex: { flex: 1, backgroundColor: theme.colors.surface },
+    skeletons: { padding: theme.spacing.base, gap: theme.spacing.md },
+    listContent: { padding: theme.spacing.base, gap: theme.spacing.md },
+    emptyList: { flexGrow: 1, justifyContent: 'center' },
+    schoolCard: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md },
+    logo: {
+      width: 52,
+      height: 52,
+      borderRadius: theme.radius.lg,
+      backgroundColor: theme.colors.accentSoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    info: { flex: 1, gap: 2 },
+    name: {
+      fontSize: theme.typography.size.base,
+      fontWeight: theme.typography.weight.semibold,
+      color: theme.colors.textPrimary,
+    },
+    metaRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
+    meta: { flex: 1, fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+  });

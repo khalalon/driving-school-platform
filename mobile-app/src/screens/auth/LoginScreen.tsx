@@ -1,35 +1,29 @@
 /**
- * Login Screen - Minimal & Elegant
- * Single Responsibility: Handle user authentication
+ * Connexion (11.3) — première impression de l'application : marque, langue (D-47), deux champs,
+ * puis les deux portes d'entrée (élève, auto-école). Tout vient du système de 11.1 / 11.2 :
+ * aucune couleur ni aucun bouton dessiné ici.
  */
 
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { LanguagePicker } from '../../components/LanguagePicker';
 import { useI18n } from '../../context/LanguageContext';
+import { useTheme } from '../../context/ThemeContext';
+import { Button, Field, Screen } from '../../components/ui';
 import { getApiErrorMessage } from '../../services/api/ApiError';
-import { colors, typography, spacing, shadows } from '../../theme';
+import { Theme } from '../../theme';
 import { mirrorIcon } from '../../utils/rtl';
 
 export const LoginScreen = ({ navigation }: any) => {
   const { t } = useI18n();
   const { login } = useAuth();
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -49,256 +43,117 @@ export const LoginScreen = ({ navigation }: any) => {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.content}>
+      <Screen contentContainerStyle={styles.content} edges={['top', 'bottom']}>
         {/* Langue : accessible avant la connexion (D-47) */}
         <View style={styles.languageRow}>
           <LanguagePicker compact />
         </View>
 
-        {/* Header */}
         <View style={styles.header}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="car-sport-outline" size={40} color={colors.primary[600]} />
+          <View style={styles.logo}>
+            <Ionicons name="car-sport" size={38} color={theme.colors.accent} />
           </View>
           <Text style={styles.title}>{t('auth.login.title')}</Text>
           <Text style={styles.subtitle}>{t('auth.login.subtitle')}</Text>
         </View>
 
-        {/* Form */}
         <View style={styles.form}>
-          {/* Email Input */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('auth.email')}</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons
-                name="mail-outline"
-                size={20}
-                color={colors.neutral[400]}
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder={t('auth.emailPlaceholder')}
-                placeholderTextColor={colors.neutral[400]}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-          </View>
+          <Field
+            label={t('auth.email')}
+            placeholder={t('auth.emailPlaceholder')}
+            value={email}
+            onChangeText={setEmail}
+            icon="mail-outline"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
 
-          {/* Password Input */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>{t('auth.password')}</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons
-                name="lock-closed-outline"
-                size={20}
-                color={colors.neutral[400]}
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder={t('auth.passwordPlaceholder')}
-                placeholderTextColor={colors.neutral[400]}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-              />
-              <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.eyeIcon}
-              >
-                <Ionicons
-                  name={showPassword ? 'eye-outline' : 'eye-off-outline'}
-                  size={20}
-                  color={colors.neutral[400]}
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
+          <Field
+            label={t('auth.password')}
+            placeholder={t('auth.passwordPlaceholder')}
+            value={password}
+            onChangeText={setPassword}
+            icon="lock-closed-outline"
+            revealable
+          />
 
-          {/* Login Button */}
-          <TouchableOpacity
-            style={[styles.button, styles.primaryButton, loading && styles.disabledButton]}
+          <Button
+            title={t('auth.signIn')}
             onPress={handleLogin}
-            disabled={loading}
-            activeOpacity={0.8}
-          >
-            {loading ? (
-              <ActivityIndicator size="small" color={colors.text.inverse} />
-            ) : (
-              <>
-                <Text style={styles.primaryButtonText}>{t('auth.signIn')}</Text>
-                <Ionicons
-                  name={mirrorIcon('arrow-forward')}
-                  size={20}
-                  color={colors.text.inverse}
-                />
-              </>
-            )}
-          </TouchableOpacity>
+            loading={loading}
+            icon={mirrorIcon('arrow-forward')}
+            iconPosition="trailing"
+            fullWidth
+          />
 
-          {/* Divider */}
           <View style={styles.divider}>
             <View style={styles.dividerLine} />
             <Text style={styles.dividerText}>{t('auth.or')}</Text>
             <View style={styles.dividerLine} />
           </View>
 
-          {/* Student Registration */}
-          <TouchableOpacity
-            style={[styles.button, styles.secondaryButton]}
+          <Button
+            title={t('auth.createStudent')}
             onPress={() => navigation.navigate('Register')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="person-add-outline" size={20} color={colors.primary[600]} />
-            <Text style={styles.secondaryButtonText}>{t('auth.createStudent')}</Text>
-          </TouchableOpacity>
+            variant="secondary"
+            icon="person-add-outline"
+            fullWidth
+          />
 
-          {/* Instructor Registration */}
-          <TouchableOpacity
-            style={[styles.button, styles.tertiaryButton]}
+          <Button
+            title={t('auth.registerInstructor')}
             onPress={() => navigation.navigate('InstructorRegistration')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="school-outline" size={20} color={colors.neutral[600]} />
-            <Text style={styles.tertiaryButtonText}>{t('auth.registerInstructor')}</Text>
-          </TouchableOpacity>
+            variant="ghost"
+            icon="school-outline"
+            fullWidth
+          />
         </View>
-      </View>
+      </Screen>
     </KeyboardAvoidingView>
   );
 };
 
-const styles = StyleSheet.create({
-  languageRow: {
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.secondary,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: spacing['4xl'],
-  },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.primary[50],
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.lg,
-  },
-  title: {
-    fontSize: typography.size['3xl'],
-    fontWeight: typography.weight.bold,
-    color: colors.text.primary,
-    marginBottom: spacing.xs,
-  },
-  subtitle: {
-    fontSize: typography.size.base,
-    color: colors.text.secondary,
-  },
-  form: {
-    width: '100%',
-  },
-  inputGroup: {
-    marginBottom: spacing.lg,
-  },
-  label: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.medium,
-    color: colors.text.primary,
-    marginBottom: spacing.sm,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background.primary,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    paddingHorizontal: spacing.base,
-    height: 52,
-  },
-  inputIcon: {
-    marginEnd: spacing.md,
-  },
-  input: {
-    flex: 1,
-    fontSize: typography.size.base,
-    color: colors.text.primary,
-  },
-  eyeIcon: {
-    padding: spacing.xs,
-  },
-  button: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    height: 52,
-    gap: spacing.sm,
-  },
-  primaryButton: {
-    backgroundColor: colors.primary[600],
-    marginBottom: spacing.xl,
-    ...shadows.sm,
-  },
-  primaryButtonText: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.inverse,
-  },
-  secondaryButton: {
-    backgroundColor: colors.primary[50],
-    marginBottom: spacing.md,
-  },
-  secondaryButtonText: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.medium,
-    color: colors.primary[600],
-  },
-  tertiaryButton: {
-    backgroundColor: colors.background.primary,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  tertiaryButtonText: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.medium,
-    color: colors.text.primary,
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: spacing.xl,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.border.default,
-  },
-  dividerText: {
-    fontSize: typography.size.sm,
-    color: colors.text.tertiary,
-    marginHorizontal: spacing.base,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    flex: { flex: 1, backgroundColor: theme.colors.surface },
+    content: { justifyContent: 'center', paddingHorizontal: theme.spacing.xl },
+    languageRow: { alignItems: 'center', marginBottom: theme.spacing.lg },
+    header: { alignItems: 'center', marginBottom: theme.spacing['3xl'] },
+    logo: {
+      width: 76,
+      height: 76,
+      borderRadius: theme.radius.pill,
+      backgroundColor: theme.colors.accentSoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: theme.spacing.base,
+    },
+    title: {
+      fontSize: theme.typography.size['3xl'],
+      fontWeight: theme.typography.weight.bold,
+      color: theme.colors.textPrimary,
+      marginBottom: theme.spacing.xs,
+      textAlign: 'center',
+    },
+    subtitle: {
+      fontSize: theme.typography.size.base,
+      color: theme.colors.textSecondary,
+      textAlign: 'center',
+    },
+    form: { width: '100%', gap: theme.spacing.base },
+    divider: { flexDirection: 'row', alignItems: 'center', marginVertical: theme.spacing.sm },
+    dividerLine: {
+      flex: 1,
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: theme.colors.border,
+    },
+    dividerText: {
+      fontSize: theme.typography.size.sm,
+      color: theme.colors.textMuted,
+      marginHorizontal: theme.spacing.base,
+    },
+  });

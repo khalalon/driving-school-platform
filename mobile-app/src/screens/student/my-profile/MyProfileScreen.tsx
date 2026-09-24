@@ -1,32 +1,34 @@
 /**
- * My Profile Screen (Student Self-View)
- * Tab Navigator with 3 tabs: Progress, Lessons, Exams
+ * Mon profil (11.3) — trois onglets : progression, leçons, examens.
  *
- * Onglet « Profile » depuis 8.4 : ouvert sans paramètre, l'écran retrouve lui-même l'école de
+ * Onglet « Profil » depuis 8.4 : ouvert sans paramètre, l'écran retrouve lui-même l'école de
  * l'inscription approuvée (E3, une seule inscription active — D-22) ; ouvert avec `schoolId`
  * (depuis l'accueil), il l'utilise tel quel. Sans inscription approuvée : invitation à
  * chercher une école.
  */
 
-import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { useFocusEffect } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
 import { MyProgressTab } from './tabs/MyProgressTab';
 import { MyLessonsPaymentTab } from './tabs/MyLessonsPaymentTab';
 import { MyExamsPaymentTab } from './tabs/MyExamsPaymentTab';
 import { LanguagePicker } from '../../../components/LanguagePicker';
 import { useI18n } from '../../../context/LanguageContext';
+import { useTheme } from '../../../context/ThemeContext';
+import { AppBar, EmptyState, SkeletonCard } from '../../../components/ui';
 import { enrollmentService } from '../../../services/api/EnrollmentService';
 import { getApiErrorMessage } from '../../../services/api/ApiError';
 import { EnrollmentStatus } from '../../../models/Enrollment';
-import { colors, typography, spacing } from '../../../theme';
+import { Theme } from '../../../theme';
 
 const Tab = createMaterialTopTabNavigator();
 
 export const MyProfileScreen = ({ route, navigation }: any) => {
   const { t } = useI18n();
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const paramSchoolId: string | undefined = route.params?.schoolId;
   // `undefined` = pas encore résolue, `null` = aucune inscription approuvée
   const [schoolId, setSchoolId] = useState<string | null | undefined>(paramSchoolId);
@@ -62,48 +64,46 @@ export const MyProfileScreen = ({ route, navigation }: any) => {
   const renderBody = () => {
     if (schoolId === undefined) {
       return (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.primary[600]} />
+        <View style={styles.loading}>
+          <SkeletonCard lines={3} />
+          <SkeletonCard lines={2} />
         </View>
       );
     }
     if (!schoolId) {
       return (
-        <View style={styles.center}>
-          <Ionicons name="school-outline" size={40} color={colors.text.tertiary} />
-          <Text style={styles.emptyTitle}>{t('profile.notEnrolled')}</Text>
-          <Text style={styles.emptyText}>{error ?? t('profile.notEnrolledText')}</Text>
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={() => navigation.navigate('SchoolsList')}
-          >
-            <Text style={styles.primaryButtonText}>{t('home.browseSchools')}</Text>
-          </TouchableOpacity>
-        </View>
+        <EmptyState
+          icon="school-outline"
+          title={t('profile.notEnrolled')}
+          message={error ?? t('profile.notEnrolledText')}
+          tone={error ? 'danger' : 'accent'}
+          action={{
+            label: t('home.browseSchools'),
+            onPress: () => navigation.navigate('SchoolsList'),
+          }}
+          style={styles.empty}
+        />
       );
     }
     return (
       <Tab.Navigator
         key={schoolId}
         screenOptions={{
-          tabBarActiveTintColor: colors.primary[600],
-          tabBarInactiveTintColor: colors.text.secondary,
+          tabBarActiveTintColor: theme.colors.accent,
+          tabBarInactiveTintColor: theme.colors.textSecondary,
           tabBarLabelStyle: {
-            fontSize: typography.size.sm,
-            fontWeight: typography.weight.semibold,
+            fontSize: theme.typography.size.sm,
+            fontWeight: theme.typography.weight.semibold,
             textTransform: 'none',
           },
           tabBarStyle: {
-            backgroundColor: colors.background.primary,
+            backgroundColor: theme.colors.surfaceRaised,
             elevation: 0,
             shadowOpacity: 0,
-            borderBottomWidth: 1,
-            borderBottomColor: colors.neutral[200],
+            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderBottomColor: theme.colors.border,
           },
-          tabBarIndicatorStyle: {
-            backgroundColor: colors.primary[600],
-            height: 3,
-          },
+          tabBarIndicatorStyle: { backgroundColor: theme.colors.accent, height: 3 },
         }}
       >
         <Tab.Screen
@@ -129,65 +129,16 @@ export const MyProfileScreen = ({ route, navigation }: any) => {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t('profile.title')}</Text>
-        <LanguagePicker compact />
-      </View>
-
+    <View style={styles.flex}>
+      <AppBar title={t('profile.title')} large right={<LanguagePicker compact />} />
       {renderBody()}
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.primary,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing['4xl'],
-    paddingBottom: spacing.md,
-    backgroundColor: colors.background.primary,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.neutral[200],
-  },
-  headerTitle: {
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.primary,
-    flex: 1,
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing['2xl'],
-    gap: spacing.md,
-  },
-  emptyTitle: {
-    fontSize: typography.size.lg,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.primary,
-  },
-  emptyText: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-    textAlign: 'center',
-    lineHeight: typography.size.sm * typography.lineHeight.normal,
-  },
-  primaryButton: {
-    backgroundColor: colors.primary[600],
-    borderRadius: 12,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-  },
-  primaryButtonText: {
-    color: colors.text.inverse,
-    fontWeight: typography.weight.semibold,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    flex: { flex: 1, backgroundColor: theme.colors.surface },
+    loading: { padding: theme.spacing.base, gap: theme.spacing.md },
+    empty: { flex: 1 },
+  });

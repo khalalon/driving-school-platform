@@ -1,10 +1,10 @@
 /**
- * My Exams & Payment Tab
- * Single Responsibility: Display exam history with payment status
+ * Onglet « Examens » de Mon profil (11.3) — P10 : l'historique des examens, leur résultat et leur
+ * règlement. Les libellés viennent des modèles (D-18, D-42) et des catalogues (D-47).
  */
 
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, Alert } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Alert, FlatList, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { studentSelfProfileService } from '../../../../services/api/StudentSelfProfileService';
 import { getApiErrorMessage } from '../../../../services/api/ApiError';
@@ -12,11 +12,38 @@ import { ExamHistory } from '../../../../models/Profile';
 import { examResultLabel, examTypeLabel, ExamResult, ExamType } from '../../../../models/Exam';
 import { useSchoolCurrency } from '../../../../hooks/useSchoolCurrency';
 import { useI18n } from '../../../../context/LanguageContext';
+import { useTheme } from '../../../../context/ThemeContext';
+import { Badge, Card, EmptyState, SkeletonCard, Tone } from '../../../../components/ui';
 import { formatAmount, formatDate, formatDateTime } from '../../../../utils/format';
-import { colors, typography, spacing } from '../../../../theme';
+import { Theme } from '../../../../theme';
+import { IoniconName } from '../../../../utils/rtl';
+
+const resultTone = (result: string): Tone => {
+  switch (result) {
+    case ExamResult.PASSED:
+      return 'success';
+    case ExamResult.FAILED:
+      return 'danger';
+    default:
+      return 'warning';
+  }
+};
+
+const resultIcon = (result: string): IoniconName => {
+  switch (result) {
+    case ExamResult.PASSED:
+      return 'checkmark-circle';
+    case ExamResult.FAILED:
+      return 'close-circle';
+    default:
+      return 'help-circle';
+  }
+};
 
 export const MyExamsPaymentTab = ({ route }: any) => {
   const { t } = useI18n();
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { schoolId } = route.params;
   const currency = useSchoolCurrency(schoolId);
   const [loading, setLoading] = useState(true);
@@ -38,115 +65,87 @@ export const MyExamsPaymentTab = ({ route }: any) => {
     }
   };
 
-  const getResultColor = (result: string) => {
-    switch (result) {
-      case ExamResult.PASSED:
-        return colors.success[500];
-      case ExamResult.FAILED:
-        return colors.error[500];
-      default:
-        return colors.warning[500];
-    }
-  };
+  const renderExam = ({ item }: { item: ExamHistory }) => {
+    const tone = resultTone(item.result);
+    const resultColor =
+      tone === 'success'
+        ? theme.colors.successText
+        : tone === 'danger'
+          ? theme.colors.dangerText
+          : theme.colors.warningText;
 
-  const getResultIcon = (result: string) => {
-    switch (result) {
-      case ExamResult.PASSED:
-        return 'checkmark-circle';
-      case ExamResult.FAILED:
-        return 'close-circle';
-      default:
-        return 'help-circle';
-    }
-  };
-
-  const renderExam = ({ item }: { item: ExamHistory }) => (
-    <View style={styles.examCard}>
-      {/* Header */}
-      <View style={styles.examHeader}>
-        <View style={styles.examInfo}>
-          <Text style={styles.examType}>
-            {examTypeLabel(item.type as ExamType) ?? item.type} Exam
-            {item.status === 'cancelled' ? ' · Cancelled' : ''}
+    return (
+      <Card style={styles.card}>
+        <View style={styles.info}>
+          <Text style={styles.type}>
+            {t('myExams.examSuffix', {
+              type: examTypeLabel(item.type as ExamType) ?? item.type,
+            })}
+            {item.status === 'cancelled' ? t('common.cancelledSuffix') : ''}
           </Text>
-          <Text style={styles.examDate}>
+          <Text style={styles.date}>
             {formatDateTime(item.dateTime)}
             {item.location ? ` · ${item.location}` : ''}
           </Text>
         </View>
-      </View>
 
-      {/* Result Section */}
-      {item.result !== ExamResult.PENDING && (
-        <View style={styles.resultSection}>
-          <View style={styles.resultRow}>
-            <Ionicons
-              name={getResultIcon(item.result) as any}
-              size={24}
-              color={getResultColor(item.result)}
-            />
-            <View style={styles.resultInfo}>
-              <Text style={[styles.resultText, { color: getResultColor(item.result) }]}>
+        {item.result !== ExamResult.PENDING ? (
+          <View style={styles.result}>
+            <Ionicons name={resultIcon(item.result)} size={24} color={resultColor} />
+            <View style={styles.resultBody}>
+              <Text style={[styles.resultText, { color: resultColor }]}>
                 {examResultLabel(item.result as ExamResult) ?? item.result}
               </Text>
-              {item.score !== null && <Text style={styles.scoreText}>Score: {item.score}%</Text>}
+              {item.score !== null ? (
+                <Text style={styles.score}>
+                  {t('myExams.score')} {item.score}/100
+                </Text>
+              ) : null}
             </View>
           </View>
-        </View>
-      )}
+        ) : null}
 
-      {/* Notes */}
-      {item.notes && (
-        <View style={styles.notesContainer}>
-          <Text style={styles.notesLabel}>{t('profile.notes')}</Text>
-          <Text style={styles.notesText}>{item.notes}</Text>
-        </View>
-      )}
-
-      {/* Payment Status */}
-      <View style={styles.paymentSection}>
-        <View style={styles.paymentRow}>
-          <View style={styles.paymentLabel}>
-            <Ionicons
-              name={item.paid ? 'checkmark-circle' : 'alert-circle-outline'}
-              size={20}
-              color={item.paid ? colors.success[500] : colors.warning[500]}
-            />
-            <Text style={styles.paymentLabelText}>
-              {item.paid ? t('profile.paid') : t('profile.pendingPayment')}
-            </Text>
+        {item.notes ? (
+          <View style={styles.quote}>
+            <Text style={styles.quoteLabel}>{t('profile.notes')}</Text>
+            <Text style={styles.quoteText}>{item.notes}</Text>
           </View>
-          {(item.amount !== null || item.price !== null) && (
-            <Text
-              style={[
-                styles.paymentAmount,
-                { color: item.paid ? colors.success[500] : colors.warning[500] },
-              ]}
-            >
-              {formatAmount(item.amount ?? item.price, currency)}
+        ) : null}
+
+        <View style={styles.payment}>
+          <View style={styles.paymentRow}>
+            <View style={styles.paymentLabel}>
+              <Ionicons
+                name={item.paid ? 'checkmark-circle' : 'alert-circle-outline'}
+                size={20}
+                color={item.paid ? theme.colors.successText : theme.colors.warningText}
+              />
+              <Text style={styles.paymentLabelText}>
+                {item.paid ? t('profile.paid') : t('profile.pendingPayment')}
+              </Text>
+            </View>
+            {item.amount !== null || item.price !== null ? (
+              <Badge
+                label={formatAmount(item.amount ?? item.price, currency)}
+                tone={item.paid ? 'success' : 'warning'}
+              />
+            ) : null}
+          </View>
+          {item.paid && item.paymentDate ? (
+            <Text style={styles.note}>
+              {t('profile.paidOn', { date: formatDate(item.paymentDate) })}
             </Text>
-          )}
+          ) : null}
         </View>
-        {item.paid && item.paymentDate && (
-          <Text style={styles.paymentDate}>Paid on {formatDate(item.paymentDate)}</Text>
-        )}
-      </View>
-    </View>
-  );
+      </Card>
+    );
+  };
 
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={colors.primary[600]} />
-      </View>
-    );
-  }
-
-  if (exams.length === 0) {
-    return (
-      <View style={styles.centerContainer}>
-        <Ionicons name="document-text-outline" size={48} color={colors.text.tertiary} />
-        <Text style={styles.emptyText}>{t('profile.noExams')}</Text>
+      <View style={styles.skeletons}>
+        <SkeletonCard lines={3} />
+        <SkeletonCard lines={3} />
       </View>
     );
   }
@@ -156,123 +155,71 @@ export const MyExamsPaymentTab = ({ route }: any) => {
       data={exams}
       renderItem={renderExam}
       keyExtractor={(item) => item.id}
-      contentContainerStyle={styles.listContainer}
+      style={styles.flex}
+      contentContainerStyle={exams.length === 0 ? styles.emptyList : styles.listContent}
+      ListEmptyComponent={
+        <EmptyState icon="ribbon-outline" title={t('profile.noExams')} tone="neutral" />
+      }
       showsVerticalScrollIndicator={false}
     />
   );
 };
 
-const styles = StyleSheet.create({
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.background.secondary,
-  },
-  emptyText: {
-    fontSize: typography.size.base,
-    color: colors.text.tertiary,
-    marginTop: spacing.md,
-  },
-  listContainer: {
-    padding: spacing.md,
-    backgroundColor: colors.background.secondary,
-  },
-  examCard: {
-    backgroundColor: colors.background.primary,
-    borderRadius: 12,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    shadowColor: colors.neutral[900],
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  examHeader: {
-    marginBottom: spacing.sm,
-  },
-  examInfo: {
-    flex: 1,
-  },
-  examType: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.primary,
-    marginBottom: spacing.xs / 2,
-  },
-  examDate: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-  },
-  resultSection: {
-    marginBottom: spacing.sm,
-    padding: spacing.sm,
-    backgroundColor: colors.neutral[50],
-    borderRadius: 8,
-  },
-  resultRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  resultInfo: {
-    flex: 1,
-  },
-  resultText: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.bold,
-    marginBottom: spacing.xs / 2,
-  },
-  scoreText: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-  },
-  notesContainer: {
-    marginBottom: spacing.sm,
-    padding: spacing.sm,
-    backgroundColor: colors.neutral[50],
-    borderRadius: 8,
-  },
-  notesLabel: {
-    fontSize: typography.size.xs,
-    fontWeight: typography.weight.medium,
-    color: colors.text.secondary,
-    marginBottom: spacing.xs / 2,
-  },
-  notesText: {
-    fontSize: typography.size.sm,
-    color: colors.text.primary,
-    lineHeight: 20,
-  },
-  paymentSection: {
-    marginTop: spacing.sm,
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.neutral[200],
-  },
-  paymentRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  paymentLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  paymentLabelText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.medium,
-    color: colors.text.primary,
-  },
-  paymentAmount: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-  },
-  paymentDate: {
-    fontSize: typography.size.xs,
-    color: colors.text.secondary,
-    marginTop: spacing.xs / 2,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    flex: { flex: 1, backgroundColor: theme.colors.surface },
+    skeletons: {
+      flex: 1,
+      backgroundColor: theme.colors.surface,
+      padding: theme.spacing.base,
+      gap: theme.spacing.md,
+    },
+    listContent: { padding: theme.spacing.base, gap: theme.spacing.md },
+    emptyList: { flexGrow: 1, justifyContent: 'center' },
+    card: { gap: theme.spacing.sm },
+    info: { gap: 2 },
+    type: {
+      fontSize: theme.typography.size.base,
+      fontWeight: theme.typography.weight.semibold,
+      color: theme.colors.textPrimary,
+    },
+    date: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    result: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md },
+    resultBody: { flex: 1, gap: 2 },
+    resultText: {
+      fontSize: theme.typography.size.base,
+      fontWeight: theme.typography.weight.semibold,
+    },
+    score: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    quote: {
+      backgroundColor: theme.colors.surfaceMuted,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing.md,
+      gap: theme.spacing.xs,
+    },
+    quoteLabel: {
+      fontSize: theme.typography.size.xs,
+      fontWeight: theme.typography.weight.medium,
+      color: theme.colors.textMuted,
+    },
+    quoteText: { fontSize: theme.typography.size.sm, color: theme.colors.textPrimary },
+    payment: {
+      paddingTop: theme.spacing.sm,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.colors.border,
+      gap: theme.spacing.xs,
+    },
+    paymentRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+    },
+    paymentLabel: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
+    paymentLabelText: {
+      fontSize: theme.typography.size.sm,
+      fontWeight: theme.typography.weight.medium,
+      color: theme.colors.textPrimary,
+    },
+    note: { fontSize: theme.typography.size.xs, color: theme.colors.textSecondary },
+  });

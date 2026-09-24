@@ -27,6 +27,7 @@ export const ar: Record<TranslationKey, string> = {
   'common.loading': 'جارٍ التحميل…',
   'common.optional': 'اختياري',
   'common.back': 'رجوع',
+  'common.logout': 'تسجيل الخروج',
 
   // Types de leçon (valeurs en base inchangées, D-18)
   'lesson.type.CODE': 'قانون السير',
@@ -148,6 +149,8 @@ export const ar: Record<TranslationKey, string> = {
   // Inscription de l'instructeur
   'auth.instructor.title': 'انضمّ إلى مدرستك',
   'auth.instructor.subtitle': 'حساب مدرّب',
+  'auth.instructor.codeHint':
+    'أدخل الرمز الذي تمنحه لك مدرسة تعليم السياقة: فهو يربط حسابك بالمدرسة ويمنحك صلاحيات المدرّب.',
   'auth.phone': 'الهاتف',
   'auth.licenseNumber': 'رقم الرخصة',
   'auth.licensePlaceholder': 'رقم رخصة المدرّب',
@@ -217,6 +220,9 @@ export const ar: Record<TranslationKey, string> = {
   'myLessons.paidWithCredit': 'خُلّصت من رصيدك',
   'myLessons.refundedAsCredit': 'أُعيد مبلغك إلى رصيدك',
   'myLessons.absentNotBilled': 'غياب — هذه الحصة غير محاسبة',
+  'myLessons.creditAppliedNote': 'الرصيد المُحتسب: {credit} · يبقى {remaining}',
+  'myLessons.awaitingAttendance': 'انتهت الحصة — في انتظار تسجيل الحضور من طرف مدرّبك',
+  'myLessons.cancelClosed': 'الإلغاء مغلق (أقل من {hours} سا قبل الحصة) — اتصل بمدرّبك',
   'myLessons.emptyTitle': 'لا توجد حصص في «{filter}»',
   'myLessons.emptyRequest': 'اطلب حصة من مدرستك للبدء',
   'myLessons.emptyOther': 'لا شيء لعرضه هنا حالياً',
@@ -267,6 +273,7 @@ export const ar: Record<TranslationKey, string> = {
   'school.requestEnrollment': 'طلب الانخراط',
   'school.notFound': 'المدرسة غير موجودة',
   'school.instructors': 'المدرّبون',
+  'school.about': 'معلومات',
   'school.pricing': 'التعريفة',
   'school.noInstructors': 'لا يوجد مدرّبون',
   'school.noPricing': 'لا توجد تعريفة',
@@ -274,6 +281,10 @@ export const ar: Record<TranslationKey, string> = {
   'school.modalSubtitle': 'بيّن للمدرسة سبب رغبتك في الانخراط',
   'school.modalPlaceholder': 'أرغب في الانخراط لأنّ…',
   'school.sendRequest': 'إرسال المطلب',
+  'book.title': 'طلب حصة',
+  'book.preferenceHint': 'مجرّد تفضيل: يمكن لأي مدرّب في المدرسة الموافقة.',
+  'book.pickInstructorHint': 'اختر مدرّباً من صفحة المدرسة لتحديد تفضيلك.',
+  'book.removePreferred': 'إزالة المدرّب المفضّل',
   'book.checkingEnrollment': 'جارٍ التحقّق من الانخراط…',
   'book.checkFailed': 'تعذّر التحقّق من انخراطك',
   'book.howItWorks': 'كيف يعمل',
@@ -291,6 +302,7 @@ export const ar: Record<TranslationKey, string> = {
   'book.dateMustBeFuture': 'يجب أن يكون التاريخ المطلوب في المستقبل',
   'book.requestSentText': 'أُرسل مطلب الحصة. سيقوم مدرّب ببرمجته قريباً.',
   'book.requestFailed': 'تعذّر إرسال مطلب الحصة',
+  'requestExam.title': 'طلب امتحان',
   'requestExam.howItWorksText':
     'أرسل مطلب الامتحان مع التاريخ المطلوب. يتحقّق المدرّب ويحدّد التوقيت النهائي.',
   'requestExam.examType': 'نوع الامتحان',
@@ -436,7 +448,8 @@ export const ar: Record<TranslationKey, string> = {
   'lessonRequests.scheduleTogether': 'برمجتها معاً',
   'lessonRequests.scheduleMany': 'برمجة {count} حصص',
   'lessonRequests.scheduleOne': 'برمجة الحصة',
-  'lessonRequests.batchSubtitle': 'حصة {type} لكل مترشّح في نفس التوقيت — ستكون مدرّبها: {students}',
+  'lessonRequests.batchSubtitle':
+    'حصة {type} لكل مترشّح في نفس التوقيت — ستكون مدرّبها: {students}',
   'lessonRequests.singleSubtitle': 'حصة {type} لـ {student} — ستكون مدرّبها',
   'lessonRequests.dateTime': 'التاريخ والساعة',
   'lessonRequests.duration': 'المدّة (بالدقائق)',
@@ -458,7 +471,8 @@ export const ar: Record<TranslationKey, string> = {
   'examRequests.convocationRecorded': 'سُجّل الاستدعاء: يرى المترشّح تاريخ الدورة والمركز',
   'examRequests.examScheduled': 'بُرمج الامتحان: يرى المترشّح التاريخ والمكان',
   'examRequests.scheduleFailed': 'تعذّرت برمجة الامتحان',
-  'examRequests.fileNotReadyDone': 'سُجّل الملف كغير مكتمل: يمكن للمترشّح إعادة الطلب في الدورة القادمة',
+  'examRequests.fileNotReadyDone':
+    'سُجّل الملف كغير مكتمل: يمكن للمترشّح إعادة الطلب في الدورة القادمة',
   'examRequests.rejectedDone': 'رُفض المطلب: تلقّى المترشّح سببك',
   'examRequests.rejectFailed': 'تعذّر رفض المطلب',
   'examRequests.emptyTitle': 'لا توجد مطالب في الانتظار',

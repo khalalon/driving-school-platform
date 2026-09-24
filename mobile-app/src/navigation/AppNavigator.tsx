@@ -8,7 +8,12 @@
  */
 
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import {
+  DarkTheme as NavigationDarkTheme,
+  DefaultTheme as NavigationDefaultTheme,
+  NavigationContainer,
+  Theme as NavigationTheme,
+} from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +21,8 @@ import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../context/LanguageContext';
 import { UserRole } from '../models/User';
 import { AppStackParamList, InstructorTabParamList, StudentTabParamList } from './types';
-import { colors, typography } from '../theme';
+import { useTheme } from '../context/ThemeContext';
+import { Theme } from '../theme';
 
 // Auth Screens
 import { LoginScreen } from '../screens/auth/LoginScreen';
@@ -56,21 +62,44 @@ const tabIcon =
     <Ionicons name={isFocused ? focused : idle} size={size} color={color} />
   );
 
-const tabScreenOptions = {
+/** Onglets et en-têtes suivent les jetons du thème (11.3, D-48). */
+const tabScreenOptions = (theme: Theme) => ({
   headerShown: false,
-  tabBarActiveTintColor: colors.primary[600],
-  tabBarInactiveTintColor: colors.text.tertiary,
-  tabBarLabelStyle: { fontSize: typography.size.xs, fontWeight: typography.weight.medium },
-  tabBarStyle: {
-    backgroundColor: colors.background.primary,
-    borderTopColor: colors.border.default,
+  tabBarActiveTintColor: theme.colors.accent,
+  tabBarInactiveTintColor: theme.colors.textMuted,
+  tabBarLabelStyle: {
+    fontSize: theme.typography.size.xs,
+    fontWeight: theme.typography.weight.medium,
   },
+  tabBarStyle: {
+    backgroundColor: theme.colors.surfaceRaised,
+    borderTopColor: theme.colors.border,
+  },
+});
+
+/** Thème de React Navigation : le fond des écrans et des transitions vient des mêmes jetons. */
+const navigationTheme = (theme: Theme): NavigationTheme => {
+  const base = theme.name === 'dark' ? NavigationDarkTheme : NavigationDefaultTheme;
+  return {
+    ...base,
+    dark: theme.name === 'dark',
+    colors: {
+      ...base.colors,
+      primary: theme.colors.accent,
+      background: theme.colors.surface,
+      card: theme.colors.surfaceRaised,
+      text: theme.colors.textPrimary,
+      border: theme.colors.border,
+      notification: theme.colors.danger,
+    },
+  };
 };
 
 const StudentTabs = () => {
   const { t } = useI18n();
+  const theme = useTheme();
   return (
-    <StudentTab.Navigator screenOptions={tabScreenOptions}>
+    <StudentTab.Navigator screenOptions={tabScreenOptions(theme)}>
       <StudentTab.Screen
         name="StudentDashboard"
         component={StudentDashboard}
@@ -97,8 +126,9 @@ const StudentTabs = () => {
 
 const InstructorTabs = () => {
   const { t } = useI18n();
+  const theme = useTheme();
   return (
-    <InstructorTab.Navigator screenOptions={tabScreenOptions}>
+    <InstructorTab.Navigator screenOptions={tabScreenOptions(theme)}>
       <InstructorTab.Screen
         name="InstructorDashboard"
         component={InstructorDashboard}
@@ -125,13 +155,14 @@ const InstructorTabs = () => {
 
 export const AppNavigator = () => {
   const { user, isLoading } = useAuth();
+  const theme = useTheme();
 
   if (isLoading) {
     return null; // Or a loading screen
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={navigationTheme(theme)}>
       <Stack.Navigator
         screenOptions={{
           headerShown: false,

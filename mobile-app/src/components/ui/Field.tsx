@@ -6,6 +6,7 @@
 
 import React, { useState } from 'react';
 import {
+  Pressable,
   StyleProp,
   StyleSheet,
   Text,
@@ -26,8 +27,10 @@ interface FieldProps extends TextInputProps {
   /** Aide affichée sous le champ tant qu'il n'y a pas d'erreur. */
   hint?: string;
   icon?: IoniconName;
-  /** Action à droite (afficher le mot de passe, ouvrir un calendrier). */
+  /** Action à droite (ouvrir un calendrier, vider la saisie). */
   trailing?: React.ReactNode;
+  /** Mot de passe : le champ porte lui-même l'oeil « afficher / masquer ». */
+  revealable?: boolean;
   containerStyle?: StyleProp<ViewStyle>;
 }
 
@@ -37,6 +40,7 @@ export const Field = ({
   hint,
   icon,
   trailing,
+  revealable = false,
   containerStyle,
   multiline,
   editable = true,
@@ -44,6 +48,7 @@ export const Field = ({
 }: FieldProps) => {
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
+  const [revealed, setRevealed] = useState(false);
 
   const borderColor = error
     ? theme.colors.danger
@@ -80,6 +85,7 @@ export const Field = ({
         {icon ? <Ionicons name={icon} size={18} color={theme.colors.textMuted} /> : null}
         <TextInput
           {...inputProps}
+          secureTextEntry={revealable ? !revealed : inputProps.secureTextEntry}
           multiline={multiline}
           editable={editable}
           onFocus={(event) => {
@@ -102,6 +108,21 @@ export const Field = ({
             inputProps.style,
           ]}
         />
+        {revealable ? (
+          <Pressable
+            onPress={() => setRevealed((shown) => !shown)}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel={label}
+            accessibilityState={{ expanded: revealed }}
+          >
+            <Ionicons
+              name={revealed ? 'eye-outline' : 'eye-off-outline'}
+              size={20}
+              color={theme.colors.textMuted}
+            />
+          </Pressable>
+        ) : null}
         {trailing}
       </View>
 

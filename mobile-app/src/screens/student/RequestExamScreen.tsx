@@ -1,28 +1,19 @@
 /**
- * Request Exam Screen - Minimal & Elegant
- * Single Responsibility: Request exam booking
+ * Demander un examen (11.3) — X2 : type (theory | practical, D-18), date et heure souhaitées,
+ * message pour l'école. La suite dépend du type (D-42), ce que l'écran « Mes examens » raconte.
  */
 
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  TextInput,
-  ActivityIndicator,
-  Alert,
-  Platform,
-} from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { examService } from '../../services/api/ExamService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
 import { useI18n } from '../../context/LanguageContext';
+import { useTheme } from '../../context/ThemeContext';
+import { AppBar, Button, Card, Chip, Field, Screen } from '../../components/ui';
 import { examTypeLabel, ExamType } from '../../models/Exam';
-import { colors, typography, spacing, shadows } from '../../theme';
-import { mirrorIcon } from '../../utils/rtl';
+import { Theme } from '../../theme';
 
 /** Demain à 9 h : première date proposée, dans le futur (exigé par X2). */
 const defaultPreferredDate = (): Date => {
@@ -34,6 +25,8 @@ const defaultPreferredDate = (): Date => {
 
 export const RequestExamScreen = ({ navigation }: any) => {
   const { t } = useI18n();
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [loading, setLoading] = useState(false);
   const [examType, setExamType] = useState<ExamType>(ExamType.THEORY);
   const [date, setDate] = useState(defaultPreferredDate);
@@ -42,18 +35,14 @@ export const RequestExamScreen = ({ navigation }: any) => {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [message, setMessage] = useState('');
 
-  const handleDateChange = (event: any, selectedDate?: Date) => {
+  const handleDateChange = (_event: unknown, selectedDate?: Date) => {
     setShowDatePicker(false);
-    if (selectedDate) {
-      setDate(selectedDate);
-    }
+    if (selectedDate) setDate(selectedDate);
   };
 
-  const handleTimeChange = (event: any, selectedTime?: Date) => {
+  const handleTimeChange = (_event: unknown, selectedTime?: Date) => {
     setShowTimePicker(false);
-    if (selectedTime) {
-      setTime(selectedTime);
-    }
+    if (selectedTime) setTime(selectedTime);
   };
 
   const handleSubmit = async () => {
@@ -84,7 +73,7 @@ export const RequestExamScreen = ({ navigation }: any) => {
 
       Alert.alert(t('school.requestSent'), t('requestExam.requestSentText'), [
         {
-          text: 'OK',
+          text: t('common.ok'),
           onPress: () => navigation.navigate('StudentTabs', { screen: 'MyExams' }),
         },
       ]);
@@ -96,90 +85,62 @@ export const RequestExamScreen = ({ navigation }: any) => {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name={mirrorIcon('arrow-back')} size={24} color={colors.text.primary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Request Exam</Text>
-      </View>
+    <View style={styles.flex}>
+      <AppBar
+        title={t('requestExam.title')}
+        onBack={() => navigation.goBack()}
+        backLabel={t('common.back')}
+      />
 
-      <ScrollView contentContainerStyle={styles.content}>
-        {/* Info Card */}
-        <View style={styles.infoCard}>
-          <Ionicons name="information-circle-outline" size={24} color={colors.primary[600]} />
-          <View style={styles.infoContent}>
+      <Screen contentContainerStyle={styles.content} edges={[]}>
+        <Card highlighted elevation="none" style={styles.info}>
+          <Ionicons name="information-circle" size={22} color={theme.colors.accentText} />
+          <View style={styles.infoBody}>
             <Text style={styles.infoTitle}>{t('book.howItWorks')}</Text>
             <Text style={styles.infoText}>{t('requestExam.howItWorksText')}</Text>
           </View>
-        </View>
+        </Card>
 
-        {/* Exam Type Selection */}
         <View style={styles.section}>
           <Text style={styles.label}>{t('requestExam.examType')}</Text>
-          <View style={styles.typeContainer}>
-            <TouchableOpacity
-              style={[styles.typeButton, examType === ExamType.THEORY && styles.typeButtonActive]}
+          <View style={styles.types}>
+            <Chip
+              label={examTypeLabel(ExamType.THEORY)}
+              icon="book-outline"
+              selected={examType === ExamType.THEORY}
               onPress={() => setExamType(ExamType.THEORY)}
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name="book-outline"
-                size={24}
-                color={examType === ExamType.THEORY ? colors.text.inverse : colors.text.secondary}
-              />
-              <Text
-                style={[
-                  styles.typeButtonText,
-                  examType === ExamType.THEORY && styles.typeButtonTextActive,
-                ]}
-              >
-                {examTypeLabel(ExamType.THEORY)}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.typeButton,
-                examType === ExamType.PRACTICAL && styles.typeButtonActive,
-              ]}
+            />
+            <Chip
+              label={examTypeLabel(ExamType.PRACTICAL)}
+              icon="car-sport-outline"
+              selected={examType === ExamType.PRACTICAL}
               onPress={() => setExamType(ExamType.PRACTICAL)}
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name="car-sport-outline"
-                size={24}
-                color={
-                  examType === ExamType.PRACTICAL ? colors.text.inverse : colors.text.secondary
-                }
-              />
-              <Text
-                style={[
-                  styles.typeButtonText,
-                  examType === ExamType.PRACTICAL && styles.typeButtonTextActive,
-                ]}
-              >
-                {examTypeLabel(ExamType.PRACTICAL)}
-              </Text>
-            </TouchableOpacity>
+            />
           </View>
         </View>
 
-        {/* Preferred Date */}
         <View style={styles.section}>
           <Text style={styles.label}>{t('requestExam.preferredDate')}</Text>
-          <TouchableOpacity
-            style={styles.dateButton}
-            onPress={() => setShowDatePicker(true)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="calendar-outline" size={20} color={colors.text.secondary} />
-            <Text style={styles.dateText}>{date.toLocaleDateString()}</Text>
-          </TouchableOpacity>
+          <View style={styles.dateRow}>
+            <Pressable
+              onPress={() => setShowDatePicker(true)}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.dateButton, styles.grow, pressed && styles.pressed]}
+            >
+              <Ionicons name="calendar-outline" size={20} color={theme.colors.textSecondary} />
+              <Text style={styles.dateText}>{date.toLocaleDateString()}</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setShowTimePicker(true)}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.dateButton, pressed && styles.pressed]}
+            >
+              <Ionicons name="time-outline" size={20} color={theme.colors.textSecondary} />
+              <Text style={styles.dateText}>
+                {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </Text>
+            </Pressable>
+          </View>
           {showDatePicker && (
             <DateTimePicker
               value={date}
@@ -190,25 +151,6 @@ export const RequestExamScreen = ({ navigation }: any) => {
               minimumDate={new Date()}
             />
           )}
-          <Text style={styles.helperText}>{t('requestExam.dateHelper')}</Text>
-        </View>
-
-        {/* Preferred Time */}
-        <View style={styles.section}>
-          <Text style={styles.label}>{t('requestExam.preferredTime')}</Text>
-          <TouchableOpacity
-            style={styles.dateButton}
-            onPress={() => setShowTimePicker(true)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="time-outline" size={20} color={colors.text.secondary} />
-            <Text style={styles.dateText}>
-              {time.toLocaleTimeString([], {
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </Text>
-          </TouchableOpacity>
           {showTimePicker && (
             <DateTimePicker
               value={time}
@@ -218,183 +160,70 @@ export const RequestExamScreen = ({ navigation }: any) => {
               onDismiss={() => setShowTimePicker(false)}
             />
           )}
+          <Text style={styles.helper}>{t('requestExam.dateHelper')}</Text>
         </View>
 
-        {/* Message */}
-        <View style={styles.section}>
-          <Text style={styles.label}>{t('requestExam.message')}</Text>
-          <TextInput
-            style={styles.messageInput}
-            placeholder={t('requestExam.messagePlaceholder')}
-            placeholderTextColor={colors.neutral[400]}
-            value={message}
-            onChangeText={setMessage}
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
-          />
-          <Text style={styles.helperText}>{t('requestExam.messageHelper')}</Text>
-        </View>
+        <Field
+          label={t('requestExam.message')}
+          placeholder={t('requestExam.messagePlaceholder')}
+          hint={t('requestExam.messageHelper')}
+          value={message}
+          onChangeText={setMessage}
+          multiline
+          numberOfLines={4}
+          textAlignVertical="top"
+          style={styles.message}
+        />
 
-        {/* Submit Button */}
-        <TouchableOpacity
-          style={[styles.submitButton, loading && styles.disabledButton]}
+        <Button
+          title={t('book.sendRequest')}
           onPress={handleSubmit}
-          disabled={loading}
-          activeOpacity={0.8}
-        >
-          {loading ? (
-            <ActivityIndicator size="small" color={colors.text.inverse} />
-          ) : (
-            <>
-              <Text style={styles.submitButtonText}>{t('book.sendRequest')}</Text>
-              <Ionicons name="send-outline" size={20} color={colors.text.inverse} />
-            </>
-          )}
-        </TouchableOpacity>
-      </ScrollView>
+          loading={loading}
+          icon="send"
+          iconPosition="trailing"
+          fullWidth
+          style={styles.submit}
+        />
+      </Screen>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.secondary,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing['4xl'],
-    paddingBottom: spacing.lg,
-    backgroundColor: colors.background.primary,
-    gap: spacing.md,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.background.tertiary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.bold,
-    color: colors.text.primary,
-  },
-  content: {
-    padding: spacing.xl,
-  },
-  infoCard: {
-    flexDirection: 'row',
-    backgroundColor: colors.primary[50],
-    padding: spacing.base,
-    borderRadius: 12,
-    gap: spacing.md,
-    marginBottom: spacing.xl,
-  },
-  infoContent: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  infoTitle: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-    color: colors.primary[600],
-  },
-  infoText: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-    lineHeight: typography.size.sm * typography.lineHeight.normal,
-  },
-  section: {
-    marginBottom: spacing.xl,
-  },
-  label: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.medium,
-    color: colors.text.primary,
-    marginBottom: spacing.sm,
-  },
-  typeContainer: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  typeButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.base,
-    borderRadius: 12,
-    gap: spacing.sm,
-    backgroundColor: colors.background.primary,
-    borderWidth: 2,
-    borderColor: colors.border.default,
-  },
-  typeButtonActive: {
-    backgroundColor: colors.primary[600],
-    borderColor: colors.primary[600],
-  },
-  typeButtonText: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.secondary,
-  },
-  typeButtonTextActive: {
-    color: colors.text.inverse,
-  },
-  dateButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background.primary,
-    padding: spacing.base,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    gap: spacing.md,
-    height: 52,
-    marginBottom: spacing.sm,
-  },
-  dateText: {
-    fontSize: typography.size.base,
-    color: colors.text.primary,
-  },
-  helperText: {
-    fontSize: typography.size.xs,
-    color: colors.text.tertiary,
-    fontStyle: 'italic',
-  },
-  messageInput: {
-    backgroundColor: colors.background.primary,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    padding: spacing.base,
-    fontSize: typography.size.base,
-    color: colors.text.primary,
-    minHeight: 100,
-    marginBottom: spacing.sm,
-  },
-  submitButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary[600],
-    paddingVertical: spacing.base,
-    borderRadius: 12,
-    gap: spacing.sm,
-    marginTop: spacing.base,
-    ...shadows.sm,
-  },
-  submitButtonText: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.inverse,
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    flex: { flex: 1, backgroundColor: theme.colors.surface },
+    content: { paddingTop: theme.spacing.base, gap: theme.spacing.lg },
+    info: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.md },
+    infoBody: { flex: 1, gap: 2 },
+    infoTitle: {
+      fontSize: theme.typography.size.sm,
+      fontWeight: theme.typography.weight.semibold,
+      color: theme.colors.accentText,
+    },
+    infoText: { fontSize: theme.typography.size.sm, color: theme.colors.accentText },
+    section: { gap: theme.spacing.sm },
+    label: {
+      fontSize: theme.typography.size.sm,
+      fontWeight: theme.typography.weight.medium,
+      color: theme.colors.textSecondary,
+    },
+    types: { flexDirection: 'row', gap: theme.spacing.sm, flexWrap: 'wrap' },
+    dateRow: { flexDirection: 'row', gap: theme.spacing.md },
+    dateButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+      backgroundColor: theme.colors.surfaceRaised,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: theme.radius.md,
+      paddingHorizontal: theme.spacing.base,
+      paddingVertical: theme.spacing.md,
+    },
+    grow: { flex: 1 },
+    pressed: { opacity: 0.7 },
+    dateText: { fontSize: theme.typography.size.base, color: theme.colors.textPrimary },
+    helper: { fontSize: theme.typography.size.xs, color: theme.colors.textMuted },
+    message: { minHeight: 96 },
+    submit: { marginTop: theme.spacing.sm },
+  });
