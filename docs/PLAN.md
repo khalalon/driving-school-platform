@@ -642,7 +642,7 @@ cd mobile-app && test -z "$(grep -rn "marginLeft\|marginRight\|paddingLeft\|padd
 
 Les écrans marchent mais se ressemblent tous : chacun redéclare ses couleurs et ses styles, les retours d'action passent par des fenêtres système, les chargements par un rond qui tourne. Cette phase donne à l'application un **système** (jetons, composants, états) et deux thèmes, sans changer une seule route ni une seule règle métier.
 
-### - [ ] 11.1 — Jetons de couleur, typographie et thèmes clair / sombre
+### - [x] 11.1 — Jetons de couleur, typographie et thèmes clair / sombre
 **Objectif** : `src/theme` devient un jeu de **jetons sémantiques** (`surface`, `surfaceRaised`, `surfaceMuted`, `border`, `textPrimary`, `textSecondary`, `textMuted`, `textOnAccent`, `accent`, `accentSoft`, `success`, `warning`, `danger`, `overlay`, `skeleton`) déclinés en **clair** et **sombre**, plus une échelle typographique (tailles, graisses, interlignes), des rayons et des ombres ; palette retravaillée (le bleu par défaut de React Native laisse place à une identité propre, nom de l'app inchangé — D-48). `ThemeProvider` + `useTheme()` suivent le réglage du téléphone (`useColorScheme`). Deux tests : parité des jetons entre les thèmes (aucun jeton absent d'un côté) et **contraste** ≥ 4,5:1 pour les paires texte/fond de chaque thème.
 **Fichiers** : `mobile-app/src/theme/{tokens.ts,light.ts,dark.ts,index.ts}`, `mobile-app/src/theme/__tests__/theme.test.ts` (nouveaux), `mobile-app/src/context/ThemeContext.tsx` (nouveau), `mobile-app/App.tsx`, `docs/ARCHITECTURE.md`.
 **Critère de validation** :
