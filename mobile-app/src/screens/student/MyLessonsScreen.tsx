@@ -35,7 +35,7 @@ import {
   Tone,
 } from '../../components/ui';
 import { TranslationKey } from '../../i18n';
-import { formatAmount, formatPersonName, formatTime } from '../../utils/format';
+import { dateLocale, formatAmount, formatPersonName, formatTime } from '../../utils/format';
 import { Theme } from '../../theme';
 
 type FilterType = 'pending' | 'upcoming' | 'completed' | 'closed';
@@ -163,7 +163,7 @@ export const MyLessonsScreen = ({ navigation }: any) => {
         <View style={styles.head}>
           <View style={styles.dateBox}>
             <Text style={styles.dateMonth}>
-              {lessonDate ? lessonDate.toLocaleDateString(undefined, { month: 'short' }) : '—'}
+              {lessonDate ? lessonDate.toLocaleDateString(dateLocale(), { month: 'short' }) : '—'}
             </Text>
             <Text style={styles.dateDay}>{lessonDate ? lessonDate.getDate() : '?'}</Text>
           </View>

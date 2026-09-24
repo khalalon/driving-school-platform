@@ -1,6 +1,5 @@
 /**
- * Lesson Requests Screen - Minimal & Elegant
- * Single Responsibility: Manage the school's pending lesson requests (L1 scope=school, L5, L6)
+ * Demandes de leçon (11.4) — L1 `scope=school`, L5, L6.
  *
  * File partagée (D-32) : toutes les demandes `pending` de l'école ; l'instructeur qui approuve
  * devient l'instructeur de la leçon, en fixant la date et la durée. Le prix vient de la grille
@@ -9,34 +8,34 @@
  * un même créneau — un seul formulaire, puis un appel L5 par demande, avec récapitulatif.
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  FlatList,
-  RefreshControl,
-  ActivityIndicator,
   Alert,
-  TextInput,
+  FlatList,
   Modal,
   Platform,
+  Pressable,
+  RefreshControl,
   ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../../context/AuthContext';
 import { useI18n } from '../../context/LanguageContext';
+import { useTheme } from '../../context/ThemeContext';
+import { AppBar, Button, Card, EmptyState, Field, SkeletonCard } from '../../components/ui';
 import { lessonService } from '../../services/api/LessonService';
 import { schoolService } from '../../services/api/SchoolService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
 import { lessonTypeLabel, Lesson, LessonStatus, LessonType } from '../../models/Lesson';
 import { SchoolInstructor, SchoolPricing } from '../../models/School';
 import { useSchoolCurrency } from '../../hooks/useSchoolCurrency';
-import { formatAmount, formatDateTime, formatPersonName } from '../../utils/format';
-import { colors, typography, spacing, shadows } from '../../theme';
+import { dateLocale, formatAmount, formatDateTime, formatPersonName } from '../../utils/format';
+import { Theme } from '../../theme';
 
 /** Motif de refus : 10 à 500 caractères, même règle que le backend (D-29). */
 const REASON_MIN = 10;
@@ -68,6 +67,8 @@ const firstFutureSlot = (wanted: string | null | undefined, now: Date = new Date
 export const LessonRequestsScreen = ({ navigation }: any) => {
   const { t } = useI18n();
   const { user } = useAuth();
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const schoolId = user?.schoolId;
   const currency = useSchoolCurrency(schoolId);
 
@@ -81,7 +82,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
   const [instructors, setInstructors] = useState<SchoolInstructor[]>([]);
   const [pricing, setPricing] = useState<SchoolPricing[] | null>(null);
 
-  // Approve modal : une demande, ou plusieurs demandes de code pour le même créneau (D-34)
+  // Approbation : une demande, ou plusieurs demandes de code pour le même créneau (D-34)
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [approveTargets, setApproveTargets] = useState<Lesson[]>([]);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
@@ -92,7 +93,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
   const [price, setPrice] = useState('');
   const [adminNotes, setAdminNotes] = useState('');
 
-  // Reject modal
+  // Refus
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<Lesson | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
@@ -145,9 +146,11 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
 
   const preferredInstructorLabel = (request: Lesson): string | null => {
     if (!request.preferredInstructorId) return null;
-    if (request.preferredInstructorId === user?.instructorId) return 'you';
+    if (request.preferredInstructorId === user?.instructorId) return t('lessonRequests.you');
     const instructor = instructors.find((i) => i.id === request.preferredInstructorId);
-    return instructor ? formatPersonName(instructor, 'an instructor') : 'an instructor';
+    return instructor
+      ? formatPersonName(instructor, t('lessonRequests.anInstructor'))
+      : t('lessonRequests.anInstructor');
   };
 
   const pricingFor = (type: LessonType | undefined): SchoolPricing | undefined =>
@@ -166,7 +169,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
 
   const checkedRequests = requests.filter((r) => checkedIds.has(r.id));
 
-  // ----- Approve (L5, une demande ou un lot) -----
+  // ----- Approbation (L5, une demande ou un lot) -----
 
   const openApprove = (targets: Lesson[]) => {
     if (targets.length === 0) return;
@@ -209,7 +212,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
     if (approveTargets.length === 0) return;
     const targetType = approveTargets[0].type;
     const rate = pricingFor(targetType);
-    const priceRequired = pricing !== null && !rate;
+    const required = pricing !== null && !rate;
 
     if (scheduledDate.getTime() <= Date.now()) {
       Alert.alert(t('lessonRequests.invalidDate'), t('lessonRequests.dateMustBeFuture'));
@@ -225,7 +228,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
       Alert.alert(t('lessonRequests.invalidPrice'), t('lessonRequests.priceText'));
       return;
     }
-    if (priceRequired && priceValue === undefined) {
+    if (required && priceValue === undefined) {
       Alert.alert(
         t('lessonRequests.priceRequired'),
         t('lessonRequests.priceRequiredText', { type: lessonTypeLabel(targetType) })
@@ -249,11 +252,11 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
       } else {
         // D-34 : un appel L5 par demande cochée, en séquence, puis récapitulatif
         const result = await lessonService.approveLessons(
-          approveTargets.map((t) => t.id),
+          approveTargets.map((target) => target.id),
           data
         );
         const failures = result.failed.map(({ lessonId, error }) => {
-          const request = approveTargets.find((t) => t.id === lessonId);
+          const request = approveTargets.find((target) => target.id === lessonId);
           const who = request ? formatPersonName(request.student, t('today.student')) : lessonId;
           return `• ${who}: ${getApiErrorMessage(error, t('lessonRequests.requestFailed'))}`;
         });
@@ -280,7 +283,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
     }
   };
 
-  // ----- Reject (L6) -----
+  // ----- Refus (L6) -----
 
   const openReject = (request: Lesson) => {
     setSelectedRequest(request);
@@ -321,7 +324,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
     }
   };
 
-  // ----- Rendering -----
+  // ----- Rendu -----
 
   const renderRequestCard = ({ item }: { item: Lesson }) => {
     const preferred = preferredInstructorLabel(item);
@@ -330,181 +333,171 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
     const checked = checkedIds.has(item.id);
 
     return (
-      <View style={[styles.requestCard, checked && styles.requestCardChecked]}>
-        <View style={styles.cardHeader}>
+      <Card highlighted={checked} style={styles.card}>
+        <View style={styles.head}>
           {selectable ? (
-            <TouchableOpacity
-              style={styles.checkbox}
+            <Pressable
               onPress={() => toggleChecked(item)}
-              activeOpacity={0.7}
               accessibilityRole="checkbox"
               accessibilityState={{ checked }}
               accessibilityLabel={t('lessonRequests.selectCode')}
+              hitSlop={8}
+              style={styles.checkbox}
             >
               <Ionicons
                 name={checked ? 'checkbox' : 'square-outline'}
-                size={28}
-                color={checked ? colors.primary[600] : colors.neutral[400]}
+                size={26}
+                color={checked ? theme.colors.accent : theme.colors.textMuted}
               />
-            </TouchableOpacity>
+            </Pressable>
           ) : (
-            <View style={styles.iconContainer}>
-              <Ionicons name="person-outline" size={28} color={colors.primary[600]} />
+            <View style={styles.avatar}>
+              <Ionicons name="person" size={22} color={theme.colors.accentText} />
             </View>
           )}
 
-          <View style={styles.requestInfo}>
-            <Text style={styles.studentName}>
-              {formatPersonName(item.student, t('today.student'))}
-            </Text>
-            <View style={styles.detailRow}>
-              <Ionicons name="car-outline" size={16} color={colors.text.tertiary} />
-              <Text style={styles.detailText}>
+          <View style={styles.info}>
+            <Text style={styles.student}>{formatPersonName(item.student, t('today.student'))}</Text>
+            <View style={styles.metaRow}>
+              <Ionicons name="car-outline" size={15} color={theme.colors.textMuted} />
+              <Text style={styles.meta}>
                 {lessonTypeLabel(item.type) ?? item.type}
-                {rate ? ` · ${formatAmount(rate.price, currency)} · ${rate.duration} min` : ''}
+                {rate
+                  ? ` · ${formatAmount(rate.price, currency)} · ${t('format.minutes', {
+                      count: rate.duration,
+                    })}`
+                  : ''}
               </Text>
             </View>
-            <View style={styles.detailRow}>
-              <Ionicons name="calendar-outline" size={16} color={colors.text.tertiary} />
-              <Text style={styles.detailText}>
+            <View style={styles.metaRow}>
+              <Ionicons name="calendar-outline" size={15} color={theme.colors.textMuted} />
+              <Text style={styles.meta}>
                 {t('lessonRequests.requestedOn', {
                   date: formatDateTime(item.requestedDate, t('lessonRequests.noDateGiven')),
                 })}
               </Text>
             </View>
-            {preferred && (
-              <View style={styles.detailRow}>
-                <Ionicons name="star-outline" size={16} color={colors.warning[600]} />
-                <Text style={[styles.detailText, styles.preferredText]}>
+            {preferred ? (
+              <View style={styles.metaRow}>
+                <Ionicons name="star" size={15} color={theme.colors.warning} />
+                <Text style={styles.preferred}>
                   {t('lessonRequests.prefers', { name: preferred })}
                 </Text>
               </View>
-            )}
-            {item.notes && (
-              <View style={styles.notesBox}>
-                <Text style={styles.notesText}>{item.notes}</Text>
+            ) : null}
+            {item.notes ? (
+              <View style={styles.quote}>
+                <Text style={styles.quoteText}>{item.notes}</Text>
               </View>
-            )}
+            ) : null}
           </View>
         </View>
 
-        <View style={styles.actionRow}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.rejectButton]}
+        <View style={styles.actions}>
+          <Button
+            title={t('lessonRequests.reject')}
             onPress={() => openReject(item)}
-            activeOpacity={0.7}
+            variant="secondary"
+            size="sm"
+            icon="close"
             disabled={processing}
-          >
-            <Ionicons name="close-outline" size={20} color={colors.error[600]} />
-            <Text style={styles.rejectButtonText}>{t('lessonRequests.reject')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.approveButton]}
+            style={styles.action}
+          />
+          <Button
+            title={t('lessonRequests.schedule')}
             onPress={() => openApprove([item])}
-            activeOpacity={0.7}
+            size="sm"
+            icon="checkmark"
             disabled={processing}
-          >
-            <Ionicons name="checkmark-outline" size={20} color={colors.text.inverse} />
-            <Text style={styles.approveButtonText}>{t('lessonRequests.schedule')}</Text>
-          </TouchableOpacity>
+            style={styles.action}
+          />
         </View>
-      </View>
+      </Card>
     );
   };
-
-  const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
-      <View style={styles.emptyIconContainer}>
-        <Ionicons name="document-text-outline" size={64} color={colors.neutral[300]} />
-      </View>
-      <Text style={styles.emptyTitle}>{t('lessonRequests.emptyTitle')}</Text>
-      <Text style={styles.emptyText}>{t('lessonRequests.emptyText')}</Text>
-    </View>
-  );
 
   const targetType = approveTargets[0]?.type;
   const selectedRate = pricingFor(targetType);
   const priceRequired = pricing !== null && targetType !== undefined && !selectedRate;
   const isBatch = approveTargets.length > 1;
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary[600]} />
-      </View>
-    );
-  }
-
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t('lessonRequests.title')}</Text>
-      </View>
+    <View style={styles.flex}>
+      <AppBar title={t('lessonRequests.title')} large />
 
-      {/* Requests List */}
-      <FlatList
-        data={requests}
-        renderItem={renderRequestCard}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={requests.length === 0 ? styles.emptyList : styles.listContent}
-        ListEmptyComponent={renderEmptyState}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary[600]}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-      />
-
-      {/* Barre d'approbation multiple (D-34) */}
-      {checkedRequests.length > 0 && (
-        <View style={styles.batchBar}>
-          <Text style={styles.batchText}>
-            {checkedRequests.length} code request
-            {checkedRequests.length > 1 ? 's' : ''} selected
-          </Text>
-          <TouchableOpacity
-            style={styles.batchClear}
-            onPress={() => setCheckedIds(new Set())}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.batchClearText}>{t('lessonRequests.clear')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.batchButton}
-            onPress={() => openApprove(checkedRequests)}
-            activeOpacity={0.8}
-            disabled={processing}
-          >
-            <Ionicons name="calendar-outline" size={18} color={colors.text.inverse} />
-            <Text style={styles.batchButtonText}>{t('lessonRequests.scheduleTogether')}</Text>
-          </TouchableOpacity>
+      {loading && requests.length === 0 ? (
+        <View style={styles.skeletons}>
+          <SkeletonCard lines={4} />
+          <SkeletonCard lines={4} />
         </View>
+      ) : (
+        <FlatList
+          data={requests}
+          renderItem={renderRequestCard}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={requests.length === 0 ? styles.emptyList : styles.listContent}
+          ListEmptyComponent={
+            <EmptyState
+              icon="checkmark-done-outline"
+              title={t('lessonRequests.emptyTitle')}
+              message={t('lessonRequests.emptyText')}
+              tone="success"
+            />
+          }
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[theme.colors.accent]}
+              tintColor={theme.colors.accent}
+            />
+          }
+          showsVerticalScrollIndicator={false}
+        />
       )}
 
-      {/* Approve Modal (L5) */}
+      {/* Barre d'approbation multiple (D-34) */}
+      {checkedRequests.length > 0 ? (
+        <View style={styles.batchBar}>
+          <Text style={styles.batchText}>
+            {checkedRequests.length === 1
+              ? t('lessonRequests.selectedOne')
+              : t('lessonRequests.selectedMany', { count: checkedRequests.length })}
+          </Text>
+          <Button
+            title={t('lessonRequests.clear')}
+            onPress={() => setCheckedIds(new Set())}
+            variant="ghost"
+            size="sm"
+          />
+          <Button
+            title={t('lessonRequests.scheduleTogether')}
+            onPress={() => openApprove(checkedRequests)}
+            size="sm"
+            icon="calendar-outline"
+            disabled={processing}
+          />
+        </View>
+      ) : null}
+
+      {/* Planification (L5) */}
       <Modal
         visible={showApproveModal}
         transparent
         animationType="fade"
         onRequestClose={closeApprove}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>
-                  {isBatch
-                    ? t('lessonRequests.scheduleMany', { count: approveTargets.length })
-                    : t('lessonRequests.scheduleOne')}
-                </Text>
-                <TouchableOpacity onPress={closeApprove}>
-                  <Ionicons name="close" size={24} color={colors.text.secondary} />
-                </TouchableOpacity>
-              </View>
+        <View style={styles.overlay}>
+          <Card style={styles.modal}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.modalBody}
+            >
+              <Text style={styles.modalTitle}>
+                {isBatch
+                  ? t('lessonRequests.scheduleMany', { count: approveTargets.length })
+                  : t('lessonRequests.scheduleOne')}
+              </Text>
 
               <Text style={styles.modalSubtitle}>
                 {isBatch
@@ -528,27 +521,37 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
               <View style={styles.section}>
                 <Text style={styles.label}>{t('lessonRequests.dateTime')}</Text>
                 <View style={styles.dateRow}>
-                  <TouchableOpacity
-                    style={[styles.dateButton, styles.dateButtonGrow]}
+                  <Pressable
                     onPress={() => setShowDatePicker(true)}
-                    activeOpacity={0.7}
+                    accessibilityRole="button"
+                    style={({ pressed }) => [
+                      styles.dateButton,
+                      styles.grow,
+                      pressed && styles.pressed,
+                    ]}
                   >
-                    <Ionicons name="calendar-outline" size={20} color={colors.text.secondary} />
-                    <Text style={styles.dateText}>{scheduledDate.toLocaleDateString()}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.dateButton}
-                    onPress={() => setShowTimePicker(true)}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="time-outline" size={20} color={colors.text.secondary} />
+                    <Ionicons
+                      name="calendar-outline"
+                      size={20}
+                      color={theme.colors.textSecondary}
+                    />
                     <Text style={styles.dateText}>
-                      {scheduledDate.toLocaleTimeString([], {
+                      {scheduledDate.toLocaleDateString(dateLocale())}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => setShowTimePicker(true)}
+                    accessibilityRole="button"
+                    style={({ pressed }) => [styles.dateButton, pressed && styles.pressed]}
+                  >
+                    <Ionicons name="time-outline" size={20} color={theme.colors.textSecondary} />
+                    <Text style={styles.dateText}>
+                      {scheduledDate.toLocaleTimeString(dateLocale(), {
                         hour: '2-digit',
                         minute: '2-digit',
                       })}
                     </Text>
-                  </TouchableOpacity>
+                  </Pressable>
                 </View>
                 {showDatePicker && (
                   <DateTimePicker
@@ -571,481 +574,213 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
                 )}
               </View>
 
-              <View style={styles.section}>
-                <Text style={styles.label}>{t('lessonRequests.duration')}</Text>
-                <TextInput
-                  style={styles.input}
-                  value={duration}
-                  onChangeText={setDuration}
-                  keyboardType="number-pad"
-                  placeholder={String(DEFAULT_DURATION_MINUTES)}
-                  placeholderTextColor={colors.neutral[400]}
-                />
-              </View>
+              <Field
+                label={t('lessonRequests.duration')}
+                value={duration}
+                onChangeText={setDuration}
+                keyboardType="number-pad"
+                placeholder={String(DEFAULT_DURATION_MINUTES)}
+              />
 
-              <View style={styles.section}>
-                <Text style={styles.label}>
-                  {t('lessonRequests.priceLabel')}
-                  {currency ? ` (${currency})` : ''}
-                  {priceRequired ? ' — required' : ''}
-                </Text>
-                {selectedRate ? (
-                  <Text style={styles.rateText}>
+              {selectedRate ? (
+                <View style={styles.section}>
+                  <Text style={styles.label}>
+                    {t('lessonRequests.priceLabel')}
+                    {currency ? ` (${currency})` : ''}
+                  </Text>
+                  <Text style={styles.hint}>
                     {t('lessonRequests.schoolRate', {
                       price: formatAmount(selectedRate.price, currency),
                     })}
                   </Text>
-                ) : (
-                  <>
-                    <TextInput
-                      style={styles.input}
-                      value={price}
-                      onChangeText={setPrice}
-                      keyboardType="decimal-pad"
-                      placeholder="0.00"
-                      placeholderTextColor={colors.neutral[400]}
-                    />
-                    <Text style={styles.hintText}>
-                      {priceRequired ? t('lessonRequests.noRate') : t('lessonRequests.leaveEmpty')}
-                    </Text>
-                  </>
-                )}
-              </View>
-
-              <View style={styles.section}>
-                <Text style={styles.label}>{t('lessonRequests.notesLabel')}</Text>
-                <TextInput
-                  style={styles.reasonInput}
-                  placeholder={t('lessonRequests.notesPlaceholder')}
-                  placeholderTextColor={colors.neutral[400]}
-                  value={adminNotes}
-                  onChangeText={setAdminNotes}
-                  multiline
-                  numberOfLines={3}
-                  textAlignVertical="top"
+                </View>
+              ) : (
+                <Field
+                  label={`${t('lessonRequests.priceLabel')}${currency ? ` (${currency})` : ''}${
+                    priceRequired ? ` — ${t('bookFor.required')}` : ''
+                  }`}
+                  hint={priceRequired ? t('lessonRequests.noRate') : t('lessonRequests.leaveEmpty')}
+                  value={price}
+                  onChangeText={setPrice}
+                  keyboardType="decimal-pad"
+                  placeholder="0.00"
                 />
-              </View>
+              )}
+
+              <Field
+                label={t('lessonRequests.notesLabel')}
+                placeholder={t('lessonRequests.notesPlaceholder')}
+                value={adminNotes}
+                onChangeText={setAdminNotes}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+                style={styles.textarea}
+              />
 
               <View style={styles.modalActions}>
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.modalCancelButton]}
+                <Button
+                  title={t('common.cancel')}
                   onPress={closeApprove}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.modalCancelText}>{t('common.cancel')}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.modalButton,
-                    styles.modalApproveButton,
-                    processing && styles.disabledButton,
-                  ]}
+                  variant="secondary"
+                  style={styles.action}
+                />
+                <Button
+                  title={
+                    isBatch
+                      ? t('lessonRequests.confirmMany', { count: approveTargets.length })
+                      : t('lessonRequests.confirm')
+                  }
                   onPress={confirmApprove}
-                  disabled={processing}
-                  activeOpacity={0.7}
-                >
-                  {processing ? (
-                    <ActivityIndicator size="small" color={colors.text.inverse} />
-                  ) : (
-                    <Text style={styles.modalApproveText}>
-                      {isBatch
-                        ? t('lessonRequests.confirmMany', { count: approveTargets.length })
-                        : t('lessonRequests.confirm')}
-                    </Text>
-                  )}
-                </TouchableOpacity>
+                  loading={processing}
+                  style={styles.action}
+                />
               </View>
             </ScrollView>
-          </View>
+          </Card>
         </View>
       </Modal>
 
-      {/* Reject Modal (L6) */}
+      {/* Refus (L6) */}
       <Modal
         visible={showRejectModal}
         transparent
         animationType="fade"
         onRequestClose={closeReject}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{t('lessonRequests.rejectTitle')}</Text>
-              <TouchableOpacity onPress={closeReject}>
-                <Ionicons name="close" size={24} color={colors.text.secondary} />
-              </TouchableOpacity>
-            </View>
-
+        <View style={styles.overlay}>
+          <Card style={styles.modal}>
+            <Text style={styles.modalTitle}>{t('lessonRequests.rejectTitle')}</Text>
             <Text style={styles.modalSubtitle}>{t('lessonRequests.rejectSubtitle')}</Text>
 
-            <TextInput
-              style={styles.reasonInput}
+            <Field
+              label={t('lessonRequests.rejectTitle')}
               placeholder={t('lessonRequests.rejectPlaceholder')}
-              placeholderTextColor={colors.neutral[400]}
+              hint={
+                reasonLength < REASON_MIN
+                  ? t('reason.min', { min: REASON_MIN, count: reasonLength })
+                  : t('reason.count', { count: reasonLength, max: REASON_MAX })
+              }
               value={rejectionReason}
               onChangeText={setRejectionReason}
               multiline
               numberOfLines={4}
               maxLength={REASON_MAX}
               textAlignVertical="top"
+              style={styles.textarea}
             />
-            <Text style={[styles.hintText, !reasonValid && styles.hintWarning]}>
-              {reasonLength < REASON_MIN
-                ? `At least ${REASON_MIN} characters (${reasonLength}/${REASON_MIN})`
-                : `${reasonLength}/${REASON_MAX} characters`}
-            </Text>
 
             <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalCancelButton]}
+              <Button
+                title={t('common.cancel')}
                 onPress={closeReject}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.modalCancelText}>{t('common.cancel')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.modalButton,
-                  styles.modalRejectButton,
-                  (processing || !reasonValid) && styles.disabledButton,
-                ]}
+                variant="secondary"
+                style={styles.action}
+              />
+              <Button
+                title={t('lessonRequests.reject')}
                 onPress={confirmReject}
-                disabled={processing || !reasonValid}
-                activeOpacity={0.7}
-              >
-                {processing ? (
-                  <ActivityIndicator size="small" color={colors.text.inverse} />
-                ) : (
-                  <Text style={styles.modalRejectText}>{t('lessonRequests.reject')}</Text>
-                )}
-              </TouchableOpacity>
+                variant="danger"
+                loading={processing}
+                disabled={!reasonValid}
+                style={styles.action}
+              />
             </View>
-          </View>
+          </Card>
         </View>
       </Modal>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.secondary,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.background.secondary,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing['4xl'],
-    paddingBottom: spacing.lg,
-    backgroundColor: colors.background.primary,
-    gap: spacing.md,
-  },
-  headerTitle: {
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.bold,
-    color: colors.text.primary,
-  },
-  listContent: {
-    padding: spacing.xl,
-    gap: spacing.md,
-  },
-  emptyList: {
-    flexGrow: 1,
-  },
-  requestCard: {
-    backgroundColor: colors.background.primary,
-    borderRadius: 16,
-    padding: spacing.lg,
-    gap: spacing.md,
-    ...shadows.sm,
-  },
-  requestCardChecked: {
-    borderWidth: 1,
-    borderColor: colors.primary[600],
-  },
-  checkbox: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary[50],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  batchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.background.primary,
-    borderTopWidth: 1,
-    borderTopColor: colors.border.default,
-  },
-  batchText: {
-    flex: 1,
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.medium,
-    color: colors.text.primary,
-  },
-  batchClear: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm,
-  },
-  batchClearText: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-  },
-  batchButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.base,
-    paddingVertical: spacing.sm,
-    borderRadius: 8,
-    backgroundColor: colors.primary[600],
-  },
-  batchButtonText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.inverse,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    alignItems: 'flex-start',
-  },
-  iconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary[50],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  requestInfo: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  studentName: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.primary,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  detailText: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-  },
-  preferredText: {
-    color: colors.warning[600],
-  },
-  notesBox: {
-    backgroundColor: colors.background.tertiary,
-    padding: spacing.sm,
-    borderRadius: 8,
-    marginTop: spacing.xs,
-  },
-  notesText: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-    fontStyle: 'italic',
-  },
-  actionRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.md,
-    borderRadius: 8,
-    gap: spacing.xs,
-  },
-  rejectButton: {
-    backgroundColor: colors.error[50],
-  },
-  rejectButtonText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-    color: colors.error[600],
-  },
-  approveButton: {
-    backgroundColor: colors.primary[600],
-  },
-  approveButtonText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.inverse,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing['4xl'],
-  },
-  emptyIconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: colors.neutral[100],
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xl,
-  },
-  emptyTitle: {
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.primary,
-    marginBottom: spacing.sm,
-  },
-  emptyText: {
-    fontSize: typography.size.base,
-    color: colors.text.secondary,
-    textAlign: 'center',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    padding: spacing.xl,
-  },
-  modalContent: {
-    backgroundColor: colors.background.primary,
-    borderRadius: 16,
-    padding: spacing.xl,
-    maxHeight: '90%',
-    ...shadows.lg,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  modalTitle: {
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.bold,
-    color: colors.text.primary,
-  },
-  modalSubtitle: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-    marginBottom: spacing.lg,
-  },
-  section: {
-    marginBottom: spacing.lg,
-  },
-  label: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.medium,
-    color: colors.text.primary,
-    marginBottom: spacing.sm,
-  },
-  dateRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  dateButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background.secondary,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    paddingHorizontal: spacing.base,
-    height: 48,
-    gap: spacing.sm,
-  },
-  dateButtonGrow: {
-    flex: 1,
-  },
-  dateText: {
-    fontSize: typography.size.base,
-    color: colors.text.primary,
-  },
-  input: {
-    backgroundColor: colors.background.secondary,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    paddingHorizontal: spacing.base,
-    height: 48,
-    fontSize: typography.size.base,
-    color: colors.text.primary,
-  },
-  rateText: {
-    fontSize: typography.size.sm,
-    color: colors.success[600],
-    fontWeight: typography.weight.medium,
-  },
-  hintText: {
-    fontSize: typography.size.xs,
-    color: colors.text.tertiary,
-    marginTop: spacing.xs,
-  },
-  hintWarning: {
-    color: colors.warning[600],
-  },
-  reasonInput: {
-    backgroundColor: colors.background.secondary,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    padding: spacing.base,
-    fontSize: typography.size.base,
-    color: colors.text.primary,
-    minHeight: 100,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.md,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: spacing.md,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalCancelButton: {
-    backgroundColor: colors.background.tertiary,
-  },
-  modalCancelText: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.secondary,
-  },
-  modalApproveButton: {
-    backgroundColor: colors.primary[600],
-  },
-  modalApproveText: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.inverse,
-  },
-  modalRejectButton: {
-    backgroundColor: colors.error[600],
-  },
-  modalRejectText: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.inverse,
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    flex: { flex: 1, backgroundColor: theme.colors.surface },
+    skeletons: { padding: theme.spacing.base, gap: theme.spacing.md },
+    listContent: { padding: theme.spacing.base, gap: theme.spacing.md },
+    emptyList: { flexGrow: 1, justifyContent: 'center' },
+    card: { gap: theme.spacing.md },
+    head: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.md },
+    checkbox: { paddingTop: 2 },
+    avatar: {
+      width: 44,
+      height: 44,
+      borderRadius: theme.radius.pill,
+      backgroundColor: theme.colors.accentSoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    info: { flex: 1, gap: 2 },
+    student: {
+      fontSize: theme.typography.size.base,
+      fontWeight: theme.typography.weight.semibold,
+      color: theme.colors.textPrimary,
+    },
+    metaRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
+    meta: { flex: 1, fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    preferred: { flex: 1, fontSize: theme.typography.size.sm, color: theme.colors.warningText },
+    quote: {
+      marginTop: theme.spacing.xs,
+      backgroundColor: theme.colors.surfaceMuted,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing.md,
+    },
+    quoteText: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    actions: { flexDirection: 'row', gap: theme.spacing.md },
+    action: { flex: 1 },
+
+    batchBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+      padding: theme.spacing.base,
+      backgroundColor: theme.colors.surfaceRaised,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.colors.border,
+    },
+    batchText: {
+      flex: 1,
+      fontSize: theme.typography.size.sm,
+      fontWeight: theme.typography.weight.medium,
+      color: theme.colors.textPrimary,
+    },
+
+    overlay: {
+      flex: 1,
+      backgroundColor: theme.colors.overlay,
+      justifyContent: 'center',
+      padding: theme.spacing.lg,
+    },
+    modal: { maxHeight: '88%' },
+    modalBody: { gap: theme.spacing.md },
+    modalTitle: {
+      fontSize: theme.typography.size.lg,
+      fontWeight: theme.typography.weight.bold,
+      color: theme.colors.textPrimary,
+    },
+    modalSubtitle: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    section: { gap: theme.spacing.sm },
+    label: {
+      fontSize: theme.typography.size.sm,
+      fontWeight: theme.typography.weight.medium,
+      color: theme.colors.textSecondary,
+    },
+    dateRow: { flexDirection: 'row', gap: theme.spacing.md },
+    dateButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+      backgroundColor: theme.colors.surfaceRaised,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: theme.radius.md,
+      paddingHorizontal: theme.spacing.base,
+      paddingVertical: theme.spacing.md,
+    },
+    grow: { flex: 1 },
+    pressed: { opacity: 0.7 },
+    dateText: { fontSize: theme.typography.size.base, color: theme.colors.textPrimary },
+    hint: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    textarea: { minHeight: 80 },
+    modalActions: { flexDirection: 'row', gap: theme.spacing.md },
+  });

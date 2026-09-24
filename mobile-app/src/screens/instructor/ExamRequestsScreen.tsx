@@ -1,28 +1,23 @@
 /**
- * Exam Requests Screen - Minimal & Elegant
- * Single Responsibility: The school's pending exam requests (X1 status=pending), scheduling
- * (X3) and rejection (X4)
+ * Demandes d'examen (11.4) — X1 `pending`, planification X3, refus X4.
  *
  * Pas d'instructeur attitré (D-33) : tout instructeur de l'école voit et traite les demandes.
  * Pas de règle d'éligibilité (D-26) : le nombre de leçons effectuées est affiché pour aider à
  * décider. Les libellés dépendent du type (D-42, `examProcedure`) : théorie planifiée par
- * l'école (« Schedule » / « Reject »), pratique par session ATTT (« Record convocation » /
- * « File not ready ») ; mêmes payloads X3 / X4.
+ * l'école, pratique convoquée par la session ATTT ; mêmes payloads X3 / X4.
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  FlatList,
-  RefreshControl,
-  ActivityIndicator,
   Alert,
-  TextInput,
+  FlatList,
   Modal,
   Platform,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -30,9 +25,11 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { examService } from '../../services/api/ExamService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
 import { useI18n } from '../../context/LanguageContext';
+import { useTheme } from '../../context/ThemeContext';
+import { AppBar, Button, Card, EmptyState, Field, SkeletonCard } from '../../components/ui';
 import { examProcedure, examTypeLabel, Exam, ExamStatus, ExamType } from '../../models/Exam';
-import { formatDate, formatPersonName } from '../../utils/format';
-import { colors, typography, spacing, shadows } from '../../theme';
+import { dateLocale, formatDate, formatPersonName } from '../../utils/format';
+import { Theme } from '../../theme';
 
 /** Motif de refus : 10 à 500 caractères, même règle que le backend. */
 const REASON_MIN = 10;
@@ -62,12 +59,14 @@ const firstFutureSlot = (wanted: string | null | undefined, now: Date = new Date
 
 export const ExamRequestsScreen = ({ navigation }: any) => {
   const { t } = useI18n();
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [requests, setRequests] = useState<Exam[]>([]);
   const [processing, setProcessing] = useState(false);
 
-  // Schedule modal (X3)
+  // Planification (X3)
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<Exam | null>(null);
   const [dateTime, setDateTime] = useState<Date>(tomorrowMorning);
@@ -75,9 +74,15 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [location, setLocation] = useState('');
 
-  // Reject modal (X4)
+  // Refus (X4)
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
+
+  const studentOf = (exam: Exam) =>
+    formatPersonName(
+      { firstName: exam.studentFirstName, lastName: exam.studentLastName },
+      t('today.student')
+    );
 
   // Onglet (8.4) : rechargé à chaque retour au premier plan
   useFocusEffect(
@@ -90,9 +95,7 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
     try {
       setLoading(true);
       // X1 : toutes les demandes pending de l'école (instructeur)
-      const data = await examService.getMyExams({
-        status: [ExamStatus.PENDING],
-      });
+      const data = await examService.getMyExams({ status: [ExamStatus.PENDING] });
       setRequests(data);
     } catch (error) {
       Alert.alert(t('common.error'), getApiErrorMessage(error, t('examRequests.loadFailed')));
@@ -107,7 +110,7 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
     setRefreshing(false);
   }, []);
 
-  // ----- Schedule (X3) -----
+  // ----- Planification (X3) -----
 
   const openSchedule = (request: Exam) => {
     setSelectedRequest(request);
@@ -176,7 +179,7 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
     }
   };
 
-  // ----- Reject (X4) -----
+  // ----- Refus (X4) -----
 
   const openReject = (request: Exam) => {
     setSelectedRequest(request);
@@ -222,160 +225,161 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
     }
   };
 
-  // ----- Rendering -----
+  // ----- Rendu -----
 
   const renderRequestCard = ({ item }: { item: Exam }) => {
     const procedure = examProcedure(item.type);
+    const theory = item.type === ExamType.THEORY;
+
     return (
-      <View style={styles.requestCard}>
-        <View style={styles.cardHeader}>
-          <View style={styles.iconContainer}>
+      <Card style={styles.card}>
+        <View style={styles.head}>
+          <View style={[styles.icon, theory ? styles.iconTheory : styles.iconPractical]}>
             <Ionicons
-              name={item.type === ExamType.THEORY ? 'book-outline' : 'car-sport-outline'}
-              size={28}
-              color={item.type === ExamType.THEORY ? colors.primary[600] : colors.warning[600]}
+              name={theory ? 'book' : 'car-sport'}
+              size={24}
+              color={theory ? theme.colors.accentText : theme.colors.warningText}
             />
           </View>
 
-          <View style={styles.requestInfo}>
-            <Text style={styles.examType}>{examTypeLabel(item.type) ?? item.type} Exam</Text>
-            <Text style={styles.studentName}>
-              {formatPersonName(
-                {
-                  firstName: item.studentFirstName,
-                  lastName: item.studentLastName,
-                },
-                t('today.student')
-              )}
+          <View style={styles.info}>
+            <Text style={styles.type}>
+              {t('myExams.examSuffix', { type: examTypeLabel(item.type) ?? item.type })}
             </Text>
-            <View style={styles.detailRow}>
-              <Ionicons name="school-outline" size={16} color={colors.text.tertiary} />
-              <Text style={styles.detailText}>
-                {item.studentCompletedLessons} lesson
-                {item.studentCompletedLessons === 1 ? '' : 's'} completed
+            <Text style={styles.student}>{studentOf(item)}</Text>
+            <View style={styles.metaRow}>
+              <Ionicons name="school-outline" size={15} color={theme.colors.textMuted} />
+              <Text style={styles.meta}>
+                {t('examRequests.lessonsCompleted', { count: item.studentCompletedLessons })}
               </Text>
             </View>
-            <View style={styles.detailRow}>
-              <Ionicons name="calendar-outline" size={16} color={colors.text.tertiary} />
-              <Text style={styles.detailText}>
-                Preferred: {formatDate(item.preferredDate, 'no date given')}
+            <View style={styles.metaRow}>
+              <Ionicons name="calendar-outline" size={15} color={theme.colors.textMuted} />
+              <Text style={styles.meta}>
+                {t('examRequests.preferred', {
+                  date: formatDate(item.preferredDate, t('lessonRequests.noDateGiven')),
+                })}
               </Text>
             </View>
-            {item.message && (
-              <View style={styles.messageBox}>
-                <Text style={styles.messageText}>{item.message}</Text>
+            {item.message ? (
+              <View style={styles.quote}>
+                <Text style={styles.quoteText}>{item.message}</Text>
               </View>
-            )}
+            ) : null}
           </View>
         </View>
 
-        <View style={styles.actionRow}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.rejectButton]}
+        <View style={styles.actions}>
+          <Button
+            title={procedure.rejectAction}
             onPress={() => openReject(item)}
-            activeOpacity={0.7}
+            variant="secondary"
+            size="sm"
+            icon="close"
             disabled={processing}
-          >
-            <Ionicons name="close-outline" size={20} color={colors.error[600]} />
-            <Text style={styles.rejectButtonText}>{procedure.rejectAction}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.scheduleButton]}
+            style={styles.action}
+          />
+          <Button
+            title={procedure.scheduleAction}
             onPress={() => openSchedule(item)}
-            activeOpacity={0.7}
+            size="sm"
+            icon="calendar-outline"
             disabled={processing}
-          >
-            <Ionicons name="calendar-outline" size={20} color={colors.text.inverse} />
-            <Text style={styles.scheduleButtonText}>{procedure.scheduleAction}</Text>
-          </TouchableOpacity>
+            style={styles.action}
+          />
         </View>
-      </View>
+      </Card>
     );
   };
-
-  const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
-      <View style={styles.emptyIconContainer}>
-        <Ionicons name="documents-outline" size={64} color={colors.neutral[300]} />
-      </View>
-      <Text style={styles.emptyTitle}>{t('examRequests.emptyTitle')}</Text>
-      <Text style={styles.emptyText}>{t('examRequests.emptyText')}</Text>
-    </View>
-  );
 
   // Libellés de la modale ouverte : ceux du type de la demande sélectionnée (D-42)
   const selectedProcedure = examProcedure(selectedRequest?.type ?? ExamType.THEORY);
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary[600]} />
-      </View>
-    );
-  }
-
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t('examRequests.title')}</Text>
-      </View>
+    <View style={styles.flex}>
+      <AppBar title={t('examRequests.title')} large />
 
-      {/* Requests List */}
-      <FlatList
-        data={requests}
-        renderItem={renderRequestCard}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={requests.length === 0 ? styles.emptyList : styles.listContent}
-        ListEmptyComponent={renderEmptyState}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary[600]}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-      />
+      {loading && requests.length === 0 ? (
+        <View style={styles.skeletons}>
+          <SkeletonCard lines={4} />
+          <SkeletonCard lines={4} />
+        </View>
+      ) : (
+        <FlatList
+          data={requests}
+          renderItem={renderRequestCard}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={requests.length === 0 ? styles.emptyList : styles.listContent}
+          ListEmptyComponent={
+            <EmptyState
+              icon="checkmark-done-outline"
+              title={t('examRequests.emptyTitle')}
+              message={t('examRequests.emptyText')}
+              tone="success"
+            />
+          }
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[theme.colors.accent]}
+              tintColor={theme.colors.accent}
+            />
+          }
+          showsVerticalScrollIndicator={false}
+        />
+      )}
 
-      {/* Schedule Modal (X3) */}
+      {/* Planification (X3) */}
       <Modal
         visible={showScheduleModal}
         transparent
         animationType="fade"
         onRequestClose={closeSchedule}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{selectedProcedure.scheduleAction}</Text>
-              <TouchableOpacity onPress={closeSchedule}>
-                <Ionicons name="close" size={24} color={colors.text.secondary} />
-              </TouchableOpacity>
-            </View>
+        <View style={styles.overlay}>
+          <Card style={styles.modal}>
+            <Text style={styles.modalTitle}>{selectedProcedure.scheduleAction}</Text>
 
             <Text style={styles.modalSubtitle}>
               {selectedRequest
-                ? `${examTypeLabel(selectedRequest.type)} exam for ${formatPersonName(
-                    {
-                      firstName: selectedRequest.studentFirstName,
-                      lastName: selectedRequest.studentLastName,
-                    },
-                    'the student'
-                  )}: ${selectedProcedure.scheduleHint}`
+                ? t('examRequests.modalSubtitle', {
+                    type: examTypeLabel(selectedRequest.type),
+                    student: studentOf(selectedRequest),
+                    hint: selectedProcedure.scheduleHint,
+                  })
                 : ''}
             </Text>
 
             <View style={styles.section}>
               <Text style={styles.label}>{selectedProcedure.dateLabel}</Text>
-              <TouchableOpacity
-                style={styles.dateButton}
-                onPress={() => setShowDatePicker(true)}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="calendar-outline" size={20} color={colors.text.secondary} />
-                <Text style={styles.dateText}>{dateTime.toLocaleDateString()}</Text>
-              </TouchableOpacity>
+              <View style={styles.dateRow}>
+                <Pressable
+                  onPress={() => setShowDatePicker(true)}
+                  accessibilityRole="button"
+                  style={({ pressed }) => [
+                    styles.dateButton,
+                    styles.grow,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Ionicons name="calendar-outline" size={20} color={theme.colors.textSecondary} />
+                  <Text style={styles.dateText}>{dateTime.toLocaleDateString(dateLocale())}</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setShowTimePicker(true)}
+                  accessibilityRole="button"
+                  style={({ pressed }) => [styles.dateButton, pressed && styles.pressed]}
+                >
+                  <Ionicons name="time-outline" size={20} color={theme.colors.textSecondary} />
+                  <Text style={styles.dateText}>
+                    {dateTime.toLocaleTimeString(dateLocale(), {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </Text>
+                </Pressable>
+              </View>
               {showDatePicker && (
                 <DateTimePicker
                   value={dateTime}
@@ -386,23 +390,6 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
                   minimumDate={new Date()}
                 />
               )}
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.label}>{t('examRequests.time')}</Text>
-              <TouchableOpacity
-                style={styles.dateButton}
-                onPress={() => setShowTimePicker(true)}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="time-outline" size={20} color={colors.text.secondary} />
-                <Text style={styles.dateText}>
-                  {dateTime.toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </Text>
-              </TouchableOpacity>
               {showTimePicker && (
                 <DateTimePicker
                   value={dateTime}
@@ -414,367 +401,154 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
               )}
             </View>
 
-            <View style={styles.section}>
-              <Text style={styles.label}>{selectedProcedure.locationLabel}</Text>
-              <TextInput
-                style={styles.locationInput}
-                placeholder={selectedProcedure.locationPlaceholder}
-                placeholderTextColor={colors.neutral[400]}
-                value={location}
-                onChangeText={setLocation}
-              />
-            </View>
+            <Field
+              label={selectedProcedure.locationLabel}
+              placeholder={selectedProcedure.locationPlaceholder}
+              value={location}
+              onChangeText={setLocation}
+              icon="location-outline"
+            />
 
             <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalCancelButton]}
+              <Button
+                title={t('common.cancel')}
                 onPress={closeSchedule}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.modalCancelText}>{t('common.cancel')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.modalButton,
-                  styles.modalSubmitButton,
-                  processing && styles.disabledButton,
-                ]}
+                variant="secondary"
+                style={styles.action}
+              />
+              <Button
+                title={selectedProcedure.scheduleAction}
                 onPress={confirmSchedule}
-                disabled={processing}
-                activeOpacity={0.7}
-              >
-                {processing ? (
-                  <ActivityIndicator size="small" color={colors.text.inverse} />
-                ) : (
-                  <Text style={styles.modalSubmitText}>{selectedProcedure.scheduleAction}</Text>
-                )}
-              </TouchableOpacity>
+                loading={processing}
+                style={styles.action}
+              />
             </View>
-          </View>
+          </Card>
         </View>
       </Modal>
 
-      {/* Reject Modal (X4) */}
+      {/* Refus (X4) */}
       <Modal
         visible={showRejectModal}
         transparent
         animationType="fade"
         onRequestClose={closeReject}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{selectedProcedure.rejectAction}</Text>
-              <TouchableOpacity onPress={closeReject}>
-                <Ionicons name="close" size={24} color={colors.text.secondary} />
-              </TouchableOpacity>
-            </View>
-
+        <View style={styles.overlay}>
+          <Card style={styles.modal}>
+            <Text style={styles.modalTitle}>{selectedProcedure.rejectAction}</Text>
             <Text style={styles.modalSubtitle}>{selectedProcedure.rejectHint}</Text>
 
-            <TextInput
-              style={styles.reasonInput}
+            <Field
+              label={selectedProcedure.rejectAction}
               placeholder={t('examRequests.rejectPlaceholder')}
-              placeholderTextColor={colors.neutral[400]}
+              hint={
+                reasonLength < REASON_MIN
+                  ? t('reason.min', { min: REASON_MIN, count: reasonLength })
+                  : t('reason.count', { count: reasonLength, max: REASON_MAX })
+              }
               value={rejectionReason}
               onChangeText={setRejectionReason}
               multiline
               numberOfLines={4}
               maxLength={REASON_MAX}
               textAlignVertical="top"
+              style={styles.textarea}
             />
-            <Text style={[styles.hintText, !reasonValid && styles.hintWarning]}>
-              {reasonLength < REASON_MIN
-                ? `At least ${REASON_MIN} characters (${reasonLength}/${REASON_MIN})`
-                : `${reasonLength}/${REASON_MAX} characters`}
-            </Text>
 
             <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalCancelButton]}
+              <Button
+                title={t('common.cancel')}
                 onPress={closeReject}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.modalCancelText}>{t('common.cancel')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.modalButton,
-                  styles.modalRejectButton,
-                  (processing || !reasonValid) && styles.disabledButton,
-                ]}
+                variant="secondary"
+                style={styles.action}
+              />
+              <Button
+                title={selectedProcedure.rejectAction}
                 onPress={confirmReject}
-                disabled={processing || !reasonValid}
-                activeOpacity={0.7}
-              >
-                {processing ? (
-                  <ActivityIndicator size="small" color={colors.text.inverse} />
-                ) : (
-                  <Text style={styles.modalRejectText}>{selectedProcedure.rejectAction}</Text>
-                )}
-              </TouchableOpacity>
+                variant="danger"
+                loading={processing}
+                disabled={!reasonValid}
+                style={styles.action}
+              />
             </View>
-          </View>
+          </Card>
         </View>
       </Modal>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.secondary,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.background.secondary,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing['4xl'],
-    paddingBottom: spacing.lg,
-    backgroundColor: colors.background.primary,
-    gap: spacing.md,
-  },
-  headerTitle: {
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.bold,
-    color: colors.text.primary,
-  },
-  listContent: {
-    padding: spacing.xl,
-    gap: spacing.md,
-  },
-  emptyList: {
-    flexGrow: 1,
-  },
-  requestCard: {
-    backgroundColor: colors.background.primary,
-    borderRadius: 16,
-    padding: spacing.lg,
-    gap: spacing.md,
-    ...shadows.sm,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md,
-  },
-  iconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary[50],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  requestInfo: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  examType: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.primary,
-  },
-  studentName: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  detailText: {
-    fontSize: typography.size.sm,
-    color: colors.text.tertiary,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginTop: spacing.sm,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.md,
-    borderRadius: 8,
-    gap: spacing.xs,
-  },
-  rejectButton: {
-    backgroundColor: colors.error[50],
-  },
-  rejectButtonText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-    color: colors.error[600],
-  },
-  scheduleButton: {
-    backgroundColor: colors.primary[600],
-    ...shadows.sm,
-  },
-  scheduleButtonText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.inverse,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing['4xl'],
-  },
-  emptyIconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: colors.neutral[100],
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xl,
-  },
-  emptyTitle: {
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.primary,
-    marginBottom: spacing.sm,
-  },
-  emptyText: {
-    fontSize: typography.size.base,
-    color: colors.text.secondary,
-    textAlign: 'center',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.xl,
-  },
-  modalContent: {
-    width: '100%',
-    backgroundColor: colors.background.primary,
-    borderRadius: 16,
-    padding: spacing.xl,
-    ...shadows.lg,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  modalTitle: {
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.bold,
-    color: colors.text.primary,
-  },
-  modalSubtitle: {
-    fontSize: typography.size.base,
-    color: colors.text.secondary,
-    marginBottom: spacing.lg,
-  },
-  section: {
-    marginBottom: spacing.lg,
-  },
-  label: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.medium,
-    color: colors.text.primary,
-    marginBottom: spacing.sm,
-  },
-  dateButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background.tertiary,
-    padding: spacing.base,
-    borderRadius: 12,
-    gap: spacing.md,
-    height: 52,
-  },
-  dateText: {
-    fontSize: typography.size.base,
-    color: colors.text.primary,
-  },
-  locationInput: {
-    backgroundColor: colors.background.tertiary,
-    borderRadius: 12,
-    padding: spacing.base,
-    fontSize: typography.size.base,
-    color: colors.text.primary,
-    height: 52,
-  },
-  reasonInput: {
-    backgroundColor: colors.background.tertiary,
-    borderRadius: 12,
-    padding: spacing.base,
-    fontSize: typography.size.base,
-    color: colors.text.primary,
-    minHeight: 100,
-  },
-  hintText: {
-    fontSize: typography.size.xs,
-    color: colors.text.tertiary,
-    marginTop: spacing.xs,
-    marginBottom: spacing.lg,
-  },
-  hintWarning: {
-    color: colors.warning[600],
-  },
-  messageBox: {
-    backgroundColor: colors.background.tertiary,
-    padding: spacing.sm,
-    borderRadius: 8,
-    marginTop: spacing.xs,
-  },
-  messageText: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-    fontStyle: 'italic',
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: spacing.md,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  modalCancelButton: {
-    backgroundColor: colors.background.tertiary,
-  },
-  modalCancelText: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.secondary,
-  },
-  modalSubmitButton: {
-    backgroundColor: colors.primary[600],
-  },
-  modalSubmitText: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.inverse,
-  },
-  modalRejectButton: {
-    backgroundColor: colors.error[600],
-  },
-  modalRejectText: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.inverse,
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    flex: { flex: 1, backgroundColor: theme.colors.surface },
+    skeletons: { padding: theme.spacing.base, gap: theme.spacing.md },
+    listContent: { padding: theme.spacing.base, gap: theme.spacing.md },
+    emptyList: { flexGrow: 1, justifyContent: 'center' },
+    card: { gap: theme.spacing.md },
+    head: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.md },
+    icon: {
+      width: 48,
+      height: 48,
+      borderRadius: theme.radius.lg,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    iconTheory: { backgroundColor: theme.colors.accentSoft },
+    iconPractical: { backgroundColor: theme.colors.warningSoft },
+    info: { flex: 1, gap: 2 },
+    type: {
+      fontSize: theme.typography.size.base,
+      fontWeight: theme.typography.weight.semibold,
+      color: theme.colors.textPrimary,
+    },
+    student: { fontSize: theme.typography.size.sm, color: theme.colors.textPrimary },
+    metaRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
+    meta: { flex: 1, fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    quote: {
+      marginTop: theme.spacing.xs,
+      backgroundColor: theme.colors.surfaceMuted,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing.md,
+    },
+    quoteText: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    actions: { flexDirection: 'row', gap: theme.spacing.md },
+    action: { flex: 1 },
+
+    overlay: {
+      flex: 1,
+      backgroundColor: theme.colors.overlay,
+      justifyContent: 'center',
+      padding: theme.spacing.lg,
+    },
+    modal: { gap: theme.spacing.md },
+    modalTitle: {
+      fontSize: theme.typography.size.lg,
+      fontWeight: theme.typography.weight.bold,
+      color: theme.colors.textPrimary,
+    },
+    modalSubtitle: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    section: { gap: theme.spacing.sm },
+    label: {
+      fontSize: theme.typography.size.sm,
+      fontWeight: theme.typography.weight.medium,
+      color: theme.colors.textSecondary,
+    },
+    dateRow: { flexDirection: 'row', gap: theme.spacing.md },
+    dateButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+      backgroundColor: theme.colors.surfaceRaised,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: theme.radius.md,
+      paddingHorizontal: theme.spacing.base,
+      paddingVertical: theme.spacing.md,
+    },
+    grow: { flex: 1 },
+    pressed: { opacity: 0.7 },
+    dateText: { fontSize: theme.typography.size.base, color: theme.colors.textPrimary },
+    textarea: { minHeight: 80 },
+    modalActions: { flexDirection: 'row', gap: theme.spacing.md },
+  });

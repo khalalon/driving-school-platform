@@ -24,6 +24,8 @@ export const fr = {
   'common.optional': 'facultatif',
   'common.back': 'Retour',
   'common.logout': 'Se déconnecter',
+  'reason.min': 'Au moins {min} caractères ({count}/{min})',
+  'reason.count': '{count}/{max} caractères',
 
   // Types de leçon (valeurs en base inchangées, D-18)
   'lesson.type.CODE': 'Code',
@@ -420,6 +422,9 @@ export const fr = {
   'attendance.studentAbsent': 'Élève absent',
   'attendance.record': 'Pointer la présence',
   'todayLessons.title': "Leçons d'aujourd'hui",
+  'todayLessons.emptyTitle': 'Aucune leçon « {filter} » aujourd’hui',
+  'todayLessons.emptyUpcoming': 'Vous n’avez aucune leçon planifiée aujourd’hui',
+  'todayLessons.emptyCompleted': 'Vous n’avez encore pointé aucune présence aujourd’hui',
   'tabs.home': 'Accueil',
   'tabs.lessons': 'Leçons',
   'tabs.exams': 'Examens',
@@ -430,6 +435,10 @@ export const fr = {
 
   // Demandes cote instructeur
   'lessonRequests.title': 'Demandes de leçon',
+  'lessonRequests.you': 'vous',
+  'lessonRequests.anInstructor': 'un instructeur',
+  'lessonRequests.selectedOne': '1 demande de code sélectionnée',
+  'lessonRequests.selectedMany': '{count} demandes de code sélectionnées',
   'lessonRequests.loadFailed': 'Impossible de charger les demandes',
   'lessonRequests.invalidDate': 'Date invalide',
   'lessonRequests.dateMustBeFuture': 'La date de la leçon doit être dans le futur',
@@ -478,6 +487,7 @@ export const fr = {
   'lessonRequests.rejectPlaceholder':
     'ex. : aucune disponibilité cette semaine, proposez une autre date…',
   'examRequests.title': "Demandes d'examen",
+  'examRequests.modalSubtitle': 'Examen {type} pour {student} : {hint}',
   'examRequests.loadFailed': "Impossible de charger les demandes d'examen",
   'examRequests.locationRequired': 'Indiquez le lieu de l’examen',
   'examRequests.dateMustBeFuture': "La date de l'examen doit être dans le futur",
@@ -496,6 +506,7 @@ export const fr = {
   'examRequests.lessonsCompleted': '{count} leçon(s) effectuée(s)',
   'examRequests.preferred': 'Souhaitée : {date}',
   'todayExams.title': "Examens d'aujourd'hui",
+  'todayExams.modalSubtitle': 'Examen {type} de {student} à {time}',
   'todayExams.loadFailed': 'Impossible de charger les examens',
   'todayExams.invalidScore': 'Note invalide',
   'todayExams.invalidScoreText': 'La note doit être un entier entre 0 et 100',
@@ -520,6 +531,14 @@ export const fr = {
 
   // Reservation, inscriptions et fiche eleve
   'bookFor.title': 'Réserver pour un élève',
+  'bookFor.info':
+    'Réservez une leçon directement pour un élève inscrit (au comptoir ou par téléphone). Vous serez l’instructeur de cette leçon.',
+  'bookFor.lessonsCompleted': '{count} leçons effectuées',
+  'bookFor.viewProfile': 'Voir la fiche de l’élève',
+  'bookFor.changeStudent': 'Changer d’élève',
+  'bookFor.price': 'Prix',
+  'bookFor.required': 'obligatoire',
+  'bookFor.schoolRate': 'Tarif de l’école : {amount} (appliqué automatiquement)',
   'bookFor.loadFailed': "Impossible de charger les élèves de l'école",
   'bookFor.selectStudent': 'Choisissez un élève',
   'bookFor.student': 'Élève',
@@ -565,6 +584,9 @@ export const fr = {
   'studentInfo.notesSaved': 'Notes enregistrées',
   'studentInfo.notesFailed': "Impossible d'enregistrer les notes",
   'studentInfo.notFound': 'Fiche introuvable',
+  'studentInfo.emergencyContact': 'Contact en cas d’urgence',
+  'studentInfo.progress': 'Progression',
+  'studentInfo.lastPaymentOn': 'Dernier versement : {date}',
   'studentInfo.name': 'Nom',
   'studentInfo.email': 'E-mail',
   'studentInfo.phone': 'Téléphone',
@@ -594,6 +616,10 @@ export const fr = {
   'studentLessons.attended': 'Présent',
   'studentLessons.absentNotBilled': 'Absent — non facturée',
   'studentLessons.markPaid': 'Marquer payée',
+  'studentLessons.refundedAsCredit': 'Prépaiement rendu à l’avoir de l’élève (absence)',
+  'studentLessons.creditApplied': 'Avoir de l’élève imputé : {credit}',
+  'studentLessons.creditRemaining': ' · reste {remaining}',
+  'studentLessons.amount': 'Montant',
   'studentLessons.emptyTitle': 'Aucune leçon',
   'studentLessons.emptyText': "Cet élève n'a encore aucune leçon",
   'studentLessons.modalTitle': 'Marquer la leçon payée',

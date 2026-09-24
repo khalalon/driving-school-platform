@@ -17,6 +17,7 @@ import { AppBar, Button, Card, Chip, Field, Screen, SkeletonCard } from '../../c
 import { lessonTypeLabel, LESSON_TYPES, LessonType } from '../../models/Lesson';
 import { Theme } from '../../theme';
 import { IoniconName } from '../../utils/rtl';
+import { dateLocale } from '../../utils/format';
 
 const LESSON_TYPE_ICONS: Record<LessonType, IoniconName> = {
   [LessonType.CODE]: 'book-outline',
@@ -177,7 +178,9 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
                   ]}
                 >
                   <Ionicons name="calendar-outline" size={20} color={theme.colors.textSecondary} />
-                  <Text style={styles.dateText}>{requestedDate.toLocaleDateString()}</Text>
+                  <Text style={styles.dateText}>
+                    {requestedDate.toLocaleDateString(dateLocale())}
+                  </Text>
                 </Pressable>
                 <Pressable
                   onPress={() => setShowTimePicker(true)}
@@ -186,7 +189,10 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
                 >
                   <Ionicons name="time-outline" size={20} color={theme.colors.textSecondary} />
                   <Text style={styles.dateText}>
-                    {requestedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {requestedDate.toLocaleTimeString(dateLocale(), {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
                   </Text>
                 </Pressable>
               </View>

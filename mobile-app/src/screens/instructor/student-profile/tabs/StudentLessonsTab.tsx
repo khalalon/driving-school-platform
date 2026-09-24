@@ -1,19 +1,10 @@
 /**
- * Student Lessons Tab - Lesson History & Payment Tracking
+ * Onglet « Leçons » de la fiche élève (11.4) — P3 et encaissement P6.
+ * Une absence n'est pas facturable (D-41, P6 la refuse) ; l'avoir imputé est affiché (D-40).
  */
 
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  ActivityIndicator,
-  Alert,
-  TouchableOpacity,
-  Modal,
-  TextInput,
-} from 'react-native';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Alert, FlatList, Modal, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { studentProfileService } from '../../../../services/api/StudentProfileService';
 import { getApiErrorMessage } from '../../../../services/api/ApiError';
@@ -26,11 +17,38 @@ import {
 import { lessonTypeLabel, LessonType } from '../../../../models/Lesson';
 import { useSchoolCurrency } from '../../../../hooks/useSchoolCurrency';
 import { formatAmount, formatDate, formatDateTime } from '../../../../utils/format';
-import { colors, typography, spacing, shadows } from '../../../../theme';
 import { useI18n } from '../../../../context/LanguageContext';
+import { useTheme } from '../../../../context/ThemeContext';
+import {
+  Badge,
+  Button,
+  Card,
+  Chip,
+  EmptyState,
+  Field,
+  SkeletonCard,
+  Tone,
+} from '../../../../components/ui';
+import { Theme } from '../../../../theme';
+
+/** Type de leçon → intention de couleur : le thème décide du rendu. */
+const typeTone = (type: LessonType): Tone => {
+  switch (type) {
+    case LessonType.CODE:
+      return 'accent';
+    case LessonType.MANOEUVRE:
+      return 'warning';
+    case LessonType.PARC:
+      return 'success';
+    default:
+      return 'neutral';
+  }
+};
 
 export const StudentLessonsTab = ({ route }: any) => {
   const { t } = useI18n();
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { studentId, schoolId } = route.params;
   const currency = useSchoolCurrency(schoolId);
 
@@ -90,477 +108,264 @@ export const StudentLessonsTab = ({ route }: any) => {
     }
   };
 
-  const getLessonTypeColor = (type: LessonType) => {
-    switch (type) {
-      case LessonType.CODE:
-        return colors.primary[600];
-      case LessonType.MANOEUVRE:
-        return colors.warning[600];
-      case LessonType.PARC:
-        return colors.success[600];
-      default:
-        return colors.neutral[600];
-    }
-  };
+  const renderLesson = ({ item }: { item: LessonHistory }) => {
+    const instructor = `${item.instructorFirstName} ${item.instructorLastName}`.trim();
 
-  const renderLesson = ({ item }: { item: LessonHistory }) => (
-    <View style={styles.lessonCard}>
-      <View style={styles.lessonHeader}>
-        <View style={[styles.typeBadge, { backgroundColor: `${getLessonTypeColor(item.type)}20` }]}>
-          <Text style={[styles.typeText, { color: getLessonTypeColor(item.type) }]}>
-            {lessonTypeLabel(item.type) ?? item.type}
-            {item.status === 'cancelled' ? t('common.cancelledSuffix') : ''}
-          </Text>
-        </View>
-        <View style={[styles.statusBadge, item.paid ? styles.paidBadge : styles.unpaidBadge]}>
-          <Ionicons
-            name={item.paid ? 'checkmark-circle' : 'time-outline'}
-            size={16}
-            color={item.paid ? colors.success[600] : colors.warning[600]}
+    return (
+      <Card style={styles.card}>
+        <View style={styles.head}>
+          <Badge
+            label={`${lessonTypeLabel(item.type) ?? item.type}${
+              item.status === 'cancelled' ? t('common.cancelledSuffix') : ''
+            }`}
+            tone={typeTone(item.type)}
           />
-          <Text style={[styles.statusText, item.paid ? styles.paidText : styles.unpaidText]}>
-            {item.paid ? t('myLessons.paid') : t('myLessons.unpaid')}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.lessonDetails}>
-        <View style={styles.detailRow}>
-          <Ionicons name="calendar-outline" size={16} color={colors.text.secondary} />
-          <Text style={styles.detailText}>{formatDateTime(item.scheduledDate)}</Text>
+          <Badge
+            label={item.paid ? t('myLessons.paid') : t('myLessons.unpaid')}
+            tone={item.paid ? 'success' : 'warning'}
+            dot
+          />
         </View>
 
-        <View style={styles.detailRow}>
-          <Ionicons name="person-outline" size={16} color={colors.text.secondary} />
-          <Text style={styles.detailText}>
-            {`${item.instructorFirstName} ${item.instructorLastName}`.trim() || '—'}
-          </Text>
-        </View>
-
-        <View style={styles.detailRow}>
-          <Ionicons name="time-outline" size={16} color={colors.text.secondary} />
-          <Text style={styles.detailText}>{item.durationMinutes ?? '—'} minutes</Text>
-        </View>
-
-        {item.attended !== null && item.attended !== undefined && (
-          <View style={styles.detailRow}>
-            <Ionicons
-              name={item.attended ? 'checkmark-circle-outline' : 'close-circle-outline'}
-              size={16}
-              color={item.attended ? colors.success[600] : colors.error[600]}
-            />
-            <Text
-              style={[
-                styles.detailText,
-                { color: item.attended ? colors.success[600] : colors.error[600] },
-              ]}
-            >
-              {item.attended ? t('studentLessons.attended') : t('studentLessons.absentNotBilled')}
+        <View style={styles.details}>
+          <View style={styles.metaRow}>
+            <Ionicons name="calendar-outline" size={16} color={theme.colors.textMuted} />
+            <Text style={styles.meta}>{formatDateTime(item.scheduledDate)}</Text>
+          </View>
+          <View style={styles.metaRow}>
+            <Ionicons name="person-outline" size={16} color={theme.colors.textMuted} />
+            <Text style={styles.meta}>{instructor || t('format.empty')}</Text>
+          </View>
+          <View style={styles.metaRow}>
+            <Ionicons name="time-outline" size={16} color={theme.colors.textMuted} />
+            <Text style={styles.meta}>
+              {item.durationMinutes
+                ? t('format.minutes', { count: item.durationMinutes })
+                : t('format.empty')}
             </Text>
           </View>
-        )}
 
-        {(item.amount !== null || item.price !== null) && (
-          <View style={styles.detailRow}>
-            <Ionicons name="cash-outline" size={16} color={colors.text.secondary} />
-            <Text style={styles.detailText}>
-              {formatAmount(item.amount ?? item.price, currency)}
-            </Text>
+          {item.attended !== null && item.attended !== undefined ? (
+            <View style={styles.metaRow}>
+              <Ionicons
+                name={item.attended ? 'checkmark-circle-outline' : 'close-circle-outline'}
+                size={16}
+                color={item.attended ? theme.colors.successText : theme.colors.dangerText}
+              />
+              <Text
+                style={[
+                  styles.meta,
+                  { color: item.attended ? theme.colors.successText : theme.colors.dangerText },
+                ]}
+              >
+                {item.attended ? t('studentLessons.attended') : t('studentLessons.absentNotBilled')}
+              </Text>
+            </View>
+          ) : null}
+
+          {item.amount !== null || item.price !== null ? (
+            <View style={styles.metaRow}>
+              <Ionicons name="cash-outline" size={16} color={theme.colors.textMuted} />
+              <Text style={styles.meta}>{formatAmount(item.amount ?? item.price, currency)}</Text>
+            </View>
+          ) : null}
+        </View>
+
+        {item.feedback ? (
+          <View style={styles.quote}>
+            <Text style={styles.quoteLabel}>{t('profile.feedback')}</Text>
+            <Text style={styles.quoteText}>{item.feedback}</Text>
           </View>
-        )}
-      </View>
+        ) : null}
 
-      {item.feedback && (
-        <View style={styles.feedbackContainer}>
-          <Text style={styles.feedbackLabel}>{t('profile.feedback')}</Text>
-          <Text style={styles.feedbackText}>{item.feedback}</Text>
-        </View>
-      )}
+        {item.rating ? (
+          <View style={styles.rating}>
+            {[1, 2, 3, 4, 5].map((star) => (
+              <Ionicons
+                key={star}
+                name={star <= item.rating! ? 'star' : 'star-outline'}
+                size={16}
+                color={theme.colors.warning}
+              />
+            ))}
+          </View>
+        ) : null}
 
-      {item.rating && (
-        <View style={styles.ratingContainer}>
-          {[1, 2, 3, 4, 5].map((star) => (
-            <Ionicons
-              key={star}
-              name={star <= item.rating! ? 'star' : 'star-outline'}
-              size={16}
-              color={colors.warning[600]}
-            />
-          ))}
-        </View>
-      )}
+        {/* D-41 : une absence n'est pas facturable (P6 la refuse) */}
+        {!item.paid && item.attended !== false ? (
+          <Button
+            title={t('studentLessons.markPaid')}
+            onPress={() => handleMarkPaid(item)}
+            size="sm"
+            icon="checkmark-circle-outline"
+          />
+        ) : null}
 
-      {/* D-41 : une absence n'est pas facturable (P6 la refuse) */}
-      {!item.paid && item.attended !== false && (
-        <TouchableOpacity
-          style={styles.markPaidButton}
-          onPress={() => handleMarkPaid(item)}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="checkmark-circle-outline" size={20} color={colors.text.inverse} />
-          <Text style={styles.markPaidText}>{t('studentLessons.markPaid')}</Text>
-        </TouchableOpacity>
-      )}
+        {item.attended === false && (item.paid || item.creditApplied > 0) ? (
+          <Text style={styles.note}>{t('studentLessons.refundedAsCredit')}</Text>
+        ) : null}
 
-      {item.attended === false && (item.paid || item.creditApplied > 0) && (
-        <View style={styles.paymentInfo}>
-          <Text style={styles.paymentInfoText}>
-            Prepayment returned to the student's credit (absence)
-          </Text>
-        </View>
-      )}
-
-      {item.paid && item.paymentDate && (
-        <View style={styles.paymentInfo}>
-          <Text style={styles.paymentInfoText}>
+        {item.paid && item.paymentDate ? (
+          <Text style={styles.note}>
             {t('studentLessons.paidOnVia', {
               date: formatDate(item.paymentDate),
               method: paymentMethodLabel(item.paymentMethod),
             })}
           </Text>
-        </View>
-      )}
+        ) : null}
 
-      {item.creditApplied > 0 && (
-        <View style={styles.paymentInfo}>
-          <Text style={styles.paymentInfoText}>
-            Student credit applied: {formatAmount(item.creditApplied, currency)}
+        {item.creditApplied > 0 ? (
+          <Text style={styles.note}>
+            {t('studentLessons.creditApplied', {
+              credit: formatAmount(item.creditApplied, currency),
+            })}
             {!item.paid && item.amount !== null
-              ? ` · remaining ${formatAmount(item.amount, currency)}`
+              ? t('studentLessons.creditRemaining', {
+                  remaining: formatAmount(item.amount, currency),
+                })
               : ''}
           </Text>
-        </View>
-      )}
-    </View>
-  );
-
-  const renderEmpty = () => (
-    <View style={styles.emptyContainer}>
-      <Ionicons name="car-outline" size={64} color={colors.neutral[400]} />
-      <Text style={styles.emptyTitle}>{t('studentLessons.emptyTitle')}</Text>
-      <Text style={styles.emptySubtitle}>{t('studentLessons.emptyText')}</Text>
-    </View>
-  );
+        ) : null}
+      </Card>
+    );
+  };
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary[600]} />
+      <View style={styles.skeletons}>
+        <SkeletonCard lines={4} />
+        <SkeletonCard lines={4} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={styles.flex}>
       <FlatList
         data={lessons}
         renderItem={renderLesson}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={renderEmpty}
+        contentContainerStyle={lessons.length === 0 ? styles.emptyList : styles.listContent}
+        ListEmptyComponent={
+          <EmptyState
+            icon="car-outline"
+            title={t('studentLessons.emptyTitle')}
+            message={t('studentLessons.emptyText')}
+            tone="neutral"
+          />
+        }
         showsVerticalScrollIndicator={false}
       />
 
-      {/* Payment Modal */}
       <Modal
         visible={showPaymentModal}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setShowPaymentModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{t('studentLessons.modalTitle')}</Text>
-              <TouchableOpacity onPress={() => setShowPaymentModal(false)} activeOpacity={0.7}>
-                <Ionicons name="close" size={24} color={colors.text.secondary} />
-              </TouchableOpacity>
-            </View>
+        <View style={styles.overlay}>
+          <Card style={styles.modal}>
+            <Text style={styles.modalTitle}>{t('studentLessons.modalTitle')}</Text>
 
-            <Text style={styles.inputLabel}>Amount{currency ? ` (${currency})` : ''}</Text>
-            <TextInput
-              style={styles.input}
+            <Field
+              label={`${t('studentLessons.amount')}${currency ? ` (${currency})` : ''}`}
               placeholder="0.00"
-              placeholderTextColor={colors.neutral[400]}
               value={amount}
               onChangeText={setAmount}
               keyboardType="decimal-pad"
+              icon="cash-outline"
             />
 
-            <Text style={styles.inputLabel}>{t('studentLessons.paymentMethod')}</Text>
-            <View style={styles.methodButtons}>
-              {PAYMENT_METHODS.map((method) => (
-                <TouchableOpacity
-                  key={method}
-                  style={[
-                    styles.methodButton,
-                    paymentMethod === method && styles.methodButtonActive,
-                  ]}
-                  onPress={() => setPaymentMethod(method)}
-                  activeOpacity={0.7}
-                >
-                  <Text
-                    style={[styles.methodText, paymentMethod === method && styles.methodTextActive]}
-                  >
-                    {paymentMethodLabel(method)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+            <View style={styles.section}>
+              <Text style={styles.label}>{t('studentLessons.paymentMethod')}</Text>
+              <View style={styles.methods}>
+                {PAYMENT_METHODS.map((method) => (
+                  <Chip
+                    key={method}
+                    label={paymentMethodLabel(method)}
+                    selected={paymentMethod === method}
+                    onPress={() => setPaymentMethod(method)}
+                  />
+                ))}
+              </View>
             </View>
 
             <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
+              <Button
+                title={t('common.cancel')}
                 onPress={() => setShowPaymentModal(false)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.cancelButtonText}>{t('common.cancel')}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.modalButton, styles.confirmButton]}
+                variant="secondary"
+                style={styles.action}
+              />
+              <Button
+                title={t('studentLessons.confirmPayment')}
                 onPress={confirmPayment}
-                disabled={processing}
-                activeOpacity={0.7}
-              >
-                {processing ? (
-                  <ActivityIndicator size="small" color={colors.text.inverse} />
-                ) : (
-                  <Text style={styles.confirmButtonText}>{t('studentLessons.confirmPayment')}</Text>
-                )}
-              </TouchableOpacity>
+                loading={processing}
+                style={styles.action}
+              />
             </View>
-          </View>
+          </Card>
         </View>
       </Modal>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.secondary,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  listContent: {
-    padding: spacing.md,
-    flexGrow: 1,
-  },
-  lessonCard: {
-    backgroundColor: colors.background.primary,
-    borderRadius: 12,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    ...shadows.sm,
-  },
-  lessonHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  typeBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: 6,
-  },
-  typeText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: 6,
-    gap: 4,
-  },
-  paidBadge: {
-    backgroundColor: colors.success[50],
-  },
-  unpaidBadge: {
-    backgroundColor: colors.warning[50],
-  },
-  statusText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-  },
-  paidText: {
-    color: colors.success[600],
-  },
-  unpaidText: {
-    color: colors.warning[600],
-  },
-  lessonDetails: {
-    gap: spacing.xs,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  detailText: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-  },
-  feedbackContainer: {
-    marginTop: spacing.sm,
-    padding: spacing.sm,
-    backgroundColor: colors.background.secondary,
-    borderRadius: 8,
-  },
-  feedbackLabel: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-    fontWeight: typography.weight.semibold,
-    marginBottom: 4,
-  },
-  feedbackText: {
-    fontSize: typography.size.sm,
-    color: colors.text.primary,
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    marginTop: spacing.sm,
-    gap: 4,
-  },
-  markPaidButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.success[600],
-    borderRadius: 8,
-    paddingVertical: spacing.sm,
-    marginTop: spacing.sm,
-    gap: spacing.xs,
-  },
-  markPaidText: {
-    fontSize: typography.size.base,
-    color: colors.text.inverse,
-    fontWeight: typography.weight.semibold,
-  },
-  paymentInfo: {
-    marginTop: spacing.sm,
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.neutral[200],
-  },
-  paymentInfoText: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-    fontStyle: 'italic',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: spacing.xl * 2,
-  },
-  emptyTitle: {
-    fontSize: typography.size.lg,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.primary,
-    marginTop: spacing.md,
-  },
-  emptySubtitle: {
-    fontSize: typography.size.base,
-    color: colors.text.secondary,
-    marginTop: spacing.xs,
-    textAlign: 'center',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: colors.background.primary,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: spacing.lg,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  modalTitle: {
-    fontSize: typography.size.lg,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.primary,
-  },
-  inputLabel: {
-    fontSize: typography.size.base,
-    color: colors.text.primary,
-    fontWeight: typography.weight.semibold,
-    marginBottom: spacing.xs,
-    marginTop: spacing.sm,
-  },
-  input: {
-    fontSize: typography.size.base,
-    backgroundColor: colors.background.secondary,
-    borderRadius: 8,
-    padding: spacing.md,
-    color: colors.text.primary,
-  },
-  methodButtons: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  methodButton: {
-    flex: 1,
-    minWidth: '45%',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: 8,
-    backgroundColor: colors.background.secondary,
-    alignItems: 'center',
-  },
-  methodButtonActive: {
-    backgroundColor: colors.primary[600],
-  },
-  methodText: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-    fontWeight: typography.weight.medium,
-  },
-  methodTextActive: {
-    color: colors.text.inverse,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.md,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: spacing.md,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  cancelButton: {
-    backgroundColor: colors.background.secondary,
-  },
-  confirmButton: {
-    backgroundColor: colors.success[600],
-  },
-  cancelButtonText: {
-    fontSize: typography.size.base,
-    color: colors.text.primary,
-    fontWeight: typography.weight.semibold,
-  },
-  confirmButtonText: {
-    fontSize: typography.size.base,
-    color: colors.text.inverse,
-    fontWeight: typography.weight.semibold,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    flex: { flex: 1, backgroundColor: theme.colors.surface },
+    skeletons: {
+      flex: 1,
+      backgroundColor: theme.colors.surface,
+      padding: theme.spacing.base,
+      gap: theme.spacing.md,
+    },
+    listContent: { padding: theme.spacing.base, gap: theme.spacing.md },
+    emptyList: { flexGrow: 1, justifyContent: 'center' },
+    card: { gap: theme.spacing.sm },
+    head: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: theme.spacing.sm,
+    },
+    details: { gap: theme.spacing.xs },
+    metaRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
+    meta: { flex: 1, fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    quote: {
+      backgroundColor: theme.colors.surfaceMuted,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing.md,
+      gap: theme.spacing.xs,
+    },
+    quoteLabel: {
+      fontSize: theme.typography.size.xs,
+      fontWeight: theme.typography.weight.medium,
+      color: theme.colors.textMuted,
+    },
+    quoteText: { fontSize: theme.typography.size.sm, color: theme.colors.textPrimary },
+    rating: { flexDirection: 'row', gap: 2 },
+    note: { fontSize: theme.typography.size.xs, color: theme.colors.textSecondary },
+
+    overlay: {
+      flex: 1,
+      backgroundColor: theme.colors.overlay,
+      justifyContent: 'center',
+      padding: theme.spacing.lg,
+    },
+    modal: { gap: theme.spacing.md },
+    modalTitle: {
+      fontSize: theme.typography.size.lg,
+      fontWeight: theme.typography.weight.bold,
+      color: theme.colors.textPrimary,
+    },
+    section: { gap: theme.spacing.sm },
+    label: {
+      fontSize: theme.typography.size.sm,
+      fontWeight: theme.typography.weight.medium,
+      color: theme.colors.textSecondary,
+    },
+    methods: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
+    modalActions: { flexDirection: 'row', gap: theme.spacing.md },
+    action: { flex: 1 },
+  });

@@ -1,29 +1,31 @@
 /**
- * Enrollment Requests Screen - Minimal & Elegant
- * Single Responsibility: Manage student enrollment requests
+ * Demandes d'inscription (11.4) — E4 à E6, cloisonnées à l'école de l'instructeur (D-20).
+ * Approuver ouvre la fiche élève ; refuser demande un motif (10 à 500 caractères, D-29) que le
+ * champ contrôle lui-même avant l'envoi.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  FlatList,
-  RefreshControl,
-  ActivityIndicator,
-  Alert,
-  TextInput,
-  Modal,
-} from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Alert, FlatList, Modal, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { enrollmentService } from '../../services/api/EnrollmentService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
 import { useI18n } from '../../context/LanguageContext';
+import { useTheme } from '../../context/ThemeContext';
+import {
+  AppBar,
+  Badge,
+  Button,
+  Card,
+  Chip,
+  EmptyState,
+  Field,
+  SkeletonCard,
+  Tone,
+} from '../../components/ui';
 import { TranslationKey } from '../../i18n';
 import { EnrollmentRequest, EnrollmentStatus } from '../../models/Enrollment';
 import { formatDate, formatPersonName } from '../../utils/format';
-import { colors, typography, spacing, shadows } from '../../theme';
+import { Theme } from '../../theme';
 import { mirrorIcon } from '../../utils/rtl';
 
 type FilterType = 'pending' | 'all';
@@ -32,23 +34,16 @@ type FilterType = 'pending' | 'all';
 const REJECTION_REASON_MIN = 10;
 const REJECTION_REASON_MAX = 500;
 
-const STATUS_STYLES: Record<EnrollmentStatus, { badge: object; labelKey: TranslationKey }> = {
-  [EnrollmentStatus.PENDING]: {
-    badge: { backgroundColor: colors.warning[50] },
-    labelKey: 'enrollments.statusPending',
-  },
-  [EnrollmentStatus.APPROVED]: {
-    badge: { backgroundColor: colors.success[50] },
-    labelKey: 'enrollments.statusApproved',
-  },
-  [EnrollmentStatus.REJECTED]: {
-    badge: { backgroundColor: colors.error[50] },
-    labelKey: 'enrollments.statusRejected',
-  },
+const STATUS: Record<EnrollmentStatus, { tone: Tone; labelKey: TranslationKey }> = {
+  [EnrollmentStatus.PENDING]: { tone: 'warning', labelKey: 'enrollments.statusPending' },
+  [EnrollmentStatus.APPROVED]: { tone: 'success', labelKey: 'enrollments.statusApproved' },
+  [EnrollmentStatus.REJECTED]: { tone: 'danger', labelKey: 'enrollments.statusRejected' },
 };
 
 export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
   const { t } = useI18n();
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { schoolId } = route.params || {};
 
   const [loading, setLoading] = useState(true);
@@ -57,7 +52,7 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
   const [filter, setFilter] = useState<FilterType>('pending');
   const [processing, setProcessing] = useState(false);
 
-  // Reject modal
+  // Refus : motif saisi dans une modale
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<EnrollmentRequest | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
@@ -90,15 +85,16 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
     loadRequests();
   }, [filter, schoolId]);
 
-  const handleApprove = async (request: EnrollmentRequest) => {
+  const studentNameOf = (request: EnrollmentRequest) =>
+    formatPersonName(
+      { firstName: request.studentFirstName, lastName: request.studentLastName },
+      request.studentEmail ?? t('today.student')
+    );
+
+  const handleApprove = (request: EnrollmentRequest) => {
     Alert.alert(
       t('enrollments.approveTitle'),
-      t('enrollments.approveConfirm', {
-        student: formatPersonName(
-          { firstName: request.studentFirstName, lastName: request.studentLastName },
-          request.studentEmail ?? t('enrollments.thisStudent')
-        ),
-      }),
+      t('enrollments.approveConfirm', { student: studentNameOf(request) }),
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
@@ -123,11 +119,6 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
     );
   };
 
-  const handleRejectClick = (request: EnrollmentRequest) => {
-    setSelectedRequest(request);
-    setShowRejectModal(true);
-  };
-
   const reasonLength = rejectionReason.trim().length;
   const reasonValid = reasonLength >= REJECTION_REASON_MIN && reasonLength <= REJECTION_REASON_MAX;
 
@@ -145,9 +136,7 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
       setProcessing(true);
       await enrollmentService.rejectRequest(selectedRequest.id, rejectionReason.trim());
       Alert.alert(t('common.success'), t('enrollments.rejected'));
-      setShowRejectModal(false);
-      setSelectedRequest(null);
-      setRejectionReason('');
+      closeReject();
       loadRequests();
     } catch (error) {
       Alert.alert(t('common.error'), getApiErrorMessage(error, t('enrollments.rejectFailed')));
@@ -156,492 +145,260 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
     }
   };
 
+  const closeReject = () => {
+    setShowRejectModal(false);
+    setSelectedRequest(null);
+    setRejectionReason('');
+  };
+
   /** Fiche élève (P1–P7) : `studentId` = users.id de la demande, école de l'écran (D-28). */
   const openStudentProfile = (request: EnrollmentRequest) => {
     navigation.navigate('StudentProfile', {
       studentId: request.studentId,
       schoolId,
-      studentName: formatPersonName(
-        { firstName: request.studentFirstName, lastName: request.studentLastName },
-        request.studentEmail ?? t('today.student')
-      ),
+      studentName: studentNameOf(request),
     });
   };
 
   const renderRequest = ({ item }: { item: EnrollmentRequest }) => (
-    <View style={styles.requestCard}>
-      <View style={styles.requestHeader}>
-        <View style={styles.studentInfo}>
-          <Ionicons name="person-circle-outline" size={40} color={colors.primary[600]} />
-          <View style={styles.studentDetails}>
-            <Text style={styles.studentName}>
-              {formatPersonName(
-                { firstName: item.studentFirstName, lastName: item.studentLastName },
-                'Student'
-              )}
-            </Text>
-            <Text style={styles.studentEmail}>{item.studentEmail}</Text>
-            <Text style={styles.requestDate}>{formatDate(item.createdAt)}</Text>
-          </View>
+    <Card style={styles.card}>
+      <View style={styles.head}>
+        <View style={styles.avatar}>
+          <Ionicons name="person" size={22} color={theme.colors.accentText} />
         </View>
-        <View style={[styles.statusBadge, STATUS_STYLES[item.status].badge]}>
-          <Text style={styles.statusText}>{t(STATUS_STYLES[item.status].labelKey)}</Text>
+        <View style={styles.info}>
+          <Text style={styles.name}>{studentNameOf(item)}</Text>
+          <Text style={styles.meta}>{item.studentEmail}</Text>
+          <Text style={styles.date}>{formatDate(item.createdAt)}</Text>
         </View>
+        <Badge label={t(STATUS[item.status].labelKey)} tone={STATUS[item.status].tone} dot />
       </View>
 
-      {item.message && (
-        <View style={styles.messageContainer}>
-          <Text style={styles.messageLabel}>{t('enrollments.message')}</Text>
-          <Text style={styles.messageText}>{item.message}</Text>
+      {item.message ? (
+        <View style={styles.quote}>
+          <Text style={styles.quoteLabel}>{t('enrollments.message')}</Text>
+          <Text style={styles.quoteText}>{item.message}</Text>
         </View>
-      )}
+      ) : null}
 
-      {item.status === EnrollmentStatus.REJECTED && item.rejectionReason && (
-        <View style={styles.rejectionContainer}>
-          <Text style={styles.rejectionLabel}>{t('enrollments.rejectionReason')}</Text>
-          <Text style={styles.rejectionText}>{item.rejectionReason}</Text>
+      {item.status === EnrollmentStatus.REJECTED && item.rejectionReason ? (
+        <View style={styles.reason}>
+          <Text style={styles.reasonLabel}>{t('enrollments.rejectionReason')}</Text>
+          <Text style={styles.reasonText}>{item.rejectionReason}</Text>
         </View>
-      )}
+      ) : null}
 
-      {item.status === EnrollmentStatus.APPROVED && (
-        <TouchableOpacity
-          style={styles.profileButton}
+      {item.status === EnrollmentStatus.APPROVED ? (
+        <Button
+          title={t('enrollments.viewProfile')}
           onPress={() => openStudentProfile(item)}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="person-circle-outline" size={20} color={colors.primary[600]} />
-          <Text style={styles.profileButtonText}>{t('enrollments.viewProfile')}</Text>
-          <Ionicons name={mirrorIcon('chevron-forward')} size={18} color={colors.primary[600]} />
-        </TouchableOpacity>
-      )}
+          variant="ghost"
+          size="sm"
+          icon={mirrorIcon('chevron-forward')}
+          iconPosition="trailing"
+        />
+      ) : null}
 
-      {item.status === EnrollmentStatus.PENDING && (
-        <View style={styles.actionsContainer}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.approveButton]}
+      {item.status === EnrollmentStatus.PENDING ? (
+        <View style={styles.actions}>
+          <Button
+            title={t('enrollments.approve')}
             onPress={() => handleApprove(item)}
             disabled={processing}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="checkmark-circle-outline" size={20} color={colors.text.inverse} />
-            <Text style={styles.actionButtonText}>{t('enrollments.approve')}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionButton, styles.rejectButton]}
-            onPress={() => handleRejectClick(item)}
+            size="sm"
+            icon="checkmark-circle-outline"
+            style={styles.action}
+          />
+          <Button
+            title={t('enrollments.reject')}
+            onPress={() => {
+              setSelectedRequest(item);
+              setShowRejectModal(true);
+            }}
+            variant="danger"
             disabled={processing}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="close-circle-outline" size={20} color={colors.text.inverse} />
-            <Text style={styles.actionButtonText}>{t('enrollments.reject')}</Text>
-          </TouchableOpacity>
+            size="sm"
+            icon="close-circle-outline"
+            style={styles.action}
+          />
         </View>
-      )}
-    </View>
-  );
-
-  const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
-      <Ionicons name="documents-outline" size={64} color={colors.neutral[400]} />
-      <Text style={styles.emptyTitle}>{t('enrollments.emptyTitle')}</Text>
-      <Text style={styles.emptySubtitle}>
-        {filter === 'pending' ? t('enrollments.emptyPending') : t('enrollments.emptyAll')}
-      </Text>
-    </View>
+      ) : null}
+    </Card>
   );
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name={mirrorIcon('arrow-back')} size={24} color={colors.text.primary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{t('enrollments.title')}</Text>
-      </View>
+    <View style={styles.flex}>
+      <AppBar
+        title={t('enrollments.title')}
+        onBack={() => navigation.goBack()}
+        backLabel={t('common.back')}
+      />
 
-      {/* Filter Tabs */}
-      <View style={styles.filterContainer}>
-        <TouchableOpacity
-          style={[styles.filterTab, filter === 'pending' && styles.activeFilterTab]}
+      <View style={styles.filters}>
+        <Chip
+          label={t('filter.pending')}
+          selected={filter === 'pending'}
           onPress={() => setFilter('pending')}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.filterText, filter === 'pending' && styles.activeFilterText]}>
-            Pending
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.filterTab, filter === 'all' && styles.activeFilterTab]}
+        />
+        <Chip
+          label={t('enrollments.all')}
+          selected={filter === 'all'}
           onPress={() => setFilter('all')}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.filterText, filter === 'all' && styles.activeFilterText]}>
-            {t('enrollments.all')}
-          </Text>
-        </TouchableOpacity>
+        />
       </View>
 
-      {/* Requests List */}
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary[600]} />
+      {loading && requests.length === 0 ? (
+        <View style={styles.skeletons}>
+          <SkeletonCard lines={3} />
+          <SkeletonCard lines={3} />
         </View>
       ) : (
         <FlatList
           data={requests}
           renderItem={renderRequest}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          ListEmptyComponent={renderEmptyState}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          contentContainerStyle={requests.length === 0 ? styles.emptyList : styles.listContent}
+          ListEmptyComponent={
+            <EmptyState
+              icon="documents-outline"
+              title={t('enrollments.emptyTitle')}
+              message={
+                filter === 'pending' ? t('enrollments.emptyPending') : t('enrollments.emptyAll')
+              }
+              tone="neutral"
+            />
+          }
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[theme.colors.accent]}
+              tintColor={theme.colors.accent}
+            />
+          }
           showsVerticalScrollIndicator={false}
         />
       )}
 
-      {/* Reject Modal */}
       <Modal
         visible={showRejectModal}
         transparent
-        animationType="slide"
-        onRequestClose={() => setShowRejectModal(false)}
+        animationType="fade"
+        onRequestClose={closeReject}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{t('enrollments.rejectTitle')}</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setShowRejectModal(false);
-                  setRejectionReason('');
-                }}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="close" size={24} color={colors.text.secondary} />
-              </TouchableOpacity>
-            </View>
+        <View style={styles.overlay}>
+          <Card style={styles.modal}>
+            <Text style={styles.modalTitle}>{t('enrollments.rejectTitle')}</Text>
 
-            <Text style={styles.modalLabel}>{t('enrollments.rejectLabel')}</Text>
-            <TextInput
-              style={styles.modalInput}
+            <Field
+              label={t('enrollments.rejectLabel')}
               placeholder={t('enrollments.rejectPlaceholder')}
-              placeholderTextColor={colors.neutral[400]}
+              hint={
+                reasonLength < REJECTION_REASON_MIN
+                  ? t('reason.min', { min: REJECTION_REASON_MIN, count: reasonLength })
+                  : t('reason.count', { count: reasonLength, max: REJECTION_REASON_MAX })
+              }
               value={rejectionReason}
               onChangeText={setRejectionReason}
               multiline
               numberOfLines={4}
               maxLength={REJECTION_REASON_MAX}
               textAlignVertical="top"
+              style={styles.modalInput}
             />
-            <Text style={[styles.modalHint, !reasonValid && styles.modalHintWarning]}>
-              {reasonLength < REJECTION_REASON_MIN
-                ? `At least ${REJECTION_REASON_MIN} characters (${reasonLength}/${REJECTION_REASON_MIN})`
-                : `${reasonLength}/${REJECTION_REASON_MAX} characters`}
-            </Text>
 
             <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalCancelButton]}
-                onPress={() => {
-                  setShowRejectModal(false);
-                  setRejectionReason('');
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.modalCancelText}>{t('common.cancel')}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalRejectButton]}
+              <Button
+                title={t('common.cancel')}
+                onPress={closeReject}
+                variant="secondary"
+                style={styles.action}
+              />
+              <Button
+                title={t('enrollments.reject')}
                 onPress={handleReject}
-                disabled={processing || !reasonValid}
-                activeOpacity={0.7}
-              >
-                {processing ? (
-                  <ActivityIndicator size="small" color={colors.text.inverse} />
-                ) : (
-                  <Text style={styles.modalRejectText}>{t('enrollments.reject')}</Text>
-                )}
-              </TouchableOpacity>
+                variant="danger"
+                loading={processing}
+                disabled={!reasonValid}
+                style={styles.action}
+              />
             </View>
-          </View>
+          </Card>
         </View>
       </Modal>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.primary,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.md,
-    backgroundColor: colors.background.primary,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.neutral[200],
-  },
-  backButton: {
-    padding: spacing.xs,
-    marginEnd: spacing.sm,
-  },
-  headerTitle: {
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.primary,
-  },
-  filterContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    gap: spacing.sm,
-  },
-  filterTab: {
-    flex: 1,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: 8,
-    backgroundColor: colors.background.secondary,
-    alignItems: 'center',
-  },
-  activeFilterTab: {
-    backgroundColor: colors.primary[600],
-  },
-  filterText: {
-    fontSize: typography.size.base,
-    color: colors.text.secondary,
-    fontWeight: typography.weight.medium,
-  },
-  activeFilterText: {
-    color: colors.text.inverse,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  listContent: {
-    padding: spacing.md,
-    flexGrow: 1,
-  },
-  requestCard: {
-    backgroundColor: colors.background.primary,
-    borderRadius: 12,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    ...shadows.sm,
-  },
-  requestHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: spacing.sm,
-  },
-  studentInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  studentDetails: {
-    marginStart: spacing.sm,
-    flex: 1,
-  },
-  studentName: {
-    fontSize: typography.size.base,
-    color: colors.text.primary,
-    fontWeight: typography.weight.semibold,
-  },
-  studentEmail: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-  },
-  requestDate: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-    marginTop: 2,
-  },
-  statusBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  statusText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-  },
-  messageContainer: {
-    marginTop: spacing.sm,
-    padding: spacing.sm,
-    backgroundColor: colors.background.secondary,
-    borderRadius: 8,
-  },
-  messageLabel: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-    fontWeight: typography.weight.semibold,
-    marginBottom: 4,
-  },
-  messageText: {
-    fontSize: typography.size.base,
-    color: colors.text.primary,
-  },
-  rejectionContainer: {
-    marginTop: spacing.sm,
-    padding: spacing.sm,
-    backgroundColor: colors.error[50],
-    borderRadius: 8,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.error[600],
-  },
-  rejectionLabel: {
-    fontSize: typography.size.sm,
-    color: colors.error[600],
-    fontWeight: typography.weight.semibold,
-    marginBottom: 4,
-  },
-  rejectionText: {
-    fontSize: typography.size.base,
-    color: colors.error[600],
-  },
-  actionsContainer: {
-    flexDirection: 'row',
-    marginTop: spacing.md,
-    gap: spacing.sm,
-  },
-  profileButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    marginTop: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 8,
-    backgroundColor: colors.primary[50],
-  },
-  profileButtonText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-    color: colors.primary[600],
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.sm,
-    borderRadius: 8,
-    gap: spacing.xs,
-  },
-  approveButton: {
-    backgroundColor: colors.success[600],
-  },
-  rejectButton: {
-    backgroundColor: colors.error[600],
-  },
-  actionButtonText: {
-    fontSize: typography.size.base,
-    color: colors.text.inverse,
-    fontWeight: typography.weight.semibold,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: spacing.xl * 2,
-  },
-  emptyTitle: {
-    fontSize: typography.size.lg,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.primary,
-    marginTop: spacing.md,
-  },
-  emptySubtitle: {
-    fontSize: typography.size.base,
-    color: colors.text.secondary,
-    marginTop: spacing.xs,
-    textAlign: 'center',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: colors.background.primary,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: spacing.lg,
-    maxHeight: '80%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  modalTitle: {
-    fontSize: typography.size.lg,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.primary,
-  },
-  modalLabel: {
-    fontSize: typography.size.base,
-    color: colors.text.primary,
-    fontWeight: typography.weight.semibold,
-    marginBottom: spacing.xs,
-  },
-  modalHint: {
-    fontSize: typography.size.xs,
-    color: colors.text.tertiary,
-    marginTop: spacing.xs,
-    marginBottom: spacing.sm,
-  },
-  modalHintWarning: {
-    color: colors.warning[600],
-  },
-  modalInput: {
-    fontSize: typography.size.base,
-    backgroundColor: colors.background.secondary,
-    borderRadius: 8,
-    padding: spacing.md,
-    minHeight: 100,
-    color: colors.text.primary,
-    marginBottom: spacing.md,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: spacing.md,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  modalCancelButton: {
-    backgroundColor: colors.background.secondary,
-  },
-  modalRejectButton: {
-    backgroundColor: colors.error[600],
-  },
-  modalCancelText: {
-    fontSize: typography.size.base,
-    color: colors.text.primary,
-    fontWeight: typography.weight.semibold,
-  },
-  modalRejectText: {
-    fontSize: typography.size.base,
-    color: colors.text.inverse,
-    fontWeight: typography.weight.semibold,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    flex: { flex: 1, backgroundColor: theme.colors.surface },
+    filters: {
+      flexDirection: 'row',
+      gap: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.base,
+      paddingVertical: theme.spacing.md,
+    },
+    skeletons: { padding: theme.spacing.base, gap: theme.spacing.md },
+    listContent: { padding: theme.spacing.base, paddingTop: 0, gap: theme.spacing.md },
+    emptyList: { flexGrow: 1, justifyContent: 'center' },
+    card: { gap: theme.spacing.md },
+    head: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.md },
+    avatar: {
+      width: 44,
+      height: 44,
+      borderRadius: theme.radius.pill,
+      backgroundColor: theme.colors.accentSoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    info: { flex: 1, gap: 2 },
+    name: {
+      fontSize: theme.typography.size.base,
+      fontWeight: theme.typography.weight.semibold,
+      color: theme.colors.textPrimary,
+    },
+    meta: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    date: { fontSize: theme.typography.size.xs, color: theme.colors.textMuted },
+    quote: {
+      backgroundColor: theme.colors.surfaceMuted,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing.md,
+      gap: theme.spacing.xs,
+    },
+    quoteLabel: {
+      fontSize: theme.typography.size.xs,
+      fontWeight: theme.typography.weight.medium,
+      color: theme.colors.textMuted,
+    },
+    quoteText: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    reason: {
+      backgroundColor: theme.colors.dangerSoft,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing.md,
+      gap: theme.spacing.xs,
+    },
+    reasonLabel: {
+      fontSize: theme.typography.size.xs,
+      fontWeight: theme.typography.weight.semibold,
+      color: theme.colors.dangerText,
+    },
+    reasonText: { fontSize: theme.typography.size.sm, color: theme.colors.dangerText },
+    actions: { flexDirection: 'row', gap: theme.spacing.md },
+    action: { flex: 1 },
+
+    overlay: {
+      flex: 1,
+      backgroundColor: theme.colors.overlay,
+      justifyContent: 'center',
+      padding: theme.spacing.lg,
+    },
+    modal: { gap: theme.spacing.md },
+    modalTitle: {
+      fontSize: theme.typography.size.lg,
+      fontWeight: theme.typography.weight.bold,
+      color: theme.colors.textPrimary,
+    },
+    modalInput: { minHeight: 96 },
+    modalActions: { flexDirection: 'row', gap: theme.spacing.md },
+  });

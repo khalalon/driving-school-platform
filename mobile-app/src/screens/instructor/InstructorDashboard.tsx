@@ -1,5 +1,5 @@
 /**
- * Instructor Dashboard — « Today » (D-45, 8.3)
+ * Accueil de l'instructeur — « Aujourd'hui » (D-45, 8.3), refondu sur le système (11.4).
  * Single Responsibility: l'accueil de l'instructeur montre sa journée et ce qui l'attend.
  *
  * Bandeau des demandes (L1 `scope=school` pending, X1 pending, E4 pending), timeline du jour
@@ -8,21 +8,24 @@
  * Cloisonné à l'école de l'instructeur : `schoolId` vient de A3 (D-19, D-20).
  */
 
-import React, { useCallback, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
-  RefreshControl,
-} from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Alert, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { useI18n } from '../../context/LanguageContext';
+import { useTheme } from '../../context/ThemeContext';
+import {
+  AppBar,
+  Badge,
+  Button,
+  Card,
+  Chip,
+  EmptyState,
+  Screen,
+  SectionHeader,
+  SkeletonCard,
+} from '../../components/ui';
 import { lessonService } from '../../services/api/LessonService';
 import { examService } from '../../services/api/ExamService';
 import { enrollmentService } from '../../services/api/EnrollmentService';
@@ -37,9 +40,10 @@ import {
   pickCurrentLesson,
 } from '../../models/Lesson';
 import { examTypeLabel, Exam, ExamStatus } from '../../models/Exam';
-import { formatPersonName, formatTime, toLocalDateKey } from '../../utils/format';
-import { colors, typography, spacing, shadows } from '../../theme';
-import { mirrorIcon } from '../../utils/rtl';
+import { dateLocale, formatPersonName, formatTime, toLocalDateKey } from '../../utils/format';
+import { Theme } from '../../theme';
+import { MIN_TOUCH_TARGET } from '../../theme/tokens';
+import { IoniconName, mirrorIcon } from '../../utils/rtl';
 import { AttendanceModal } from './components/AttendanceModal';
 
 interface TodayData {
@@ -60,7 +64,8 @@ const weekLoad = (lessons: Lesson[], from: Date = new Date()) =>
     const key = toLocalDateKey(day);
     return {
       key,
-      label: day.toLocaleDateString('en-US', { weekday: 'short' }),
+      // Jour de la semaine dans la langue du téléphone
+      label: day.toLocaleDateString(dateLocale(), { weekday: 'short' }),
       count: lessons.filter(
         (l) => l.scheduledDate && toLocalDateKey(new Date(l.scheduledDate)) === key
       ).length,
@@ -70,6 +75,8 @@ const weekLoad = (lessons: Lesson[], from: Date = new Date()) =>
 export const InstructorDashboard = ({ navigation }: any) => {
   const { t } = useI18n();
   const { user, logout } = useAuth();
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const schoolId = user?.schoolId ?? null;
   const [data, setData] = useState<TodayData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -98,13 +105,7 @@ export const InstructorDashboard = ({ navigation }: any) => {
           ? enrollmentService.getSchoolRequests(schoolId, EnrollmentStatus.PENDING)
           : Promise.resolve([]),
       ]);
-      setData({
-        today,
-        week,
-        pendingLessons,
-        exams,
-        pendingEnrollments: enrollments.length,
-      });
+      setData({ today, week, pendingLessons, exams, pendingEnrollments: enrollments.length });
     } catch (err) {
       setError(getApiErrorMessage(err, t('today.loadFailed')));
     } finally {
@@ -126,7 +127,7 @@ export const InstructorDashboard = ({ navigation }: any) => {
 
   const handleLogout = async () => {
     await logout();
-    // No need to navigate - AuthContext will trigger navigator rebuild
+    // Pas de navigation : AuthContext reconstruit le navigateur
   };
 
   /** Écran cloisonné à l'école de l'instructeur : `schoolId` vient de A3 (D-19). */
@@ -158,43 +159,26 @@ export const InstructorDashboard = ({ navigation }: any) => {
     }
   };
 
-  const renderHeader = () => {
-    const now = new Date();
-    return (
-      <View style={styles.header}>
-        <View style={styles.headerText}>
-          <Text style={styles.greeting}>
-            {now.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
-          </Text>
-          <Text style={styles.title}>{t('today.title')}</Text>
-          <Text style={styles.subtitle}>
-            {t('today.hi', { name: user?.firstName || t('today.instructor') })}
-          </Text>
-        </View>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-          <Ionicons name="log-out-outline" size={24} color={colors.text.secondary} />
-        </TouchableOpacity>
-      </View>
-    );
-  };
-
+  /** Ce qui attend une réponse : une ligne par file, masquée quand elle est vide. */
   const renderRequests = (home: TodayData) => {
     const lessons = home.pendingLessons.length;
     const codes = home.pendingLessons.filter((l) => l.type === LessonType.CODE).length;
     const exams = home.exams.filter((e) => e.status === ExamStatus.PENDING).length;
     const enrollments = home.pendingEnrollments;
+
     if (lessons + exams + enrollments === 0) {
       return (
-        <View style={styles.quietRow}>
-          <Ionicons name="checkmark-done-outline" size={18} color={colors.success[600]} />
+        <Card style={styles.quiet} elevation="none">
+          <Ionicons name="checkmark-done" size={18} color={theme.colors.successText} />
           <Text style={styles.quietText}>{t('today.noRequests')}</Text>
-        </View>
+        </Card>
       );
     }
+
     const rows = [
       lessons > 0 && {
         key: 'lessons',
-        icon: 'time-outline',
+        icon: 'time-outline' as IoniconName,
         text:
           lessons === 1
             ? t('today.lessonRequestOne')
@@ -204,7 +188,7 @@ export const InstructorDashboard = ({ navigation }: any) => {
       },
       exams > 0 && {
         key: 'exams',
-        icon: 'ribbon-outline',
+        icon: 'ribbon-outline' as IoniconName,
         text:
           exams === 1 ? t('today.examRequestOne') : t('today.examRequestMany', { count: exams }),
         hint: null,
@@ -212,7 +196,7 @@ export const InstructorDashboard = ({ navigation }: any) => {
       },
       enrollments > 0 && {
         key: 'enrollments',
-        icon: 'people-outline',
+        icon: 'people-outline' as IoniconName,
         text:
           enrollments === 1
             ? t('today.enrollmentRequestOne')
@@ -222,29 +206,35 @@ export const InstructorDashboard = ({ navigation }: any) => {
       },
     ].filter(Boolean) as {
       key: string;
-      icon: string;
+      icon: IoniconName;
       text: string;
       hint: string | null;
       onPress: () => void;
     }[];
+
     return (
-      <View style={styles.requestsCard}>
+      <Card style={styles.requests} padded={false}>
         {rows.map((row) => (
-          <TouchableOpacity
+          <Pressable
             key={row.key}
-            style={styles.requestRow}
             onPress={row.onPress}
-            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={row.text}
+            style={({ pressed }) => [styles.requestRow, pressed && styles.pressed]}
           >
-            <Ionicons name={row.icon as any} size={20} color={colors.warning[600]} />
+            <Ionicons name={row.icon} size={20} color={theme.colors.warningText} />
             <View style={styles.requestBody}>
               <Text style={styles.requestText}>{row.text}</Text>
               {row.hint ? <Text style={styles.requestHint}>{row.hint}</Text> : null}
             </View>
-            <Ionicons name={mirrorIcon('chevron-forward')} size={18} color={colors.warning[600]} />
-          </TouchableOpacity>
+            <Ionicons
+              name={mirrorIcon('chevron-forward')}
+              size={18}
+              color={theme.colors.warningText}
+            />
+          </Pressable>
         ))}
-      </View>
+      </Card>
     );
   };
 
@@ -260,77 +250,68 @@ export const InstructorDashboard = ({ navigation }: any) => {
       new Date(lesson.scheduledDate).getTime() + (lesson.durationMinutes ?? 60) * 60000 <=
         Date.now();
     const canRecord = isCurrent || isOverdue;
-    const dotColor = isDone
+    const dotStyle = isDone
       ? lesson.attended === false
-        ? colors.error[500]
-        : colors.success[500]
+        ? styles.dotAbsent
+        : styles.dotDone
       : isCurrent
-        ? colors.primary[600]
-        : colors.neutral[300];
+        ? styles.dotCurrent
+        : styles.dotIdle;
+
     return (
       <View key={lesson.id} style={styles.timelineRow}>
         <View style={styles.timeColumn}>
-          <Text style={[styles.timeText, isCurrent && styles.timeTextCurrent]} numberOfLines={1}>
+          <Text style={[styles.time, isCurrent && styles.timeCurrent]} numberOfLines={1}>
             {formatTime(lesson.scheduledDate)}
           </Text>
         </View>
+
         <View style={styles.rail}>
-          <View style={[styles.dot, { backgroundColor: dotColor }]} />
+          <View style={[styles.dot, dotStyle]} />
           {!isLast ? <View style={styles.railLine} /> : null}
         </View>
+
         <View style={[styles.lessonCard, isCurrent && styles.lessonCardCurrent]}>
           <View style={styles.lessonTop}>
             <Text style={styles.studentName}>
               {formatPersonName(lesson.student, t('today.student'))}
             </Text>
             {isDone ? (
-              <View
-                style={[
-                  styles.chip,
-                  lesson.attended === false ? styles.chipAbsent : styles.chipDone,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    lesson.attended === false ? styles.chipTextAbsent : styles.chipTextDone,
-                  ]}
-                >
-                  {lesson.attended === false ? t('today.absent') : t('today.done')}
-                </Text>
-              </View>
+              <Badge
+                label={lesson.attended === false ? t('today.absent') : t('today.done')}
+                tone={lesson.attended === false ? 'danger' : 'success'}
+              />
             ) : isCurrent ? (
-              <View style={[styles.chip, styles.chipNow]}>
-                <Text style={[styles.chipText, styles.chipTextNow]}>{t('today.now')}</Text>
-              </View>
+              <Badge label={t('today.now')} tone="accent" dot />
             ) : isOverdue ? (
-              <View style={[styles.chip, styles.chipOverdue]}>
-                <Text style={[styles.chipText, styles.chipTextOverdue]}>{t('today.toRecord')}</Text>
-              </View>
+              <Badge label={t('today.toRecord')} tone="warning" />
             ) : null}
           </View>
+
           <Text style={styles.lessonMeta}>
             {lessonTypeLabel(lesson.type) ?? lesson.type}
-            {lesson.durationMinutes ? ` · ${lesson.durationMinutes} min` : ''}
+            {lesson.durationMinutes
+              ? ` · ${t('format.minutes', { count: lesson.durationMinutes })}`
+              : ''}
           </Text>
+
           {canRecord ? (
             <View style={styles.attendanceRow}>
-              <TouchableOpacity
-                style={[styles.attendanceButton, styles.presentButton]}
+              <Button
+                title={t('today.present')}
                 onPress={() => openAttendance(lesson, true)}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="checkmark-circle" size={18} color={colors.text.inverse} />
-                <Text style={styles.presentText}>{t('today.present')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.attendanceButton, styles.absentButton]}
+                size="sm"
+                icon="checkmark-circle"
+                style={styles.attendanceButton}
+              />
+              <Button
+                title={t('today.absent')}
                 onPress={() => openAttendance(lesson, false)}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="close-circle" size={18} color={colors.error[600]} />
-                <Text style={styles.absentText}>{t('today.absent')}</Text>
-              </TouchableOpacity>
+                variant="secondary"
+                size="sm"
+                icon="close-circle"
+                style={styles.attendanceButton}
+              />
             </View>
           ) : null}
         </View>
@@ -343,27 +324,33 @@ export const InstructorDashboard = ({ navigation }: any) => {
       (a.scheduledDate ?? '').localeCompare(b.scheduledDate ?? '')
     );
     const current = pickCurrentLesson(lessons);
+
     return (
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>{t('today.yourLessons')}</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('TodayLessons')}>
-            <Text style={styles.cardLink}>{t('today.fullList')}</Text>
-          </TouchableOpacity>
-        </View>
+      <Card>
+        <SectionHeader
+          title={t('today.yourLessons')}
+          action={{
+            label: t('today.fullList'),
+            onPress: () => navigation.navigate('TodayLessons'),
+          }}
+          style={styles.sectionHeader}
+        />
         {lessons.length === 0 ? (
-          <View style={styles.emptyBlock}>
-            <Text style={styles.emptyText}>{t('today.noLessons')}</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('BookForStudent')}>
-              <Text style={styles.cardLink}>{t('today.bookForStudent')}</Text>
-            </TouchableOpacity>
-          </View>
+          <EmptyState
+            icon="cafe-outline"
+            title={t('today.noLessons')}
+            tone="neutral"
+            action={{
+              label: t('today.bookForStudent'),
+              onPress: () => navigation.navigate('BookForStudent'),
+            }}
+          />
         ) : (
           lessons.map((lesson, index) =>
             renderLesson(lesson, current, index === lessons.length - 1)
           )
         )}
-      </View>
+      </Card>
     );
   };
 
@@ -376,22 +363,25 @@ export const InstructorDashboard = ({ navigation }: any) => {
         toLocalDateKey(new Date(e.dateTime)) === todayKey
     );
     if (exams.length === 0) return null;
+
     return (
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>{t('today.examsToday')}</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('TodayExams')}>
-            <Text style={styles.cardLink}>{t('today.recordResults')}</Text>
-          </TouchableOpacity>
-        </View>
+      <Card>
+        <SectionHeader
+          title={t('today.examsToday')}
+          action={{
+            label: t('today.recordResults'),
+            onPress: () => navigation.navigate('TodayExams'),
+          }}
+          style={styles.sectionHeader}
+        />
         {exams.map((exam) => (
-          <TouchableOpacity
+          <Pressable
             key={exam.id}
-            style={styles.examRow}
             onPress={() => navigation.navigate('TodayExams')}
-            activeOpacity={0.7}
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.examRow, pressed && styles.pressed]}
           >
-            <Text style={styles.timeText} numberOfLines={1}>
+            <Text style={styles.time} numberOfLines={1}>
               {formatTime(exam.dateTime)}
             </Text>
             <View style={styles.examBody}>
@@ -406,12 +396,10 @@ export const InstructorDashboard = ({ navigation }: any) => {
                 {exam.location ? ` · ${exam.location}` : ''}
               </Text>
             </View>
-            <View style={[styles.chip, styles.chipNow]}>
-              <Text style={[styles.chipText, styles.chipTextNow]}>{t('today.result')}</Text>
-            </View>
-          </TouchableOpacity>
+            <Badge label={t('today.result')} tone="accent" />
+          </Pressable>
         ))}
-      </View>
+      </Card>
     );
   };
 
@@ -419,14 +407,16 @@ export const InstructorDashboard = ({ navigation }: any) => {
     const days = weekLoad(home.week);
     const max = Math.max(1, ...days.map((d) => d.count));
     const total = days.reduce((sum, d) => sum + d.count, 0);
+
     return (
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>{t('today.next7days')}</Text>
-          <Text style={styles.cardMeta}>
-            {total === 1 ? t('today.lessonCountOne') : t('today.lessonCountMany', { count: total })}
-          </Text>
-        </View>
+      <Card>
+        <SectionHeader
+          title={t('today.next7days')}
+          subtitle={
+            total === 1 ? t('today.lessonCountOne') : t('today.lessonCountMany', { count: total })
+          }
+          style={styles.sectionHeader}
+        />
         <View style={styles.weekRow}>
           {days.map((day, index) => (
             <View key={day.key} style={styles.weekDay}>
@@ -446,34 +436,39 @@ export const InstructorDashboard = ({ navigation }: any) => {
             </View>
           ))}
         </View>
-      </View>
+      </Card>
     );
   };
 
   const renderLinks = () => (
     <View style={styles.linksRow}>
-      {[
-        {
-          label: t('today.link.bookForStudent'),
-          icon: 'add-circle-outline',
-          route: 'BookForStudent',
-        },
-        { label: t('today.link.enrollments'), icon: 'people-outline', route: 'EnrollmentRequests' },
-        { label: t('today.link.todayExams'), icon: 'ribbon-outline', route: 'TodayExams' },
-        { label: t('today.link.examRequests'), icon: 'clipboard-outline', route: 'ExamRequests' },
-      ].map((link) => (
-        <TouchableOpacity
+      {(
+        [
+          {
+            label: t('today.link.bookForStudent'),
+            icon: 'add-circle-outline',
+            route: 'BookForStudent',
+          },
+          {
+            label: t('today.link.enrollments'),
+            icon: 'people-outline',
+            route: 'EnrollmentRequests',
+          },
+          { label: t('today.link.todayExams'), icon: 'ribbon-outline', route: 'TodayExams' },
+          { label: t('today.link.examRequests'), icon: 'clipboard-outline', route: 'ExamRequests' },
+        ] as { label: string; icon: IoniconName; route: string }[]
+      ).map((link) => (
+        <Chip
           key={link.route}
-          style={styles.linkChip}
+          label={link.label}
+          icon={link.icon}
+          tone="neutral"
           onPress={() =>
             link.route === 'EnrollmentRequests'
               ? openEnrollmentRequests()
               : navigation.navigate(link.route)
           }
-        >
-          <Ionicons name={link.icon as any} size={16} color={colors.text.secondary} />
-          <Text style={styles.linkText}>{link.label}</Text>
-        </TouchableOpacity>
+        />
       ))}
     </View>
   );
@@ -481,19 +476,24 @@ export const InstructorDashboard = ({ navigation }: any) => {
   const renderBody = () => {
     if (loading && !data) {
       return (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.primary[600]} />
-        </View>
+        <>
+          <SkeletonCard lines={2} />
+          <SkeletonCard lines={4} />
+          <SkeletonCard lines={2} />
+        </>
       );
     }
     if (!data) {
       return (
-        <View style={styles.card}>
-          <Text style={styles.emptyText}>{error ?? t('today.nothingYet')}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={load}>
-            <Text style={styles.retryText}>{t('common.retry')}</Text>
-          </TouchableOpacity>
-        </View>
+        <Card>
+          <EmptyState
+            icon="cloud-offline-outline"
+            title={t('today.nothingYet')}
+            message={error ?? undefined}
+            tone="danger"
+            action={{ label: t('common.retry'), onPress: load }}
+          />
+        </Card>
       );
     }
     return (
@@ -508,25 +508,46 @@ export const InstructorDashboard = ({ navigation }: any) => {
     );
   };
 
+  const now = new Date();
+
   return (
-    <View style={styles.container}>
-      {renderHeader()}
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+    <View style={styles.flex}>
+      <AppBar
+        title={t('today.title')}
+        subtitle={now.toLocaleDateString(dateLocale(), {
+          weekday: 'long',
+          month: 'short',
+          day: 'numeric',
+        })}
+        large
+        right={
+          <Pressable
+            onPress={handleLogout}
+            accessibilityRole="button"
+            accessibilityLabel={t('common.logout')}
+            hitSlop={8}
+            style={styles.logout}
+          >
+            <Ionicons name="log-out-outline" size={22} color={theme.colors.textSecondary} />
+          </Pressable>
+        }
+      />
+
+      <Screen
+        contentContainerStyle={styles.content}
+        edges={[]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[colors.primary[600]]}
+            colors={[theme.colors.accent]}
+            tintColor={theme.colors.accent}
           />
         }
       >
         {renderBody()}
-      </ScrollView>
+      </Screen>
 
-      {/* Présence depuis la carte (L7) */}
       <AttendanceModal
         lesson={selectedLesson}
         initialAttended={initialAttended}
@@ -538,341 +559,111 @@ export const InstructorDashboard = ({ navigation }: any) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.secondary,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing['4xl'],
-    paddingBottom: spacing.lg,
-    backgroundColor: colors.background.primary,
-  },
-  headerText: {
-    flex: 1,
-  },
-  greeting: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-  },
-  title: {
-    fontSize: typography.size['3xl'],
-    fontWeight: typography.weight.bold,
-    color: colors.text.primary,
-  },
-  subtitle: {
-    fontSize: typography.size.sm,
-    color: colors.text.tertiary,
-    marginTop: spacing.xs,
-  },
-  logoutButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.background.tertiary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: spacing.xl,
-    gap: spacing.base,
-    paddingBottom: spacing['3xl'],
-  },
-  center: {
-    paddingVertical: spacing['5xl'],
-    alignItems: 'center',
-  },
-  errorBanner: {
-    color: colors.error[600],
-    fontSize: typography.size.sm,
-  },
-  retryButton: {
-    marginTop: spacing.md,
-    alignSelf: 'flex-start',
-    backgroundColor: colors.primary[600],
-    borderRadius: 10,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-  },
-  retryText: {
-    color: colors.text.inverse,
-    fontWeight: typography.weight.semibold,
-  },
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    flex: { flex: 1, backgroundColor: theme.colors.surface },
+    content: { paddingTop: theme.spacing.base, gap: theme.spacing.base },
+    logout: {
+      width: MIN_TOUCH_TARGET,
+      height: MIN_TOUCH_TARGET,
+      borderRadius: theme.radius.pill,
+      backgroundColor: theme.colors.surfaceMuted,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    sectionHeader: { marginBottom: theme.spacing.md },
+    pressed: { opacity: 0.7 },
 
-  // Demandes
-  quietRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  quietText: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-  },
-  requestsCard: {
-    backgroundColor: colors.warning[50],
-    borderRadius: 16,
-    paddingHorizontal: spacing.lg,
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-  },
-  requestRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: spacing.md,
-  },
-  requestBody: {
-    flex: 1,
-  },
-  requestText: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.primary,
-  },
-  requestHint: {
-    fontSize: typography.size.xs,
-    color: colors.warning[600],
-    marginTop: 2,
-  },
+    // Files d'attente
+    quiet: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
+    quietText: { fontSize: theme.typography.size.sm, color: theme.colors.successText },
+    requests: { backgroundColor: theme.colors.warningSoft, borderColor: theme.colors.warning },
+    requestRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.md,
+      paddingHorizontal: theme.spacing.base,
+      paddingVertical: theme.spacing.md,
+      minHeight: MIN_TOUCH_TARGET,
+    },
+    requestBody: { flex: 1, gap: 2 },
+    requestText: {
+      fontSize: theme.typography.size.sm,
+      fontWeight: theme.typography.weight.medium,
+      color: theme.colors.warningText,
+    },
+    requestHint: { fontSize: theme.typography.size.xs, color: theme.colors.warningText },
 
-  // Cartes
-  card: {
-    backgroundColor: colors.background.primary,
-    borderRadius: 20,
-    padding: spacing.xl,
-    ...shadows.sm,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.base,
-  },
-  cardTitle: {
-    fontSize: typography.size.lg,
-    fontWeight: typography.weight.bold,
-    color: colors.text.primary,
-  },
-  cardLink: {
-    fontSize: typography.size.sm,
-    color: colors.primary[600],
-    fontWeight: typography.weight.medium,
-  },
-  cardMeta: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-  },
-  emptyBlock: {
-    gap: spacing.sm,
-  },
-  emptyText: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-  },
+    // Timeline du jour
+    timelineRow: { flexDirection: 'row', gap: theme.spacing.sm },
+    timeColumn: { width: 56, paddingTop: 2 },
+    time: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    timeCurrent: {
+      color: theme.colors.accentText,
+      fontWeight: theme.typography.weight.semibold,
+    },
+    rail: { width: 16, alignItems: 'center' },
+    dot: { width: 12, height: 12, borderRadius: 6, marginTop: 5 },
+    dotDone: { backgroundColor: theme.colors.success },
+    dotAbsent: { backgroundColor: theme.colors.danger },
+    dotCurrent: { backgroundColor: theme.colors.accent },
+    dotIdle: { backgroundColor: theme.colors.borderStrong },
+    railLine: { flex: 1, width: 2, backgroundColor: theme.colors.border, marginVertical: 2 },
+    lessonCard: {
+      flex: 1,
+      paddingBottom: theme.spacing.lg,
+      gap: theme.spacing.xs,
+    },
+    lessonCardCurrent: {},
+    lessonTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: theme.spacing.sm,
+    },
+    studentName: {
+      flexShrink: 1,
+      fontSize: theme.typography.size.base,
+      fontWeight: theme.typography.weight.semibold,
+      color: theme.colors.textPrimary,
+    },
+    lessonMeta: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    attendanceRow: { flexDirection: 'row', gap: theme.spacing.sm, marginTop: theme.spacing.xs },
+    attendanceButton: { flex: 1 },
 
-  // Timeline
-  timelineRow: {
-    flexDirection: 'row',
-  },
-  timeColumn: {
-    // « 10:00 AM » doit tenir sur une ligne
-    width: 68,
-    paddingTop: spacing.md,
-  },
-  timeText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.secondary,
-  },
-  timeTextCurrent: {
-    color: colors.primary[700],
-  },
-  rail: {
-    width: 20,
-    alignItems: 'center',
-    paddingTop: spacing.md + 4,
-  },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  railLine: {
-    flex: 1,
-    width: 2,
-    backgroundColor: colors.border.default,
-    marginTop: spacing.xs,
-  },
-  lessonCard: {
-    flex: 1,
-    marginStart: spacing.sm,
-    marginBottom: spacing.md,
-    padding: spacing.md,
-    borderRadius: 14,
-    backgroundColor: colors.background.secondary,
-  },
-  lessonCardCurrent: {
-    backgroundColor: colors.primary[50],
-    borderWidth: 1,
-    borderColor: colors.primary[200],
-  },
-  lessonTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  studentName: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.primary,
-    flexShrink: 1,
-  },
-  lessonMeta: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-    marginTop: 2,
-  },
-  chip: {
-    borderRadius: 999,
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: 2,
-  },
-  chipText: {
-    fontSize: typography.size.xs,
-    fontWeight: typography.weight.semibold,
-  },
-  chipDone: {
-    backgroundColor: colors.success[50],
-  },
-  chipTextDone: {
-    color: colors.success[600],
-  },
-  chipAbsent: {
-    backgroundColor: colors.error[50],
-  },
-  chipTextAbsent: {
-    color: colors.error[600],
-  },
-  chipNow: {
-    backgroundColor: colors.primary[600],
-  },
-  chipOverdue: {
-    backgroundColor: colors.warning[50],
-  },
-  chipTextOverdue: {
-    color: colors.warning[600],
-  },
-  chipTextNow: {
-    color: colors.text.inverse,
-  },
-  attendanceRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.md,
-  },
-  attendanceButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    borderRadius: 10,
-    paddingVertical: spacing.sm + 2,
-  },
-  presentButton: {
-    backgroundColor: colors.success[600],
-  },
-  presentText: {
-    color: colors.text.inverse,
-    fontWeight: typography.weight.semibold,
-  },
-  absentButton: {
-    backgroundColor: colors.background.primary,
-    borderWidth: 1,
-    borderColor: colors.error[500],
-  },
-  absentText: {
-    color: colors.error[600],
-    fontWeight: typography.weight.semibold,
-  },
+    // Examens du jour
+    examRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+      paddingVertical: theme.spacing.md,
+      minHeight: MIN_TOUCH_TARGET,
+    },
+    examBody: { flex: 1, gap: 2 },
 
-  // Examens
-  examRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  examBody: {
-    flex: 1,
-  },
+    // Charge de la semaine
+    weekRow: { flexDirection: 'row', gap: theme.spacing.xs, height: 120 },
+    weekDay: { flex: 1, alignItems: 'center', gap: theme.spacing.xs },
+    weekCount: { fontSize: theme.typography.size.xs, color: theme.colors.textSecondary },
+    barTrack: { flex: 1, width: '60%', justifyContent: 'flex-end' },
+    bar: {
+      width: '100%',
+      borderRadius: theme.radius.sm,
+      backgroundColor: theme.colors.accentSoft,
+    },
+    barToday: { backgroundColor: theme.colors.accent },
+    weekLabel: { fontSize: theme.typography.size.xs, color: theme.colors.textMuted },
+    weekLabelToday: {
+      color: theme.colors.accentText,
+      fontWeight: theme.typography.weight.semibold,
+    },
 
-  // Semaine
-  weekRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    height: 110,
-  },
-  weekDay: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  weekCount: {
-    fontSize: typography.size.xs,
-    color: colors.text.secondary,
-    height: 16,
-  },
-  barTrack: {
-    flex: 1,
-    width: 14,
-    justifyContent: 'flex-end',
-    marginVertical: spacing.xs,
-  },
-  bar: {
-    width: '100%',
-    borderRadius: 7,
-    backgroundColor: colors.primary[200],
-  },
-  barToday: {
-    backgroundColor: colors.primary[600],
-  },
-  weekLabel: {
-    fontSize: typography.size.xs,
-    color: colors.text.tertiary,
-  },
-  weekLabelToday: {
-    color: colors.primary[700],
-    fontWeight: typography.weight.semibold,
-  },
-
-  // Liens
-  linksRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  linkChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: colors.background.primary,
-    borderRadius: 999,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-  },
-  linkText: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-  },
-});
+    linksRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
+    errorBanner: {
+      fontSize: theme.typography.size.sm,
+      color: theme.colors.dangerText,
+      backgroundColor: theme.colors.dangerSoft,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing.md,
+    },
+  });

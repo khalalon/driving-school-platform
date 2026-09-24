@@ -6,8 +6,12 @@
 
 import { getLanguage, t } from '../i18n';
 
-/** Locale de formatage des dates selon la langue courante. */
-const locale = (): string => (getLanguage() === 'ar' ? 'ar-TN' : 'fr-FR');
+/**
+ * Locale de formatage des dates selon la **langue choisie** (D-47) — jamais celle du téléphone :
+ * une application en français sur un téléphone anglais afficherait sinon « Thursday, Sep 24 ».
+ */
+export const dateLocale = (): string => (getLanguage() === 'ar' ? 'ar-TN' : 'fr-FR');
+const locale = dateLocale;
 
 /**
  * Montant dans la devise de l'école (D-43, code ISO 4217 lu par `useSchoolCurrency`). Tant que

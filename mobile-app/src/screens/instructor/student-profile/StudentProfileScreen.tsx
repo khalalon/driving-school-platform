@@ -1,62 +1,48 @@
 /**
- * Student Profile Screen (Fiche Client)
- * Tab Navigator with 3 tabs: Info, Lessons, Exams
+ * Fiche élève côté instructeur (11.4) — trois onglets : informations, leçons, examens (P1–P7).
+ * L'écran est ouvert avec `{ studentId (users.id), schoolId, studentName }` (D-28).
  */
 
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useMemo } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
-import { Ionicons } from '@expo/vector-icons';
 import { StudentInfoTab } from './tabs/StudentInfoTab';
 import { StudentLessonsTab } from './tabs/StudentLessonsTab';
 import { StudentExamsTab } from './tabs/StudentExamsTab';
-import { colors, typography, spacing } from '../../../theme';
 import { useI18n } from '../../../context/LanguageContext';
-import { mirrorIcon } from '../../../utils/rtl';
+import { useTheme } from '../../../context/ThemeContext';
+import { AppBar } from '../../../components/ui';
+import { Theme } from '../../../theme';
 
 const Tab = createMaterialTopTabNavigator();
 
 export const StudentProfileScreen = ({ route, navigation }: any) => {
   const { t } = useI18n();
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { studentId, schoolId, studentName } = route.params;
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name={mirrorIcon('arrow-back')} size={24} color={colors.text.primary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {studentName}
-        </Text>
-      </View>
+    <View style={styles.flex}>
+      <AppBar title={studentName} onBack={() => navigation.goBack()} backLabel={t('common.back')} />
 
-      {/* Tab Navigator */}
       <Tab.Navigator
         screenOptions={{
-          tabBarActiveTintColor: colors.primary[600],
-          tabBarInactiveTintColor: colors.text.secondary,
+          tabBarActiveTintColor: theme.colors.accent,
+          tabBarInactiveTintColor: theme.colors.textSecondary,
           tabBarLabelStyle: {
-            fontSize: typography.size.sm,
-            fontWeight: typography.weight.semibold,
+            fontSize: theme.typography.size.sm,
+            fontWeight: theme.typography.weight.semibold,
             textTransform: 'none',
           },
           tabBarStyle: {
-            backgroundColor: colors.background.primary,
+            backgroundColor: theme.colors.surfaceRaised,
             elevation: 0,
             shadowOpacity: 0,
-            borderBottomWidth: 1,
-            borderBottomColor: colors.neutral[200],
+            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderBottomColor: theme.colors.border,
           },
-          tabBarIndicatorStyle: {
-            backgroundColor: colors.primary[600],
-            height: 3,
-          },
+          tabBarIndicatorStyle: { backgroundColor: theme.colors.accent, height: 3 },
         }}
       >
         <Tab.Screen
@@ -82,29 +68,7 @@ export const StudentProfileScreen = ({ route, navigation }: any) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.primary,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.md,
-    backgroundColor: colors.background.primary,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.neutral[200],
-  },
-  backButton: {
-    padding: spacing.xs,
-    marginEnd: spacing.sm,
-  },
-  headerTitle: {
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.primary,
-    flex: 1,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    flex: { flex: 1, backgroundColor: theme.colors.surface },
+  });

@@ -14,6 +14,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { AppBar, Button, Card, Chip, Field, Screen } from '../../components/ui';
 import { examTypeLabel, ExamType } from '../../models/Exam';
 import { Theme } from '../../theme';
+import { dateLocale } from '../../utils/format';
 
 /** Demain à 9 h : première date proposée, dans le futur (exigé par X2). */
 const defaultPreferredDate = (): Date => {
@@ -128,7 +129,7 @@ export const RequestExamScreen = ({ navigation }: any) => {
               style={({ pressed }) => [styles.dateButton, styles.grow, pressed && styles.pressed]}
             >
               <Ionicons name="calendar-outline" size={20} color={theme.colors.textSecondary} />
-              <Text style={styles.dateText}>{date.toLocaleDateString()}</Text>
+              <Text style={styles.dateText}>{date.toLocaleDateString(dateLocale())}</Text>
             </Pressable>
             <Pressable
               onPress={() => setShowTimePicker(true)}
@@ -137,7 +138,7 @@ export const RequestExamScreen = ({ navigation }: any) => {
             >
               <Ionicons name="time-outline" size={20} color={theme.colors.textSecondary} />
               <Text style={styles.dateText}>
-                {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {time.toLocaleTimeString(dateLocale(), { hour: '2-digit', minute: '2-digit' })}
               </Text>
             </Pressable>
           </View>

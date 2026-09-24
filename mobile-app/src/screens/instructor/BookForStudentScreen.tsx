@@ -1,6 +1,5 @@
 /**
- * Book For Student Screen - Minimal & Elegant
- * Single Responsibility: Instructor books a lesson directly for an enrolled student (L4)
+ * Réserver pour un élève (11.4) — L4.
  *
  * L'élève est choisi dans la liste des élèves autorisés de l'école (S6, D-25) : `studentId`
  * est un users.id, jamais un email. La leçon est planifiée d'emblée (`scheduled`) avec
@@ -9,30 +8,22 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  TextInput,
-  ActivityIndicator,
-  Alert,
-  Platform,
-} from 'react-native';
+import { Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../../context/AuthContext';
 import { useI18n } from '../../context/LanguageContext';
+import { useTheme } from '../../context/ThemeContext';
+import { AppBar, Button, Card, Chip, Field, ListRow, Screen, Skeleton } from '../../components/ui';
 import { lessonService } from '../../services/api/LessonService';
 import { schoolService } from '../../services/api/SchoolService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
 import { lessonTypeLabel, LESSON_TYPES, LessonType } from '../../models/Lesson';
 import { SchoolPricing, SchoolStudent } from '../../models/School';
 import { useSchoolCurrency } from '../../hooks/useSchoolCurrency';
-import { formatAmount, formatPersonName } from '../../utils/format';
-import { colors, typography, spacing, shadows } from '../../theme';
+import { dateLocale, formatAmount, formatPersonName } from '../../utils/format';
+import { Theme } from '../../theme';
 
 const DEFAULT_DURATION_MINUTES = 60;
 
@@ -47,6 +38,8 @@ const tomorrowMorning = (): Date => {
 export const BookForStudentScreen = ({ navigation }: any) => {
   const { t } = useI18n();
   const { user } = useAuth();
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const schoolId = user?.schoolId;
   const currency = useSchoolCurrency(schoolId);
 
@@ -75,10 +68,7 @@ export const BookForStudentScreen = ({ navigation }: any) => {
   const loadSchoolData = async () => {
     if (!schoolId) {
       Alert.alert(t('today.noSchool'), t('today.noSchoolText'), [
-        {
-          text: 'OK',
-          onPress: () => navigation.navigate('InstructorDashboard'),
-        },
+        { text: t('common.ok'), onPress: () => navigation.navigate('InstructorDashboard') },
       ]);
       return;
     }
@@ -190,12 +180,7 @@ export const BookForStudentScreen = ({ navigation }: any) => {
         t('bookFor.booked', {
           student: formatPersonName(selectedStudent, t('attendance.theStudent')),
         }),
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.navigate('InstructorDashboard'),
-          },
-        ]
+        [{ text: t('common.ok'), onPress: () => navigation.navigate('InstructorDashboard') }]
       );
     } catch (error) {
       Alert.alert(t('common.error'), getApiErrorMessage(error, t('bookFor.bookFailed')));
@@ -204,166 +189,150 @@ export const BookForStudentScreen = ({ navigation }: any) => {
     }
   };
 
+  const studentMeta = (student: SchoolStudent) =>
+    `${student.email} · ${t('bookFor.lessonsCompleted', { count: student.completedLessons })}`;
+
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t('bookFor.title')}</Text>
-      </View>
+    <View style={styles.flex}>
+      <AppBar title={t('bookFor.title')} large />
 
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.infoBox}>
-          <Ionicons name="information-circle-outline" size={24} color={colors.primary[600]} />
-          <Text style={styles.infoText}>
-            Book a lesson directly for an enrolled student (walk-in or phone booking). You will be
-            the instructor of this lesson.
-          </Text>
-        </View>
+      <Screen contentContainerStyle={styles.content} edges={[]}>
+        <Card highlighted elevation="none" style={styles.info}>
+          <Ionicons name="information-circle" size={22} color={theme.colors.accentText} />
+          <Text style={styles.infoText}>{t('bookFor.info')}</Text>
+        </Card>
 
-        {/* Student (S6) */}
+        {/* Élève (S6) */}
         <View style={styles.section}>
           <Text style={styles.label}>{t('bookFor.student')}</Text>
           {selectedStudent ? (
-            <View style={styles.selectedStudent}>
-              <View style={styles.studentAvatar}>
-                <Ionicons name="person" size={20} color={colors.primary[600]} />
-              </View>
-              <View style={styles.studentInfo}>
-                <Text style={styles.studentName}>{formatPersonName(selectedStudent)}</Text>
-                <Text style={styles.studentMeta}>
-                  {selectedStudent.email} · {selectedStudent.completedLessons} lessons completed
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => openStudentProfile(selectedStudent)}
-                style={styles.clearButton}
-                activeOpacity={0.7}
-                accessibilityLabel="View student profile"
-              >
-                <Ionicons name="person-circle-outline" size={24} color={colors.primary[600]} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setSelectedStudent(null)}
-                style={styles.clearButton}
-                activeOpacity={0.7}
-                accessibilityLabel="Change student"
-              >
-                <Ionicons name="close-circle" size={22} color={colors.neutral[400]} />
-              </TouchableOpacity>
-            </View>
+            <Card padded={false}>
+              <ListRow
+                title={formatPersonName(selectedStudent)}
+                subtitle={studentMeta(selectedStudent)}
+                icon="person"
+                tone="accent"
+                style={styles.row}
+                trailing={
+                  <View style={styles.rowActions}>
+                    <Pressable
+                      onPress={() => openStudentProfile(selectedStudent)}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('bookFor.viewProfile')}
+                    >
+                      <Ionicons
+                        name="person-circle-outline"
+                        size={24}
+                        color={theme.colors.accentText}
+                      />
+                    </Pressable>
+                    <Pressable
+                      onPress={() => setSelectedStudent(null)}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('bookFor.changeStudent')}
+                    >
+                      <Ionicons name="close-circle" size={22} color={theme.colors.textMuted} />
+                    </Pressable>
+                  </View>
+                }
+              />
+            </Card>
           ) : (
             <>
-              <View style={styles.inputContainer}>
-                <Ionicons
-                  name="search-outline"
-                  size={20}
-                  color={colors.neutral[400]}
-                  style={styles.inputIcon}
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder={t('bookFor.searchPlaceholder')}
-                  placeholderTextColor={colors.neutral[400]}
-                  value={search}
-                  onChangeText={setSearch}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
-              <View style={styles.studentList}>
+              <Field
+                label={t('bookFor.student')}
+                placeholder={t('bookFor.searchPlaceholder')}
+                value={search}
+                onChangeText={setSearch}
+                icon="search-outline"
+                autoCapitalize="none"
+                autoCorrect={false}
+                containerStyle={styles.search}
+              />
+              <Card padded={false}>
                 {loadingStudents ? (
-                  <ActivityIndicator
-                    size="small"
-                    color={colors.primary[600]}
-                    style={styles.listLoader}
-                  />
+                  <View style={styles.listLoader}>
+                    <Skeleton height={18} />
+                    <Skeleton height={18} width="70%" />
+                  </View>
                 ) : filteredStudents.length === 0 ? (
-                  <Text style={styles.emptyText}>
+                  <Text style={styles.empty}>
                     {students.length === 0 ? t('bookFor.noStudents') : t('bookFor.noMatch')}
                   </Text>
                 ) : (
-                  filteredStudents.map((student) => (
-                    <TouchableOpacity
+                  filteredStudents.map((student, index) => (
+                    <ListRow
                       key={student.studentId}
-                      style={styles.studentRow}
+                      title={formatPersonName(student)}
+                      subtitle={studentMeta(student)}
+                      icon="person-outline"
+                      tone="neutral"
                       onPress={() => setSelectedStudent(student)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.studentAvatar}>
-                        <Ionicons name="person-outline" size={20} color={colors.primary[600]} />
-                      </View>
-                      <View style={styles.studentInfo}>
-                        <Text style={styles.studentName}>{formatPersonName(student)}</Text>
-                        <Text style={styles.studentMeta}>
-                          {student.email} · {student.completedLessons} lessons completed
-                        </Text>
-                      </View>
-                      <TouchableOpacity
-                        onPress={() => openStudentProfile(student)}
-                        style={styles.clearButton}
-                        activeOpacity={0.7}
-                        accessibilityLabel="View student profile"
-                      >
-                        <Ionicons
-                          name="person-circle-outline"
-                          size={24}
-                          color={colors.primary[600]}
-                        />
-                      </TouchableOpacity>
-                    </TouchableOpacity>
+                      style={index === filteredStudents.length - 1 ? styles.rowLast : styles.row}
+                      trailing={
+                        <Pressable
+                          onPress={() => openStudentProfile(student)}
+                          hitSlop={8}
+                          accessibilityRole="button"
+                          accessibilityLabel={t('bookFor.viewProfile')}
+                        >
+                          <Ionicons
+                            name="person-circle-outline"
+                            size={24}
+                            color={theme.colors.accentText}
+                          />
+                        </Pressable>
+                      }
+                    />
                   ))
                 )}
-              </View>
+              </Card>
             </>
           )}
         </View>
 
-        {/* Lesson type (D-18) */}
+        {/* Type de leçon (D-18) */}
         <View style={styles.section}>
           <Text style={styles.label}>{t('book.lessonType')}</Text>
-          <View style={styles.typeContainer}>
-            {LESSON_TYPES.map((type) => {
-              const active = lessonType === type;
-              return (
-                <TouchableOpacity
-                  key={type}
-                  style={[styles.typeButton, active && styles.typeButtonActive]}
-                  onPress={() => setLessonType(type)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.typeButtonText, active && styles.typeButtonTextActive]}>
-                    {lessonTypeLabel(type)}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+          <View style={styles.types}>
+            {LESSON_TYPES.map((type) => (
+              <Chip
+                key={type}
+                label={lessonTypeLabel(type)}
+                selected={lessonType === type}
+                onPress={() => setLessonType(type)}
+              />
+            ))}
           </View>
         </View>
 
-        {/* Date & time */}
+        {/* Date et heure */}
         <View style={styles.section}>
           <Text style={styles.label}>{t('lessonRequests.dateTime')}</Text>
           <View style={styles.dateRow}>
-            <TouchableOpacity
-              style={[styles.dateButton, styles.dateButtonGrow]}
+            <Pressable
               onPress={() => setShowDatePicker(true)}
-              activeOpacity={0.7}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.dateButton, styles.grow, pressed && styles.pressed]}
             >
-              <Ionicons name="calendar-outline" size={20} color={colors.text.secondary} />
-              <Text style={styles.dateText}>{scheduledDate.toLocaleDateString()}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.dateButton}
+              <Ionicons name="calendar-outline" size={20} color={theme.colors.textSecondary} />
+              <Text style={styles.dateText}>{scheduledDate.toLocaleDateString(dateLocale())}</Text>
+            </Pressable>
+            <Pressable
               onPress={() => setShowTimePicker(true)}
-              activeOpacity={0.7}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.dateButton, pressed && styles.pressed]}
             >
-              <Ionicons name="time-outline" size={20} color={colors.text.secondary} />
+              <Ionicons name="time-outline" size={20} color={theme.colors.textSecondary} />
               <Text style={styles.dateText}>
-                {scheduledDate.toLocaleTimeString([], {
+                {scheduledDate.toLocaleTimeString(dateLocale(), {
                   hour: '2-digit',
                   minute: '2-digit',
                 })}
               </Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
           {showDatePicker && (
             <DateTimePicker
@@ -386,305 +355,113 @@ export const BookForStudentScreen = ({ navigation }: any) => {
           )}
         </View>
 
-        {/* Duration */}
-        <View style={styles.section}>
-          <Text style={styles.label}>{t('lessonRequests.duration')}</Text>
-          <View style={styles.inputContainer}>
-            <Ionicons
-              name="hourglass-outline"
-              size={20}
-              color={colors.neutral[400]}
-              style={styles.inputIcon}
-            />
-            <TextInput
-              style={styles.input}
-              value={duration}
-              onChangeText={setDuration}
-              keyboardType="number-pad"
-              placeholder={String(DEFAULT_DURATION_MINUTES)}
-              placeholderTextColor={colors.neutral[400]}
-            />
-          </View>
-        </View>
+        <Field
+          label={t('lessonRequests.duration')}
+          value={duration}
+          onChangeText={setDuration}
+          keyboardType="number-pad"
+          placeholder={String(DEFAULT_DURATION_MINUTES)}
+          icon="hourglass-outline"
+        />
 
-        {/* Price (D-30) */}
-        <View style={styles.section}>
-          <Text style={styles.label}>
-            Price{currency ? ` (${currency})` : ''}
-            {priceRequired ? ' — required' : ''}
-          </Text>
-          {rate ? (
-            <Text style={styles.rateText}>
-              School rate: {formatAmount(rate.price, currency)} (applied automatically)
+        {/* Prix (D-30) : la grille fait foi, la saisie n'apparaît qu'à défaut */}
+        {rate ? (
+          <View style={styles.section}>
+            <Text style={styles.label}>
+              {t('bookFor.price')}
+              {currency ? ` (${currency})` : ''}
             </Text>
-          ) : (
-            <>
-              <View style={styles.inputContainer}>
-                <Ionicons
-                  name="cash-outline"
-                  size={20}
-                  color={colors.neutral[400]}
-                  style={styles.inputIcon}
-                />
-                <TextInput
-                  style={styles.input}
-                  value={price}
-                  onChangeText={setPrice}
-                  keyboardType="decimal-pad"
-                  placeholder="0.00"
-                  placeholderTextColor={colors.neutral[400]}
-                />
-              </View>
-              <Text style={styles.hintText}>
-                {priceRequired ? t('lessonRequests.noRate') : t('lessonRequests.leaveEmpty')}
-              </Text>
-            </>
-          )}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.label}>{t('bookFor.notes')}</Text>
-          <TextInput
-            style={styles.notesInput}
-            placeholder={t('bookFor.notesPlaceholder')}
-            placeholderTextColor={colors.neutral[400]}
-            value={notes}
-            onChangeText={setNotes}
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
+            <Text style={styles.hint}>
+              {t('bookFor.schoolRate', { amount: formatAmount(rate.price, currency) })}
+            </Text>
+          </View>
+        ) : (
+          <Field
+            label={`${t('bookFor.price')}${currency ? ` (${currency})` : ''}${
+              priceRequired ? ` — ${t('bookFor.required')}` : ''
+            }`}
+            hint={priceRequired ? t('lessonRequests.noRate') : t('lessonRequests.leaveEmpty')}
+            value={price}
+            onChangeText={setPrice}
+            keyboardType="decimal-pad"
+            placeholder="0.00"
+            icon="cash-outline"
           />
-        </View>
+        )}
 
-        <TouchableOpacity
-          style={[styles.bookButton, (loading || !selectedStudent) && styles.disabledButton]}
+        <Field
+          label={t('bookFor.notes')}
+          placeholder={t('bookFor.notesPlaceholder')}
+          value={notes}
+          onChangeText={setNotes}
+          multiline
+          numberOfLines={4}
+          textAlignVertical="top"
+          style={styles.notes}
+        />
+
+        <Button
+          title={t('bookFor.book')}
           onPress={handleBookLesson}
-          disabled={loading || !selectedStudent}
-          activeOpacity={0.8}
-        >
-          {loading ? (
-            <ActivityIndicator size="small" color={colors.text.inverse} />
-          ) : (
-            <>
-              <Text style={styles.bookButtonText}>{t('bookFor.book')}</Text>
-              <Ionicons name="checkmark" size={20} color={colors.text.inverse} />
-            </>
-          )}
-        </TouchableOpacity>
-      </ScrollView>
+          loading={loading}
+          disabled={!selectedStudent}
+          icon="checkmark"
+          iconPosition="trailing"
+          fullWidth
+          style={styles.submit}
+        />
+      </Screen>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.secondary,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing['4xl'],
-    paddingBottom: spacing.lg,
-    backgroundColor: colors.background.primary,
-    gap: spacing.md,
-  },
-  headerTitle: {
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.bold,
-    color: colors.text.primary,
-  },
-  content: {
-    padding: spacing.xl,
-  },
-  infoBox: {
-    flexDirection: 'row',
-    backgroundColor: colors.primary[50],
-    padding: spacing.base,
-    borderRadius: 12,
-    gap: spacing.md,
-    marginBottom: spacing.xl,
-  },
-  infoText: {
-    flex: 1,
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-    lineHeight: typography.size.sm * typography.lineHeight.normal,
-  },
-  section: {
-    marginBottom: spacing.xl,
-  },
-  label: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.medium,
-    color: colors.text.primary,
-    marginBottom: spacing.sm,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background.primary,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    paddingHorizontal: spacing.base,
-    height: 52,
-  },
-  inputIcon: {
-    marginEnd: spacing.md,
-  },
-  input: {
-    flex: 1,
-    fontSize: typography.size.base,
-    color: colors.text.primary,
-  },
-  studentList: {
-    marginTop: spacing.sm,
-    backgroundColor: colors.background.primary,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    maxHeight: 280,
-    overflow: 'hidden',
-  },
-  listLoader: {
-    padding: spacing.lg,
-  },
-  studentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingHorizontal: spacing.base,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.light,
-  },
-  selectedStudent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.background.primary,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.primary[600],
-    padding: spacing.base,
-  },
-  studentAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primary[50],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  studentInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  studentName: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.primary,
-  },
-  studentMeta: {
-    fontSize: typography.size.xs,
-    color: colors.text.tertiary,
-  },
-  clearButton: {
-    padding: spacing.xs,
-  },
-  emptyText: {
-    padding: spacing.lg,
-    textAlign: 'center',
-    fontSize: typography.size.sm,
-    color: colors.text.tertiary,
-  },
-  typeContainer: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  typeButton: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.background.primary,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    paddingVertical: spacing.md,
-  },
-  typeButtonActive: {
-    backgroundColor: colors.primary[600],
-    borderColor: colors.primary[600],
-  },
-  typeButtonText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.medium,
-    color: colors.text.secondary,
-  },
-  typeButtonTextActive: {
-    color: colors.text.inverse,
-  },
-  dateRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  dateButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background.primary,
-    paddingHorizontal: spacing.base,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    gap: spacing.sm,
-    height: 52,
-  },
-  dateButtonGrow: {
-    flex: 1,
-  },
-  dateText: {
-    fontSize: typography.size.base,
-    color: colors.text.primary,
-  },
-  rateText: {
-    fontSize: typography.size.sm,
-    color: colors.success[600],
-    fontWeight: typography.weight.medium,
-  },
-  hintText: {
-    fontSize: typography.size.xs,
-    color: colors.text.tertiary,
-    marginTop: spacing.xs,
-  },
-  notesInput: {
-    backgroundColor: colors.background.primary,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    padding: spacing.base,
-    fontSize: typography.size.base,
-    color: colors.text.primary,
-    minHeight: 100,
-  },
-  bookButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary[600],
-    paddingVertical: spacing.base,
-    borderRadius: 12,
-    gap: spacing.sm,
-    marginTop: spacing.base,
-    ...shadows.sm,
-  },
-  bookButtonText: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.inverse,
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    flex: { flex: 1, backgroundColor: theme.colors.surface },
+    content: { paddingTop: theme.spacing.base, gap: theme.spacing.lg },
+    info: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.md },
+    infoText: {
+      flex: 1,
+      fontSize: theme.typography.size.sm,
+      color: theme.colors.accentText,
+      lineHeight: theme.typography.size.sm * theme.typography.lineHeight.normal,
+    },
+    section: { gap: theme.spacing.sm },
+    label: {
+      fontSize: theme.typography.size.sm,
+      fontWeight: theme.typography.weight.medium,
+      color: theme.colors.textSecondary,
+    },
+    search: { marginBottom: theme.spacing.sm },
+    row: {
+      paddingHorizontal: theme.spacing.base,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+    },
+    rowLast: { paddingHorizontal: theme.spacing.base },
+    rowActions: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
+    listLoader: { padding: theme.spacing.base, gap: theme.spacing.sm },
+    empty: {
+      padding: theme.spacing.base,
+      fontSize: theme.typography.size.sm,
+      color: theme.colors.textMuted,
+    },
+    types: { flexDirection: 'row', gap: theme.spacing.sm, flexWrap: 'wrap' },
+    dateRow: { flexDirection: 'row', gap: theme.spacing.md },
+    dateButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+      backgroundColor: theme.colors.surfaceRaised,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: theme.radius.md,
+      paddingHorizontal: theme.spacing.base,
+      paddingVertical: theme.spacing.md,
+    },
+    grow: { flex: 1 },
+    pressed: { opacity: 0.7 },
+    dateText: { fontSize: theme.typography.size.base, color: theme.colors.textPrimary },
+    hint: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    notes: { minHeight: 96 },
+    submit: { marginTop: theme.spacing.sm },
+  });

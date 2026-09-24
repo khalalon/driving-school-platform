@@ -1,31 +1,25 @@
 /**
- * Attendance Modal — présence d'une leçon (L7), partagée par `TodayLessonsScreen` et
- * l'accueil « Today » (8.3). Une leçon = un élève (D-34) ; la note n'a de sens que si l'élève
+ * Présence d'une leçon (L7), partagée par `TodayLessonsScreen` et l'accueil « Aujourd'hui » (8.3),
+ * refondue sur le système (11.4). Une leçon = un élève (D-34) ; la note n'a de sens que si l'élève
  * était présent (D-33). L'appel réseau reste dans l'écran appelant.
  */
 
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-  Modal,
-  TextInput,
-} from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { lessonTypeLabel, Lesson, MarkAttendanceData } from '../../../models/Lesson';
 import { formatPersonName, formatTime } from '../../../utils/format';
 import { useI18n } from '../../../context/LanguageContext';
-import { colors, typography, spacing, shadows } from '../../../theme';
+import { useTheme } from '../../../context/ThemeContext';
+import { Button, Card, Field } from '../../../components/ui';
+import { Theme } from '../../../theme';
 
 const RATINGS = [1, 2, 3, 4, 5];
 
 interface AttendanceModalProps {
   /** Leçon à pointer ; `null` = modale fermée. */
   lesson: Lesson | null;
-  /** Choix pré-sélectionné à l'ouverture (bouton « Present » ou « Absent » de la carte). */
+  /** Choix pré-sélectionné à l'ouverture (bouton « Présent » ou « Absent » de la carte). */
   initialAttended?: boolean;
   processing: boolean;
   onClose: () => void;
@@ -40,6 +34,8 @@ export const AttendanceModal = ({
   onConfirm,
 }: AttendanceModalProps) => {
   const { t } = useI18n();
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [attended, setAttended] = useState(initialAttended);
   const [feedback, setFeedback] = useState('');
   const [rating, setRating] = useState<number | null>(null);
@@ -62,16 +58,21 @@ export const AttendanceModal = ({
 
   return (
     <Modal visible={lesson !== null} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{t('attendance.title')}</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color={colors.text.secondary} />
-            </TouchableOpacity>
+      <View style={styles.overlay}>
+        <Card style={styles.modal}>
+          <View style={styles.header}>
+            <Text style={styles.title}>{t('attendance.title')}</Text>
+            <Pressable
+              onPress={onClose}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel={t('common.close')}
+            >
+              <Ionicons name="close" size={22} color={theme.colors.textSecondary} />
+            </Pressable>
           </View>
 
-          <Text style={styles.modalSubtitle}>
+          <Text style={styles.subtitle}>
             {lesson
               ? t('attendance.subtitle', {
                   type: lessonTypeLabel(lesson.type),
@@ -83,220 +84,144 @@ export const AttendanceModal = ({
 
           <View style={styles.section}>
             <Text style={styles.label}>{t('attendance.question')}</Text>
-            <View style={styles.choiceRow}>
-              <TouchableOpacity
-                style={[styles.choiceButton, attended && styles.choicePresent]}
+            <View style={styles.choices}>
+              <Pressable
                 onPress={() => setAttended(true)}
-                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityState={{ selected: attended }}
+                style={[styles.choice, attended && styles.choicePresent]}
               >
                 <Ionicons
                   name="checkmark-circle"
                   size={24}
-                  color={attended ? colors.success[600] : colors.text.tertiary}
+                  color={attended ? theme.colors.successText : theme.colors.textMuted}
                 />
-                <Text style={[styles.choiceText, attended && styles.choiceTextActive]}>
+                <Text style={[styles.choiceText, attended && styles.choiceTextPresent]}>
                   {t('today.present')}
                 </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.choiceButton, !attended && styles.choiceAbsent]}
+              </Pressable>
+
+              <Pressable
                 onPress={() => setAttended(false)}
-                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityState={{ selected: !attended }}
+                style={[styles.choice, !attended && styles.choiceAbsent]}
               >
                 <Ionicons
                   name="close-circle"
                   size={24}
-                  color={!attended ? colors.error[600] : colors.text.tertiary}
+                  color={!attended ? theme.colors.dangerText : theme.colors.textMuted}
                 />
-                <Text style={[styles.choiceText, !attended && styles.choiceTextActive]}>
+                <Text style={[styles.choiceText, !attended && styles.choiceTextAbsent]}>
                   {t('today.absent')}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             </View>
           </View>
 
-          {attended && (
+          {/* La note ne s'applique qu'à un élève présent (D-33) */}
+          {attended ? (
             <View style={styles.section}>
               <Text style={styles.label}>{t('attendance.rating')}</Text>
               <View style={styles.ratingRow}>
                 {RATINGS.map((star) => (
-                  <TouchableOpacity
+                  <Pressable
                     key={star}
                     onPress={() => setRating(rating === star ? null : star)}
-                    activeOpacity={0.7}
-                    style={styles.starButton}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${star}`}
+                    style={styles.star}
                   >
                     <Ionicons
                       name={rating !== null && star <= rating ? 'star' : 'star-outline'}
                       size={28}
-                      color={colors.warning[500]}
+                      color={theme.colors.warning}
                     />
-                  </TouchableOpacity>
+                  </Pressable>
                 ))}
               </View>
             </View>
-          )}
+          ) : null}
 
-          <View style={styles.section}>
-            <Text style={styles.label}>{t('attendance.feedback')}</Text>
-            <TextInput
-              style={styles.feedbackInput}
-              placeholder={t('attendance.feedbackPlaceholder')}
-              placeholderTextColor={colors.neutral[400]}
-              value={feedback}
-              onChangeText={setFeedback}
-              multiline
-              numberOfLines={3}
-              textAlignVertical="top"
+          <Field
+            label={t('attendance.feedback')}
+            placeholder={t('attendance.feedbackPlaceholder')}
+            value={feedback}
+            onChangeText={setFeedback}
+            multiline
+            numberOfLines={3}
+            textAlignVertical="top"
+            style={styles.feedback}
+          />
+
+          <View style={styles.actions}>
+            <Button
+              title={t('common.cancel')}
+              onPress={onClose}
+              variant="secondary"
+              style={styles.action}
+            />
+            <Button
+              title={t('common.save')}
+              onPress={confirm}
+              loading={processing}
+              style={styles.action}
             />
           </View>
-
-          <View style={styles.modalActions}>
-            <TouchableOpacity
-              style={[styles.modalButton, styles.modalCancelButton]}
-              onPress={onClose}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.modalCancelText}>{t('common.cancel')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.modalButton,
-                styles.modalConfirmButton,
-                processing && styles.disabledButton,
-              ]}
-              onPress={confirm}
-              disabled={processing}
-              activeOpacity={0.7}
-            >
-              {processing ? (
-                <ActivityIndicator size="small" color={colors.text.inverse} />
-              ) : (
-                <Text style={styles.modalConfirmText}>{t('common.save')}</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
+        </Card>
       </View>
     </Modal>
   );
 };
 
-const styles = StyleSheet.create({
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    padding: spacing.xl,
-  },
-  modalContent: {
-    backgroundColor: colors.background.primary,
-    borderRadius: 16,
-    padding: spacing.xl,
-    ...shadows.lg,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  modalTitle: {
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.bold,
-    color: colors.text.primary,
-  },
-  modalSubtitle: {
-    fontSize: typography.size.sm,
-    color: colors.text.secondary,
-    marginBottom: spacing.lg,
-  },
-  section: {
-    marginBottom: spacing.lg,
-  },
-  label: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.medium,
-    color: colors.text.primary,
-    marginBottom: spacing.sm,
-  },
-  choiceRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  choiceButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.md,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    backgroundColor: colors.background.secondary,
-  },
-  choicePresent: {
-    borderColor: colors.success[500],
-    backgroundColor: colors.success[50],
-  },
-  choiceAbsent: {
-    borderColor: colors.error[500],
-    backgroundColor: colors.error[50],
-  },
-  choiceText: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.medium,
-    color: colors.text.secondary,
-  },
-  choiceTextActive: {
-    color: colors.text.primary,
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-  },
-  starButton: {
-    padding: spacing.xs,
-  },
-  feedbackInput: {
-    backgroundColor: colors.background.secondary,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    padding: spacing.base,
-    fontSize: typography.size.base,
-    color: colors.text.primary,
-    minHeight: 80,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: spacing.md,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalCancelButton: {
-    backgroundColor: colors.background.tertiary,
-  },
-  modalCancelText: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.secondary,
-  },
-  modalConfirmButton: {
-    backgroundColor: colors.success[600],
-  },
-  modalConfirmText: {
-    fontSize: typography.size.base,
-    fontWeight: typography.weight.semibold,
-    color: colors.text.inverse,
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    overlay: {
+      flex: 1,
+      backgroundColor: theme.colors.overlay,
+      justifyContent: 'center',
+      padding: theme.spacing.lg,
+    },
+    modal: { gap: theme.spacing.md },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    title: {
+      fontSize: theme.typography.size.lg,
+      fontWeight: theme.typography.weight.bold,
+      color: theme.colors.textPrimary,
+    },
+    subtitle: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    section: { gap: theme.spacing.sm },
+    label: {
+      fontSize: theme.typography.size.sm,
+      fontWeight: theme.typography.weight.medium,
+      color: theme.colors.textSecondary,
+    },
+    choices: { flexDirection: 'row', gap: theme.spacing.md },
+    choice: {
+      flex: 1,
+      alignItems: 'center',
+      gap: theme.spacing.xs,
+      paddingVertical: theme.spacing.md,
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.surfaceMuted,
+    },
+    choicePresent: {
+      borderColor: theme.colors.success,
+      backgroundColor: theme.colors.successSoft,
+    },
+    choiceAbsent: { borderColor: theme.colors.danger, backgroundColor: theme.colors.dangerSoft },
+    choiceText: {
+      fontSize: theme.typography.size.sm,
+      fontWeight: theme.typography.weight.medium,
+      color: theme.colors.textSecondary,
+    },
+    choiceTextPresent: { color: theme.colors.successText },
+    choiceTextAbsent: { color: theme.colors.dangerText },
+    ratingRow: { flexDirection: 'row', gap: theme.spacing.sm },
+    star: { padding: theme.spacing.xs },
+    feedback: { minHeight: 72 },
+    actions: { flexDirection: 'row', gap: theme.spacing.md },
+    action: { flex: 1 },
+  });

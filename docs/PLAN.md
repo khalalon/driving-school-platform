@@ -670,7 +670,7 @@ cd mobile-app && test -z "$(grep -rnE "(^|[^.a-zA-Z])colors\." src/screens/auth 
 **Hors périmètre** : écrans instructeur (11.4).
 **Note sur le critère** : le `grep` d'origine (`"colors\."`) interdisait aussi `theme.colors.`, c'est-à-dire l'écriture visée par 11.1 ; il cherche désormais un `colors.` **non précédé d'un point**, soit l'ancienne constante seule.
 
-### - [ ] 11.4 — Écrans instructeur refondus sur le système
+### - [x] 11.4 — Écrans instructeur refondus sur le système
 **Objectif** : même travail pour l'accueil « Aujourd'hui », les leçons du jour, les demandes de leçon et d'examen, les examens du jour, la réservation pour un élève, les demandes d'inscription, la fiche élève et ses onglets, et la modale de présence.
 **Fichiers** : `mobile-app/src/screens/instructor/**`.
 **Critère de validation** :
