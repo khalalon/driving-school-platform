@@ -42,3 +42,7 @@ jest.mock('@react-three/fiber/native', () => {
     React.createElement(View, { ...props, testID: 'r3f-canvas' }, children);
   return { Canvas, useFrame: jest.fn(), useThree: jest.fn(() => ({})) };
 });
+
+// Scène d'accueil (13.10) : elle importe three.js (ESM, non transformé par Jest) et ses modèles.
+// Les écrans qui la montent la reçoivent vide ; sa logique est testée dans `homeCar.ts`.
+jest.mock('./src/components/three/HomeCarScene', () => ({ HomeCarScene: () => null }));

@@ -183,7 +183,7 @@ export const fr = {
   'auth.checkDetailsAndCode': "Vérifiez vos informations et le code de l'école",
 
   // Accueil eleve (D-45)
-  'home.scene3d': 'Voiture en 3D qui tourne lentement sur elle-même',
+  'home.scene3d': 'Voiture de l’auto-école qui roule de nuit, phares allumés',
   'home.hello': 'Bonjour,',
   'home.student': 'Élève',
   'home.loadFailed': 'Impossible de charger votre accueil',

@@ -54,7 +54,9 @@ import {
 import { Theme } from '../../theme';
 import { IoniconName } from '../../utils/rtl';
 import { Scene3D } from '../../components/three/Scene3D';
-import { ProbeScene, SHOW_3D_PROBE } from '../../components/three/ProbeScene';
+import { HomeCarScene } from '../../components/three/HomeCarScene';
+import { HomeCarFallback } from '../../components/three/HomeCarFallback';
+import { homeCarPalette } from '../../components/three/homeCar';
 
 interface HomeData {
   lessons: Lesson[];
@@ -436,29 +438,15 @@ export const StudentDashboard = ({ navigation }: any) => {
           />
         }
       >
-        {SHOW_3D_PROBE ? (
-          <Scene3D
-            height={200}
-            accessibilityLabel={t('home.scene3d')}
-            style={styles.scene}
-            testID="probe-scene"
-            fallback={
-              <View style={styles.sceneFallback}>
-                <Ionicons name="car-sport-outline" size={56} color={theme.colors.textMuted} />
-              </View>
-            }
-          >
-            <ProbeScene
-              colors={{
-                body: theme.colors.surfaceMuted,
-                glass: theme.colors.surface,
-                lights: theme.colors.signal,
-                tyres: theme.colors.surface,
-                ground: theme.colors.surfaceRaised,
-              }}
-            />
-          </Scene3D>
-        ) : null}
+        <Scene3D
+          height={210}
+          accessibilityLabel={t('home.scene3d')}
+          style={styles.scene}
+          testID="home-car-scene"
+          fallback={<HomeCarFallback />}
+        >
+          <HomeCarScene palette={homeCarPalette(theme)} />
+        </Scene3D>
         {renderBody()}
       </Screen>
     </View>
@@ -475,7 +463,6 @@ const createStyles = (theme: Theme) =>
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.surfaceRaised,
     },
-    sceneFallback: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     skeletons: { gap: theme.spacing.base },
 
     // Prochaine leçon

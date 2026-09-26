@@ -1,17 +1,21 @@
 /**
- * Connexion (11.3) — première impression de l'application : marque, langue (D-47), deux champs,
- * puis les deux portes d'entrée (élève, auto-école). Tout vient du système de 11.1 / 11.2 :
- * aucune couleur ni aucun bouton dessiné ici.
+ * Connexion (11.3) — première impression de l'application : la voiture de l'auto-école qui
+ * roule de nuit (scène 3D, 13.10), langue (D-47), deux champs, puis les deux portes d'entrée
+ * (élève, auto-école). Tout vient du système de 11.1 / 11.2 : aucune couleur ni aucun bouton
+ * dessiné ici.
  */
 
 import React, { useMemo, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { LanguagePicker } from '../../components/LanguagePicker';
 import { useI18n } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Button, Field, Screen } from '../../components/ui';
+import { Scene3D } from '../../components/three/Scene3D';
+import { HomeCarScene } from '../../components/three/HomeCarScene';
+import { HomeCarFallback } from '../../components/three/HomeCarFallback';
+import { homeCarPalette } from '../../components/three/homeCar';
 import { getApiErrorMessage } from '../../services/api/ApiError';
 import { Theme } from '../../theme';
 import { mirrorIcon } from '../../utils/rtl';
@@ -52,10 +56,17 @@ export const LoginScreen = ({ navigation }: any) => {
           <LanguagePicker compact />
         </View>
 
+        <Scene3D
+          height={220}
+          accessibilityLabel={t('home.scene3d')}
+          style={styles.scene}
+          testID="login-car-scene"
+          fallback={<HomeCarFallback />}
+        >
+          <HomeCarScene palette={homeCarPalette(theme)} />
+        </Scene3D>
+
         <View style={styles.header}>
-          <View style={styles.logo}>
-            <Ionicons name="car-sport" size={38} color={theme.colors.signal} />
-          </View>
           <Text style={styles.title}>{t('auth.login.title')}</Text>
           <Text style={styles.subtitle}>{t('auth.login.subtitle')}</Text>
         </View>
@@ -122,15 +133,12 @@ const createStyles = (theme: Theme) =>
     flex: { flex: 1, backgroundColor: theme.colors.surface },
     content: { justifyContent: 'center', paddingHorizontal: theme.spacing.xl },
     languageRow: { alignItems: 'center', marginBottom: theme.spacing.lg },
-    header: { alignItems: 'center', marginBottom: theme.spacing['3xl'] },
-    logo: {
-      width: 76,
-      height: 76,
-      borderRadius: theme.radius.pill,
-      backgroundColor: theme.colors.signalSoft,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: theme.spacing.base,
+    header: { alignItems: 'center', marginBottom: theme.spacing['2xl'] },
+    scene: {
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      marginBottom: theme.spacing.xl,
     },
     title: {
       fontSize: theme.typography.size['3xl'],

@@ -4,15 +4,15 @@
  * la boucle de rendu s'arrête quand l'app passe en arrière-plan.
  */
 import React from 'react';
-import { AccessibilityInfo, AppState, InteractionManager, Text, View } from 'react-native';
+import { AccessibilityInfo, AppState, Text, View } from 'react-native';
 import { act, create, ReactTestRenderer } from 'react-test-renderer';
 import { FPS_SAMPLE, Scene3D, isTooSlow } from '../Scene3D';
-import { ProbeScene } from '../ProbeScene';
 
 type AppStateListener = (state: string) => void;
 let appStateListener: AppStateListener | undefined;
 
-const COLORS = { body: 'a', glass: 'b', lights: 'c', tyres: 'd', ground: 'e' };
+/** Contenu de scène quelconque : le faux `Canvas` de jest.setup.js le rend tel quel. */
+const Content = () => <View testID="scene-content" />;
 
 const Fallback = () => (
   <View testID="fallback">
@@ -33,10 +33,13 @@ const has = (tree: ReactTestRenderer, testID: string): boolean =>
 
 beforeEach(() => {
   jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(false);
-  jest.spyOn(InteractionManager, 'runAfterInteractions').mockImplementation(((task: () => void) => {
-    task();
-    return { cancel: jest.fn(), then: jest.fn(), done: jest.fn() };
-  }) as unknown as typeof InteractionManager.runAfterInteractions);
+  // Le premier affichage est « terminé » tout de suite
+  (globalThis as unknown as { requestIdleCallback: unknown }).requestIdleCallback = (
+    callback: () => void
+  ) => {
+    callback();
+    return 1;
+  };
   jest.spyOn(AppState, 'addEventListener').mockImplementation(((
     _event: string,
     listener: AppStateListener
@@ -63,7 +66,7 @@ describe('Scene3D', () => {
   it('affiche la scène une fois l’écran prêt, annoncée comme une image', async () => {
     const tree = await mount(
       <Scene3D height={200} fallback={<Fallback />} accessibilityLabel="Voiture en 3D">
-        <ProbeScene colors={COLORS} />
+        <Content />
       </Scene3D>
     );
     expect(has(tree, 'r3f-canvas')).toBe(true);
@@ -83,7 +86,7 @@ describe('Scene3D', () => {
         accessibilityLabel="Voiture"
         onFallback={onFallback}
       >
-        <ProbeScene colors={COLORS} />
+        <Content />
       </Scene3D>
     );
     expect(has(tree, 'fallback')).toBe(true);
@@ -116,7 +119,7 @@ describe('Scene3D', () => {
   it('la boucle de rendu s’arrête en arrière-plan et reprend au retour', async () => {
     const tree = await mount(
       <Scene3D height={200} fallback={<Fallback />} accessibilityLabel="Voiture">
-        <ProbeScene colors={COLORS} />
+        <Content />
       </Scene3D>
     );
     const frameloop = () => tree.root.findByProps({ testID: 'r3f-canvas' }).props.frameloop;

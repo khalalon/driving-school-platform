@@ -6,7 +6,8 @@
  *   premier rendu) ;
  * - si « réduire les animations » est actif ;
  * - si la scène plante (limite d'erreur : contexte GL refusé, modèle illisible…) ;
- * - si les 60 premières images tournent en moyenne sous 40 images par seconde.
+ * - si, passé 1,5 s de chauffe (compilation des shaders, chargement des modèles), 60 images
+ *   tournent en moyenne sous 40 images par seconde.
  * La boucle de rendu s'arrête quand l'écran n'est plus affiché ou que l'app passe en arrière-
  * plan : pas de batterie brûlée pour rien.
  *
@@ -17,7 +18,6 @@
 import React, { Component, ReactNode, useContext, useEffect, useState } from 'react';
 import {
   AppState,
-  InteractionManager,
   LogBox,
   StyleProp,
   StyleSheet,
@@ -32,9 +32,10 @@ import { useReducedMotion } from '../../hooks/useReducedMotion';
 // l'avertissement vient de la bibliothèque, pas de notre code, et n'a aucun effet sur le rendu.
 LogBox.ignoreLogs(['THREE.Clock: This module has been deprecated']);
 
-/** Nombre d'images mesurées au démarrage, et débit minimal accepté. */
+/** Nombre d'images mesurées, débit minimal accepté, et chauffe ignorée avant la mesure. */
 export const FPS_SAMPLE = 60;
 export const MIN_FPS = 40;
+export const WARMUP_SECONDS = 1.5;
 
 /** Vrai si l'échantillon (durées d'image en secondes) tourne en moyenne sous `MIN_FPS`. */
 export const isTooSlow = (deltas: readonly number[]): boolean => {
@@ -43,12 +44,21 @@ export const isTooSlow = (deltas: readonly number[]): boolean => {
   return total > 0 && FPS_SAMPLE / total < MIN_FPS;
 };
 
-/** Mesure les premières images puis se tait ; prévient une seule fois si c'est trop lent. */
+/**
+ * Mesure la fluidité puis se tait ; prévient une seule fois si c'est trop lent. Les premières
+ * images (compilation des shaders, modèles qui arrivent) saccadent sur tous les téléphones : elles
+ * ne comptent pas.
+ */
 const FpsProbe = ({ onSlow }: { onSlow: () => void }) => {
   const [deltas] = useState<number[]>(() => []);
+  const [warmup] = useState(() => ({ elapsed: 0 }));
   const [done, setDone] = useState(false);
   useFrame((_, delta) => {
     if (done) return;
+    if (warmup.elapsed < WARMUP_SECONDS) {
+      warmup.elapsed += delta;
+      return;
+    }
     deltas.push(delta);
     if (deltas.length >= FPS_SAMPLE) {
       setDone(true);
@@ -104,6 +114,11 @@ const useAppActive = (): boolean => {
   return active;
 };
 
+interface IdleScheduler {
+  requestIdleCallback?: (callback: () => void) => number;
+  cancelIdleCallback?: (handle: number) => void;
+}
+
 export type Scene3DFallbackReason = 'loading' | 'reduced-motion' | 'error' | 'slow';
 
 interface Scene3DProps {
@@ -135,9 +150,15 @@ export const Scene3D = ({
   const [ready, setReady] = useState(false);
   const [failure, setFailure] = useState<'error' | 'slow' | null>(null);
 
+  // Montage différé : la scène attend que le premier affichage soit terminé
   useEffect(() => {
-    const task = InteractionManager.runAfterInteractions(() => setReady(true));
-    return () => task.cancel();
+    const idle = globalThis as unknown as IdleScheduler;
+    if (typeof idle.requestIdleCallback === 'function') {
+      const handle = idle.requestIdleCallback(() => setReady(true));
+      return () => idle.cancelIdleCallback?.(handle);
+    }
+    const timer = setTimeout(() => setReady(true), 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const reason: Scene3DFallbackReason | null = reduced

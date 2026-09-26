@@ -887,7 +887,7 @@ cd mobile-app && test "$(du -ck assets/3d/*.glb | tail -1 | cut -f1)" -le 3072 &
 ```
 **Hors périmètre** : modèles sur mesure (remplacement futur, D-52).
 
-### - [ ] 13.10 — Scène 3D d'accueil
+### - [x] 13.10 — Scène 3D d'accueil
 **Objectif** : la voiture de nuit (phares allumés, reflets, orbite lente de la caméra) remplace la scène d'essai sur l'**écran de connexion** et dans l'en-tête de l'**accueil élève** ; version de jour quand le thème est clair. Image fixe de repli fournie dans les deux thèmes. Indicateur `SHOW_3D_PROBE` et `ProbeScene` supprimés.
 **Fichiers** : `mobile-app/src/components/three/HomeCarScene.tsx` (nouveau), `mobile-app/assets/3d/fallback/*`, `LoginScreen.tsx`, `StudentDashboard.tsx`, tests.
 **Critère de validation** :
