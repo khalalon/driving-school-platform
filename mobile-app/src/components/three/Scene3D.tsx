@@ -145,7 +145,11 @@ export const Scene3D = ({
     : failure ?? (ready ? null : 'loading');
 
   useEffect(() => {
-    if (reason && reason !== 'loading') onFallback?.(reason);
+    if (reason && reason !== 'loading') {
+      // En développement, la raison s'affiche dans Metro : « pourquoi je ne vois pas la 3D ? »
+      if (__DEV__) console.log(`[Scene3D] image fixe à la place de la 3D : ${reason}`);
+      onFallback?.(reason);
+    }
   }, [reason, onFallback]);
 
   return (
