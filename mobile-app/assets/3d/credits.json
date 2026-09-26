@@ -1,0 +1,82 @@
+[
+  {
+    "file": "car-sedan.glb",
+    "usage": "Voiture de l’auto-école (accueil, parcours)",
+    "source": "Kenney — Car Kit 3.1 (sedan.glb)",
+    "url": "https://kenney.nl/assets/car-kit",
+    "author": "Kenney (www.kenney.nl)",
+    "license": "CC0 1.0",
+    "modifications": "Texture palette cuite en matériaux unis nommés par rôle, recolorés aux jetons « Circuit » (D-52)",
+    "bytes": 161040
+  },
+  {
+    "file": "cone.glb",
+    "usage": "Cône de manœuvre (secteurs Manœuvre / Parc)",
+    "source": "Kenney — Car Kit 3.1 (cone.glb)",
+    "url": "https://kenney.nl/assets/car-kit",
+    "author": "Kenney (www.kenney.nl)",
+    "license": "CC0 1.0",
+    "modifications": "Texture palette cuite en matériaux unis nommés par rôle, recolorés aux jetons « Circuit » (D-52)",
+    "bytes": 15404
+  },
+  {
+    "file": "track-straight.glb",
+    "usage": "Portion droite du circuit",
+    "source": "Kenney — Racing Kit 1.0 (roadStraight.glb)",
+    "url": "https://kenney.nl/assets/racing-kit",
+    "author": "Kenney (www.kenney.nl)",
+    "license": "CC0 1.0",
+    "modifications": "Matériaux recolorés aux jetons « Circuit » (D-52)",
+    "bytes": 3620
+  },
+  {
+    "file": "track-corner.glb",
+    "usage": "Virage du circuit",
+    "source": "Kenney — Racing Kit 1.0 (roadCornerLarge.glb)",
+    "url": "https://kenney.nl/assets/racing-kit",
+    "author": "Kenney (www.kenney.nl)",
+    "license": "CC0 1.0",
+    "modifications": "Matériaux recolorés aux jetons « Circuit » (D-52)",
+    "bytes": 15172
+  },
+  {
+    "file": "track-start.glb",
+    "usage": "Ligne de départ",
+    "source": "Kenney — Racing Kit 1.0 (roadStart.glb)",
+    "url": "https://kenney.nl/assets/racing-kit",
+    "author": "Kenney (www.kenney.nl)",
+    "license": "CC0 1.0",
+    "modifications": "Matériaux recolorés aux jetons « Circuit » (D-52)",
+    "bytes": 13664
+  },
+  {
+    "file": "gate-lights.glb",
+    "usage": "Portique de feux (départ)",
+    "source": "Kenney — Racing Kit 1.0 (overheadLights.glb)",
+    "url": "https://kenney.nl/assets/racing-kit",
+    "author": "Kenney (www.kenney.nl)",
+    "license": "CC0 1.0",
+    "modifications": "Matériaux recolorés aux jetons « Circuit » (D-52)",
+    "bytes": 26040
+  },
+  {
+    "file": "barrier.glb",
+    "usage": "Barrière de bord de piste",
+    "source": "Kenney — Racing Kit 1.0 (barrierRed.glb)",
+    "url": "https://kenney.nl/assets/racing-kit",
+    "author": "Kenney (www.kenney.nl)",
+    "license": "CC0 1.0",
+    "modifications": "Matériaux recolorés aux jetons « Circuit » (D-52)",
+    "bytes": 3236
+  },
+  {
+    "file": "light-post.glb",
+    "usage": "Lampadaire (éclairage de nuit)",
+    "source": "Kenney — Racing Kit 1.0 (lightPostModern.glb)",
+    "url": "https://kenney.nl/assets/racing-kit",
+    "author": "Kenney (www.kenney.nl)",
+    "license": "CC0 1.0",
+    "modifications": "Matériaux recolorés aux jetons « Circuit » (D-52)",
+    "bytes": 16596
+  }
+]

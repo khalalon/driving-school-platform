@@ -11,6 +11,10 @@ const { getDefaultConfig } = require('expo/metro-config');
 
 const config = getDefaultConfig(__dirname);
 
+// Modèles 3D (13.9) : les `.glb` de `assets/3d/` sont des fichiers servis tels quels, comme les
+// images, et chargés au rendu par expo-asset.
+config.resolver.assetExts.push('glb');
+
 const THREE_ESM = path.join(__dirname, 'node_modules', 'three', 'build', 'three.module.js');
 
 const defaultResolve = config.resolver.resolveRequest;

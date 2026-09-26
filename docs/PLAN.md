@@ -878,7 +878,7 @@ cd mobile-app && npx expo-doctor && npx tsc --noEmit && npx jest --silent && ech
 ```
 **Hors périmètre** : modèles définitifs (13.9).
 
-### - [ ] 13.9 — Modèles 3D libres de droits
+### - [x] 13.9 — Modèles 3D libres de droits
 **Objectif** : choix et préparation des modèles CC0 (voiture ; éléments de circuit : piste, bordures, portique ; drapeau à damier), proposés à l'humain avant téléchargement (nom, source, taille, licence). Recoloration aux jetons D-52 (carrosserie sombre, feux signal), allègement : **total ≤ 3 Mo**, textures ≤ 1024 px, format `.glb`. Inventaire `mobile-app/assets/3d/credits.json` : pour chaque fichier, source, auteur, licence, modifications. Chargement par `expo-asset` (mocké en test).
 **Fichiers** : `mobile-app/assets/3d/*.glb`, `mobile-app/assets/3d/credits.json` (nouveau), `mobile-app/metro.config.js` (extension `glb`), tests (chaque `.glb` figure dans l'inventaire).
 **Critère de validation** :

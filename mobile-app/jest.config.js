@@ -9,4 +9,7 @@ module.exports = {
   setupFiles: ['<rootDir>/jest.setup.js'],
   testMatch: ['<rootDir>/src/**/__tests__/**/*.test.ts', '<rootDir>/src/**/__tests__/**/*.test.tsx'],
   clearMocks: true,
+  // Modèles 3D (13.9) : un `.glb` est un fichier binaire servi par Metro ; en test, un simple
+  // identifiant d'asset suffit (expo-asset est mocké là où il sert).
+  moduleNameMapper: { '\.glb$': '<rootDir>/jest.assetStub.js' },
 };
