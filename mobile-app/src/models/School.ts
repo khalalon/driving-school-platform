@@ -39,6 +39,23 @@ export interface SchoolStudent {
   completedLessons: number;
 }
 
+/** S7 : champs modifiables de la fiche école par son instructeur (D-51) ; au moins un. */
+export interface UpdateSchoolRequest {
+  name?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  /** Code ISO 4217 en majuscules (D-43). */
+  currency?: string;
+}
+
+/** S8 : un tarif par type de leçon — un second envoi sur le même type remplace le précédent. */
+export interface SetPricingRequest {
+  lessonType: LessonType;
+  price: number;
+  duration: number;
+}
+
 /** S4 : grille tarifaire, un tarif par type de leçon (D-30). */
 export interface SchoolPricing {
   id: string;

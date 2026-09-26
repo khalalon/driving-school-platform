@@ -740,7 +740,7 @@ cd services/api && npx tsc --noEmit && npm test -- --testPathPattern=school && e
 ```
 **Hors périmètre** : création ou suppression d'une école depuis l'app (reste `admin`, D-51).
 
-### - [ ] 12.5 — Écran « Mon école » côté instructeur
+### - [x] 12.5 — Écran « Mon école » côté instructeur
 **Objectif** : nouvel écran (onglet « Élèves » → en-tête, ou raccourci de l'accueil) : fiche de l'école en lecture, bouton « Modifier » (nom, adresse, téléphone, e-mail, devise) et gestion de la grille tarifaire (ajouter un tarif type + prix + durée, retirer un tarif). Composants de 11.2, toasts de 11.5, textes au catalogue.
 **Fichiers** : `mobile-app/src/screens/instructor/MySchoolScreen.tsx` (nouveau), `mobile-app/src/services/api/SchoolService.ts`, `mobile-app/src/navigation/AppNavigator.tsx`, `mobile-app/src/i18n/{fr,ar}.ts`.
 **Critère de validation** :

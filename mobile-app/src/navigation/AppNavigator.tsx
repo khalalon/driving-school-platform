@@ -49,6 +49,7 @@ import { TodayExamsScreen } from '../screens/instructor/TodayExamsScreen';
 import { ExamRequestsScreen } from '../screens/instructor/ExamRequestsScreen';
 import { EnrollmentRequestsScreen } from '../screens/instructor/EnrollmentRequestsScreen';
 import { StudentProfileScreen } from '../screens/instructor/student-profile/StudentProfileScreen';
+import { MySchoolScreen } from '../screens/instructor/MySchoolScreen';
 
 const Stack = createStackNavigator<AppStackParamList>();
 const StudentTab = createBottomTabNavigator<StudentTabParamList>();
@@ -192,6 +193,7 @@ export const AppNavigator = () => {
                 <Stack.Screen name="TodayExams" component={TodayExamsScreen} />
                 <Stack.Screen name="EnrollmentRequests" component={EnrollmentRequestsScreen} />
                 <Stack.Screen name="StudentProfile" component={StudentProfileScreen} />
+                <Stack.Screen name="MySchool" component={MySchoolScreen} />
               </>
             ) : null}
           </>

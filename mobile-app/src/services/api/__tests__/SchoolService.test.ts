@@ -70,4 +70,46 @@ describe('SchoolService', () => {
     expect(api.get).toHaveBeenCalledWith(`/api/schools/${schoolId}/students`);
     expect(result).toEqual(students);
   });
+
+  it('updateSchool (S7) : PUT /api/schools/:id avec les seuls champs modifiés (D-51)', async () => {
+    const school = { id: 'school-1', name: 'Nouvelle', currency: 'EUR' };
+    api.put.mockResolvedValue(respond(school));
+
+    const result = await schoolService.updateSchool('school-1', {
+      name: 'Nouvelle',
+      currency: 'EUR',
+    });
+
+    expect(api.put).toHaveBeenCalledWith('/api/schools/school-1', {
+      name: 'Nouvelle',
+      currency: 'EUR',
+    });
+    expect(result).toEqual(school);
+  });
+
+  it('setPricing (S8) : POST /api/schools/:id/pricing, upsert par type', async () => {
+    const pricing = { id: 'p1', schoolId: 'school-1', lessonType: 'Parc', price: 40, duration: 60 };
+    api.post.mockResolvedValue(respond(pricing, 201));
+
+    const result = await schoolService.setPricing('school-1', {
+      lessonType: LessonType.PARC,
+      price: 40,
+      duration: 60,
+    });
+
+    expect(api.post).toHaveBeenCalledWith('/api/schools/school-1/pricing', {
+      lessonType: 'Parc',
+      price: 40,
+      duration: 60,
+    });
+    expect(result).toEqual(pricing);
+  });
+
+  it('deletePricing (S9) : DELETE /api/schools/pricing/:id — l’identifiant est celui du tarif', async () => {
+    api.delete.mockResolvedValue(respond(undefined, 204));
+
+    await schoolService.deletePricing('pricing-1');
+
+    expect(api.delete).toHaveBeenCalledWith('/api/schools/pricing/pricing-1');
+  });
 });

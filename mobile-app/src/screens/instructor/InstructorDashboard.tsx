@@ -456,6 +456,7 @@ export const InstructorDashboard = ({ navigation }: any) => {
           },
           { label: t('today.link.todayExams'), icon: 'ribbon-outline', route: 'TodayExams' },
           { label: t('today.link.examRequests'), icon: 'clipboard-outline', route: 'ExamRequests' },
+          { label: t('mySchool.title'), icon: 'business-outline', route: 'MySchool' },
         ] as { label: string; icon: IoniconName; route: string }[]
       ).map((link) => (
         <Chip

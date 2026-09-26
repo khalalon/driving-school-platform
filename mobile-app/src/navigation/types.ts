@@ -51,6 +51,8 @@ export type InstructorStackParamList = {
   EnrollmentRequests: { schoolId: string };
   /** P1–P7 : `studentId` = users.id, école de l'instructeur. */
   StudentProfile: { studentId: string; schoolId: string; studentName: string };
+  /** S2, S7–S9 : l'école vient de A3, l'écran n'a pas de paramètre (D-51). */
+  MySchool: undefined;
 };
 
 export type AppStackParamList = AuthStackParamList &
