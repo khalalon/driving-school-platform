@@ -832,7 +832,7 @@ cd mobile-app && npx tsc --noEmit && npx jest --silent && grep -q '"userInterfac
 ```
 **Hors périmètre** : synchronisation du réglage entre appareils.
 
-### - [ ] 13.4 — Mouvement et retour haptique
+### - [x] 13.4 — Mouvement et retour haptique
 **Objectif** : jetons de mouvement (`duration.fast / base / slow`, ressorts `snappy` / `gentle` pour Reanimated), `usePressFeedback()` (légère réduction d'échelle à l'appui, sans décaler la mise en page), `useReducedMotion()` branché sur le réglage du téléphone, `haptics.success()` / `haptics.selection()` (`expo-haptics`) réservés aux confirmations (demande envoyée, présence notée, célébration). Tests : animations coupées quand le réglage est actif.
 **Fichiers** : `mobile-app/src/theme/motion.ts` (nouveau), `mobile-app/src/hooks/{usePressFeedback,useReducedMotion}.ts` (nouveaux), `mobile-app/src/utils/haptics.ts` (nouveau), `package.json`, `jest.setup.js`, tests.
 **Critère de validation** :

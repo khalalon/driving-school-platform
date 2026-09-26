@@ -20,3 +20,15 @@ jest.mock('@expo/vector-icons', () => {
     }
   );
 });
+
+// Retour haptique (13.4) : aucun moteur de vibration hors téléphone. Le mock garde les énumérations
+// réelles pour que les tests vérifient le type de vibration demandé.
+jest.mock('expo-haptics', () => {
+  const actual = jest.requireActual('expo-haptics/src/Haptics.types');
+  return {
+    ...actual,
+    notificationAsync: jest.fn(() => Promise.resolve()),
+    impactAsync: jest.fn(() => Promise.resolve()),
+    selectionAsync: jest.fn(() => Promise.resolve()),
+  };
+});
