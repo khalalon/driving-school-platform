@@ -850,7 +850,7 @@ cd mobile-app && npx tsc --noEmit && npx jest --silent && test -z "$(grep -rnE "
 ```
 **Hors périmètre** : composants propres à « Circuit » (13.6).
 
-### - [ ] 13.6 — Composants « Circuit » : jauge, secteurs, chiffres, barre d'onglets
+### - [x] 13.6 — Composants « Circuit » : jauge, secteurs, chiffres, barre d'onglets
 **Objectif** : `react-native-svg` installé (`npx expo install`). Nouveaux composants : `Gauge` (demi-cercle de progression, valeur au centre, libellé accessible « 3 étapes sur 5 »), `SectorBar` (parcours en 5 secteurs : fait / en cours / à venir, libellés), `StatRow` (libellé en capitales + chiffre tabulaire), `TimeBlock` (grande heure + ligne date · type · durée), `DateBadge`, `TabBar` (barre d'onglets personnalisée : icône + libellé condensé, onglet actif en signal, zone de sécurité respectée). Ces composants servent aussi aux graphiques des phases suivantes (22.3). Tests de rendu et d'accessibilité.
 **Fichiers** : `mobile-app/src/components/circuit/*` (nouveau dossier), `package.json`, tests.
 **Critère de validation** :
