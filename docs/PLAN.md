@@ -749,7 +749,7 @@ cd mobile-app && npx tsc --noEmit && npx jest --silent && test -z "$(grep -rnE "
 ```
 **Hors périmètre** : gestion des instructeurs de l'école, codes d'inscription.
 
-### - [ ] 12.6 — Bout en bout : inscription détaillée jusqu'à la fiche élève
+### - [x] 12.6 — Bout en bout : inscription détaillée jusqu'à la fiche élève
 **Objectif** : un test e2e qui inscrit un élève **avec** ses coordonnées, le fait approuver par l'école, et vérifie que P1 les renvoie ; un second qui vérifie qu'un instructeur modifie sa propre école et **ne peut pas** modifier une autre école (403 `FORBIDDEN_SCHOOL`).
 **Fichiers** : `tests/e2e/registration-details.e2e.test.ts` (nouveau).
 **Critère de validation** :
