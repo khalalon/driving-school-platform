@@ -699,6 +699,67 @@ cd mobile-app && npx jest theme -t 'contraste' && test -z "$(grep -rn "accessibi
 
 ---
 
-## Après la Phase 11
+
+## Phase 12 — Inscription enrichie et fiche école (D-49, D-50, D-51)
+
+Un élève ne donne aujourd'hui que son e-mail, son mot de passe et son nom ; les colonnes qui portent ses coordonnées existent en base mais **rien ne les écrit**. Une école, elle, ne peut être corrigée que par l'administrateur. Cette phase comble les deux : des détails facultatifs saisis à l'inscription (D-50, pas de photo — D-49) et une fiche école modifiable par son instructeur (D-51).
+
+### - [ ] 12.1 — Colonnes de coordonnées sur le compte et A2 étendu
+**Objectif** : migration `014_user_contact_details.sql` (nullable, idempotente) : `users.phone`, `users.date_of_birth`, `users.address`, `users.emergency_contact`, `users.emergency_phone`. A2 accepte ces champs, **tous facultatifs**, pour une inscription **élève** (sans `schoolCode`) ; ils sont enregistrés sur le compte. Joi : `phone` ≤ 50, `address` ≤ 500, `emergencyContact` ≤ 255, `emergencyPhone` ≤ 50, `dateOfBirth` = date ISO **dans le passé**. Le contrat §1 (A2) est mis à jour dans le même commit.
+**Fichiers** : `migrations/014_user_contact_details.sql`, `services/api/src/modules/auth/{validators,services,repositories,types}`, `docs/API_CONTRACT.md`.
+**Critère de validation** :
+```bash
+cd services/api && npx tsc --noEmit && npm test -- --testPathPattern=auth && cd .. && ./scripts/migrate.sh && docker exec driving-school-postgres psql -U admin -d driving_school -c "\d users" | grep -E "date_of_birth|emergency_contact" && echo OK
+```
+**Hors périmètre** : photo (D-49), rattrapage des comptes existants.
+
+### - [ ] 12.2 — L'approbation recopie les détails dans la fiche élève
+**Objectif** : E5 (`approve`) remplit la ligne `students` créée avec les coordonnées du compte (`phone`, `date_of_birth`, `address`, `emergency_contact`, `emergency_phone`), dans la **même transaction**. Une valeur absente reste nulle ; la fiche instructeur (P1) et « Mon profil » (P8) les affichent sans changement de payload.
+**Fichiers** : `services/api/src/modules/school/` (service et repository d'inscription), tests.
+**Critère de validation** :
+```bash
+cd services/api && npx tsc --noEmit && npm test -- --testPathPattern=enrollment && echo OK
+```
+**Hors périmètre** : modification de ces champs après coup (12.5 ne couvre que l'école).
+
+### - [ ] 12.3 — Écran d'inscription élève : les détails facultatifs
+**Objectif** : `RegisterScreen` gagne une section « Pour votre auto-école (facultatif) » : téléphone, date de naissance (sélecteur, jamais dans le futur), adresse, contact d'urgence (nom + téléphone). Champs vides = non envoyés. Textes au catalogue FR/AR (D-47), composants de 11.2, aucun champ obligatoire ajouté.
+**Fichiers** : `mobile-app/src/screens/auth/RegisterScreen.tsx`, `mobile-app/src/services/api/AuthService.ts`, `mobile-app/src/models/User.ts`, `mobile-app/src/i18n/{fr,ar}.ts`.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : édition ultérieure de ces champs par l'élève.
+
+### - [ ] 12.4 — Fiche école modifiable par son instructeur (contrat)
+**Objectif** : `PUT /api/schools/:id`, `POST /api/schools/:schoolId/pricing` et `DELETE /api/schools/pricing/:id` passent d'`admin` à « admin **ou** instructeur de cette école » (`SchoolGuard.assertSameSchool`, D-20 ; 403 `FORBIDDEN_SCHOOL` sinon). Champs modifiables : `name`, `address`, `phone`, `email`, `currency`. Le contrat §2 gagne les lignes S7, S8 et S9 et le §8 perd ces trois routes, **dans le même commit**.
+**Fichiers** : `services/api/src/modules/school/`, `docs/API_CONTRACT.md`, tests.
+**Critère de validation** :
+```bash
+cd services/api && npx tsc --noEmit && npm test -- --testPathPattern=school && echo OK
+```
+**Hors périmètre** : création ou suppression d'une école depuis l'app (reste `admin`, D-51).
+
+### - [ ] 12.5 — Écran « Mon école » côté instructeur
+**Objectif** : nouvel écran (onglet « Élèves » → en-tête, ou raccourci de l'accueil) : fiche de l'école en lecture, bouton « Modifier » (nom, adresse, téléphone, e-mail, devise) et gestion de la grille tarifaire (ajouter un tarif type + prix + durée, retirer un tarif). Composants de 11.2, toasts de 11.5, textes au catalogue.
+**Fichiers** : `mobile-app/src/screens/instructor/MySchoolScreen.tsx` (nouveau), `mobile-app/src/services/api/SchoolService.ts`, `mobile-app/src/navigation/AppNavigator.tsx`, `mobile-app/src/i18n/{fr,ar}.ts`.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && test -z "$(grep -rnE "(^|[^.a-zA-Z])colors\." src/screens/instructor --include='*.tsx')" && echo OK
+```
+**Hors périmètre** : gestion des instructeurs de l'école, codes d'inscription.
+
+### - [ ] 12.6 — Bout en bout : inscription détaillée jusqu'à la fiche élève
+**Objectif** : un test e2e qui inscrit un élève **avec** ses coordonnées, le fait approuver par l'école, et vérifie que P1 les renvoie ; un second qui vérifie qu'un instructeur modifie sa propre école et **ne peut pas** modifier une autre école (403 `FORBIDDEN_SCHOOL`).
+**Fichiers** : `tests/e2e/registration-details.e2e.test.ts` (nouveau).
+**Critère de validation** :
+```bash
+npm run test:e2e -- -t 'inscription détaillée' && echo OK
+```
+**Hors périmètre** : recette manuelle sur téléphone (faite par l'humain).
+
+---
+
+## Après la Phase 12
 
 La recette finale (parcours D-15 sur un téléphone via Expo Go, backend en Docker) est faite **par l'humain**, hors de cette liste. Les fonctionnalités hors contrat (paiement en ligne, web, gestion des codes par écran) ne sont pas dans la v1.
