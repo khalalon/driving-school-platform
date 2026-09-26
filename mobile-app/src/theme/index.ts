@@ -51,3 +51,7 @@ export const themes: Record<ThemeName, Theme> = { light: lightTheme, dark: darkT
 export { spacing, radius, typography, MIN_TOUCH_TARGET };
 export type { ColorTokens, ThemeName };
 export { palette } from './tokens';
+export { fontFamilies } from './fonts';
+export { TEXT_ROLES, textStyle } from './typography';
+export type { TextRole } from './typography';
+export { useTextStyle } from './useTextStyle';

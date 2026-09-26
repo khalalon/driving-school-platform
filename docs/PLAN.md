@@ -814,7 +814,7 @@ cd mobile-app && npx tsc --noEmit && npx jest --silent && test ! -f src/theme/co
 ```
 **Hors périmètre** : typographie (13.2), réglage du thème (13.3).
 
-### - [ ] 13.2 — Typographie : Barlow Condensed, Barlow, Cairo
+### - [x] 13.2 — Typographie : Barlow Condensed, Barlow, Cairo
 **Objectif** : polices chargées par `expo-font` depuis `@expo-google-fonts/barlow-condensed`, `@expo-google-fonts/barlow` et `@expo-google-fonts/cairo` (installées par `npx expo install`) ; l'écran de démarrage reste affiché jusqu'au chargement. `typography` devient une échelle de **rôles** : `display`, `title`, `heading`, `label` (capitales condensées espacées), `body`, `caption`, `numeric` (chiffres tabulaires pour heures, montants, compteurs). Un hook `useTextStyle(role)` renvoie la bonne famille selon la langue : **en arabe, Cairo, sans capitales ni espacement de lettres** (D-47, `utils/rtl.ts`). Test : chaque rôle en FR et en AR.
 **Fichiers** : `mobile-app/package.json`, `mobile-app/App.tsx`, `mobile-app/src/theme/typography.ts`, `mobile-app/src/theme/useTextStyle.ts` (nouveau), `mobile-app/jest.setup.js` (mock des polices), tests.
 **Critère de validation** :
