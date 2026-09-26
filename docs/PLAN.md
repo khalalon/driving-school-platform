@@ -3,7 +3,7 @@
 Règles de lecture (voir `CLAUDE.md`, règles d'or 3 et 5) :
 - On travaille dans l'ordre, sur la première tâche non cochée. Une tâche = un commit (message Conventional Commits, scope = domaine ou `infra` / `mobile` / `docs` / `e2e`), poussé sur `origin/main` aussitôt. Les tâches d'une même phase s'enchaînent sans validation intermédiaire ; arrêt obligatoire en fin de phase, sur question ouverte non tranchée, sur échec de critère non réparable dans la tâche, ou sur choix produit non tranché (D-36, 18/09/2026).
 - Une tâche est cochée **seulement** quand sa commande « Critère de validation » a été exécutée et que sa sortie a été montrée. Pas d'exception.
-- Si une tâche indique « Dépend de : Q-xx » et que la question n'est pas tranchée dans `DECISIONS.md`, on **s'arrête** et on demande. Au 23/09/2026 aucune question n'est ouverte : Q-17 à Q-21 → D-40 à D-44 (Phase 7 ; D-44 = statu quo de D-42, sans tâche) ; la Phase 8 applique D-45 (accueils « wow »), la Phase 9 D-46 (Expo SDK 57), la Phase 10 D-47 (français et arabe), la Phase 11 D-48 (design system et thèmes).
+- Si une tâche indique « Dépend de : Q-xx » et que la question n'est pas tranchée dans `DECISIONS.md`, on **s'arrête** et on demande. Phases 0 à 12 : Q-17 à Q-24 → D-40 à D-51. **Au 26/09/2026, Q-25 à Q-53 sont ouvertes** (feuille de route v1.1, phases 14 à 23) : aucune tâche de ces phases ne commence avant la réponse de l'humain.
 - Chaque tâche livrée ajoute une ligne dans `CHANGELOG.md` et, si elle touche une route, met à jour `docs/API_CONTRACT.md` dans le même commit.
 - Les commandes sont écrites pour Git Bash (Windows) ou un shell POSIX, depuis la racine du dépôt sauf `cd` explicite.
 
@@ -762,4 +762,754 @@ npm run test:e2e -- -t 'inscription détaillée' && echo OK
 
 ## Après la Phase 12
 
-La recette finale (parcours D-15 sur un téléphone via Expo Go, backend en Docker) est faite **par l'humain**, hors de cette liste. Les fonctionnalités hors contrat (paiement en ligne, web, gestion des codes par écran) ne sont pas dans la v1.
+La recette finale (parcours D-15 sur un téléphone via Expo Go, backend en Docker) a été faite **par l'humain** le 26/09/2026 : aucun bug. Les fonctionnalités hors contrat (paiement en ligne, web, gestion des codes par écran) ne sont pas dans la v1.
+
+---
+
+# Feuille de route v1.1 (26/09/2026)
+
+Demande de l'auteur après la recette : des améliorations **métier**, précédées d'une **rénovation complète de l'interface** pour que les nouvelles fonctionnalités se construisent sur la nouvelle base.
+
+| Phase | Ce que ça apporte | Questions |
+|---|---|---|
+| 13 | Rénovation UI/UX (design, 3D) — **à rédiger avec l'auteur** | — |
+| 14 | Gérant de l'école : des droits distincts de ceux des moniteurs | Q-25 à Q-27 |
+| 15 | Agenda de l'instructeur, conflits d'horaire, créneaux libres pour l'élève | Q-28 à Q-30 |
+| 16 | Dossier administratif de l'élève (pièces reçues / manquantes) | Q-31, Q-32 |
+| 17 | Notifications push, rappels de leçon, centre de notifications | Q-33 à Q-37 |
+| 18 | Paiements partiels, reçus, caisse de l'école | Q-38 à Q-40 |
+| 19 | Forfaits (heures prépayées) | Q-41 à Q-44 |
+| 20 | Progression pédagogique par compétence | Q-45 à Q-47 |
+| 21 | Examens : numéro de tentative, repasse, grille de prix | Q-48, Q-49 |
+| 22 | Tableau de bord du gérant | Q-50 |
+| 23 | Flotte de véhicules et échéances | Q-51 à Q-53 |
+
+Règles propres à cette feuille de route :
+- **Avant la Phase 14, l'humain répond à Q-25 … Q-53** (`docs/DECISIONS.md`) ; les réponses deviennent D-52 et suivantes dans un commit `docs(docs)`. Les tâches sont écrites pour l'option **recommandée** ; si une autre option est retenue, on réécrit les tâches concernées **dans ce même commit**, avant de coder.
+- Les migrations prennent le **prochain numéro libre** au moment de la tâche (`015` pour la première) : on ne réserve pas de numéro à l'avance.
+- Toute nouvelle route entre au contrat dans le même commit, avec un identifiant qui suit la numérotation de sa section (L9, S10…) ou une nouvelle section pour un nouveau domaine. Tout nouveau code d'erreur est ajouté aux conventions transverses du contrat **et** traduit côté mobile (10.5).
+- Côté mobile : composants et règles d'interface issus de la Phase 13, textes au catalogue FR / AR (D-47) vérifiés en RTL, chaque nouvelle méthode de service a son test (`mockApiClient`), aucun appel réseau hors `src/services/api/`.
+- Le conteneur `api` tourne sur une image compilée : chaque critère e2e commence par `docker compose up -d --build --force-recreate api`.
+- La dernière tâche de chaque phase relance **toute** la suite e2e : une phase ne se termine pas sur une régression.
+
+---
+
+## Phase 13 — Rénovation UI/UX (à rédiger)
+
+Demande de l'auteur du 26/09/2026 : refonte complète de l'interface mobile (design propre, intégration d'éléments 3D) **avant** les phases 14 à 23. La direction artistique, les bibliothèques retenues, la liste des écrans et les critères de validation sont définis avec l'auteur dans une session dédiée ; les tâches remplacent alors ce paragraphe, et la décision correspondante entre dans `docs/DECISIONS.md`.
+
+**Tant que cette phase ne contient aucune tâche, s'arrêter et demander.**
+
+---
+
+## Phase 14 — Gérant de l'école (Q-25, Q-26, Q-27)
+
+Tous les instructeurs d'une école ont aujourd'hui les mêmes droits. Avant d'ajouter de l'argent (caisse, forfaits) et du pilotage (tableau de bord), il faut pouvoir réserver certaines actions au **gérant**. Tâches écrites pour Q-25 (b) : un drapeau sur l'instructeur, pas un nouveau rôle.
+
+### - [ ] 14.1 — Drapeau gérant et code d'inscription gérant
+**Objectif** : migration `0NN_school_manager.sql` (idempotente) : `instructors.is_manager BOOLEAN NOT NULL DEFAULT false` ; la contrainte `CHECK` de `school_codes.role` accepte `manager` (contrainte recréée dans la nouvelle migration, 002 n'est pas modifiée). A2 avec un code `manager` crée un instructeur (`users.role = 'instructor'`) avec `is_manager = true`, dans la même transaction que la consommation du code. A3 (`/me`) renvoie `isManager` pour un instructeur. Contrat §1 (A2, A3) mis à jour.
+**Dépend de** : Q-25, Q-27.
+**Fichiers** : `migrations/0NN_school_manager.sql`, `services/api/src/modules/auth/`, `services/api/src/modules/school/repositories/`, tests, `docs/API_CONTRACT.md`.
+**Critère de validation** :
+```bash
+./scripts/migrate.sh && ./scripts/migrate.sh && docker exec driving-school-postgres psql -U admin -d driving_school -c "\d instructors" | grep is_manager && cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPattern=auth && echo OK
+```
+**Hors périmètre** : garde sur les routes (14.3), écran de gestion des codes.
+
+### - [ ] 14.2 — Scripts : code gérant à l'onboarding, désignation d'un gérant existant
+**Objectif** : `scripts/onboard-school.sh` émet, en plus du code instructeur, un **code gérant** à une utilisation (`MGR-<SLUG>-<4 car.>`) ; sortie : les deux codes, un par ligne, étiquetés. Nouveau `scripts/set-manager.sh <email> [on|off]` : bascule `is_manager` d'un instructeur existant (écoles pilotes), refuse un compte qui n'est pas instructeur. README « Onboarding d'une école » mis à jour.
+**Dépend de** : Q-27.
+**Fichiers** : `scripts/onboard-school.sh`, `scripts/set-manager.sh` (nouveau), `README.md`.
+**Critère de validation** :
+```bash
+./scripts/onboard-school.sh "Ecole Test Gerant" "1 rue X" "+21600000000" "gerant-test@example.tn" | grep -E '^MGR-' && ./scripts/set-manager.sh instructor@seed.io on && docker exec driving-school-postgres psql -U admin -d driving_school -tAc "SELECT i.is_manager FROM instructors i JOIN users u ON u.id = i.user_id WHERE u.email = 'instructor@seed.io'" | grep -x t && ./scripts/set-manager.sh instructor@seed.io off && echo OK
+```
+**Hors périmètre** : écran d'administration.
+
+### - [ ] 14.3 — Garde « gérant » côté serveur
+**Objectif** : `SchoolGuard.assertManager(user, schoolId)` dans `src/http/authz.ts` : instructeur de l'école **et** `is_manager`, sinon 403 `FORBIDDEN_MANAGER` ; l'admin passe. Appliquée aux routes existantes que Q-26 réserve au gérant (S7, S8, S9 si (a) est retenu). Les routes des phases suivantes l'utilisent dès leur création. Contrat : S7–S9 et nouveau code d'erreur.
+**Dépend de** : Q-26.
+**Fichiers** : `services/api/src/http/authz.ts`, `services/api/src/modules/school/`, tests, `docs/API_CONTRACT.md`.
+**Critère de validation** :
+```bash
+cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPattern='authz|school' && echo OK
+```
+**Hors périmètre** : routes des phases suivantes.
+
+### - [ ] 14.4 — Mobile : le moniteur ne voit plus les actions du gérant
+**Objectif** : `isManager` dans le modèle `User` et l'`AuthContext` (lu depuis `/me`) ; « Mon école » en lecture seule pour un moniteur (boutons Modifier et tarifs masqués), `FORBIDDEN_MANAGER` traduit FR / AR. Un hook `useIsManager()` sert aux phases suivantes.
+**Dépend de** : Q-26.
+**Fichiers** : `mobile-app/src/models/User.ts`, `mobile-app/src/context/AuthContext.tsx`, `mobile-app/src/screens/instructor/MySchoolScreen.tsx`, `mobile-app/src/i18n/{fr,ar}.ts`, tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : écrans des phases suivantes.
+
+### - [ ] 14.5 — Bout en bout : gérant et moniteur
+**Objectif** : e2e « gérant » : inscription avec un code gérant → `/me` renvoie `isManager: true` ; un moniteur reçoit 403 `FORBIDDEN_MANAGER` sur S7 ; le gérant modifie sa fiche (200) ; un gérant d'une autre école reçoit 403 `FORBIDDEN_SCHOOL`. Seed e2e : un code gérant `MGR-SEED`.
+**Fichiers** : `tests/e2e/manager.e2e.test.ts` (nouveau), `tests/fixtures/seed.sql`.
+**Critère de validation** :
+```bash
+test -f tests/e2e/manager.e2e.test.ts && docker compose up -d --build --force-recreate api && npm run test:e2e && echo OK
+```
+**Hors périmètre** : —
+
+---
+
+## Phase 15 — Agenda et conflits d'horaire (Q-28, Q-29, Q-30)
+
+L'instructeur planifie aujourd'hui sans voir son planning, et rien n'empêche deux leçons à la même heure. Cette phase donne un agenda, contrôle les chevauchements, puis (Q-30 (b)) laisse l'élève choisir parmi de vrais créneaux libres.
+
+### - [ ] 15.1 — Route agenda
+**Objectif** : `GET /api/lessons/agenda?from=&to=&instructorId=` (instructeur de l'école / admin) : leçons `scheduled` et `completed` dont `scheduledDate` ∈ [`from`, `to`[ (plage ≤ 31 jours, 400 `VALIDATION_ERROR` sinon), triées par date, au format `Lesson`. Portée : toute l'école, `instructorId` filtre (Q-29 (b)). Contrat §4, ligne L9.
+**Dépend de** : Q-29.
+**Fichiers** : `services/api/src/modules/lesson/{routes,controllers,services,repositories,validators}`, tests, `docs/API_CONTRACT.md`.
+**Critère de validation** :
+```bash
+cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPattern=lesson && echo OK
+```
+**Hors périmètre** : examens dans l'agenda (pas d'instructeur attitré, D-33).
+
+### - [ ] 15.2 — Chevauchements refusés ou signalés à la planification
+**Objectif** : L4 et L5 vérifient qu'aucune leçon `scheduled` **du même instructeur ou du même élève** ne chevauche [`scheduledDate`, `scheduledDate + durationMinutes`[. Conflit → 409 `SCHEDULE_CONFLICT` avec `conflict: { lessonId, scheduledDate, durationMinutes, instructorId, studentId }` dans le corps d'erreur ; `force: true` dans le payload passe outre (Q-28 (b)). Vérification et écriture dans la **même transaction**, sous verrou (`pg_advisory_xact_lock` sur l'instructeur) pour que deux approbations simultanées ne passent pas toutes les deux. Un `ScheduleConflictChecker` injecté, réutilisé en 23.3 pour les véhicules. Contrat L4, L5, code d'erreur.
+**Dépend de** : Q-28.
+**Fichiers** : `services/api/src/modules/lesson/services/`, `services/api/src/modules/lesson/repositories/`, tests, `docs/API_CONTRACT.md`.
+**Critère de validation** :
+```bash
+cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPattern=lesson && echo OK
+```
+**Hors périmètre** : véhicules (23.3).
+
+### - [ ] 15.3 — Écran Agenda
+**Objectif** : écran « Agenda » instructeur : semaine en cours, semaine précédente / suivante / aujourd'hui, un bloc par leçon (heure, durée, type, élève), tap → fiche élève, filtre par instructeur. Accès depuis la navigation définie en Phase 13. `LessonService.getAgenda(from, to, instructorId?)` + test.
+**Dépend de** : Q-29.
+**Fichiers** : `mobile-app/src/screens/instructor/AgendaScreen.tsx` (nouveau), `mobile-app/src/services/api/LessonService.ts`, `mobile-app/src/config/api.config.ts`, navigation, `mobile-app/src/i18n/{fr,ar}.ts`, tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : glisser-déposer pour déplacer une leçon.
+
+### - [ ] 15.4 — Conflit affiché au moment de planifier
+**Objectif** : l'approbation (`LessonRequestsScreen`) et la réservation directe (`BookForStudentScreen`) affichent le conflit renvoyé (heure et élève de la leçon en conflit) et proposent « Planifier quand même » (renvoi avec `force: true`) ; `SCHEDULE_CONFLICT` traduit FR / AR.
+**Dépend de** : Q-28.
+**Fichiers** : `mobile-app/src/screens/instructor/{LessonRequestsScreen,BookForStudentScreen}.tsx`, `mobile-app/src/services/api/`, `mobile-app/src/i18n/{fr,ar}.ts`, tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : suggestion automatique d'un autre horaire.
+
+### - [ ] 15.5 — Bout en bout : agenda et conflit
+**Objectif** : e2e « agenda » : deux leçons qui se chevauchent pour le même instructeur → 409 `SCHEDULE_CONFLICT`, puis 200 avec `force: true` ; même contrôle pour un même élève ; L9 renvoie les leçons de la semaine ; un instructeur d'une autre école → 403 `FORBIDDEN_SCHOOL`.
+**Fichiers** : `tests/e2e/agenda.e2e.test.ts` (nouveau).
+**Critère de validation** :
+```bash
+test -f tests/e2e/agenda.e2e.test.ts && docker compose up -d --build --force-recreate api && npm run test:e2e && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 15.6 — Disponibilités des instructeurs
+**Objectif** : migration `0NN_instructor_availability.sql` : `instructor_availability (id, instructor_id → instructors, weekday 0–6, start_time TIME, end_time TIME, CHECK (end_time > start_time))`. Routes `GET /api/instructors/me/availability` et `PUT /api/instructors/me/availability` (l'instructeur remplace **sa semaine type** en une fois ; plages d'un même jour sans chevauchement, 400 sinon). Nouvelle section du contrat.
+**Dépend de** : Q-30.
+**Fichiers** : `migrations/0NN_instructor_availability.sql`, `services/api/src/modules/lesson/` (ou module `schedule` si la tâche le juge plus clair), tests, `docs/API_CONTRACT.md`.
+**Critère de validation** :
+```bash
+./scripts/migrate.sh && ./scripts/migrate.sh && docker exec driving-school-postgres psql -U admin -d driving_school -c "\d instructor_availability" | grep weekday && cd services/api && npx tsc --noEmit && npm run lint && npm test && echo OK
+```
+**Hors périmètre** : congés et absences ponctuelles de l'instructeur (tâche future si demandée).
+
+### - [ ] 15.7 — Créneaux libres pour l'élève
+**Objectif** : `GET /api/lessons/free-slots?type=&from=&to=` (élève avec inscription `approved`, école résolue par D-22 ; 403 `NOT_ENROLLED` sinon) : créneaux de la durée du tarif du type (S4 `duration`, 60 min à défaut), tirés des disponibilités des instructeurs de l'école, moins les leçons `scheduled` qui les chevauchent, uniquement dans le futur, plage ≤ 14 jours. Chaque créneau : `{ start, end, instructorId, instructorFirstName, instructorLastName }`. **L2 ne change pas** : l'élève envoie `requestedDate = start` et `preferredInstructorId = instructorId`, la demande reste `pending` (D-01). Contrat §4, ligne L10.
+**Dépend de** : Q-30.
+**Fichiers** : `services/api/src/modules/lesson/`, tests, `docs/API_CONTRACT.md`.
+**Critère de validation** :
+```bash
+cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPattern=lesson && echo OK
+```
+**Hors périmètre** : réservation sans approbation (Q-30 (c) non retenue).
+
+### - [ ] 15.8 — Écran « Mes disponibilités »
+**Objectif** : l'instructeur saisit sa semaine type (plages par jour, ajout / retrait), enregistrée d'un bloc (PUT). Service + test.
+**Dépend de** : Q-30.
+**Fichiers** : `mobile-app/src/screens/instructor/MyAvailabilityScreen.tsx` (nouveau), service, `api.config.ts`, navigation, i18n, tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 15.9 — L'élève choisit un créneau libre
+**Objectif** : `BookLessonScreen` propose, après le choix du type, les créneaux libres groupés par jour (instructeur affiché) ; en choisir un pré-remplit la demande. Repli « Proposer une autre date » (saisie libre actuelle) si aucun créneau ou si l'école n'a publié aucune disponibilité.
+**Dépend de** : Q-30.
+**Fichiers** : `mobile-app/src/screens/student/BookLessonScreen.tsx`, `mobile-app/src/services/api/LessonService.ts`, i18n, tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 15.10 — Bout en bout : créneaux libres
+**Objectif** : e2e « créneaux libres » : un instructeur publie une plage, l'élève voit les créneaux, une leçon planifiée sur l'un d'eux le fait disparaître, un élève non inscrit reçoit 403 `NOT_ENROLLED`.
+**Fichiers** : `tests/e2e/free-slots.e2e.test.ts` (nouveau).
+**Critère de validation** :
+```bash
+test -f tests/e2e/free-slots.e2e.test.ts && docker compose up -d --build --force-recreate api && npm run test:e2e && echo OK
+```
+**Hors périmètre** : —
+
+---
+
+## Phase 16 — Dossier administratif de l'élève (Q-31, Q-32)
+
+Pour présenter un élève à l'examen, l'école doit réunir des pièces (CIN, photos, certificat médical…). Aujourd'hui elle ne peut que répondre « File not ready » (D-42). Ici : une liste de pièces par école, cochée par l'instructeur à la réception au bureau, visible par l'élève. Pas d'envoi de fichier (D-49).
+
+### - [ ] 16.1 — Tables des pièces et du dossier
+**Objectif** : migration `0NN_student_documents.sql` : `document_types (id, school_id, label, position, active)` initialisée avec la liste par défaut de Q-31 pour **chaque école existante** ; `student_documents (id, student_id → students, document_type_id, received_at, received_by → users, note, UNIQUE (student_id, document_type_id))`. La création d'une école (route admin, script d'onboarding) insère la liste par défaut.
+**Dépend de** : Q-31.
+**Fichiers** : `migrations/0NN_student_documents.sql`, `services/api/src/modules/school/repositories/`, `scripts/onboard-school.sh`, tests.
+**Critère de validation** :
+```bash
+./scripts/migrate.sh && ./scripts/migrate.sh && docker exec driving-school-postgres psql -U admin -d driving_school -tAc "SELECT count(*) > 0 FROM document_types" | grep -x t && cd services/api && npx tsc --noEmit && npm run lint && npm test && echo OK
+```
+**Hors périmètre** : date d'expiration d'une pièce.
+
+### - [ ] 16.2 — Routes du dossier
+**Objectif** : liste des pièces de l'école : lecture (instructeur de l'école), ajout / renommage / désactivation (gérant, `assertManager`). Dossier d'un élève : lecture (instructeur de l'école, et l'élève pour le sien), « reçue » / « pas reçue » sur une pièce (instructeur de l'école). Réponse `StudentFile` : `{ complete, documents: [{ documentTypeId, label, received, receivedAt?, note? }] }`. Nouvelle section du contrat.
+**Dépend de** : Q-26, Q-31.
+**Fichiers** : `services/api/src/modules/student/` (ou module `document`), tests, `docs/API_CONTRACT.md`.
+**Critère de validation** :
+```bash
+cd services/api && npx tsc --noEmit && npm run lint && npm test && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 16.3 — Dossier visible au moment de l'examen
+**Objectif** : l'objet `Exam` (X1) et la fiche élève (P1, P8) portent `fileComplete` et `missingDocuments: string[]`. Q-32 (a) : purement informatif, X2 inchangé. Contrat X1, P1, P8.
+**Dépend de** : Q-32.
+**Fichiers** : `services/api/src/modules/exam/`, `services/api/src/modules/student/`, tests, `docs/API_CONTRACT.md`.
+**Critère de validation** :
+```bash
+cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPattern='exam|profile' && echo OK
+```
+**Hors périmètre** : blocage de la demande d'examen (Q-32 (b) / (c) non retenues).
+
+### - [ ] 16.4 — Mobile : dossier côté instructeur
+**Objectif** : onglet « Dossier » de la fiche élève (cocher une pièce reçue, note facultative) ; gestion de la liste des pièces dans « Mon école » (gérant seulement) ; badge « dossier incomplet » sur les demandes d'examen (`ExamRequestsScreen`).
+**Dépend de** : Q-26, Q-31.
+**Fichiers** : `mobile-app/src/screens/instructor/student-profile/tabs/StudentFileTab.tsx` (nouveau), `MySchoolScreen.tsx`, `ExamRequestsScreen.tsx`, service, `src/models/`, i18n, tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 16.5 — Mobile : « Mon dossier » côté élève
+**Objectif** : carte « Mon dossier » sur l'accueil élève : pièces manquantes à apporter au bureau, ou « Dossier complet » ; détail depuis « Mon profil ».
+**Dépend de** : Q-31.
+**Fichiers** : `mobile-app/src/screens/student/StudentDashboard.tsx`, `mobile-app/src/screens/student/my-profile/`, service, i18n, tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : envoi de photo d'une pièce (D-49).
+
+### - [ ] 16.6 — Bout en bout : dossier
+**Objectif** : e2e « dossier » : une école a sa liste par défaut ; l'instructeur coche toutes les pièces → `complete: true` ; l'élève lit son dossier ; un moniteur ne peut pas modifier la liste (403 `FORBIDDEN_MANAGER`) ; X1 renvoie `fileComplete`.
+**Fichiers** : `tests/e2e/student-file.e2e.test.ts` (nouveau).
+**Critère de validation** :
+```bash
+test -f tests/e2e/student-file.e2e.test.ts && docker compose up -d --build --force-recreate api && npm run test:e2e && echo OK
+```
+**Hors périmètre** : —
+
+---
+
+## Phase 17 — Notifications (Q-33 à Q-37)
+
+D-35 avait écarté les notifications de la v1 : l'élève doit ouvrir l'app pour savoir si sa leçon est acceptée. Cette phase les ajoute. **Expo Go ne reçoit plus les push sur Android depuis le SDK 53** : il faut une version installable (build de développement EAS), qui demande une action de l'humain.
+
+### - [ ] 17.1 — Build de développement Android (EAS)
+**Objectif** : `expo-dev-client` et `expo-notifications` installés (`npx expo install`), plugin déclaré dans `app.json`, `eas.json` avec un profil `development` (APK interne Android). **Action humaine** : `npx eas login`, `npx eas init` (écrit `extra.eas.projectId`), puis `npx eas build --profile development --platform android` et installation de l'APK sur le téléphone. Le README gagne une section « Version installable ». Expo Go reste utilisable pour tout ce qui n'est pas une notification.
+**Dépend de** : Q-37.
+**Fichiers** : `mobile-app/package.json`, `mobile-app/app.json`, `mobile-app/eas.json` (nouveau), `README.md`.
+**Critère de validation** :
+```bash
+cd mobile-app && npx expo-doctor && npx expo config --json | grep -q '"projectId"' && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : iOS (Q-37 (b) non retenue), publication sur le Play Store.
+
+### - [ ] 17.2 — Jetons push côté serveur
+**Objectif** : migration `0NN_push_tokens.sql` : `push_tokens (id, user_id → users, token UNIQUE, platform, language ∈ fr|ar, updated_at)`. Routes `PUT /api/notifications/push-token` (`{ token, platform, language }`, upsert, tout utilisateur connecté) et `DELETE /api/notifications/push-token` (`{ token }`, au logout). La langue suit le choix fait dans l'app (D-47). Contrat §7 réécrit ; D-35 est remplacée par la décision issue de Q-33.
+**Dépend de** : Q-33.
+**Fichiers** : `migrations/0NN_push_tokens.sql`, `services/api/src/modules/notification/` (nouveau module, `buildNotification()`), `services/api/src/app.ts`, tests, `docs/API_CONTRACT.md`.
+**Critère de validation** :
+```bash
+./scripts/migrate.sh && ./scripts/migrate.sh && docker exec driving-school-postgres psql -U admin -d driving_school -c "\d push_tokens" | grep language && cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPattern=notification && echo OK
+```
+**Hors périmètre** : envoi (17.3).
+
+### - [ ] 17.3 — Envoi par l'API push d'Expo
+**Objectif** : interface `IPushSender` ; `ExpoPushSender` (HTTP vers l'API push d'Expo, envois groupés par 100, jeton `DeviceNotRegistered` supprimé de `push_tokens`) ; `LogPushSender` pour le dev et l'e2e (`NOTIFICATIONS_DRIVER=log|expo` dans `loadEnv`, `log` par défaut). Catalogue des messages FR / AR **côté serveur** (titre, corps, `data: { screen, id }` pour ouvrir le bon écran). Chaque notification est aussi écrite dans la table `notifications` (001) pour l'historique (Q-36 (b)).
+**Dépend de** : Q-33, Q-36.
+**Fichiers** : `services/api/src/modules/notification/`, `services/api/src/config/env.ts`, `.env.example`, tests.
+**Critère de validation** :
+```bash
+cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPattern=notification && echo OK
+```
+**Hors périmètre** : e-mail, SMS.
+
+### - [ ] 17.4 — Événements branchés
+**Objectif** : un `Notifier` injecté dans les services `enrollment`, `lesson`, `exam` envoie les événements retenus en Q-33 aux destinataires de Q-34 (demande neuve : l'instructeur préféré s'il existe, sinon tous les instructeurs de l'école). L'envoi est fait **après** la réussite de l'action et **n'échoue jamais la requête** (erreur journalisée). Tests : chaque événement produit le bon message au bon destinataire, et un envoi en échec laisse la requête en 200.
+**Dépend de** : Q-33, Q-34.
+**Fichiers** : `services/api/src/modules/{student,lesson,exam}/services/`, `services/api/src/modules/*/index.ts`, tests.
+**Critère de validation** :
+```bash
+cd services/api && npx tsc --noEmit && npm run lint && npm test && echo OK
+```
+**Hors périmètre** : préférences de notification par utilisateur.
+
+### - [ ] 17.5 — Rappel de leçon
+**Objectif** : migration : `lessons.reminder_sent_at TIMESTAMP`. Tâche planifiée dans l'API (toutes les 15 min, verrou Redis pour qu'une seule instance l'exécute) : la veille à 18 h (heure de Tunis), rappel à l'élève de chaque leçon `scheduled` du lendemain, puis `reminder_sent_at` renseigné (jamais deux rappels). Q-35 (a).
+**Dépend de** : Q-35.
+**Fichiers** : `migrations/0NN_lesson_reminder.sql`, `services/api/src/modules/notification/jobs/`, `services/api/src/index.ts`, tests (horloge injectée).
+**Critère de validation** :
+```bash
+./scripts/migrate.sh && cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPattern='notification|reminder' && echo OK
+```
+**Hors périmètre** : rappel d'examen.
+
+### - [ ] 17.6 — Centre de notifications (routes)
+**Objectif** : `GET /api/notifications?unread=` (celles de l'appelant, 50 dernières), `PUT /api/notifications/:id/read`, `PUT /api/notifications/read-all`. Contrat §7.
+**Dépend de** : Q-36.
+**Fichiers** : `services/api/src/modules/notification/`, tests, `docs/API_CONTRACT.md`.
+**Critère de validation** :
+```bash
+cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPattern=notification && echo OK
+```
+**Hors périmètre** : suppression de notifications.
+
+### - [ ] 17.7 — Mobile : permission, jeton, ouverture du bon écran, historique
+**Objectif** : la permission est demandée **après** la connexion (jamais au premier lancement), le jeton est envoyé avec la langue courante (et renvoyé quand la langue change), supprimé au logout ; toucher une notification ouvre l'écran de `data.screen` ; écran « Notifications » (liste, lu / non lu, tout marquer lu) et badge du nombre de non-lues. `NotificationService` + tests.
+**Dépend de** : Q-36, Q-37.
+**Fichiers** : `mobile-app/src/services/api/NotificationService.ts` (nouveau), `mobile-app/src/services/push.ts` (nouveau), `mobile-app/src/screens/common/NotificationsScreen.tsx` (nouveau), `AuthContext`, navigation, i18n, `jest.setup.js` (mock `expo-notifications`), tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && npx expo-doctor && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 17.8 — Bout en bout : notifications
+**Objectif** : e2e « notifications » (`NOTIFICATIONS_DRIVER=log`) : enregistrement d'un jeton ; une approbation de leçon crée une notification pour l'élève (lue par la route de 17.6) ; une nouvelle demande notifie l'école ; marquer lu. La recette réelle sur téléphone (APK de 17.1) est faite par l'humain.
+**Fichiers** : `tests/e2e/notifications.e2e.test.ts` (nouveau), `docker-compose.yml` si la variable doit être passée.
+**Critère de validation** :
+```bash
+test -f tests/e2e/notifications.e2e.test.ts && docker compose up -d --build --force-recreate api && npm run test:e2e && echo OK
+```
+**Hors périmètre** : recette sur téléphone (humain).
+
+---
+
+## Phase 18 — Paiements partiels et reçus (Q-38, Q-39, Q-40)
+
+Aujourd'hui une leçon est payée ou non, d'un bloc. En réalité l'élève verse des acomptes. Tâches écrites pour Q-38 (b) : un **compte élève**, où chaque versement est imputé sur le dû le plus ancien et où l'excédent devient de l'avoir (D-40).
+
+### - [ ] 18.1 — Versements et imputations
+**Objectif** : migration `0NN_student_payments.sql` : `student_payments (id, student_id → students, school_id, amount > 0, payment_method ∈ cash|card|bank_transfer, receipt_number, received_by → users, received_at, note, cancelled_at, cancelled_by, cancel_reason, UNIQUE (school_id, receipt_number))` et `payment_allocations (id, payment_id, lesson_id?, exam_id?, amount > 0, CHECK exactement une cible)`. **Reprise de l'existant** : chaque leçon ou examen déjà `paid` reçoit un versement et une imputation de son `amount` (numéros de reçu attribués par école dans l'ordre des `payment_date`). Numéro de reçu : séquence par école, sans trou, attribuée sous verrou.
+**Dépend de** : Q-38.
+**Fichiers** : `migrations/0NN_student_payments.sql`, tests de migration (compte avant / après).
+**Critère de validation** :
+```bash
+./scripts/migrate.sh && ./scripts/migrate.sh && docker exec driving-school-postgres psql -U admin -d driving_school -tAc "SELECT (SELECT count(*) FROM lessons WHERE paid) + (SELECT count(*) FROM exams WHERE paid) = (SELECT count(*) FROM payment_allocations)" | grep -x t && echo OK
+```
+**Hors périmètre** : routes (18.2).
+
+### - [ ] 18.2 — Encaisser un versement
+**Objectif** : `POST /api/profiles/:studentId/payments` `{ amount, paymentMethod, note? }` (instructeur de l'école, ou gérant seulement si Q-26 (h)) : imputé dans une transaction sur le dû **du plus ancien au plus récent** (leçons `scheduled` et `completed` présentes, examens avec un prix) ; reste → `students.credit`. Chaque ligne expose `amountPaid` et `remaining` ; `paid` devient `remaining = 0`. P6 / P7 deviennent « solder cette ligne » (un versement du reste de la ligne). P2–P4, P9–P11 exposent les nouveaux champs ; D-40 et D-41 restent vrais (absence hors dû, avoir imputé). Contrat §6.
+**Dépend de** : Q-26, Q-38.
+**Fichiers** : `services/api/src/modules/student/` (services et repositories financiers), tests, `docs/API_CONTRACT.md`.
+**Critère de validation** :
+```bash
+cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPattern='profile|payment|financial' && echo OK
+```
+**Hors périmètre** : paiement en ligne (module `payment`, D-31).
+
+### - [ ] 18.3 — Historique et annulation d'un versement
+**Objectif** : `GET /api/profiles/:studentId/payments` (instructeur de l'école) et `GET /api/student-profiles/me/payments` (l'élève) : versements avec leurs imputations. `POST /api/payments/:id/cancel` `{ reason }` (10–500 car.) : gérant, sans limite de temps (Q-40 (c)) ; le versement est marqué annulé (jamais supprimé), ses imputations sont retirées, le dû recalculé, et l'avoir repris si le versement l'avait alimenté. Contrat.
+**Dépend de** : Q-40.
+**Fichiers** : `services/api/src/modules/student/`, tests, `docs/API_CONTRACT.md`.
+**Critère de validation** :
+```bash
+cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPattern='payment' && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 18.4 — Caisse de l'école
+**Objectif** : `GET /api/schools/:id/cash?from=&to=` (gérant) : total encaissé, total par mode de paiement, total par jour, liste des versements (non annulés) avec élève et moniteur qui a encaissé. Contrat §2.
+**Dépend de** : Q-26.
+**Fichiers** : `services/api/src/modules/school/` (ou `student`), tests, `docs/API_CONTRACT.md`.
+**Critère de validation** :
+```bash
+cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPattern='cash' && echo OK
+```
+**Hors périmètre** : dépenses de l'école (carburant, salaires).
+
+### - [ ] 18.5 — Mobile : encaisser et historique
+**Objectif** : bouton « Encaisser » sur la fiche élève (montant libre, mode de paiement, note) avec aperçu de l'imputation avant validation ; historique des versements ; annulation (gérant, motif obligatoire). Reste à payer affiché sur chaque ligne. Côté élève : historique de ses versements.
+**Dépend de** : Q-38, Q-40.
+**Fichiers** : `mobile-app/src/screens/instructor/student-profile/`, `mobile-app/src/screens/student/my-profile/`, `mobile-app/src/services/api/`, `src/models/`, i18n, tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 18.6 — Reçu
+**Objectif** : écran « Reçu » (école, numéro, date, élève, montant, mode, lignes réglées, avoir restant) ouvert depuis l'historique (élève et instructeur) ; « Partager en PDF » génère le PDF sur le téléphone (`expo-print` + `expo-sharing`, installés par `npx expo install`), en FR ou AR selon la langue.
+**Dépend de** : Q-39.
+**Fichiers** : `mobile-app/src/screens/common/ReceiptScreen.tsx` (nouveau), `mobile-app/src/utils/receipt.ts` (nouveau, gabarit HTML du PDF), `package.json`, i18n, tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && npx expo-doctor && echo OK
+```
+**Hors périmètre** : envoi automatique du reçu par e-mail.
+
+### - [ ] 18.7 — Mobile : écran Caisse du gérant
+**Objectif** : écran « Caisse » (gérant) : aujourd'hui / cette semaine / ce mois, total et répartition par mode, liste des versements, tap → reçu.
+**Dépend de** : Q-26.
+**Fichiers** : `mobile-app/src/screens/instructor/CashScreen.tsx` (nouveau), service, navigation, i18n, tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : export comptable.
+
+### - [ ] 18.8 — Bout en bout : paiements partiels
+**Objectif** : e2e « paiements partiels » : deux leçons à 40 ; versement de 50 → première soldée, seconde avec 30 restants ; versement de 50 → seconde soldée, avoir de 20 ; annulation du second versement par le gérant → retour à l'état précédent ; un moniteur ne peut pas annuler (403) ; la caisse du jour affiche 50.
+**Fichiers** : `tests/e2e/partial-payments.e2e.test.ts` (nouveau).
+**Critère de validation** :
+```bash
+test -f tests/e2e/partial-payments.e2e.test.ts && docker compose up -d --build --force-recreate api && npm run test:e2e && echo OK
+```
+**Hors périmètre** : —
+
+---
+
+## Phase 19 — Forfaits (Q-41 à Q-44)
+
+Les écoles vendent des packs d'heures (« 20 h de conduite ») plutôt que des leçons à l'unité. Tâches écrites pour : heures par type (Q-41 (a)), attribution au comptoir (Q-42 (a)), absence non décomptée (Q-43 (a)), tarif normal au-delà et pas d'expiration (Q-44 (a)).
+
+### - [ ] 19.1 — Catalogue et forfaits d'élève
+**Objectif** : migration `0NN_packs.sql` : `pack_templates (id, school_id, name, price, active)` + `pack_template_items (template_id, lesson_type, hours)` ; `student_packs (id, student_id → students, name, price, sold_at, sold_by)` + `student_pack_items (student_pack_id, lesson_type, minutes_total)` (copie figée du modèle à la vente, comme D-30 pour les prix) ; `lessons.student_pack_id` nullable ; `payment_allocations.student_pack_id` (troisième cible possible d'une imputation, CHECK mis à jour).
+**Dépend de** : Q-41, Q-44.
+**Fichiers** : `migrations/0NN_packs.sql`, tests.
+**Critère de validation** :
+```bash
+./scripts/migrate.sh && ./scripts/migrate.sh && docker exec driving-school-postgres psql -U admin -d driving_school -c "\d student_pack_items" | grep minutes_total && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 19.2 — Catalogue de l'école (routes)
+**Objectif** : `GET /api/schools/:id/packs` (public, forfaits actifs) ; création, modification et désactivation par le gérant (`assertManager`). Contrat §2.
+**Dépend de** : Q-26, Q-41.
+**Fichiers** : `services/api/src/modules/school/` (ou module `pack`), tests, `docs/API_CONTRACT.md`.
+**Critère de validation** :
+```bash
+cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPattern=pack && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 19.3 — Attribuer un forfait à un élève
+**Objectif** : `POST /api/profiles/:studentId/packs` `{ templateId }` (instructeur de l'école) : crée le forfait de l'élève ; son prix entre dans le dû (imputable par les versements de 18.2). `GET` des forfaits d'un élève (instructeur et l'élève pour lui-même) avec, par type, minutes totales / consommées / réservées / restantes. Contrat §6.
+**Dépend de** : Q-38, Q-42.
+**Fichiers** : `services/api/src/modules/student/`, tests, `docs/API_CONTRACT.md`.
+**Critère de validation** :
+```bash
+cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPattern=pack && echo OK
+```
+**Hors périmètre** : demande de forfait par l'élève (Q-42 (b) non retenue).
+
+### - [ ] 19.4 — Consommation des heures
+**Objectif** : à la planification (L4, L5), si l'élève a un forfait avec assez de minutes restantes pour ce type, la leçon y est rattachée (`student_pack_id`, **prix 0**, hors dû) : ses minutes sont **réservées** ; présence (L7 `attended = true`) → **consommées** ; annulation (L3) ou absence (L7 `attended = false`, Q-43 (a)) → libérées. Sans assez de minutes : tarif normal (Q-44 (a)). Tests sur chaque transition, forfaits multiples (le plus ancien d'abord). Contrat L3, L4, L5, L7 (`studentPackId` dans `Lesson`).
+**Dépend de** : Q-43, Q-44.
+**Fichiers** : `services/api/src/modules/lesson/services/`, `services/api/src/modules/student/repositories/`, tests, `docs/API_CONTRACT.md`.
+**Critère de validation** :
+```bash
+cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPattern='lesson|pack' && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 19.5 — Mobile : catalogue
+**Objectif** : « Mon école » : gestion des forfaits (gérant) ; fiche école publique (`SchoolDetailScreen`) : les forfaits à côté des tarifs.
+**Dépend de** : Q-26.
+**Fichiers** : `MySchoolScreen.tsx`, `SchoolDetailScreen.tsx`, `mobile-app/src/services/api/SchoolService.ts`, `src/models/`, i18n, tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 19.6 — Mobile : forfait de l'élève côté instructeur
+**Objectif** : fiche élève : « Attribuer un forfait » (choix dans le catalogue), heures restantes par type ; à l'approbation d'une leçon, mention « Couverte par le forfait » ou « Hors forfait, tarif normal ».
+**Dépend de** : Q-42.
+**Fichiers** : `mobile-app/src/screens/instructor/student-profile/`, `LessonRequestsScreen.tsx`, `BookForStudentScreen.tsx`, service, i18n, tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 19.7 — Mobile : « Mon forfait » côté élève
+**Objectif** : carte « Mon forfait » sur l'accueil : heures restantes par type (barre de progression), mention quand il reste 2 h ou moins sur un type.
+**Dépend de** : Q-41.
+**Fichiers** : `mobile-app/src/screens/student/StudentDashboard.tsx`, service, i18n, tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : notification de forfait presque épuisé (possible via 17.4 si l'auteur le demande).
+
+### - [ ] 19.8 — Bout en bout : forfait
+**Objectif** : e2e « forfait » : le gérant crée « 2 h Manœuvre » ; attribué à l'élève (prix dans le dû) ; deux leçons d'1 h couvertes (prix 0), une troisième au tarif normal ; une absence libère l'heure ; un versement solde le forfait.
+**Fichiers** : `tests/e2e/packs.e2e.test.ts` (nouveau).
+**Critère de validation** :
+```bash
+test -f tests/e2e/packs.e2e.test.ts && docker compose up -d --build --force-recreate api && npm run test:e2e && echo OK
+```
+**Hors périmètre** : —
+
+---
+
+## Phase 20 — Progression pédagogique (Q-45, Q-46, Q-47)
+
+L'accueil « My journey » montre des nombres de leçons, pas ce que l'élève sait faire. Ici, l'instructeur note à la fin de la leçon les compétences travaillées, et l'élève voit où il en est.
+
+### - [ ] 20.1 — Référentiel et niveaux
+**Objectif** : migration `0NN_skills.sql` : `skills (code PRIMARY KEY, lesson_type, position)` initialisée avec la liste de Q-45 (libellés au catalogue mobile FR / AR par `code`, pas en base) ; `student_skills (student_id → students, skill_code, level ∈ not_started|in_progress|acquired, updated_at, updated_by, PRIMARY KEY (student_id, skill_code))` ; `lesson_skill_updates (lesson_id, skill_code, level)` pour l'historique. Q-46 (a).
+**Dépend de** : Q-45, Q-46.
+**Fichiers** : `migrations/0NN_skills.sql`, tests.
+**Critère de validation** :
+```bash
+./scripts/migrate.sh && ./scripts/migrate.sh && docker exec driving-school-postgres psql -U admin -d driving_school -tAc "SELECT count(*) > 0 FROM skills" | grep -x t && echo OK
+```
+**Hors périmètre** : liste par école (Q-45 (b) non retenue).
+
+### - [ ] 20.2 — Compétences à la présence, progression lisible
+**Objectif** : L7 accepte `skills?: [{ code, level }]` (codes du type de la leçon, 400 sinon), écrit l'historique et met à jour les niveaux, dans la transaction de la présence. `GET /api/skills` (référentiel), progression d'un élève pour l'instructeur (famille P) et pour l'élève (famille P « me ») : par type, chaque compétence avec son niveau et la date de dernière évaluation. Contrat L7 et §6.
+**Dépend de** : Q-46.
+**Fichiers** : `services/api/src/modules/lesson/`, `services/api/src/modules/student/`, tests, `docs/API_CONTRACT.md`.
+**Critère de validation** :
+```bash
+cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPattern='lesson|skill' && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 20.3 — Mobile : évaluer à la fin de la leçon
+**Objectif** : la saisie de présence (`TodayLessonsScreen`) propose les compétences du type de la leçon, niveau actuel pré-rempli, en trois boutons ; facultatif, jamais bloquant.
+**Dépend de** : Q-45, Q-46.
+**Fichiers** : `mobile-app/src/screens/instructor/TodayLessonsScreen.tsx`, `mobile-app/src/models/Skill.ts` (nouveau), service, i18n (libellés par code), tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 20.4 — Mobile : progression visible
+**Objectif** : onglet « Progression » de la fiche élève (instructeur) ; côté élève, chaque étape de « My journey » s'ouvre sur ses compétences et, si Q-47 (a), le commentaire des dernières leçons (`feedback` exposé à l'élève par P9 ; la note privée P5 reste privée). Contrat P9 si le `feedback` y change de visibilité.
+**Dépend de** : Q-47.
+**Fichiers** : `mobile-app/src/screens/instructor/student-profile/tabs/`, `mobile-app/src/screens/student/`, service, i18n, tests ; `services/api` et contrat si P9 change.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && cd ../services/api && npx tsc --noEmit && npm test && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 20.5 — Bout en bout : progression
+**Objectif** : e2e « progression » : présence avec deux compétences évaluées → niveaux lus par l'instructeur et par l'élève ; un code d'un autre type de leçon → 400.
+**Fichiers** : `tests/e2e/skills.e2e.test.ts` (nouveau).
+**Critère de validation** :
+```bash
+test -f tests/e2e/skills.e2e.test.ts && docker compose up -d --build --force-recreate api && npm run test:e2e && echo OK
+```
+**Hors périmètre** : —
+
+---
+
+## Phase 21 — Examens : repasses et prix (Q-48, Q-49)
+
+Un échec est aujourd'hui un résultat sans suite, et un examen n'a pas de prix avant d'être payé. Ici : numéro de tentative, repasse programmée en un geste, grille de prix d'examen.
+
+### - [ ] 21.1 — Numéro de tentative
+**Objectif** : `Exam` (X1, P3, P10) porte `attemptNumber` (rang de l'examen parmi ceux du même type de l'élève, hors `rejected` / `cancelled`) et `previousResults` (résultats des tentatives précédentes). Calculé en lecture, sans colonne. Contrat.
+**Fichiers** : `services/api/src/modules/exam/repositories/`, `services/api/src/modules/student/`, tests, `docs/API_CONTRACT.md`.
+**Critère de validation** :
+```bash
+cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPattern='exam' && echo OK
+```
+**Hors périmètre** : délai minimal entre deux tentatives (règle de l'ATTT, pas de l'app).
+
+### - [ ] 21.2 — Repasse programmée par l'instructeur
+**Objectif** : `POST /api/exams/book-for-student` `{ studentId, examType, dateTime, location }` (instructeur de l'école) : crée un examen `scheduled` directement, comme L4 pour les leçons ; l'élève garde la possibilité de redemander (X2). Contrat §5, ligne X6.
+**Dépend de** : Q-48.
+**Fichiers** : `services/api/src/modules/exam/`, tests, `docs/API_CONTRACT.md`.
+**Critère de validation** :
+```bash
+cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPattern='exam' && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 21.3 — Grille de prix des examens
+**Objectif** : migration `0NN_exam_pricing.sql` : `exam_pricing (id, school_id, exam_type ∈ theory|practical, price > 0, UNIQUE (school_id, exam_type))` ; routes de lecture (publique) et d'upsert / suppression (gérant) ; X3 et X6 copient le prix sur l'examen (`exams.price`), qui entre dans le dû (imputable, Phase 18). Sans tarif, le prix est saisi à la planification (même règle que D-30, 400 `PRICE_REQUIRED` sinon). Contrat §2 et §5.
+**Dépend de** : Q-26, Q-49.
+**Fichiers** : `migrations/0NN_exam_pricing.sql`, `services/api/src/modules/{school,exam}/`, tests, `docs/API_CONTRACT.md`.
+**Critère de validation** :
+```bash
+./scripts/migrate.sh && ./scripts/migrate.sh && docker exec driving-school-postgres psql -U admin -d driving_school -c "\d exam_pricing" | grep exam_type && cd services/api && npx tsc --noEmit && npm run lint && npm test && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 21.4 — Mobile : tentatives et repasse
+**Objectif** : badge « Tentative n » sur les examens (instructeur et élève) ; après un résultat `failed`, bouton « Programmer une repasse » (instructeur, pré-rempli) et « Redemander l'examen » (élève). Libellés par type conservés (D-42).
+**Dépend de** : Q-48.
+**Fichiers** : `mobile-app/src/screens/instructor/{TodayExamsScreen,ExamRequestsScreen}.tsx`, `mobile-app/src/screens/student/MyExamsScreen.tsx`, service, `src/models/Exam.ts`, i18n, tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 21.5 — Mobile : prix des examens
+**Objectif** : « Mon école » : tarifs d'examen (gérant) ; fiche école publique : prix des examens ; planification : prix affiché, saisi s'il n'y a pas de tarif.
+**Dépend de** : Q-49.
+**Fichiers** : `MySchoolScreen.tsx`, `SchoolDetailScreen.tsx`, `ExamRequestsScreen.tsx`, services, i18n, tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 21.6 — Bout en bout : repasse
+**Objectif** : e2e « repasse » : examen pratique échoué → repasse programmée par l'instructeur, `attemptNumber = 2`, prix copié de la grille, dans le dû de l'élève.
+**Fichiers** : `tests/e2e/exam-retake.e2e.test.ts` (nouveau).
+**Critère de validation** :
+```bash
+test -f tests/e2e/exam-retake.e2e.test.ts && docker compose up -d --build --force-recreate api && npm run test:e2e && echo OK
+```
+**Hors périmètre** : —
+
+---
+
+## Phase 22 — Tableau de bord du gérant (Q-50)
+
+Le gérant n'a aujourd'hui aucune vue d'ensemble. Cette phase agrège ce que les phases précédentes enregistrent.
+
+### - [ ] 22.1 — Indicateurs de l'école
+**Objectif** : `GET /api/schools/:id/dashboard?month=YYYY-MM` (gérant) : les indicateurs retenus en Q-50, pour le mois demandé et le précédent — encaissé et répartition par mode, reste à encaisser, heures par instructeur, taux de réussite théorie / pratique (première tentative et global), taux d'absence, demandes en attente. Requêtes d'agrégat dans un repository dédié, testées sur `Pool` factice. Contrat §2.
+**Dépend de** : Q-26, Q-50.
+**Fichiers** : `services/api/src/modules/school/` (ou module `dashboard`), tests, `docs/API_CONTRACT.md`.
+**Critère de validation** :
+```bash
+cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPattern=dashboard && echo OK
+```
+**Hors périmètre** : export CSV.
+
+### - [ ] 22.2 — Élèves inactifs
+**Objectif** : `GET /api/schools/:id/inactive-students?days=14` (gérant) : élèves autorisés sans leçon `scheduled` ni `completed` depuis `days` jours, avec la date de leur dernière leçon et leur téléphone. Contrat §2.
+**Dépend de** : Q-50.
+**Fichiers** : `services/api/src/modules/school/`, tests, `docs/API_CONTRACT.md`.
+**Critère de validation** :
+```bash
+cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPattern='dashboard|inactive' && echo OK
+```
+**Hors périmètre** : relance automatique.
+
+### - [ ] 22.3 — Mobile : écran Tableau de bord
+**Objectif** : écran « Tableau de bord » (gérant) : tuiles d'indicateurs avec évolution par rapport au mois précédent, graphiques simples (bibliothèque et style définis en Phase 13), liste des élèves inactifs avec appel en un geste (`tel:`).
+**Dépend de** : Q-50.
+**Fichiers** : `mobile-app/src/screens/instructor/DashboardScreen.tsx` (nouveau), service, navigation, i18n, tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 22.4 — Bout en bout : tableau de bord
+**Objectif** : e2e « tableau de bord » : sur des données connues (leçons, versements, examens créés par le test), les indicateurs valent ce qui est attendu ; un moniteur reçoit 403 `FORBIDDEN_MANAGER`.
+**Fichiers** : `tests/e2e/dashboard.e2e.test.ts` (nouveau).
+**Critère de validation** :
+```bash
+test -f tests/e2e/dashboard.e2e.test.ts && docker compose up -d --build --force-recreate api && npm run test:e2e && echo OK
+```
+**Hors périmètre** : —
+
+---
+
+## Phase 23 — Flotte de véhicules (Q-51, Q-52, Q-53)
+
+Les leçons de Manœuvre et de Parc mobilisent une voiture : rien n'empêche de la réserver deux fois, et personne n'est prévenu avant la fin de l'assurance ou de la visite technique.
+
+### - [ ] 23.1 — Véhicules
+**Objectif** : migration `0NN_vehicles.sql` : `vehicles (id, school_id, plate, model, transmission ∈ manual|automatic, active, insurance_until, inspection_until, vignette_until, UNIQUE (school_id, plate))` ; `lessons.vehicle_id` nullable.
+**Dépend de** : Q-53.
+**Fichiers** : `migrations/0NN_vehicles.sql`, tests.
+**Critère de validation** :
+```bash
+./scripts/migrate.sh && ./scripts/migrate.sh && docker exec driving-school-postgres psql -U admin -d driving_school -c "\d vehicles" | grep inspection_until && echo OK
+```
+**Hors périmètre** : kilométrage et vidange (Q-53 (b) non retenue).
+
+### - [ ] 23.2 — Routes de la flotte
+**Objectif** : lecture des véhicules de l'école (instructeur de l'école) ; création, modification, désactivation (gérant). Nouvelle section du contrat.
+**Dépend de** : Q-26.
+**Fichiers** : `services/api/src/modules/vehicle/` (nouveau module, `buildVehicle()`), `services/api/src/app.ts`, tests, `docs/API_CONTRACT.md`.
+**Critère de validation** :
+```bash
+cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPattern=vehicle && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 23.3 — Véhicule à la planification
+**Objectif** : L4 et L5 acceptent `vehicleId?` (facultatif, Q-51 (a) ; véhicule actif de l'école, 400 sinon) ; le `ScheduleConflictChecker` de 15.2 contrôle aussi le véhicule — toujours bloquant, `force` sans effet (Q-52 (b)) ; `Lesson` et l'agenda (L9) exposent le véhicule. Contrat L4, L5, L9.
+**Dépend de** : Q-51, Q-52.
+**Fichiers** : `services/api/src/modules/lesson/`, tests, `docs/API_CONTRACT.md`.
+**Critère de validation** :
+```bash
+cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPattern='lesson|vehicle' && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 23.4 — Échéances
+**Objectif** : le tableau de bord (22.1) gagne les échéances à moins de 30 jours (véhicule, type, date) ; la tâche planifiée de 17.5 notifie le gérant à J-30 et J-7 (une fois par échéance et par seuil, colonne ou table de suivi dans une migration).
+**Dépend de** : Q-53.
+**Fichiers** : `migrations/0NN_vehicle_alerts.sql`, `services/api/src/modules/{vehicle,notification,school}/`, tests, `docs/API_CONTRACT.md`.
+**Critère de validation** :
+```bash
+./scripts/migrate.sh && cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPattern='vehicle|dashboard|notification' && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 23.5 — Mobile : flotte
+**Objectif** : écran « Flotte » (gérant : ajout, modification, désactivation, dates d'échéance en évidence) ; sélecteur de véhicule à l'approbation et à la réservation directe ; conflit de véhicule affiché ; véhicule visible dans l'agenda, filtre par véhicule.
+**Dépend de** : Q-51, Q-52.
+**Fichiers** : `mobile-app/src/screens/instructor/FleetScreen.tsx` (nouveau), `LessonRequestsScreen.tsx`, `BookForStudentScreen.tsx`, `AgendaScreen.tsx`, service, i18n, tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 23.6 — Bout en bout : flotte
+**Objectif** : e2e « flotte » : le gérant crée un véhicule ; deux leçons sur ce véhicule à la même heure → 409 `SCHEDULE_CONFLICT` même avec `force: true` ; une assurance qui expire dans 10 jours apparaît au tableau de bord.
+**Fichiers** : `tests/e2e/fleet.e2e.test.ts` (nouveau).
+**Critère de validation** :
+```bash
+test -f tests/e2e/fleet.e2e.test.ts && docker compose up -d --build --force-recreate api && npm run test:e2e && echo OK
+```
+**Hors périmètre** : —
+
+---
+
+## Après la Phase 23
+
+Recette sur téléphone par l'humain (APK de 17.1), puis, s'il le demande : mise en ligne pilote (hébergement du backend, build de production EAS, Play Store).

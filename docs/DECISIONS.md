@@ -118,4 +118,277 @@ Deux sections. « Décisions prises » fait autorité : on ne la rediscute pas d
 
 ## Questions ouvertes
 
-Aucune au 26/09/2026 : Q-17 → D-40, Q-18 → D-41, Q-19 → D-42, Q-20 → D-43, Q-21 → D-44, Q-22 → D-49, Q-23 → D-50, Q-24 → D-51 ; D-45 (design accepté), D-46 (SDK Expo), D-47 (français et arabe) et D-48 (design system et thèmes) prises sans question. **À vérifier sur le terrain** : le rattachement type → procédure d'examen (D-44) et les termes arabes du métier (D-47).
+Historique : Q-17 → D-40, Q-18 → D-41, Q-19 → D-42, Q-20 → D-43, Q-21 → D-44, Q-22 → D-49, Q-23 → D-50, Q-24 → D-51 ; D-45 (design accepté), D-46 (SDK Expo), D-47 (français et arabe) et D-48 (design system et thèmes) prises sans question. **À vérifier sur le terrain** : le rattachement type → procédure d'examen (D-44) et les termes arabes du métier (D-47).
+
+### Feuille de route v1.1 (26/09/2026) — Q-25 à Q-53
+
+Après la recette sur téléphone (aucun bug), l'auteur a demandé des améliorations métier. Elles sont découpées en phases 14 à 23 dans `docs/PLAN.md` ; chaque phase dépend des questions ci-dessous. **Répondre par lettre.** La « recommandation » est une proposition de Claude, pas une décision : une réponse du type « toutes les recommandations sauf Q-xx → (b) » suffit. Une fois tranchées, les questions deviennent des décisions D-52 et suivantes, et les tâches écrites pour une autre option que celle retenue sont réécrites **avant** de commencer la phase.
+
+#### Phase 14 — Gérant de l'école
+
+### Q-25 — Faut-il distinguer le gérant des moniteurs ?
+Aujourd'hui tous les instructeurs d'une école ont les mêmes droits : un moniteur salarié peut modifier les tarifs (S8) et verra demain la caisse de l'école.
+- **(a)** Non, statu quo : tous les instructeurs sont égaux. La Phase 14 est supprimée ; partout où le plan dit « gérant », lire « tout instructeur de l'école ».
+- **(b)** Oui, par un **drapeau `is_manager`** sur `instructors` : le gérant reste un instructeur (il donne aussi des leçons), avec des droits en plus.
+- **(c)** Oui, par un **nouveau rôle `manager`** dans `users.role`, distinct d'`instructor` (le gérant ne donne pas de leçons dans l'app).
+
+**Recommandation** : (b). Dans une petite auto-école le gérant est presque toujours aussi moniteur ; un rôle distinct obligerait à lui créer deux comptes.
+Bloque : toute la Phase 14 et les tâches « gérant » des phases 16, 18, 19, 22, 23.
+
+### Q-26 — Quelles actions sont réservées au gérant ? (plusieurs choix)
+- **(a)** Modifier la fiche école et la grille tarifaire (S7, S8, S9, aujourd'hui ouvertes à tout instructeur par D-51).
+- **(b)** Gérer la liste des pièces du dossier (Phase 16).
+- **(c)** Voir la caisse de l'école (Phase 18).
+- **(d)** Annuler un versement (Phase 18).
+- **(e)** Gérer le catalogue de forfaits (Phase 19).
+- **(f)** Voir le tableau de bord (Phase 22).
+- **(g)** Gérer la flotte de véhicules (Phase 23).
+- **(h)** Encaisser un versement (Phase 18).
+
+**Recommandation** : (a) à (g). L'encaissement (h) reste ouvert à tout moniteur, qui reçoit souvent l'argent en voiture.
+Bloque : 14.3 et les gardes des phases suivantes.
+
+### Q-27 — Comment devient-on gérant ?
+- **(a)** Par un **code d'inscription gérant** (`school_codes.role = 'manager'`, une utilisation) émis par le script d'onboarding.
+- **(b)** Désigné par l'administrateur sur un instructeur existant (script `scripts/set-manager.sh <email>`).
+- **(c)** Les deux : (a) pour les nouvelles écoles, (b) pour les écoles pilotes déjà inscrites.
+
+**Recommandation** : (c). Les 5 écoles pilotes ont déjà leurs instructeurs ; il faut pouvoir désigner leur gérant sans nouvelle inscription.
+Bloque : 14.1, 14.2.
+
+#### Phase 15 — Agenda et conflits d'horaire
+
+### Q-28 — Deux leçons qui se chevauchent pour un même instructeur ou un même élève ?
+Aujourd'hui rien n'empêche L4 / L5 de planifier deux leçons à la même heure.
+- **(a)** Bloquant : 409 `SCHEDULE_CONFLICT`, il faut choisir une autre heure.
+- **(b)** Avertissement : 409 `SCHEDULE_CONFLICT` avec la leçon en conflit, et l'instructeur peut **forcer** (`force: true`).
+- **(c)** Bloquant, sauf pour les leçons `CODE` (séances de code données à plusieurs élèves dans la même salle).
+
+**Recommandation** : (b). Couvre le code en salle et les cas exceptionnels sans inventer de règle par type.
+Bloque : 15.2, 15.4.
+
+### Q-29 — Qui voit quoi dans l'agenda ?
+- **(a)** Chaque instructeur voit **ses** leçons seulement.
+- **(b)** Tout instructeur voit l'agenda de **toute son école**, avec un filtre par instructeur.
+
+**Recommandation** : (b). Même logique que la file partagée des demandes (D-32) ; utile pour se répartir les élèves.
+Bloque : 15.1, 15.3.
+
+### Q-30 — L'élève choisit-il parmi des créneaux libres ?
+Aujourd'hui l'élève écrit une date souhaitée et l'instructeur fixe la vraie date : plusieurs allers-retours sont fréquents.
+- **(a)** Non : l'agenda sert seulement à l'instructeur ; 15.6 à 15.10 sont supprimées.
+- **(b)** Oui : chaque instructeur publie sa **semaine type de disponibilités** ; l'élève choisit un créneau libre, **la demande reste à approuver** par l'école (D-01 inchangé).
+- **(c)** Oui, et choisir un créneau **réserve directement** la leçon, sans approbation.
+
+**Recommandation** : (b). On garde le contrôle de l'école tout en supprimant la négociation de date.
+Bloque : 15.6 à 15.10.
+
+#### Phase 16 — Dossier administratif de l'élève
+
+### Q-31 — Liste des pièces du dossier
+L'élève ne coche rien lui-même : il n'y a pas d'envoi de fichier en v1 (D-49). C'est l'instructeur qui note qu'une pièce a été **reçue au bureau**, l'élève voit ce qui manque.
+- **(a)** Liste **fixe**, la même pour toutes les écoles, codée dans l'app.
+- **(b)** Liste **par école**, modifiable par le gérant, initialisée avec une liste par défaut.
+
+Liste par défaut proposée, **à corriger par l'auteur** : copie de la CIN, photos d'identité, certificat médical, extrait de naissance, timbre fiscal.
+**Recommandation** : (b), avec la liste par défaut que l'auteur aura corrigée.
+Bloque : 16.1 à 16.4.
+
+### Q-32 — Que se passe-t-il si le dossier est incomplet ?
+- **(a)** Rien de bloquant : l'élève voit les pièces manquantes, l'instructeur voit un badge « dossier incomplet » sur la demande d'examen et décide (comme D-26 pour les leçons effectuées).
+- **(b)** La demande d'examen **pratique** (X2) est refusée (403 `FILE_INCOMPLETE`) tant que le dossier n'est pas complet.
+- **(c)** Les demandes d'examen **théorique et pratique** sont refusées tant que le dossier n'est pas complet.
+
+**Recommandation** : (a). Cohérent avec D-26 (l'instructeur juge, l'app informe).
+Bloque : 16.3.
+
+#### Phase 17 — Notifications
+
+### Q-33 — Quels événements déclenchent une notification ? (plusieurs choix)
+Côté élève :
+- **(a)** Inscription acceptée ou refusée (E5, E6).
+- **(b)** Leçon planifiée, refusée, ou annulée par l'école (L4, L5, L6, L3).
+- **(c)** Examen planifié, refusé, résultat enregistré (X3, X4, X5).
+- **(d)** Rappel avant une leçon (voir Q-35).
+
+Côté école :
+- **(e)** Nouvelle demande d'inscription (E2).
+- **(f)** Nouvelle demande de leçon ou d'examen (L2, X2).
+- **(g)** Leçon annulée par l'élève (L3).
+
+**Recommandation** : toutes.
+Bloque : 17.4.
+
+### Q-34 — Côté école, qui reçoit une nouvelle demande ?
+- **(a)** Tous les instructeurs de l'école (file partagée, D-32).
+- **(b)** L'instructeur préféré s'il y en a un (`preferredInstructorId`), sinon tous.
+- **(c)** Le gérant seulement.
+
+**Recommandation** : (b).
+Bloque : 17.4.
+
+### Q-35 — Rappel avant une leçon
+- **(a)** La veille à 18 h.
+- **(b)** 24 h avant.
+- **(c)** 2 h avant.
+- **(d)** La veille à 18 h **et** 2 h avant.
+- **(e)** Aucun rappel.
+
+**Recommandation** : (a). Un seul message, au moment où l'élève peut encore s'organiser.
+Bloque : 17.5.
+
+### Q-36 — Un écran « Notifications » dans l'app ?
+- **(a)** Push seulement : une notification manquée est perdue.
+- **(b)** Push **et** un écran historique (lu / non lu, badge sur l'icône).
+
+**Recommandation** : (b). La table `notifications` existe déjà depuis 001 ; sans historique, une notification balayée par erreur est perdue.
+Bloque : 17.6.
+
+### Q-37 — Pour quelles plateformes produire une version installable ?
+Depuis le SDK 53, **Expo Go ne reçoit plus les notifications push sur Android**. Pour les tester, il faut une version installable de l'application (build de développement EAS) : un compte Expo gratuit suffit pour Android, iOS demande un compte Apple Developer (99 $ par an). Expo Go reste utilisable pour tout le reste (D-46 inchangé).
+- **(a)** Android seulement pour l'instant.
+- **(b)** Android et iOS.
+
+**Recommandation** : (a).
+Bloque : 17.1.
+
+#### Phase 18 — Paiements partiels et reçus
+
+### Q-38 — Comment enregistrer un paiement partiel ?
+Aujourd'hui une leçon ou un examen est « payé » ou « non payé » d'un bloc (P6, P7), et seul l'avoir (D-40) porte un solde.
+- **(a)** Versements **par ligne** : une leçon ou un examen reçoit plusieurs versements jusqu'à atteindre son prix.
+- **(b)** **Compte élève** : l'élève verse une somme libre ; elle est imputée automatiquement sur ce qu'il doit, **du plus ancien au plus récent** ; un excédent devient de l'avoir (D-40 généralisé). P6 / P7 restent comme raccourci « solder cette ligne ».
+- **(c)** Statu quo plus un champ « acompte » sur la leçon.
+
+**Recommandation** : (b). C'est la pratique réelle (« je vous laisse 200 dinars ») et c'est ce qui permettra de payer un forfait (Phase 19). Les tâches de la phase sont écrites pour (b).
+Bloque : toute la Phase 18 et 19.3.
+
+### Q-39 — Reçu de paiement
+- **(a)** Reçu dans l'app (numéro séquentiel par école, date, montant, ce qu'il règle), **exportable en PDF par le téléphone** et partageable (WhatsApp, e-mail).
+- **(b)** PDF généré par le serveur et téléchargé.
+- **(c)** Pas de reçu.
+
+**Recommandation** : (a). Aucun stockage de fichier côté serveur (cohérent avec D-49).
+Bloque : 18.6.
+
+### Q-40 — Corriger un versement saisi par erreur
+- **(a)** Impossible.
+- **(b)** Annulable par celui qui l'a saisi ou par le gérant, **dans les 24 h**, avec un motif ; le versement est marqué annulé, jamais supprimé.
+- **(c)** Annulable par le gérant **sans limite de temps**, avec un motif ; marqué annulé, jamais supprimé.
+
+**Recommandation** : (c). Une erreur se découvre souvent en fin de mois ; la trace suffit à éviter les abus.
+Bloque : 18.3.
+
+#### Phase 19 — Forfaits
+
+### Q-41 — Un forfait se compte en quoi ?
+- **(a)** En **heures par type** (ex. 20 h de Manœuvre + 10 h de Parc) : chaque leçon décompte sa durée.
+- **(b)** En **nombre de leçons par type**.
+- **(c)** En **montant prépayé** (c'est alors un avoir, D-40 existe déjà).
+
+**Recommandation** : (a). C'est l'unité que vendent les écoles, et la grille tarifaire porte déjà une durée par type.
+Bloque : toute la Phase 19.
+
+### Q-42 — Comment un forfait est-il vendu ?
+Dans tous les cas, le catalogue de l'école est visible sur sa fiche publique.
+- **(a)** Au comptoir : l'école **attribue** un forfait à l'élève dans l'app.
+- **(b)** L'élève **demande** un forfait dans l'app, l'école valide.
+- **(c)** Les deux.
+
+**Recommandation** : (a).
+Bloque : 19.3, 19.6.
+
+### Q-43 — Une absence consomme-t-elle des heures du forfait ?
+- **(a)** Non, comme une absence n'est pas facturée (D-41).
+- **(b)** Oui.
+
+**Recommandation** : (a), par cohérence avec D-41.
+Bloque : 19.4.
+
+### Q-44 — Forfait épuisé et durée de validité
+- **(a)** Au-delà du forfait, les leçons repassent au tarif normal ; **pas de date d'expiration**.
+- **(b)** Tarif normal au-delà, et une **date d'expiration** fixée par l'école à la vente.
+- **(c)** Aucune leçon ne peut être planifiée sans heures restantes.
+
+**Recommandation** : (a).
+Bloque : 19.1, 19.4.
+
+#### Phase 20 — Progression pédagogique
+
+### Q-45 — Quelles compétences suivre ?
+- **(a)** Une liste **fixe par type de leçon**, la même pour toutes les écoles, **fournie par l'auteur**.
+- **(b)** Une liste **par école**, modifiable par le gérant.
+
+Proposition de départ, **à corriger par l'auteur** (Claude ne connaît pas le découpage exact des épreuves en Tunisie) : Manœuvre → démarrage et arrêt, marche arrière, créneau, rangement en bataille, demi-tour, démarrage en côte ; Parc → à fournir ; CODE → signalisation, priorités, vitesses, stationnement, mécanique.
+**Recommandation** : (a).
+Bloque : 20.1.
+
+### Q-46 — Échelle d'évaluation
+- **(a)** Trois niveaux : non abordé / en cours / acquis.
+- **(b)** Note de 1 à 5.
+
+**Recommandation** : (a). Plus parlant pour l'élève et plus rapide à saisir à la fin d'une leçon.
+Bloque : 20.1, 20.2.
+
+### Q-47 — Le commentaire de fin de leçon est-il visible par l'élève ?
+L7 enregistre déjà un `feedback` ; la note privée de l'instructeur sur l'élève (P5) reste privée dans tous les cas.
+- **(a)** Oui, l'élève voit le commentaire de chaque leçon.
+- **(b)** Non, il reste réservé à l'école.
+
+**Recommandation** : (a).
+Bloque : 20.4.
+
+#### Phase 21 — Examens : repasses et prix
+
+### Q-48 — Après un échec, qui programme la repasse ?
+- **(a)** L'élève redemande lui-même (X2, comme aujourd'hui).
+- **(b)** L'instructeur programme directement la repasse (nouvelle route, comme L4 pour les leçons).
+- **(c)** Les deux.
+
+**Recommandation** : (c).
+Bloque : 21.2, 21.4.
+
+### Q-49 — Prix des examens
+Aujourd'hui un examen n'a pas de prix : le montant est saisi au moment de le marquer payé (P7).
+- **(a)** Une **grille de prix d'examen par école** (théorie, pratique), copiée sur l'examen à sa planification, comme les leçons (D-30).
+- **(b)** Statu quo : montant saisi au paiement.
+
+**Recommandation** : (a). Sans prix, un examen n'entre pas dans le « reste à payer » de l'élève ni dans le tableau de bord.
+Bloque : 21.3, 21.5.
+
+#### Phase 22 — Tableau de bord du gérant
+
+### Q-50 — Quels indicateurs ? (plusieurs choix)
+- **(a)** Montant encaissé du mois, comparé au mois précédent, par mode de paiement.
+- **(b)** Reste à encaisser (tous élèves confondus).
+- **(c)** Heures de leçon données par instructeur.
+- **(d)** Taux de réussite aux examens théorique et pratique (première tentative et global).
+- **(e)** Élèves inactifs : aucune leçon depuis 14 jours.
+- **(f)** Demandes en attente (inscriptions, leçons, examens).
+- **(g)** Taux d'absence.
+
+**Recommandation** : toutes, avec un seuil d'inactivité de 14 jours.
+Bloque : 22.1, 22.2.
+
+#### Phase 23 — Flotte de véhicules
+
+### Q-51 — Le véhicule est-il obligatoire à la planification ?
+- **(a)** Facultatif.
+- **(b)** Obligatoire pour les leçons `Manœuvre` et `Parc`.
+
+**Recommandation** : (a). Une école avec une seule voiture n'a pas à le saisir à chaque fois.
+Bloque : 23.3.
+
+### Q-52 — Deux leçons sur le même véhicule à la même heure ?
+- **(a)** Même règle que Q-28 pour les instructeurs.
+- **(b)** Toujours bloquant (une voiture ne se partage pas).
+
+**Recommandation** : (b).
+Bloque : 23.3.
+
+### Q-53 — Quelles échéances suivre ?
+- **(a)** Assurance, visite technique, vignette (des dates) ; alerte à J-30 sur le tableau de bord et notification au gérant.
+- **(b)** Comme (a), plus la vidange au kilométrage (il faut alors saisir le kilométrage).
+
+**Recommandation** : (a).
+Bloque : 23.1, 23.4.
