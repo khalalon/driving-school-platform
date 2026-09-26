@@ -1,7 +1,13 @@
 /**
  * Formatage d'affichage : montants dans la devise de l'école (D-43), noms, jour local.
  */
-import { formatAmount, formatCountdown, formatPersonName, toLocalDateKey } from '../format';
+import {
+  formatAmount,
+  formatCountdown,
+  formatPersonName,
+  initialsOf,
+  toLocalDateKey,
+} from '../format';
 import { applyLanguage } from '../../i18n';
 
 afterEach(() => applyLanguage('fr'));
@@ -58,5 +64,13 @@ describe('formatPersonName', () => {
 describe('toLocalDateKey', () => {
   it('rend le jour local YYYY-MM-DD sans passer par l’UTC', () => {
     expect(toLocalDateKey(new Date(2026, 8, 5, 23, 30))).toBe('2026-09-05');
+  });
+});
+
+describe('initialsOf (13.5)', () => {
+  it('prend la première lettre du prénom et du nom, en capitales', () => {
+    expect(initialsOf('yasmine', 'amri')).toBe('YA');
+    expect(initialsOf('Karim', null)).toBe('K');
+    expect(initialsOf('  ', undefined)).toBe('?');
   });
 });

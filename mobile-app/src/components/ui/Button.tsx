@@ -1,13 +1,17 @@
 /**
- * `Button` (11.2) — une seule implémentation pour les quatre intentions de l'application :
- * `primary` (l'action de l'écran), `secondary` (alternative), `ghost` (action discrète),
- * `danger` (annuler, refuser). Pendant un appel réseau, `loading` désactive le bouton et
- * remplace le libellé par un indicateur : plus besoin d'un `disabled={submitting}` par écran.
+ * `Button` (11.2, refait en 13.5 — D-52) — une seule implémentation pour les quatre intentions :
+ * `primary` (l'action de l'écran : aplat jaune signal), `secondary` (contour), `ghost` (action
+ * discrète) et `danger` (annuler, refuser). Libellé en capitales condensées (rôle `label`).
+ *
+ * Pendant un appel réseau, `loading` désactive le bouton et remplace le libellé par un
+ * indicateur. À l'appui, le bouton se réduit légèrement (`usePressFeedback`, coupé si « réduire
+ * les animations » est actif). `haptic` ajoute une vibration, à réserver aux confirmations.
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   Pressable,
   StyleProp,
   StyleSheet,
@@ -17,12 +21,16 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
-import { Theme } from '../../theme';
+import { usePressFeedback } from '../../hooks/usePressFeedback';
+import { Theme, useTextStyle } from '../../theme';
 import { MIN_TOUCH_TARGET } from '../../theme/tokens';
+import { haptics } from '../../utils/haptics';
 import { IoniconName } from '../../utils/rtl';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 export type ButtonSize = 'md' | 'sm';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 interface ButtonProps {
   title: string;
@@ -37,6 +45,8 @@ interface ButtonProps {
   iconPosition?: 'leading' | 'trailing';
   /** Occupe toute la largeur disponible (barre d'actions, formulaire). */
   fullWidth?: boolean;
+  /** Vibration à l'appui : `success` pour une confirmation, `selection` pour un choix. */
+  haptic?: 'success' | 'selection';
   style?: StyleProp<ViewStyle>;
   testID?: string;
 }
@@ -57,11 +67,12 @@ const variantColors = (theme: Theme, variant: ButtonVariant): VariantColors => {
         background: colors.signal,
         backgroundPressed: colors.signalPressed,
         text: colors.textOnSignal,
-        border: null,
+        // En clair, le jaune se détache mal du fond : un filet d'encre dessine le bouton
+        border: theme.name === 'light' ? colors.textPrimary : null,
       };
     case 'secondary':
       return {
-        background: colors.surfaceRaised,
+        background: 'transparent',
         backgroundPressed: colors.surfaceMuted,
         text: colors.textPrimary,
         border: colors.borderStrong,
@@ -93,35 +104,55 @@ export const Button = ({
   icon,
   iconPosition = 'leading',
   fullWidth = false,
+  haptic,
   style,
   testID,
 }: ButtonProps) => {
   const theme = useTheme();
+  const label = useTextStyle('label');
+  const feedback = usePressFeedback();
+  const [pressed, setPressed] = useState(false);
   const palette = variantColors(theme, variant);
   const inactive = disabled || loading;
   const small = size === 'sm';
 
+  const handlePress = () => {
+    if (haptic) {
+      haptics[haptic]();
+    }
+    onPress();
+  };
+
   return (
-    <Pressable
-      onPress={onPress}
+    <AnimatedPressable
+      onPress={handlePress}
+      onPressIn={() => {
+        setPressed(true);
+        feedback.onPressIn();
+      }}
+      onPressOut={() => {
+        setPressed(false);
+        feedback.onPressOut();
+      }}
       disabled={inactive}
       accessibilityRole="button"
       accessibilityState={{ disabled: inactive, busy: loading }}
       accessibilityLabel={title}
       testID={testID}
-      style={({ pressed }) => [
+      style={[
         styles.base,
         {
           minHeight: small ? MIN_TOUCH_TARGET : MIN_TOUCH_TARGET + 8,
           paddingHorizontal: small ? theme.spacing.base : theme.spacing.lg,
           borderRadius: theme.radius.md,
           backgroundColor: pressed ? palette.backgroundPressed : palette.background,
-          borderWidth: palette.border ? 1 : 0,
+          borderWidth: palette.border ? 1.5 : 0,
           borderColor: palette.border ?? 'transparent',
         },
         fullWidth && styles.fullWidth,
         // Un bouton inactif reste lisible : on baisse l'opacité, on ne change pas la couleur
         inactive && styles.inactive,
+        feedback.style,
         style,
       ]}
     >
@@ -133,11 +164,15 @@ export const Button = ({
             <Ionicons name={icon} size={small ? 16 : 18} color={palette.text} />
           ) : null}
           <Text
-            style={{
-              color: palette.text,
-              fontSize: small ? theme.typography.size.sm : theme.typography.size.base,
-              fontWeight: theme.typography.weight.semibold,
-            }}
+            style={[
+              label,
+              {
+                color: palette.text,
+                fontSize: small ? 14 : 17,
+                lineHeight: small ? 18 : 22,
+                letterSpacing: label.letterSpacing ? 1 : 0,
+              },
+            ]}
             numberOfLines={1}
           >
             {title}
@@ -147,7 +182,7 @@ export const Button = ({
           ) : null}
         </View>
       )}
-    </Pressable>
+    </AnimatedPressable>
   );
 };
 
@@ -155,5 +190,5 @@ const styles = StyleSheet.create({
   base: { alignItems: 'center', justifyContent: 'center' },
   row: { flexDirection: 'row', alignItems: 'center' },
   fullWidth: { alignSelf: 'stretch' },
-  inactive: { opacity: 0.5 },
+  inactive: { opacity: 0.45 },
 });

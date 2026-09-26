@@ -38,6 +38,10 @@ const CASES: [string, React.ReactElement][] = [
   ['ListRow', <ListRow title="Manœuvre" onPress={noop} />],
   ['AppBar retour', <AppBar title="Mes leçons" onBack={noop} backLabel="Retour" />],
   [
+    'AppBar avatar',
+    <AppBar title="Accueil" avatar={{ initials: 'YA', onPress: noop, label: 'Réglages' }} />,
+  ],
+  [
     'Card cliquable',
     <Card onPress={noop} accessibilityLabel="Ouvrir">
       <Text>Carte</Text>

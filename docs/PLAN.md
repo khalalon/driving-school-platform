@@ -841,7 +841,7 @@ cd mobile-app && npx expo-doctor && npx tsc --noEmit && npx jest --silent && ech
 ```
 **Hors périmètre** : animations propres à un écran.
 
-### - [ ] 13.5 — Composants de base refaits
+### - [x] 13.5 — Composants de base refaits
 **Objectif** : `Button` (signal, contour, discret, danger ; état chargement ; retour haptique), `Card` (à plat, filet), `Chip` / `Badge` de statut (**forme + texte**, jamais la couleur seule), `Field` (libellé visible, erreur sous le champ), `ListRow`, `AppBar` (titre condensé, avatar vers Réglages), `Screen`, `SectionHeader` (libellé en capitales), `Toast`, `Skeleton`, `EmptyState` refaits sur les jetons 13.1–13.4. Mêmes noms et mêmes props qu'en 11.2 quand c'est possible, pour limiter les retouches d'écrans. Les tests de rendu, de comportement et d'accessibilité existants passent sur les deux thèmes.
 **Fichiers** : `mobile-app/src/components/ui/*`, `mobile-app/src/components/ui/__tests__/*`.
 **Critère de validation** :

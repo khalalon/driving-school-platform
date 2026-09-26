@@ -1,6 +1,7 @@
 /**
- * `Screen` (11.2) — le cadre de tout écran : fond du thème, zone sûre, marges latérales et
- * défilement. Les écrans n'ont plus à redéclarer `flex: 1` + `backgroundColor` + `padding`.
+ * `Screen` (11.2, revu en 13.5 — D-52) — le cadre de tout écran : fond du thème, zone sûre,
+ * marges latérales et défilement. La barre d'actions du bas est séparée par un filet (style à
+ * plat). Les écrans n'ont plus à redéclarer `flex: 1` + `backgroundColor` + `padding`.
  */
 
 import React from 'react';
@@ -88,5 +89,5 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   flex: { flex: 1 },
   content: { flexGrow: 1 },
-  footer: { borderTopWidth: StyleSheet.hairlineWidth },
+  footer: { borderTopWidth: 1 },
 });

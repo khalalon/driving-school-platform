@@ -100,3 +100,12 @@ export const formatPersonName = (
   const name = [person?.firstName, person?.lastName].filter(Boolean).join(' ').trim();
   return name || fallback;
 };
+
+/** Initiales pour un avatar (13.5) : « YA » pour Yasmine Amri ; `?` si l'identité est vide. */
+export const initialsOf = (firstName?: string | null, lastName?: string | null): string => {
+  const letters = [firstName, lastName]
+    .map((part) => part?.trim().charAt(0) ?? '')
+    .join('')
+    .toUpperCase();
+  return letters || '?';
+};

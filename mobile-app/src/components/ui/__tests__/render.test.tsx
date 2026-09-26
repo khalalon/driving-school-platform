@@ -40,6 +40,15 @@ const CASES: [string, React.ReactElement][] = [
     </Screen>,
   ],
   ['AppBar', <AppBar title="Mes leçons" subtitle="Auto-école El Amel" onBack={noop} />],
+  [
+    'AppBar accueil avec avatar',
+    <AppBar
+      title="Bonjour, Yasmine"
+      subtitle="Tableau de bord"
+      large
+      avatar={{ initials: 'YA', onPress: noop, label: 'Ouvrir les réglages' }}
+    />,
+  ],
   ['Button primary', <Button title="Demander une leçon" onPress={noop} />],
   ['Button secondary', <Button title="Annuler" onPress={noop} variant="secondary" />],
   ['Button ghost', <Button title="Tout voir" onPress={noop} variant="ghost" size="sm" />],
@@ -60,6 +69,8 @@ const CASES: [string, React.ReactElement][] = [
   ['Chip', <Chip label="CODE" onPress={noop} />],
   ['Chip selected', <Chip label="Parc" onPress={noop} selected tone="success" icon="car" />],
   ['Badge', <Badge label="Planifiée" tone="accent" dot />],
+  ['Badge télémétrie', <Badge label="En cours" tone="telemetry" dot />],
+  ['Badge alerte', <Badge label="Refusée" tone="danger" dot />],
   ['Field', <Field label="Adresse e-mail" value="" onChangeText={noop} icon="mail-outline" />],
   [
     'Field error',
@@ -104,9 +115,10 @@ const CASES: [string, React.ReactElement][] = [
   ['SkeletonCard', <SkeletonCard />],
   ['Toast', <Toast message="Demande envoyée" onDismiss={noop} />],
   ['Toast danger', <Toast message="Leçon annulée" tone="danger" />],
+  ['Toast télémétrie', <Toast message="Étape suivante" tone="telemetry" />],
 ];
 
-describe('composants partagés : rendu dans les deux thèmes (11.2)', () => {
+describe('composants partagés : rendu dans les deux thèmes (11.2, 13.5)', () => {
   for (const [themeName, theme] of bothThemes) {
     const allowed = allowedColors(theme);
 

@@ -1,12 +1,14 @@
 /**
- * `SectionHeader` (11.2) — titre de section, avec une action facultative à droite
- * (« Tout voir », « Ajouter »). Donne la même hiérarchie à tous les écrans.
+ * `SectionHeader` (11.2, refait en 13.5 — D-52) — titre de section en capitales condensées
+ * (« SECTEURS DU PARCOURS »), avec une action facultative à droite (« Tout voir », « Ajouter »)
+ * en couleur signal. Donne la même hiérarchie à tous les écrans.
  */
 
 import React from 'react';
 import { Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
+import { useTextStyle } from '../../theme';
 import { IoniconName, mirrorIcon } from '../../utils/rtl';
 
 interface SectionHeaderProps {
@@ -27,6 +29,8 @@ export const SectionHeader = ({
   testID,
 }: SectionHeaderProps) => {
   const theme = useTheme();
+  const labelStyle = useTextStyle('label');
+  const captionStyle = useTextStyle('caption');
 
   return (
     <View style={[styles.row, { gap: theme.spacing.sm }, style]} testID={testID}>
@@ -34,19 +38,14 @@ export const SectionHeader = ({
         <View style={[styles.titleRow, { gap: theme.spacing.sm }]}>
           {icon ? <Ionicons name={icon} size={18} color={theme.colors.textSecondary} /> : null}
           <Text
-            style={{
-              color: theme.colors.textPrimary,
-              fontSize: theme.typography.size.lg,
-              fontWeight: theme.typography.weight.semibold,
-            }}
+            style={[labelStyle, { color: theme.colors.textSecondary, fontSize: 14 }]}
+            accessibilityRole="header"
           >
             {title}
           </Text>
         </View>
         {subtitle ? (
-          <Text style={{ color: theme.colors.textMuted, fontSize: theme.typography.size.sm }}>
-            {subtitle}
-          </Text>
+          <Text style={[captionStyle, { color: theme.colors.textMuted }]}>{subtitle}</Text>
         ) : null}
       </View>
 
@@ -55,19 +54,14 @@ export const SectionHeader = ({
           onPress={action.onPress}
           accessibilityRole="button"
           accessibilityLabel={action.label}
+          hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
           style={({ pressed }) => [
             styles.action,
             { gap: theme.spacing.xs },
             pressed && styles.pressed,
           ]}
         >
-          <Text
-            style={{
-              color: theme.colors.signalText,
-              fontSize: theme.typography.size.sm,
-              fontWeight: theme.typography.weight.semibold,
-            }}
-          >
+          <Text style={[labelStyle, { color: theme.colors.signalText, fontSize: 14 }]}>
             {action.label}
           </Text>
           <Ionicons

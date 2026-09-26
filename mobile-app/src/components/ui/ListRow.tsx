@@ -1,12 +1,14 @@
 /**
- * `ListRow` (11.2) — une ligne de liste : pastille d'icône, titre, sous-titre, contenu à droite.
- * Les listes de leçons, d'examens, d'élèves et de demandes partagent désormais la même densité.
+ * `ListRow` (11.2, refaite en 13.5 — D-52) — une ligne de liste : pastille d'icône carrée,
+ * titre, sous-titre, contenu à droite, filet de séparation. Les listes de leçons, d'examens,
+ * d'élèves et de demandes partagent la même densité et la même typographie.
  */
 
 import React from 'react';
 import { Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
+import { useTextStyle } from '../../theme';
 import { MIN_TOUCH_TARGET } from '../../theme/tokens';
 import { IoniconName, mirrorIcon } from '../../utils/rtl';
 import { Tone, toneColors } from './tones';
@@ -41,41 +43,31 @@ export const ListRow = ({
   testID,
 }: ListRowProps) => {
   const theme = useTheme();
+  const titleStyle = useTextStyle('bodyStrong');
+  const captionStyle = useTextStyle('caption');
   const colors = toneColors(theme, tone);
 
   const content = (
     <>
       {icon ? (
         <View
-          style={[styles.icon, { backgroundColor: colors.soft, borderRadius: theme.radius.md }]}
+          style={[styles.icon, { backgroundColor: colors.soft, borderRadius: theme.radius.sm }]}
         >
           <Ionicons name={icon} size={18} color={colors.text} />
         </View>
       ) : null}
 
       <View style={[styles.texts, { gap: 2 }]}>
-        <Text
-          style={{
-            color: theme.colors.textPrimary,
-            fontSize: theme.typography.size.base,
-            fontWeight: theme.typography.weight.medium,
-          }}
-          numberOfLines={1}
-        >
+        <Text style={[titleStyle, { color: theme.colors.textPrimary }]} numberOfLines={1}>
           {title}
         </Text>
         {subtitle ? (
-          <Text
-            style={{ color: theme.colors.textSecondary, fontSize: theme.typography.size.sm }}
-            numberOfLines={2}
-          >
+          <Text style={[captionStyle, { color: theme.colors.textSecondary }]} numberOfLines={2}>
             {subtitle}
           </Text>
         ) : null}
         {meta ? (
-          <Text style={{ color: theme.colors.textMuted, fontSize: theme.typography.size.xs }}>
-            {meta}
-          </Text>
+          <Text style={[captionStyle, { color: theme.colors.textMuted }]}>{meta}</Text>
         ) : null}
       </View>
 
@@ -111,7 +103,7 @@ export const ListRow = ({
       accessibilityRole="button"
       accessibilityLabel={subtitle ? `${title}, ${subtitle}` : title}
       testID={testID}
-      style={({ pressed }) => [shape, pressed && { opacity: 0.6 }]}
+      style={({ pressed }) => [shape, pressed && { backgroundColor: theme.colors.surfaceMuted }]}
     >
       {content}
     </Pressable>
@@ -120,6 +112,6 @@ export const ListRow = ({
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center' },
-  icon: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  icon: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
   texts: { flex: 1 },
 });

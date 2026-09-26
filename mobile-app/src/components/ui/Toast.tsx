@@ -1,13 +1,18 @@
 /**
- * `Toast` (11.2) — bandeau de confirmation : il annonce le succès sans bloquer l'écran, là où
- * `Alert.alert` obligeait à toucher « OK ». Purement présentationnel ; la file d'affichage et le
- * `useToast()` arrivent en 11.5 (`context/ToastContext`).
+ * `Toast` (11.2, refait en 13.5 — D-52) — bandeau de confirmation : il annonce le succès sans
+ * bloquer l'écran, là où `Alert.alert` obligeait à toucher « OK ». Surface flottante (seule
+ * ombre du style à plat), filet et icône de l'intention. Il monte depuis le bas avec la durée
+ * `base` des jetons de mouvement ; si « réduire les animations » est actif, il apparaît sans
+ * glisser. Purement présentationnel ; la file d'affichage vit dans `context/ToastContext` (11.5).
  */
 
 import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { useTextStyle } from '../../theme';
+import { motion } from '../../theme/motion';
 import { IoniconName } from '../../utils/rtl';
 import { Tone, toneColors } from './tones';
 
@@ -30,16 +35,22 @@ const TONE_ICONS: Record<Tone, IoniconName> = {
 
 export const Toast = ({ message, tone = 'success', onDismiss, testID }: ToastProps) => {
   const theme = useTheme();
+  const reduced = useReducedMotion();
+  const bodyStyle = useTextStyle('bodyStrong');
   const colors = toneColors(theme, tone);
   const appear = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    if (reduced) {
+      appear.setValue(1);
+      return;
+    }
     Animated.timing(appear, {
       toValue: 1,
-      duration: 180,
+      duration: motion.duration.base,
       useNativeDriver: true,
     }).start();
-  }, [appear]);
+  }, [appear, reduced]);
 
   return (
     <Animated.View
@@ -48,27 +59,37 @@ export const Toast = ({ message, tone = 'success', onDismiss, testID }: ToastPro
       accessibilityLiveRegion="polite"
       style={[
         styles.root,
-        theme.shadows.md,
+        theme.shadows.lg,
         {
-          backgroundColor: colors.soft,
+          backgroundColor: theme.colors.surfaceRaised,
           borderColor: colors.solid,
           borderRadius: theme.radius.md,
           padding: theme.spacing.md,
           gap: theme.spacing.sm,
           opacity: appear,
           transform: [
-            { translateY: appear.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) },
+            { translateY: appear.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) },
           ],
         },
       ]}
     >
-      <Ionicons name={TONE_ICONS[tone]} size={20} color={colors.text} />
-      <Text style={[styles.message, { color: colors.text, fontSize: theme.typography.size.sm }]}>
+      <View
+        style={[styles.icon, { backgroundColor: colors.soft, borderRadius: theme.radius.sm }]}
+      >
+        <Ionicons name={TONE_ICONS[tone]} size={20} color={colors.text} />
+      </View>
+      <Text
+        style={[
+          styles.message,
+          bodyStyle,
+          { color: theme.colors.textPrimary, fontSize: 15, lineHeight: 20 },
+        ]}
+      >
         {message}
       </Text>
       {onDismiss ? (
         <Pressable onPress={onDismiss} accessibilityRole="button" hitSlop={12}>
-          <Ionicons name="close" size={18} color={colors.text} />
+          <Ionicons name="close" size={18} color={theme.colors.textSecondary} />
         </Pressable>
       ) : (
         <View />
@@ -79,5 +100,6 @@ export const Toast = ({ message, tone = 'success', onDismiss, testID }: ToastPro
 
 const styles = StyleSheet.create({
   root: { flexDirection: 'row', alignItems: 'center', borderWidth: 1 },
+  icon: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   message: { flex: 1 },
 });

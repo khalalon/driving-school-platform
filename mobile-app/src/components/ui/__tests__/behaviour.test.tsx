@@ -5,9 +5,10 @@
  */
 
 import React from 'react';
-import { Text, TextInput } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { act } from 'react-test-renderer';
-import { Button, Card, Chip, EmptyState, Field, ListRow } from '../index';
+import { AppBar, Badge, Button, Card, Chip, EmptyState, Field, ListRow } from '../index';
 import { pressables, renderInTheme, renderedText } from './renderInTheme';
 
 const press = (tree: ReturnType<typeof renderInTheme>, index = 0): void => {
@@ -126,6 +127,56 @@ describe('EmptyState (11.2)', () => {
 
     expect(renderedText(tree)).toContain('Demander une leçon');
     press(tree);
+    expect(onPress).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('style « Circuit » (13.5)', () => {
+  it('un bouton de confirmation vibre, un bouton ordinaire non', () => {
+    const confirm = renderInTheme(
+      <Button title="Envoyer" onPress={jest.fn()} haptic="success" />,
+      'dark'
+    );
+    press(confirm);
+    expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1);
+
+    const plain = renderInTheme(<Button title="Voir" onPress={jest.fn()} />, 'dark');
+    press(plain);
+    expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it('une pastille sélectionnée porte une coche : la sélection ne repose pas sur la couleur', () => {
+    const selected = renderInTheme(<Chip label="Sombre" onPress={jest.fn()} selected />, 'dark');
+    const idle = renderInTheme(<Chip label="Clair" onPress={jest.fn()} />, 'dark');
+
+    expect(renderedText(selected)).toContain('checkmark');
+    expect(renderedText(idle)).not.toContain('checkmark');
+  });
+
+  it('le repère d’un badge change de forme selon l’intention', () => {
+    const shapeOf = (tone: 'accent' | 'danger') => {
+      const tree = renderInTheme(<Badge label="Statut" tone={tone} dot />, 'dark');
+      const dot = tree.root
+        .findAllByType(View)
+        .map((node) => StyleSheet.flatten(node.props.style))
+        .find((style) => style?.width === 7);
+      return { radius: dot?.borderRadius, rotate: JSON.stringify(dot?.transform ?? null) };
+    };
+
+    expect(shapeOf('accent')).not.toEqual(shapeOf('danger'));
+  });
+
+  it('l’avatar de l’en-tête ouvre les réglages', () => {
+    const onPress = jest.fn();
+    const tree = renderInTheme(
+      <AppBar title="Accueil" avatar={{ initials: 'YA', onPress, label: 'Ouvrir les réglages' }} />,
+      'dark'
+    );
+    const avatar = tree.root.findByProps({ testID: 'appbar-avatar' });
+
+    expect(avatar.props.accessibilityLabel).toBe('Ouvrir les réglages');
+    expect(renderedText(tree)).toContain('YA');
+    act(() => avatar.props.onPress());
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 });

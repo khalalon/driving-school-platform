@@ -8,26 +8,28 @@
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { StyleSheet, View } from 'react-native';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { useFocusEffect } from '@react-navigation/native';
 import { MyProgressTab } from './tabs/MyProgressTab';
 import { MyLessonsPaymentTab } from './tabs/MyLessonsPaymentTab';
 import { MyExamsPaymentTab } from './tabs/MyExamsPaymentTab';
+import { useAuth } from '../../../context/AuthContext';
 import { useI18n } from '../../../context/LanguageContext';
 import { useTheme } from '../../../context/ThemeContext';
 import { AppBar, EmptyState, SkeletonCard } from '../../../components/ui';
 import { enrollmentService } from '../../../services/api/EnrollmentService';
 import { getApiErrorMessage } from '../../../services/api/ApiError';
 import { EnrollmentStatus } from '../../../models/Enrollment';
-import { MIN_TOUCH_TARGET, Theme } from '../../../theme';
+import { Theme } from '../../../theme';
+import { initialsOf } from '../../../utils/format';
 
 const Tab = createMaterialTopTabNavigator();
 
 export const MyProfileScreen = ({ route, navigation }: any) => {
   const { t } = useI18n();
   const theme = useTheme();
+  const { user } = useAuth();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const paramSchoolId: string | undefined = route.params?.schoolId;
   // `undefined` = pas encore résolue, `null` = aucune inscription approuvée
@@ -133,17 +135,11 @@ export const MyProfileScreen = ({ route, navigation }: any) => {
       <AppBar
         title={t('profile.title')}
         large
-        right={
-          <Pressable
-            onPress={() => navigation.navigate('Settings')}
-            accessibilityRole="button"
-            accessibilityLabel={t('settings.open')}
-            hitSlop={8}
-            style={styles.settings}
-          >
-            <Ionicons name="settings-outline" size={22} color={theme.colors.textSecondary} />
-          </Pressable>
-        }
+        avatar={{
+          initials: initialsOf(user?.firstName, user?.lastName),
+          onPress: () => navigation.navigate('Settings'),
+          label: t('settings.open'),
+        }}
       />
       {renderBody()}
     </View>
@@ -152,14 +148,6 @@ export const MyProfileScreen = ({ route, navigation }: any) => {
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
-    settings: {
-      width: MIN_TOUCH_TARGET,
-      height: MIN_TOUCH_TARGET,
-      borderRadius: theme.radius.pill,
-      backgroundColor: theme.colors.surfaceMuted,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
     flex: { flex: 1, backgroundColor: theme.colors.surface },
     loading: { padding: theme.spacing.base, gap: theme.spacing.md },
     empty: { flex: 1 },

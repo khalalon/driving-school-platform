@@ -1,20 +1,27 @@
 /**
- * `Card` (11.2) — la surface posée sur le fond : fond `surfaceRaised`, bordure fine, rayon et
- * ombre du thème. En sombre, la profondeur vient de la surface (l'ombre portée ne se voit pas),
- * ce que les jetons gèrent déjà : la carte n'a rien à savoir du thème actif.
+ * `Card` (11.2, refaite en 13.5 — D-52) — la surface posée sur le fond, **à plat** : fond
+ * `surfaceRaised`, filet `border`, angles du tableau de bord (rayon `lg`). Aucune ombre : dans
+ * le style « Circuit », la profondeur vient du filet et du contraste des surfaces.
+ * `highlighted` teinte la carte en signal (prochaine leçon, étape en cours).
  */
 
 import React from 'react';
-import { Pressable, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
+import { Animated, Pressable, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
+import { usePressFeedback } from '../../hooks/usePressFeedback';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 interface CardProps {
   children: React.ReactNode;
   /** Carte cliquable : retour visuel à la pression et rôle d'accessibilité. */
   onPress?: () => void;
-  /** Mise en avant : fond accentué (prochaine leçon, étape en cours). */
+  /** Mise en avant : fond teinté signal (prochaine leçon, étape en cours). */
   highlighted?: boolean;
-  /** `none` pour une carte imbriquée dans une autre. */
+  /**
+   * Conservé pour compatibilité (11.2) : le style « Circuit » est à plat, `none` retire en plus
+   * le filet (carte imbriquée dans une autre).
+   */
   elevation?: 'none' | 'sm' | 'md';
   padded?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -33,15 +40,16 @@ export const Card = ({
   testID,
 }: CardProps) => {
   const theme = useTheme();
+  const feedback = usePressFeedback();
   const base: StyleProp<ViewStyle> = [
     styles.base,
     {
       backgroundColor: highlighted ? theme.colors.surfaceSignal : theme.colors.surfaceRaised,
-      borderColor: highlighted ? theme.colors.signalSoft : theme.colors.border,
+      borderColor: highlighted ? theme.colors.gauge : theme.colors.border,
+      borderWidth: elevation === 'none' && !highlighted ? 0 : 1,
       borderRadius: theme.radius.lg,
       padding: padded ? theme.spacing.base : 0,
     },
-    theme.shadows[elevation],
     style,
   ];
 
@@ -54,19 +62,20 @@ export const Card = ({
   }
 
   return (
-    <Pressable
+    <AnimatedPressable
       onPress={onPress}
+      onPressIn={feedback.onPressIn}
+      onPressOut={feedback.onPressOut}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       testID={testID}
-      style={({ pressed }) => [base, pressed && styles.pressed]}
+      style={[base, feedback.style]}
     >
       {children}
-    </Pressable>
+    </AnimatedPressable>
   );
 };
 
 const styles = StyleSheet.create({
-  base: { borderWidth: StyleSheet.hairlineWidth },
-  pressed: { opacity: 0.9, transform: [{ scale: 0.995 }] },
+  base: { overflow: 'hidden' },
 });

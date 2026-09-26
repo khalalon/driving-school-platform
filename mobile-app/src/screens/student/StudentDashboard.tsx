@@ -9,7 +9,7 @@
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { Alert, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { Alert, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
@@ -49,9 +49,9 @@ import {
   formatDate,
   formatPersonName,
   formatTime,
+  initialsOf,
 } from '../../utils/format';
 import { Theme } from '../../theme';
-import { MIN_TOUCH_TARGET } from '../../theme/tokens';
 import { IoniconName } from '../../utils/rtl';
 
 interface HomeData {
@@ -416,18 +416,11 @@ export const StudentDashboard = ({ navigation }: any) => {
         title={`${t('home.hello')} ${user?.firstName || t('home.student')}`}
         subtitle={enrollment?.schoolName ?? undefined}
         large
-        right={
-          <Pressable
-            onPress={() => navigation.navigate('Settings')}
-            accessibilityRole="button"
-            accessibilityLabel={t('settings.open')}
-            hitSlop={8}
-            style={styles.settings}
-            testID="open-settings"
-          >
-            <Ionicons name="settings-outline" size={22} color={theme.colors.textSecondary} />
-          </Pressable>
-        }
+        avatar={{
+          initials: initialsOf(user?.firstName, user?.lastName),
+          onPress: () => navigation.navigate('Settings'),
+          label: t('settings.open'),
+        }}
       />
       <Screen
         contentContainerStyle={styles.content}
@@ -451,14 +444,6 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     flex: { flex: 1, backgroundColor: theme.colors.surface },
     content: { paddingTop: theme.spacing.base, gap: theme.spacing.base },
-    settings: {
-      width: MIN_TOUCH_TARGET,
-      height: MIN_TOUCH_TARGET,
-      borderRadius: theme.radius.pill,
-      backgroundColor: theme.colors.surfaceMuted,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
     skeletons: { gap: theme.spacing.base },
 
     // Prochaine leçon

@@ -1,7 +1,10 @@
 /**
- * `Field` (11.2) — un champ de formulaire complet : libellé, saisie, message d'aide et message
- * d'erreur. L'erreur est **portée par le champ**, pas par une fenêtre système : l'utilisateur voit
- * quoi corriger sans quitter le clavier. Toutes les propriétés de `TextInput` restent disponibles.
+ * `Field` (11.2, refait en 13.5 — D-52) — un champ de formulaire complet : libellé toujours
+ * visible (capitales condensées), saisie, message d'aide et message d'erreur sous le champ.
+ * L'erreur est **portée par le champ**, pas par une fenêtre système : l'utilisateur voit quoi
+ * corriger sans quitter le clavier. Filet `borderStrong` (≥ 3:1) au repos, `gauge` au focus,
+ * `danger` en erreur — accompagnée d'une icône. Toutes les propriétés de `TextInput` restent
+ * disponibles.
  */
 
 import React, { useState } from 'react';
@@ -17,6 +20,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
+import { useTextStyle } from '../../theme';
 import { MIN_TOUCH_TARGET } from '../../theme/tokens';
 import { IoniconName } from '../../utils/rtl';
 
@@ -47,26 +51,21 @@ export const Field = ({
   ...inputProps
 }: FieldProps) => {
   const theme = useTheme();
+  const labelStyle = useTextStyle('label');
+  const bodyStyle = useTextStyle('body');
+  const captionStyle = useTextStyle('caption');
   const [focused, setFocused] = useState(false);
   const [revealed, setRevealed] = useState(false);
 
   const borderColor = error
     ? theme.colors.danger
     : focused
-      ? theme.colors.signal
-      : theme.colors.border;
+      ? theme.colors.gauge
+      : theme.colors.borderStrong;
 
   return (
     <View style={[{ gap: theme.spacing.xs }, containerStyle]}>
-      <Text
-        style={{
-          color: theme.colors.textSecondary,
-          fontSize: theme.typography.size.sm,
-          fontWeight: theme.typography.weight.medium,
-        }}
-      >
-        {label}
-      </Text>
+      <Text style={[labelStyle, { color: theme.colors.textSecondary }]}>{label}</Text>
 
       <View
         style={[
@@ -74,6 +73,7 @@ export const Field = ({
           {
             backgroundColor: editable ? theme.colors.surfaceRaised : theme.colors.surfaceMuted,
             borderColor,
+            borderWidth: focused || error ? 2 : 1,
             borderRadius: theme.radius.md,
             paddingHorizontal: theme.spacing.md,
             gap: theme.spacing.sm,
@@ -100,9 +100,9 @@ export const Field = ({
           accessibilityLabel={inputProps.accessibilityLabel ?? label}
           style={[
             styles.input,
+            bodyStyle,
             {
               color: theme.colors.textPrimary,
-              fontSize: theme.typography.size.base,
               paddingVertical: theme.spacing.sm,
             },
             inputProps.style,
@@ -127,20 +127,26 @@ export const Field = ({
       </View>
 
       {error ? (
-        <Text style={{ color: theme.colors.dangerText, fontSize: theme.typography.size.xs }}>
-          {error}
-        </Text>
+        <View style={[styles.messageRow, { gap: theme.spacing.xs }]}>
+          <Ionicons name="alert-circle" size={14} color={theme.colors.dangerText} />
+          <Text
+            style={[captionStyle, styles.message, { color: theme.colors.dangerText }]}
+            accessibilityLiveRegion="polite"
+          >
+            {error}
+          </Text>
+        </View>
       ) : hint ? (
-        <Text style={{ color: theme.colors.textMuted, fontSize: theme.typography.size.xs }}>
-          {hint}
-        </Text>
+        <Text style={[captionStyle, { color: theme.colors.textMuted }]}>{hint}</Text>
       ) : null}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  inputRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1 },
+  inputRow: { flexDirection: 'row', alignItems: 'center' },
   multiline: { alignItems: 'flex-start' },
   input: { flex: 1 },
+  messageRow: { flexDirection: 'row', alignItems: 'center' },
+  message: { flex: 1 },
 });

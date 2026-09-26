@@ -1,6 +1,8 @@
 /**
- * `Skeleton` (11.2) — bloc de chargement à la forme du contenu attendu. Un rond qui tourne ne dit
- * rien ; un squelette annonce ce qui arrive et évite le saut de mise en page (11.5).
+ * `Skeleton` (11.2, refait en 13.5 — D-52) — bloc de chargement à la forme du contenu attendu.
+ * Un rond qui tourne ne dit rien ; un squelette annonce ce qui arrive et évite le saut de mise
+ * en page (11.5). Il pulse doucement, sauf si « réduire les animations » est actif : il reste
+ * alors fixe.
  */
 
 import React, { useEffect, useRef } from 'react';
@@ -14,6 +16,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 interface SkeletonProps {
   width?: DimensionValue;
@@ -26,9 +29,14 @@ interface SkeletonProps {
 
 export const Skeleton = ({ width = '100%', height = 16, radius, style, testID }: SkeletonProps) => {
   const theme = useTheme();
+  const reduced = useReducedMotion();
   const pulse = useRef(new Animated.Value(0.4)).current;
 
   useEffect(() => {
+    if (reduced) {
+      pulse.setValue(0.7);
+      return;
+    }
     const animation = Animated.loop(
       Animated.sequence([
         Animated.timing(pulse, {
@@ -47,7 +55,7 @@ export const Skeleton = ({ width = '100%', height = 16, radius, style, testID }:
     );
     animation.start();
     return () => animation.stop();
-  }, [pulse]);
+  }, [pulse, reduced]);
 
   return (
     <Animated.View
@@ -57,7 +65,7 @@ export const Skeleton = ({ width = '100%', height = 16, radius, style, testID }:
         {
           width,
           height,
-          borderRadius: radius ?? theme.radius.sm,
+          borderRadius: radius ?? theme.radius.xs,
           backgroundColor: theme.colors.skeleton,
           opacity: pulse,
         },
@@ -93,5 +101,5 @@ export const SkeletonCard = ({ lines = 2 }: { lines?: number }) => {
 };
 
 const styles = StyleSheet.create({
-  card: { borderWidth: StyleSheet.hairlineWidth },
+  card: { borderWidth: 1 },
 });
