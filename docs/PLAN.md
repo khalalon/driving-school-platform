@@ -713,12 +713,12 @@ cd services/api && npx tsc --noEmit && npm test -- --testPathPattern=auth && cd 
 ```
 **Hors périmètre** : photo (D-49), rattrapage des comptes existants.
 
-### - [ ] 12.2 — L'approbation recopie les détails dans la fiche élève
+### - [x] 12.2 — L'approbation recopie les détails dans la fiche élève
 **Objectif** : E5 (`approve`) remplit la ligne `students` créée avec les coordonnées du compte (`phone`, `date_of_birth`, `address`, `emergency_contact`, `emergency_phone`), dans la **même transaction**. Une valeur absente reste nulle ; la fiche instructeur (P1) et « Mon profil » (P8) les affichent sans changement de payload.
-**Fichiers** : `services/api/src/modules/school/` (service et repository d'inscription), tests.
+**Fichiers** : `services/api/src/modules/student/repositories/student.repository.ts` (la recopie se fait dans l'`INSERT`), tests.
 **Critère de validation** :
 ```bash
-cd services/api && npx tsc --noEmit && npm test -- --testPathPattern=enrollment && echo OK
+cd services/api && npx tsc --noEmit && npm test -- --testPathPattern='student|enrollment' && echo OK
 ```
 **Hors périmètre** : modification de ces champs après coup (12.5 ne couvre que l'école).
 

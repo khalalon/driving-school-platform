@@ -66,7 +66,7 @@ describe('EnrollmentRepository', () => {
 });
 
 describe('StudentRepository', () => {
-  it('create : paramètres dans l’ordre (user, école, autorisé, demande)', async () => {
+  it('create : paramètres dans l’ordre, coordonnées recopiées du compte (D-50)', async () => {
     const { pool, query } = fakePool([{ id: UUID.student }]);
     const repo = new StudentRepository(pool);
 
@@ -79,7 +79,20 @@ describe('StudentRepository', () => {
 
     const [sql, params] = query.mock.calls[0] as [string, unknown[]];
     expect(sql).toMatch(/INSERT INTO students/);
+    expect(sql).toMatch(/phone, date_of_birth, address, emergency_contact, emergency_phone/);
+    // La recopie se fait en SQL, depuis la ligne `users` : pas de second aller-retour
+    expect(sql).toMatch(/SELECT \$1, \$2, \$3, \$4, CURRENT_TIMESTAMP,/);
+    expect(sql).toMatch(/u\.phone, u\.date_of_birth, u\.address/);
+    expect(sql).toMatch(/FROM users u\s+WHERE u\.id = \$1/);
     expect(params).toEqual(['user-1', UUID.school, true, UUID.request]);
+  });
+
+  it('create : compte introuvable → erreur explicite plutôt qu’une fiche vide', async () => {
+    const repo = new StudentRepository(fakePool([]).pool);
+
+    await expect(
+      repo.create({ userId: 'fantome', schoolId: UUID.school, authorized: true })
+    ).rejects.toThrow(/Compte introuvable/);
   });
 
   it('lectures : null ou ligne, liste par école avec email', async () => {

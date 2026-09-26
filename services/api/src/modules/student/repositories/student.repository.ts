@@ -31,15 +31,31 @@ const STUDENT_COLUMNS = (alias = ''): string => {
 export class StudentRepository implements IStudentRepository {
   constructor(private readonly db: Pool) {}
 
-  /** Sans `name` : l'identité est portée par `users` (006). */
+  /**
+   * Sans `name` : l'identité est portée par `users` (006).
+   *
+   * Les coordonnées saisies à l'inscription vivent sur le compte (D-50, migration 014) : la fiche
+   * les recopie ici, **dans la même instruction**, au moment où l'école approuve (E5, 12.2). Un
+   * compte sans coordonnées laisse simplement des colonnes nulles.
+   */
   async create(data: CreateStudentDTO, executor: Queryable = this.db): Promise<Student> {
     const result = await executor.query<Student>(
-      `INSERT INTO students (user_id, school_id, authorized, enrollment_request_id, enrollment_date)
-       VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+      `INSERT INTO students (user_id, school_id, authorized, enrollment_request_id, enrollment_date,
+                             phone, date_of_birth, address, emergency_contact, emergency_phone)
+       SELECT $1, $2, $3, $4, CURRENT_TIMESTAMP,
+              u.phone, u.date_of_birth, u.address, u.emergency_contact, u.emergency_phone
+       FROM users u
+       WHERE u.id = $1
        RETURNING ${STUDENT_COLUMNS()}`,
       [data.userId, data.schoolId, data.authorized, data.enrollmentRequestId ?? null]
     );
-    return result.rows[0];
+    const student = result.rows[0];
+    if (!student) {
+      // `INSERT ... SELECT` n'insère rien si le compte n'existe pas : mieux vaut le dire que
+      // renvoyer une fiche vide (la clé étrangère rendait l'ancien code bruyant, pas celui-ci).
+      throw new Error(`Compte introuvable pour la fiche élève : ${data.userId}`);
+    }
+    return student;
   }
 
   async findById(id: string): Promise<Student | null> {
