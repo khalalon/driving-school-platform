@@ -143,7 +143,7 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
         ) : (
           <>
             <Card highlighted elevation="none" style={styles.info}>
-              <Ionicons name="information-circle" size={22} color={theme.colors.accentText} />
+              <Ionicons name="information-circle" size={22} color={theme.colors.signalText} />
               <View style={styles.infoBody}>
                 <Text style={styles.infoTitle}>{t('book.howItWorks')}</Text>
                 <Text style={styles.infoText}>{t('book.howItWorksText')}</Text>
@@ -225,7 +225,7 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
                   <Ionicons
                     name={instructorId ? 'person' : 'people-outline'}
                     size={22}
-                    color={instructorId ? theme.colors.accentText : theme.colors.textMuted}
+                    color={instructorId ? theme.colors.signalText : theme.colors.textMuted}
                   />
                 </View>
                 <View style={styles.instructorBody}>
@@ -287,9 +287,9 @@ const createStyles = (theme: Theme) =>
     infoTitle: {
       fontSize: theme.typography.size.sm,
       fontWeight: theme.typography.weight.semibold,
-      color: theme.colors.accentText,
+      color: theme.colors.signalText,
     },
-    infoText: { fontSize: theme.typography.size.sm, color: theme.colors.accentText },
+    infoText: { fontSize: theme.typography.size.sm, color: theme.colors.signalText },
     section: { gap: theme.spacing.sm },
     label: {
       fontSize: theme.typography.size.sm,

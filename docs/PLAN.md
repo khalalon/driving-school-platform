@@ -805,7 +805,7 @@ Règles propres à cette phase :
 - **Arrêt obligatoire après 13.8** : l'humain vérifie la fluidité de la 3D sur son téléphone avant d'y investir davantage. Arrêt normal en fin de phase pour la recette sur téléphone.
 - Tout téléchargement de fichier tiers (modèles 3D, animations) est d'abord proposé à l'humain : nom, source, taille, licence.
 
-### - [ ] 13.1 — Jetons « Circuit »
+### - [x] 13.1 — Jetons « Circuit »
 **Objectif** : palette brute et jetons sémantiques remplacés par ceux de D-52, en sombre et en clair : fond, surfaces (3 niveaux), texte (primaire, secondaire, atténué), filets, `signal` / `signalText` / `signalSoft` / `textOnSignal`, `telemetry` / `telemetrySoft`, `gauge` (arcs et barres de progression), statuts (`success`, `warning`, `danger` et leurs variantes douces), `overlay`, `skeleton`. Rayons resserrés (4 / 6 / 8 / 12 / 16), ombres remplacées par des filets (style à plat). Le test de thème vérifie : mêmes jetons dans les deux thèmes, contraste texte / fond ≥ 4,5:1, **éléments graphiques porteurs de sens** (jauge, barres, bordures de champ) ≥ 3:1 sur leur fond. Les exports de compatibilité `src/theme/colors.ts` et `shadows.ts` sont supprimés (plus aucun import).
 **Fichiers** : `mobile-app/src/theme/{tokens,light,dark,index,spacing}.ts`, suppression de `colors.ts` et `shadows.ts`, `mobile-app/src/theme/__tests__/theme.test.ts`, écrans qui importaient encore l'ancien module.
 **Critère de validation** :

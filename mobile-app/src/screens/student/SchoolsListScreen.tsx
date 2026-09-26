@@ -53,7 +53,7 @@ export const SchoolsListScreen = ({ navigation }: any) => {
       style={styles.schoolCard}
     >
       <View style={styles.logo}>
-        <Ionicons name="business" size={26} color={theme.colors.accentText} />
+        <Ionicons name="business" size={26} color={theme.colors.signalText} />
       </View>
 
       <View style={styles.info}>
@@ -110,8 +110,8 @@ export const SchoolsListScreen = ({ navigation }: any) => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={[theme.colors.accent]}
-              tintColor={theme.colors.accent}
+              colors={[theme.colors.signal]}
+              tintColor={theme.colors.signal}
             />
           }
           showsVerticalScrollIndicator={false}
@@ -132,7 +132,7 @@ const createStyles = (theme: Theme) =>
       width: 52,
       height: 52,
       borderRadius: theme.radius.lg,
-      backgroundColor: theme.colors.accentSoft,
+      backgroundColor: theme.colors.signalSoft,
       alignItems: 'center',
       justifyContent: 'center',
     },

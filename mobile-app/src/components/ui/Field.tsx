@@ -53,7 +53,7 @@ export const Field = ({
   const borderColor = error
     ? theme.colors.danger
     : focused
-      ? theme.colors.accent
+      ? theme.colors.signal
       : theme.colors.border;
 
   return (

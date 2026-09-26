@@ -353,12 +353,12 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
               <Ionicons
                 name={checked ? 'checkbox' : 'square-outline'}
                 size={26}
-                color={checked ? theme.colors.accent : theme.colors.textMuted}
+                color={checked ? theme.colors.signal : theme.colors.textMuted}
               />
             </Pressable>
           ) : (
             <View style={styles.avatar}>
-              <Ionicons name="person" size={22} color={theme.colors.accentText} />
+              <Ionicons name="person" size={22} color={theme.colors.signalText} />
             </View>
           )}
 
@@ -454,8 +454,8 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={[theme.colors.accent]}
-              tintColor={theme.colors.accent}
+              colors={[theme.colors.signal]}
+              tintColor={theme.colors.signal}
             />
           }
           showsVerticalScrollIndicator={false}
@@ -712,7 +712,7 @@ const createStyles = (theme: Theme) =>
       width: 44,
       height: 44,
       borderRadius: theme.radius.pill,
-      backgroundColor: theme.colors.accentSoft,
+      backgroundColor: theme.colors.signalSoft,
       alignItems: 'center',
       justifyContent: 'center',
     },

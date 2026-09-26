@@ -145,8 +145,8 @@ export const MyEnrollmentRequestsScreen = ({ navigation }: any) => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={[theme.colors.accent]}
-              tintColor={theme.colors.accent}
+              colors={[theme.colors.signal]}
+              tintColor={theme.colors.signal}
             />
           }
           showsVerticalScrollIndicator={false}

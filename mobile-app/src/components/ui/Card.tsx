@@ -36,8 +36,8 @@ export const Card = ({
   const base: StyleProp<ViewStyle> = [
     styles.base,
     {
-      backgroundColor: highlighted ? theme.colors.surfaceAccent : theme.colors.surfaceRaised,
-      borderColor: highlighted ? theme.colors.accentSoft : theme.colors.border,
+      backgroundColor: highlighted ? theme.colors.surfaceSignal : theme.colors.surfaceRaised,
+      borderColor: highlighted ? theme.colors.signalSoft : theme.colors.border,
       borderRadius: theme.radius.lg,
       padding: padded ? theme.spacing.base : 0,
     },

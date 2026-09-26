@@ -89,7 +89,7 @@ export const MyProfileScreen = ({ route, navigation }: any) => {
       <Tab.Navigator
         key={schoolId}
         screenOptions={{
-          tabBarActiveTintColor: theme.colors.accent,
+          tabBarActiveTintColor: theme.colors.signal,
           tabBarInactiveTintColor: theme.colors.textSecondary,
           tabBarLabelStyle: {
             fontSize: theme.typography.size.sm,
@@ -103,7 +103,7 @@ export const MyProfileScreen = ({ route, navigation }: any) => {
             borderBottomWidth: StyleSheet.hairlineWidth,
             borderBottomColor: theme.colors.border,
           },
-          tabBarIndicatorStyle: { backgroundColor: theme.colors.accent, height: 3 },
+          tabBarIndicatorStyle: { backgroundColor: theme.colors.signal, height: 3 },
         }}
       >
         <Tab.Screen

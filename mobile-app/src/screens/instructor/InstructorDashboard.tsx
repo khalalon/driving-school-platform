@@ -541,8 +541,8 @@ export const InstructorDashboard = ({ navigation }: any) => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[theme.colors.accent]}
-            tintColor={theme.colors.accent}
+            colors={[theme.colors.signal]}
+            tintColor={theme.colors.signal}
           />
         }
       >
@@ -600,14 +600,14 @@ const createStyles = (theme: Theme) =>
     timeColumn: { width: 56, paddingTop: 2 },
     time: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
     timeCurrent: {
-      color: theme.colors.accentText,
+      color: theme.colors.signalText,
       fontWeight: theme.typography.weight.semibold,
     },
     rail: { width: 16, alignItems: 'center' },
     dot: { width: 12, height: 12, borderRadius: 6, marginTop: 5 },
     dotDone: { backgroundColor: theme.colors.success },
     dotAbsent: { backgroundColor: theme.colors.danger },
-    dotCurrent: { backgroundColor: theme.colors.accent },
+    dotCurrent: { backgroundColor: theme.colors.signal },
     dotIdle: { backgroundColor: theme.colors.borderStrong },
     railLine: { flex: 1, width: 2, backgroundColor: theme.colors.border, marginVertical: 2 },
     lessonCard: {
@@ -650,12 +650,12 @@ const createStyles = (theme: Theme) =>
     bar: {
       width: '100%',
       borderRadius: theme.radius.sm,
-      backgroundColor: theme.colors.accentSoft,
+      backgroundColor: theme.colors.signalSoft,
     },
-    barToday: { backgroundColor: theme.colors.accent },
+    barToday: { backgroundColor: theme.colors.signal },
     weekLabel: { fontSize: theme.typography.size.xs, color: theme.colors.textMuted },
     weekLabelToday: {
-      color: theme.colors.accentText,
+      color: theme.colors.signalText,
       fontWeight: theme.typography.weight.semibold,
     },
 

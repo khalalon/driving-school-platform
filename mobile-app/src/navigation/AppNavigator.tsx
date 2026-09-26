@@ -66,7 +66,7 @@ const tabIcon =
 /** Onglets et en-têtes suivent les jetons du thème (11.3, D-48). */
 const tabScreenOptions = (theme: Theme) => ({
   headerShown: false,
-  tabBarActiveTintColor: theme.colors.accent,
+  tabBarActiveTintColor: theme.colors.signal,
   tabBarInactiveTintColor: theme.colors.textMuted,
   tabBarLabelStyle: {
     fontSize: theme.typography.size.xs,
@@ -86,7 +86,7 @@ const navigationTheme = (theme: Theme): NavigationTheme => {
     dark: theme.name === 'dark',
     colors: {
       ...base.colors,
-      primary: theme.colors.accent,
+      primary: theme.colors.signal,
       background: theme.colors.surface,
       card: theme.colors.surfaceRaised,
       text: theme.colors.textPrimary,

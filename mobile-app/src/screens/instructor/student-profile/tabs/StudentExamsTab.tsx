@@ -130,7 +130,7 @@ export const StudentExamsTab = ({ route }: any) => {
             <Ionicons
               name={item.type === ExamType.THEORY ? 'book-outline' : 'car-outline'}
               size={20}
-              color={theme.colors.accentText}
+              color={theme.colors.signalText}
             />
             <Text style={styles.type}>
               {t('myExams.examSuffix', { type: examTypeLabel(item.type as ExamType) })}

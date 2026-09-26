@@ -63,7 +63,7 @@ export const SectionHeader = ({
         >
           <Text
             style={{
-              color: theme.colors.accentText,
+              color: theme.colors.signalText,
               fontSize: theme.typography.size.sm,
               fontWeight: theme.typography.weight.semibold,
             }}
@@ -73,7 +73,7 @@ export const SectionHeader = ({
           <Ionicons
             name={mirrorIcon('chevron-forward')}
             size={16}
-            color={theme.colors.accentText}
+            color={theme.colors.signalText}
           />
         </Pressable>
       ) : null}

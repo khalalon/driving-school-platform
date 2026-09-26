@@ -54,9 +54,9 @@ const variantColors = (theme: Theme, variant: ButtonVariant): VariantColors => {
   switch (variant) {
     case 'primary':
       return {
-        background: colors.accent,
-        backgroundPressed: colors.accentPressed,
-        text: colors.textOnAccent,
+        background: colors.signal,
+        backgroundPressed: colors.signalPressed,
+        text: colors.textOnSignal,
         border: null,
       };
     case 'secondary':
@@ -70,14 +70,14 @@ const variantColors = (theme: Theme, variant: ButtonVariant): VariantColors => {
       return {
         background: 'transparent',
         backgroundPressed: colors.surfaceMuted,
-        text: colors.accentText,
+        text: colors.signalText,
         border: null,
       };
     case 'danger':
       return {
         background: colors.danger,
         backgroundPressed: colors.dangerText,
-        text: colors.textOnAccent,
+        text: colors.textOnDanger,
         border: null,
       };
   }

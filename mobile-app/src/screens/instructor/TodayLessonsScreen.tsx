@@ -101,7 +101,7 @@ export const TodayLessonsScreen = ({ navigation }: any) => {
       <Card style={styles.card}>
         <View style={styles.head}>
           <View style={styles.timeBox}>
-            <Ionicons name="time" size={18} color={theme.colors.accentText} />
+            <Ionicons name="time" size={18} color={theme.colors.signalText} />
             <Text style={styles.time}>{formatTime(item.scheduledDate)}</Text>
           </View>
 
@@ -205,8 +205,8 @@ export const TodayLessonsScreen = ({ navigation }: any) => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={[theme.colors.accent]}
-              tintColor={theme.colors.accent}
+              colors={[theme.colors.signal]}
+              tintColor={theme.colors.signal}
             />
           }
           showsVerticalScrollIndicator={false}
@@ -244,13 +244,13 @@ const createStyles = (theme: Theme) =>
       paddingVertical: theme.spacing.sm,
       paddingHorizontal: theme.spacing.sm,
       borderRadius: theme.radius.md,
-      backgroundColor: theme.colors.accentSoft,
+      backgroundColor: theme.colors.signalSoft,
       minWidth: 68,
     },
     time: {
       fontSize: theme.typography.size.sm,
       fontWeight: theme.typography.weight.semibold,
-      color: theme.colors.accentText,
+      color: theme.colors.signalText,
     },
     info: { flex: 1, gap: 2 },
     student: {

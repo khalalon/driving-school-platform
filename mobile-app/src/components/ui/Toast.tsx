@@ -22,6 +22,7 @@ interface ToastProps {
 const TONE_ICONS: Record<Tone, IoniconName> = {
   neutral: 'information-circle',
   accent: 'information-circle',
+  telemetry: 'navigate-circle',
   success: 'checkmark-circle',
   warning: 'alert-circle',
   danger: 'close-circle',

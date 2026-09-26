@@ -6,7 +6,8 @@
 
 import { Theme } from '../../theme';
 
-export type Tone = 'neutral' | 'accent' | 'success' | 'warning' | 'danger';
+/** `accent` = jaune signal (D-52) ; `telemetry` = turquoise, pour l'étape en cours. */
+export type Tone = 'neutral' | 'accent' | 'telemetry' | 'success' | 'warning' | 'danger';
 
 export interface ToneColors {
   /** Fond pâle, pour une pastille posée sur une carte. */
@@ -21,7 +22,9 @@ export const toneColors = (theme: Theme, tone: Tone): ToneColors => {
   const { colors } = theme;
   switch (tone) {
     case 'accent':
-      return { soft: colors.accentSoft, text: colors.accentText, solid: colors.accent };
+      return { soft: colors.signalSoft, text: colors.signalText, solid: colors.signal };
+    case 'telemetry':
+      return { soft: colors.telemetrySoft, text: colors.telemetryText, solid: colors.telemetry };
     case 'success':
       return { soft: colors.successSoft, text: colors.successText, solid: colors.success };
     case 'warning':

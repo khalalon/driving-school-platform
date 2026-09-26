@@ -54,7 +54,7 @@ export const LoginScreen = ({ navigation }: any) => {
 
         <View style={styles.header}>
           <View style={styles.logo}>
-            <Ionicons name="car-sport" size={38} color={theme.colors.accent} />
+            <Ionicons name="car-sport" size={38} color={theme.colors.signal} />
           </View>
           <Text style={styles.title}>{t('auth.login.title')}</Text>
           <Text style={styles.subtitle}>{t('auth.login.subtitle')}</Text>
@@ -127,7 +127,7 @@ const createStyles = (theme: Theme) =>
       width: 76,
       height: 76,
       borderRadius: theme.radius.pill,
-      backgroundColor: theme.colors.accentSoft,
+      backgroundColor: theme.colors.signalSoft,
       alignItems: 'center',
       justifyContent: 'center',
       marginBottom: theme.spacing.base,

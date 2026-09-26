@@ -199,7 +199,7 @@ export const BookForStudentScreen = ({ navigation }: any) => {
 
       <Screen contentContainerStyle={styles.content} edges={[]}>
         <Card highlighted elevation="none" style={styles.info}>
-          <Ionicons name="information-circle" size={22} color={theme.colors.accentText} />
+          <Ionicons name="information-circle" size={22} color={theme.colors.signalText} />
           <Text style={styles.infoText}>{t('bookFor.info')}</Text>
         </Card>
 
@@ -225,7 +225,7 @@ export const BookForStudentScreen = ({ navigation }: any) => {
                       <Ionicons
                         name="person-circle-outline"
                         size={24}
-                        color={theme.colors.accentText}
+                        color={theme.colors.signalText}
                       />
                     </Pressable>
                     <Pressable
@@ -282,7 +282,7 @@ export const BookForStudentScreen = ({ navigation }: any) => {
                           <Ionicons
                             name="person-circle-outline"
                             size={24}
-                            color={theme.colors.accentText}
+                            color={theme.colors.signalText}
                           />
                         </Pressable>
                       }
@@ -424,7 +424,7 @@ const createStyles = (theme: Theme) =>
     infoText: {
       flex: 1,
       fontSize: theme.typography.size.sm,
-      color: theme.colors.accentText,
+      color: theme.colors.signalText,
       lineHeight: theme.typography.size.sm * theme.typography.lineHeight.normal,
     },
     section: { gap: theme.spacing.sm },

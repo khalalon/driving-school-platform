@@ -198,7 +198,7 @@ export const StudentInfoTab = ({ route }: any) => {
         <MoneyRow
           label={t('studentInfo.creditAvailable')}
           amount={financial.credit}
-          color={theme.colors.accentText}
+          color={theme.colors.signalText}
         />
         {financial.lastPaymentDate ? (
           <Text style={styles.hint}>

@@ -307,6 +307,6 @@ const createStyles = (theme: Theme) =>
     loginLinkText: { fontSize: theme.typography.size.base, color: theme.colors.textSecondary },
     loginLinkBold: {
       fontWeight: theme.typography.weight.semibold,
-      color: theme.colors.accentText,
+      color: theme.colors.signalText,
     },
   });

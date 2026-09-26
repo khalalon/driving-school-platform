@@ -1,9 +1,8 @@
 /**
- * Thème (D-48) : jetons sémantiques déclinés en clair et en sombre.
+ * Thème « Circuit » (D-52, principe D-48) : jetons sémantiques déclinés en clair et en sombre.
  *
  * Les écrans n'importent jamais une couleur : ils lisent `useTheme()` (`src/context/ThemeContext`)
- * et utilisent `theme.colors.surface`, `theme.colors.textPrimary`… Les anciennes constantes
- * (`colors`, `shadows`) restent exportées le temps de la refonte des écrans (11.3, 11.4).
+ * et utilisent `theme.colors.surface`, `theme.colors.signal`…
  */
 
 import {
@@ -52,7 +51,3 @@ export const themes: Record<ThemeName, Theme> = { light: lightTheme, dark: darkT
 export { spacing, radius, typography, MIN_TOUCH_TARGET };
 export type { ColorTokens, ThemeName };
 export { palette } from './tokens';
-
-// --- Compatibilité : écrans pas encore refondus (supprimé à la fin de 11.4) ---
-export * from './colors';
-export * from './shadows';

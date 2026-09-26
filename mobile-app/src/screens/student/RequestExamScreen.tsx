@@ -95,7 +95,7 @@ export const RequestExamScreen = ({ navigation }: any) => {
 
       <Screen contentContainerStyle={styles.content} edges={[]}>
         <Card highlighted elevation="none" style={styles.info}>
-          <Ionicons name="information-circle" size={22} color={theme.colors.accentText} />
+          <Ionicons name="information-circle" size={22} color={theme.colors.signalText} />
           <View style={styles.infoBody}>
             <Text style={styles.infoTitle}>{t('book.howItWorks')}</Text>
             <Text style={styles.infoText}>{t('requestExam.howItWorksText')}</Text>
@@ -199,9 +199,9 @@ const createStyles = (theme: Theme) =>
     infoTitle: {
       fontSize: theme.typography.size.sm,
       fontWeight: theme.typography.weight.semibold,
-      color: theme.colors.accentText,
+      color: theme.colors.signalText,
     },
-    infoText: { fontSize: theme.typography.size.sm, color: theme.colors.accentText },
+    infoText: { fontSize: theme.typography.size.sm, color: theme.colors.signalText },
     section: { gap: theme.spacing.sm },
     label: {
       fontSize: theme.typography.size.sm,

@@ -107,7 +107,7 @@ export const InstructorRegistrationScreen = ({ navigation }: any) => {
 
       <Screen contentContainerStyle={styles.content} edges={[]}>
         <Card highlighted elevation="none" style={styles.info}>
-          <Ionicons name="key" size={22} color={theme.colors.accentText} />
+          <Ionicons name="key" size={22} color={theme.colors.signalText} />
           <Text style={styles.infoText}>{t('auth.instructor.codeHint')}</Text>
         </Card>
 
@@ -220,7 +220,7 @@ const createStyles = (theme: Theme) =>
     infoText: {
       flex: 1,
       fontSize: theme.typography.size.sm,
-      color: theme.colors.accentText,
+      color: theme.colors.signalText,
       lineHeight: theme.typography.size.sm * theme.typography.lineHeight.normal,
     },
     row: { flexDirection: 'row', gap: theme.spacing.md },
@@ -229,7 +229,7 @@ const createStyles = (theme: Theme) =>
     loginLink: { alignItems: 'center', paddingVertical: theme.spacing.md },
     loginLinkText: {
       fontSize: theme.typography.size.base,
-      color: theme.colors.accentText,
+      color: theme.colors.signalText,
       fontWeight: theme.typography.weight.medium,
     },
   });

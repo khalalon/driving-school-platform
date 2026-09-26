@@ -133,7 +133,7 @@ export const TodayExamsScreen = ({ navigation }: any) => {
             <Ionicons
               name={theory ? 'book' : 'car-sport'}
               size={24}
-              color={theory ? theme.colors.accentText : theme.colors.warningText}
+              color={theory ? theme.colors.signalText : theme.colors.warningText}
             />
           </View>
 
@@ -214,8 +214,8 @@ export const TodayExamsScreen = ({ navigation }: any) => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={[theme.colors.accent]}
-              tintColor={theme.colors.accent}
+              colors={[theme.colors.signal]}
+              tintColor={theme.colors.signal}
             />
           }
           showsVerticalScrollIndicator={false}
@@ -318,7 +318,7 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       justifyContent: 'center',
     },
-    iconTheory: { backgroundColor: theme.colors.accentSoft },
+    iconTheory: { backgroundColor: theme.colors.signalSoft },
     iconPractical: { backgroundColor: theme.colors.warningSoft },
     info: { flex: 1, gap: 2 },
     type: {

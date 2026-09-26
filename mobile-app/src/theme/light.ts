@@ -1,70 +1,51 @@
-/** Thème clair (D-48) : fond sable, encre foncée, accent bleu profond. */
+/**
+ * Thème clair « Circuit » (D-52) : béton clair, encre, jaune signal en aplat (texte foncé
+ * dessus) et en texte bronze `signalText` là où le jaune serait illisible sur fond clair.
+ */
 
-import { ColorTokens, ShadowTokens, palette } from './tokens';
+import { ColorTokens, ShadowTokens, flatShadows, palette } from './tokens';
 
 export const lightColors: ColorTokens = {
-  surface: palette.sand50,
+  surface: palette.concrete100,
   surfaceRaised: palette.white,
-  surfaceMuted: palette.sand100,
-  surfaceAccent: palette.blue50,
+  surfaceMuted: palette.concrete200,
+  surfaceSignal: palette.signalSoftLight,
 
-  border: palette.sand200,
-  borderStrong: palette.ink300,
+  border: palette.concrete300,
+  borderStrong: palette.concrete450,
 
-  textPrimary: palette.ink900,
-  textSecondary: palette.ink600,
-  textMuted: palette.ink500,
-  textOnAccent: palette.white,
+  textPrimary: palette.concrete900,
+  textSecondary: palette.concrete600,
+  textMuted: palette.concrete500,
+  textOnSignal: palette.concrete900,
+  textOnDanger: palette.white,
 
-  accent: palette.blue600,
-  accentPressed: palette.blue700,
-  accentSoft: palette.blue50,
-  accentText: palette.blue700,
+  signal: palette.signal400,
+  signalPressed: palette.signal500,
+  signalSoft: palette.signalSoftLight,
+  signalText: palette.signal800,
 
-  success: palette.green500,
-  successSoft: palette.green50,
-  successText: palette.green600,
+  telemetry: palette.telemetry700,
+  telemetrySoft: palette.telemetrySoftLight,
+  telemetryText: palette.telemetry800,
 
-  warning: palette.amber500,
-  warningSoft: palette.amber50,
-  warningText: palette.amber600,
+  gauge: palette.signal600,
+  gaugeTrack: palette.concrete250,
 
-  danger: palette.red500,
-  dangerSoft: palette.red50,
-  dangerText: palette.red600,
+  success: palette.green700,
+  successSoft: palette.greenSoftLight,
+  successText: palette.green800,
 
-  overlay: 'rgba(17, 21, 31, 0.55)',
-  skeleton: palette.sand200,
+  warning: palette.orange700,
+  warningSoft: palette.orangeSoftLight,
+  warningText: palette.orange800,
+
+  danger: palette.red600,
+  dangerSoft: palette.redSoftLight,
+  dangerText: palette.red800,
+
+  overlay: 'rgba(14, 17, 22, 0.55)',
+  skeleton: palette.concrete200,
 };
 
-/** Ombres : discrètes en clair, où la lumière vient du haut. */
-export const lightShadows: ShadowTokens = {
-  none: {
-    shadowColor: palette.black,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0,
-    shadowRadius: 0,
-    elevation: 0,
-  },
-  sm: {
-    shadowColor: palette.ink900,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
-    elevation: 1,
-  },
-  md: {
-    shadowColor: palette.ink900,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  lg: {
-    shadowColor: palette.ink900,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.14,
-    shadowRadius: 20,
-    elevation: 6,
-  },
-};
+export const lightShadows: ShadowTokens = flatShadows(0.14);

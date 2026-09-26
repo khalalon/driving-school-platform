@@ -315,8 +315,8 @@ export const MyLessonsScreen = ({ navigation }: any) => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={[theme.colors.accent]}
-              tintColor={theme.colors.accent}
+              colors={[theme.colors.signal]}
+              tintColor={theme.colors.signal}
             />
           }
           showsVerticalScrollIndicator={false}
@@ -345,19 +345,19 @@ const createStyles = (theme: Theme) =>
       width: 52,
       paddingVertical: theme.spacing.sm,
       borderRadius: theme.radius.md,
-      backgroundColor: theme.colors.accentSoft,
+      backgroundColor: theme.colors.signalSoft,
       alignItems: 'center',
     },
     dateMonth: {
       fontSize: theme.typography.size.xs,
       fontWeight: theme.typography.weight.semibold,
-      color: theme.colors.accentText,
+      color: theme.colors.signalText,
       textTransform: 'uppercase',
     },
     dateDay: {
       fontSize: theme.typography.size.xl,
       fontWeight: theme.typography.weight.bold,
-      color: theme.colors.accentText,
+      color: theme.colors.signalText,
     },
     info: { flex: 1, gap: 2 },
     type: {

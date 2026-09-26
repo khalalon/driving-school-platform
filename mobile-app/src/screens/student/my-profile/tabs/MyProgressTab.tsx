@@ -179,7 +179,7 @@ export const MyProgressTab = ({ route }: any) => {
           label={t('profile.creditAvailable')}
           amount={financial.credit}
           icon="gift-outline"
-          color={theme.colors.accentText}
+          color={theme.colors.signalText}
         />
         {financial.credit > 0 ? <Text style={styles.hint}>{t('profile.creditHint')}</Text> : null}
         {financial.lastPaymentDate ? (
@@ -220,7 +220,7 @@ const createStyles = (theme: Theme) =>
       overflow: 'hidden',
     },
     fill: { height: '100%', borderRadius: theme.radius.pill },
-    fillAccent: { backgroundColor: theme.colors.accent },
+    fillAccent: { backgroundColor: theme.colors.signal },
     fillSuccess: { backgroundColor: theme.colors.success },
     progressText: { fontSize: theme.typography.size.xs, color: theme.colors.textSecondary },
     moneyRow: {

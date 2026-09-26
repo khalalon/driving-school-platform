@@ -245,7 +245,7 @@ export const StudentDashboard = ({ navigation }: any) => {
       step.state === 'done'
         ? theme.colors.success
         : step.state === 'current'
-          ? theme.colors.accent
+          ? theme.colors.signal
           : step.state === 'started'
             ? theme.colors.warning
             : theme.colors.textMuted;
@@ -439,8 +439,8 @@ export const StudentDashboard = ({ navigation }: any) => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[theme.colors.accent]}
-            tintColor={theme.colors.accent}
+            colors={[theme.colors.signal]}
+            tintColor={theme.colors.signal}
           />
         }
       >
@@ -474,7 +474,7 @@ const createStyles = (theme: Theme) =>
     },
     nextLabel: {
       fontSize: theme.typography.size.sm,
-      color: theme.colors.accentText,
+      color: theme.colors.signalText,
       fontWeight: theme.typography.weight.semibold,
     },
     nextTitle: {
@@ -506,8 +506,8 @@ const createStyles = (theme: Theme) =>
       borderColor: theme.colors.border,
     },
     stepDotCurrent: {
-      backgroundColor: theme.colors.accentSoft,
-      borderColor: theme.colors.accent,
+      backgroundColor: theme.colors.signalSoft,
+      borderColor: theme.colors.signal,
     },
     stepDotDone: {
       backgroundColor: theme.colors.successSoft,

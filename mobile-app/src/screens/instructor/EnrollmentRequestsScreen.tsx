@@ -166,7 +166,7 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
     <Card style={styles.card}>
       <View style={styles.head}>
         <View style={styles.avatar}>
-          <Ionicons name="person" size={22} color={theme.colors.accentText} />
+          <Ionicons name="person" size={22} color={theme.colors.signalText} />
         </View>
         <View style={styles.info}>
           <Text style={styles.name}>{studentNameOf(item)}</Text>
@@ -274,8 +274,8 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={[theme.colors.accent]}
-              tintColor={theme.colors.accent}
+              colors={[theme.colors.signal]}
+              tintColor={theme.colors.signal}
             />
           }
           showsVerticalScrollIndicator={false}
@@ -350,7 +350,7 @@ const createStyles = (theme: Theme) =>
       width: 44,
       height: 44,
       borderRadius: theme.radius.pill,
-      backgroundColor: theme.colors.accentSoft,
+      backgroundColor: theme.colors.signalSoft,
       alignItems: 'center',
       justifyContent: 'center',
     },
