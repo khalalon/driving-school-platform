@@ -3,19 +3,24 @@
  * L'ordre compte — le thème et la langue habillent tout, les toasts se posent au-dessus des
  * écrans, et la session décide de la pile de navigation affichée.
  *
- * Les polices « Circuit » (13.2) sont chargées avant le premier écran : l'écran de démarrage
- * reste affiché jusque-là. En cas d'échec, l'application part avec les polices du système
- * plutôt que de rester bloquée.
+ * Les polices « Circuit » (13.2) et le choix de thème mémorisé (13.3) sont lus avant le premier
+ * écran : l'écran de démarrage reste affiché jusque-là, sans éclair d'un thème puis de l'autre.
+ * Si les polices échouent, l'application part avec celles du système plutôt que de rester
+ * bloquée.
  */
 
-import React, { useEffect } from 'react';
-import { StatusBar } from 'expo-status-bar';
+import React, { useEffect, useState } from 'react';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from './src/context/AuthContext';
 import { LanguageProvider } from './src/context/LanguageContext';
-import { ThemeProvider } from './src/context/ThemeContext';
+import {
+  ThemePreference,
+  ThemeProvider,
+  ThemedStatusBar,
+  loadThemePreference,
+} from './src/context/ThemeContext';
 import { ToastProvider } from './src/context/ToastContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { FONT_ASSETS } from './src/theme/fontAssets';
@@ -26,7 +31,12 @@ SplashScreen.preventAutoHideAsync().catch(() => {
 
 export default function App() {
   const [fontsLoaded, fontError] = useFonts(FONT_ASSETS);
-  const ready = fontsLoaded || fontError !== null;
+  const [themePreference, setThemePreference] = useState<ThemePreference | null>(null);
+  const ready = (fontsLoaded || fontError !== null) && themePreference !== null;
+
+  useEffect(() => {
+    loadThemePreference().then(setThemePreference);
+  }, []);
 
   useEffect(() => {
     if (ready) {
@@ -40,11 +50,11 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <ThemeProvider>
+      <ThemeProvider initialPreference={themePreference ?? undefined}>
         <LanguageProvider>
           <ToastProvider>
             <AuthProvider>
-              <StatusBar style="auto" />
+              <ThemedStatusBar />
               <AppNavigator />
             </AuthProvider>
           </ToastProvider>

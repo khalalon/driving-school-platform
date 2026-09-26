@@ -33,6 +33,8 @@ export type StudentStackParamList = {
   BookLesson: { schoolId: string; preferredInstructorId?: string; instructorName?: string };
   RequestExam: undefined;
   MyEnrollmentRequests: undefined;
+  /** Langue, thème, déconnexion (13.3) : commun aux deux rôles. */
+  Settings: undefined;
 };
 
 /** Onglets instructeur : Today, Requests, Exams, Students. */
@@ -53,6 +55,8 @@ export type InstructorStackParamList = {
   StudentProfile: { studentId: string; schoolId: string; studentName: string };
   /** S2, S7–S9 : l'école vient de A3, l'écran n'a pas de paramètre (D-51). */
   MySchool: undefined;
+  /** Langue, thème, déconnexion (13.3) : commun aux deux rôles. */
+  Settings: undefined;
 };
 
 export type AppStackParamList = AuthStackParamList &

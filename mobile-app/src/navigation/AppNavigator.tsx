@@ -49,6 +49,7 @@ import { TodayExamsScreen } from '../screens/instructor/TodayExamsScreen';
 import { ExamRequestsScreen } from '../screens/instructor/ExamRequestsScreen';
 import { EnrollmentRequestsScreen } from '../screens/instructor/EnrollmentRequestsScreen';
 import { StudentProfileScreen } from '../screens/instructor/student-profile/StudentProfileScreen';
+import { SettingsScreen } from '../screens/common/SettingsScreen';
 import { MySchoolScreen } from '../screens/instructor/MySchoolScreen';
 
 const Stack = createStackNavigator<AppStackParamList>();
@@ -185,6 +186,7 @@ export const AppNavigator = () => {
                 <Stack.Screen name="BookLesson" component={BookLessonScreen} />
                 <Stack.Screen name="RequestExam" component={RequestExamScreen} />
                 <Stack.Screen name="MyEnrollmentRequests" component={MyEnrollmentRequestsScreen} />
+                <Stack.Screen name="Settings" component={SettingsScreen} />
               </>
             ) : user?.role === UserRole.INSTRUCTOR ? (
               <>
@@ -194,6 +196,7 @@ export const AppNavigator = () => {
                 <Stack.Screen name="EnrollmentRequests" component={EnrollmentRequestsScreen} />
                 <Stack.Screen name="StudentProfile" component={StudentProfileScreen} />
                 <Stack.Screen name="MySchool" component={MySchoolScreen} />
+                <Stack.Screen name="Settings" component={SettingsScreen} />
               </>
             ) : null}
           </>

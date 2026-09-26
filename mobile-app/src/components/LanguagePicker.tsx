@@ -1,5 +1,5 @@
 /**
- * LanguagePicker — choix de la langue (D-47), sur l'écran de connexion et dans « Mon profil ».
+ * LanguagePicker — choix de la langue (D-47), sur l'écran de connexion et dans « Réglages » (13.3).
  * Deux `Chip` : la langue active est sélectionnée. Passer en arabe redémarre l'application
  * (sens de lecture), ce que le contexte gère.
  */

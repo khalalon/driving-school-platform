@@ -11,6 +11,17 @@ export const fr = {
   'language.hint':
     "Passer à l'arabe retourne la mise en page : fermez puis rouvrez l'application si elle ne se retourne pas toute seule.",
 
+  // Réglages (13.3)
+  'settings.title': 'Réglages',
+  'settings.open': 'Ouvrir les réglages',
+  'settings.appearance': 'Apparence',
+  'settings.theme.dark': 'Sombre',
+  'settings.theme.light': 'Clair',
+  'settings.theme.system': 'Système',
+  'settings.theme.hint': '« Système » suit le réglage clair ou sombre du téléphone.',
+  'settings.account': 'Compte',
+  'settings.signedInAs': 'Connecté avec {email}',
+
   // Vocabulaire commun
   'common.ok': 'OK',
   'common.cancel': 'Annuler',

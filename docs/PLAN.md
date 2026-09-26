@@ -823,7 +823,7 @@ cd mobile-app && npx expo-doctor && npx tsc --noEmit && npx jest --silent && ech
 ```
 **Hors périmètre** : application aux écrans (13.13 et suivantes).
 
-### - [ ] 13.3 — Sombre par défaut, réglage du thème, écran Réglages
+### - [x] 13.3 — Sombre par défaut, réglage du thème, écran Réglages
 **Objectif** : `ThemeContext` lit une préférence `dark | light | system` mémorisée dans AsyncStorage, **`dark` au premier lancement** ; `useThemePreference()` pour la lire et la changer. Nouvel écran « Réglages » (langue — sélecteur existant déplacé ici —, thème, déconnexion), ouvert depuis l'avatar de l'en-tête des deux accueils : l'instructeur n'avait pas d'onglet profil. La barre d'état suit le thème. `app.json` garde `userInterfaceStyle: automatic` (sinon « Système » ne suit plus le téléphone). Textes FR / AR. Tests : défaut sombre, persistance, « Système » suit `useColorScheme`.
 **Fichiers** : `mobile-app/src/context/ThemeContext.tsx`, `mobile-app/src/screens/common/SettingsScreen.tsx` (nouveau), `mobile-app/src/navigation/`, `mobile-app/src/i18n/{fr,ar}.ts`, tests.
 **Critère de validation** :

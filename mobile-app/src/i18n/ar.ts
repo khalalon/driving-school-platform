@@ -15,6 +15,17 @@ export const ar: Record<TranslationKey, string> = {
   'language.arabic': 'العربية',
   'language.hint': 'يغيّر اختيار العربية اتجاه العرض: أغلق التطبيق ثم افتحه إن لم يتغيّر وحده.',
 
+  // الإعدادات (13.3)
+  'settings.title': 'الإعدادات',
+  'settings.open': 'فتح الإعدادات',
+  'settings.appearance': 'المظهر',
+  'settings.theme.dark': 'داكن',
+  'settings.theme.light': 'فاتح',
+  'settings.theme.system': 'حسب الهاتف',
+  'settings.theme.hint': '«حسب الهاتف» يتبع إعداد الوضع الفاتح أو الداكن في الهاتف.',
+  'settings.account': 'الحساب',
+  'settings.signedInAs': 'متصل بـ {email}',
+
   // Vocabulaire commun
   'common.ok': 'حسناً',
   'common.cancel': 'إلغاء',

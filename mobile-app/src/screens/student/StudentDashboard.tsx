@@ -74,7 +74,7 @@ const findNextLesson = (lessons: Lesson[], now: Date = new Date()): Lesson | nul
 
 export const StudentDashboard = ({ navigation }: any) => {
   const { t } = useI18n();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   // `undefined` = pas encore chargé, `null` = aucune inscription approuvée
@@ -126,10 +126,6 @@ export const StudentDashboard = ({ navigation }: any) => {
     setRefreshing(false);
   }, [load]);
 
-  const handleLogout = async () => {
-    await logout();
-    // Pas de navigation : AuthContext reconstruit le navigateur
-  };
 
   const handleCancelLesson = (lesson: Lesson) => {
     Alert.alert(t('home.cancelTitle'), t('home.cancelConfirm'), [
@@ -422,13 +418,14 @@ export const StudentDashboard = ({ navigation }: any) => {
         large
         right={
           <Pressable
-            onPress={handleLogout}
+            onPress={() => navigation.navigate('Settings')}
             accessibilityRole="button"
-            accessibilityLabel={t('common.logout')}
+            accessibilityLabel={t('settings.open')}
             hitSlop={8}
-            style={styles.logout}
+            style={styles.settings}
+            testID="open-settings"
           >
-            <Ionicons name="log-out-outline" size={22} color={theme.colors.textSecondary} />
+            <Ionicons name="settings-outline" size={22} color={theme.colors.textSecondary} />
           </Pressable>
         }
       />
@@ -454,7 +451,7 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     flex: { flex: 1, backgroundColor: theme.colors.surface },
     content: { paddingTop: theme.spacing.base, gap: theme.spacing.base },
-    logout: {
+    settings: {
       width: MIN_TOUCH_TARGET,
       height: MIN_TOUCH_TARGET,
       borderRadius: theme.radius.pill,
