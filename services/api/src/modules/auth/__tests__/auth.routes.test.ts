@@ -99,6 +99,55 @@ describe('Routes /api/auth', () => {
     });
   });
 
+  it('POST /register : les coordonnées facultatives passent telles quelles (D-50)', async () => {
+    authService.register.mockResolvedValue(tokens);
+    const details = {
+      phone: '+216 20 000 000',
+      dateOfBirth: '2000-05-17',
+      address: '12 rue de Tunis',
+      emergencyContact: 'Salah Ben Ali',
+      emergencyPhone: '+216 20 111 111',
+    };
+
+    await request(app)
+      .post('/api/auth/register')
+      .send({ ...registerBody, ...details })
+      .expect(201);
+
+    // `dateOfBirth` reste la chaîne ISO envoyée : Joi valide sans convertir (`.raw()`)
+    expect(authService.register).toHaveBeenCalledWith({ ...registerBody, ...details });
+  });
+
+  it('POST /register : une inscription sans coordonnées reste acceptée (D-50)', async () => {
+    authService.register.mockResolvedValue(tokens);
+
+    await request(app).post('/api/auth/register').send(registerBody).expect(201);
+
+    expect(authService.register).toHaveBeenCalledWith(registerBody);
+  });
+
+  it('POST /register : 400 VALIDATION_ERROR sur une date de naissance future (D-50)', async () => {
+    const future = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({ ...registerBody, dateOfBirth: future });
+
+    expect(res.status).toBe(400);
+    expect((res.body as { message: string }).message).toContain('dateOfBirth');
+    expect(authService.register).not.toHaveBeenCalled();
+  });
+
+  it('POST /register : 400 VALIDATION_ERROR sur un téléphone d’urgence invalide (D-50)', async () => {
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({ ...registerBody, emergencyPhone: 'appelez maman' });
+
+    expect(res.status).toBe(400);
+    expect((res.body as { message: string }).message).toContain('emergencyPhone');
+    expect(authService.register).not.toHaveBeenCalled();
+  });
+
   it('POST /register : 400 VALIDATION_ERROR si `role` est présent (4.1, jamais choisi par l’appelant)', async () => {
     const res = await request(app)
       .post('/api/auth/register')

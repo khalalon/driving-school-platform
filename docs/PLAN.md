@@ -704,12 +704,12 @@ cd mobile-app && npx jest theme -t 'contraste' && test -z "$(grep -rn "accessibi
 
 Un élève ne donne aujourd'hui que son e-mail, son mot de passe et son nom ; les colonnes qui portent ses coordonnées existent en base mais **rien ne les écrit**. Une école, elle, ne peut être corrigée que par l'administrateur. Cette phase comble les deux : des détails facultatifs saisis à l'inscription (D-50, pas de photo — D-49) et une fiche école modifiable par son instructeur (D-51).
 
-### - [ ] 12.1 — Colonnes de coordonnées sur le compte et A2 étendu
+### - [x] 12.1 — Colonnes de coordonnées sur le compte et A2 étendu
 **Objectif** : migration `014_user_contact_details.sql` (nullable, idempotente) : `users.phone`, `users.date_of_birth`, `users.address`, `users.emergency_contact`, `users.emergency_phone`. A2 accepte ces champs, **tous facultatifs**, pour une inscription **élève** (sans `schoolCode`) ; ils sont enregistrés sur le compte. Joi : `phone` ≤ 50, `address` ≤ 500, `emergencyContact` ≤ 255, `emergencyPhone` ≤ 50, `dateOfBirth` = date ISO **dans le passé**. Le contrat §1 (A2) est mis à jour dans le même commit.
 **Fichiers** : `migrations/014_user_contact_details.sql`, `services/api/src/modules/auth/{validators,services,repositories,types}`, `docs/API_CONTRACT.md`.
 **Critère de validation** :
 ```bash
-cd services/api && npx tsc --noEmit && npm test -- --testPathPattern=auth && cd .. && ./scripts/migrate.sh && docker exec driving-school-postgres psql -U admin -d driving_school -c "\d users" | grep -E "date_of_birth|emergency_contact" && echo OK
+cd services/api && npx tsc --noEmit && npm test -- --testPathPattern=auth && cd ../.. && ./scripts/migrate.sh && docker exec driving-school-postgres psql -U admin -d driving_school -c "\d users" | grep -E "date_of_birth|emergency_contact" && echo OK
 ```
 **Hors périmètre** : photo (D-49), rattrapage des comptes existants.
 

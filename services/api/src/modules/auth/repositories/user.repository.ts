@@ -1,17 +1,10 @@
 import { Pool } from 'pg';
 import { Queryable } from '../../../db/transaction';
-import { User, UserRole } from '../types/auth.types';
+import { NewUser, User } from '../types/auth.types';
 
 export interface IUserRepository {
   /** `executor` : client d'une transaction en cours (inscription avec code, 4.2), le pool sinon. */
-  create(
-    email: string,
-    passwordHash: string,
-    role: UserRole,
-    firstName: string,
-    lastName: string,
-    executor?: Queryable
-  ): Promise<User>;
+  create(user: NewUser, executor?: Queryable): Promise<User>;
   findById(id: string): Promise<User | null>;
   findByEmail(email: string): Promise<User | null>;
   updatePassword(id: string, passwordHash: string): Promise<void>;
@@ -24,19 +17,27 @@ const USER_COLUMNS = `id, email, password_hash AS "passwordHash", role,
 export class UserRepository implements IUserRepository {
   constructor(private readonly db: Pool) {}
 
-  async create(
-    email: string,
-    passwordHash: string,
-    role: UserRole,
-    firstName: string,
-    lastName: string,
-    executor: Queryable = this.db
-  ): Promise<User> {
+  /** Coordonnées absentes → colonnes nulles (D-50) : un compte se crée sans elles. */
+  async create(user: NewUser, executor: Queryable = this.db): Promise<User> {
+    const contact = user.contact ?? {};
     const result = await executor.query<User>(
-      `INSERT INTO users (email, password_hash, role, first_name, last_name, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `INSERT INTO users (email, password_hash, role, first_name, last_name,
+                          phone, date_of_birth, address, emergency_contact, emergency_phone,
+                          created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
        RETURNING ${USER_COLUMNS}`,
-      [email, passwordHash, role, firstName, lastName]
+      [
+        user.email,
+        user.passwordHash,
+        user.role,
+        user.firstName,
+        user.lastName,
+        contact.phone ?? null,
+        contact.dateOfBirth ?? null,
+        contact.address ?? null,
+        contact.emergencyContact ?? null,
+        contact.emergencyPhone ?? null,
+      ]
     );
     return result.rows[0];
   }

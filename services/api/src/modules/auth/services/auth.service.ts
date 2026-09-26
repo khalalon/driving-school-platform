@@ -3,6 +3,7 @@ import { HttpError } from '../../../http/errors';
 import { IUserRepository } from '../repositories/user.repository';
 import {
   AuthTokens,
+  ContactDetails,
   CurrentUser,
   InstructorAccess,
   LoginDTO,
@@ -18,6 +19,18 @@ import { IssuedTokens, ITokenService, RefreshTokenPayload } from './token.servic
 // Clés Redis (4.6) : un refresh token valide = sa clé présente ; une session révoquée = marqueur.
 const refreshKey = (jti: string): string => `auth:refresh:${jti}`;
 const revokedSessionKey = (sid: string): string => `auth:session:${sid}:revoked`;
+
+/**
+ * Coordonnées d'un compte (D-50) : les champs absents ne sont pas transmis, pour ne pas écrire
+ * `undefined` là où l'appelant n'a rien saisi.
+ */
+const contactOf = (dto: RegisterDTO): ContactDetails => ({
+  phone: dto.phone,
+  dateOfBirth: dto.dateOfBirth,
+  address: dto.address,
+  emergencyContact: dto.emergencyContact,
+  emergencyPhone: dto.emergencyPhone,
+});
 
 export class AuthService {
   constructor(
@@ -44,14 +57,17 @@ export class AuthService {
     }
     const passwordHash = await this.passwordService.hash(dto.password);
 
+    const contact = contactOf(dto);
+
     if (dto.schoolCode === undefined) {
-      const student = await this.userRepository.create(
-        dto.email,
+      const student = await this.userRepository.create({
+        email: dto.email,
         passwordHash,
-        UserRole.STUDENT,
-        dto.firstName,
-        dto.lastName
-      );
+        role: UserRole.STUDENT,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        contact,
+      });
       return this.issueTokens(student);
     }
 
@@ -66,11 +82,14 @@ export class AuthService {
         );
       }
       const created = await this.userRepository.create(
-        dto.email,
-        passwordHash,
-        code.role,
-        dto.firstName,
-        dto.lastName,
+        {
+          email: dto.email,
+          passwordHash,
+          role: code.role,
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          contact,
+        },
         tx
       );
       if (code.role === UserRole.INSTRUCTOR) {

@@ -93,13 +93,20 @@ describe('AuthService', () => {
 
       expect(userRepository.findByEmail).toHaveBeenCalledWith(dto.email);
       expect(passwordService.hash).toHaveBeenCalledWith(dto.password);
-      expect(userRepository.create).toHaveBeenCalledWith(
-        dto.email,
-        'hashed-password',
-        UserRole.STUDENT,
-        'Test',
-        'Élève'
-      );
+      expect(userRepository.create).toHaveBeenCalledWith({
+        email: dto.email,
+        passwordHash: 'hashed-password',
+        role: UserRole.STUDENT,
+        firstName: 'Test',
+        lastName: 'Élève',
+        contact: {
+          phone: undefined,
+          dateOfBirth: undefined,
+          address: undefined,
+          emergencyContact: undefined,
+          emergencyPhone: undefined,
+        },
+      });
       expect(tokenService.generateTokens).toHaveBeenCalledWith(
         { userId: user.id, email: user.email, role: user.role },
         undefined
@@ -142,11 +149,13 @@ describe('AuthService', () => {
         expect(transactions.run).toHaveBeenCalledTimes(1);
         expect(schoolCodes.consume).toHaveBeenCalledWith('INST-SEED', tx);
         expect(userRepository.create).toHaveBeenCalledWith(
-          withCode.email,
-          'hashed-password',
-          UserRole.INSTRUCTOR,
-          'Test',
-          'Élève',
+          expect.objectContaining({
+            email: withCode.email,
+            passwordHash: 'hashed-password',
+            role: UserRole.INSTRUCTOR,
+            firstName: 'Test',
+            lastName: 'Élève',
+          }),
           tx
         );
         expect(instructors.create).toHaveBeenCalledWith(
@@ -167,11 +176,13 @@ describe('AuthService', () => {
         await expect(authService.register(withCode)).resolves.toEqual(tokens);
 
         expect(userRepository.create).toHaveBeenCalledWith(
-          withCode.email,
-          'hashed-password',
-          UserRole.STUDENT,
-          'Test',
-          'Élève',
+          expect.objectContaining({
+            email: withCode.email,
+            passwordHash: 'hashed-password',
+            role: UserRole.STUDENT,
+            firstName: 'Test',
+            lastName: 'Élève',
+          }),
           tx
         );
         expect(instructors.create).not.toHaveBeenCalled();

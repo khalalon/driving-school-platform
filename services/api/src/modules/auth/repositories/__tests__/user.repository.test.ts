@@ -3,24 +3,68 @@ import { UserRole } from '../../types/auth.types';
 import { UserRepository } from '../user.repository';
 
 describe('UserRepository', () => {
-  it('create : cinq paramètres positionnels (email, hash, rôle, prénom, nom), noms renvoyés', async () => {
+  it('create : compte sans coordonnées → cinq colonnes nulles (D-50)', async () => {
     const { pool, query } = fakePool([{ id: UUID.student, firstName: 'Ali', lastName: 'Ben' }]);
 
-    const user = await new UserRepository(pool).create(
-      'ali@x.io',
-      'hash',
-      UserRole.STUDENT,
-      'Ali',
-      'Ben'
-    );
+    const user = await new UserRepository(pool).create({
+      email: 'ali@x.io',
+      passwordHash: 'hash',
+      role: UserRole.STUDENT,
+      firstName: 'Ali',
+      lastName: 'Ben',
+    });
 
     expect(user).toMatchObject({ firstName: 'Ali', lastName: 'Ben' });
     const [sql, params] = query.mock.calls[0] as [string, unknown[]];
     expect(sql).toMatch(/INSERT INTO users \(email, password_hash, role, first_name, last_name/);
-    expect(sql).toMatch(/VALUES \(\$1, \$2, \$3, \$4, \$5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP\)/);
+    expect(sql).toMatch(/phone, date_of_birth, address, emergency_contact, emergency_phone/);
     expect(sql).toMatch(/RETURNING id, email, password_hash AS "passwordHash"/);
     expect(sql).toMatch(/first_name AS "firstName", last_name AS "lastName"/);
-    expect(params).toEqual(['ali@x.io', 'hash', 'student', 'Ali', 'Ben']);
+    expect(params).toEqual([
+      'ali@x.io',
+      'hash',
+      'student',
+      'Ali',
+      'Ben',
+      null,
+      null,
+      null,
+      null,
+      null,
+    ]);
+  });
+
+  it('create : les coordonnées saisies partent en paramètres (D-50)', async () => {
+    const { pool, query } = fakePool([{ id: UUID.student }]);
+
+    await new UserRepository(pool).create({
+      email: 'ali@x.io',
+      passwordHash: 'hash',
+      role: UserRole.STUDENT,
+      firstName: 'Ali',
+      lastName: 'Ben',
+      contact: {
+        phone: '+216 20 000 000',
+        dateOfBirth: '2000-05-17',
+        address: '12 rue de Tunis',
+        emergencyContact: 'Salah Ben Ali',
+        emergencyPhone: '+216 20 111 111',
+      },
+    });
+
+    const [, params] = query.mock.calls[0] as [string, unknown[]];
+    expect(params).toEqual([
+      'ali@x.io',
+      'hash',
+      'student',
+      'Ali',
+      'Ben',
+      '+216 20 000 000',
+      '2000-05-17',
+      '12 rue de Tunis',
+      'Salah Ben Ali',
+      '+216 20 111 111',
+    ]);
   });
 
   it('findById / findByEmail : null sans ligne ; updatePassword paramétré', async () => {
