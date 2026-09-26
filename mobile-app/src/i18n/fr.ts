@@ -145,6 +145,18 @@ export const fr = {
   'auth.passwordTooShort': 'Le mot de passe doit faire au moins {min} caractères',
   'auth.registrationFailed': 'Inscription impossible',
   'auth.tryAgain': 'Réessayez',
+  'register.details.title': 'Pour votre auto-école (facultatif)',
+  'register.details.hint':
+    'Ces informations seront visibles par l’école qui accepte votre inscription. Vous pouvez les laisser vides.',
+  'register.details.phone': 'Téléphone',
+  'register.details.dateOfBirth': 'Date de naissance',
+  'register.details.dateNotSet': 'Non renseignée',
+  'register.details.clearDate': 'Effacer la date',
+  'register.details.address': 'Adresse',
+  'register.details.addressPlaceholder': 'Rue, ville',
+  'register.details.emergencyContact': 'Contact en cas d’urgence',
+  'register.details.emergencyContactPlaceholder': 'Nom d’un proche',
+  'register.details.emergencyPhone': 'Téléphone d’urgence',
 
   // Inscription de l'instructeur
   'auth.instructor.title': 'Rejoindre votre école',

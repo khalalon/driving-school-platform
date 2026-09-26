@@ -147,6 +147,17 @@ export const ar: Record<TranslationKey, string> = {
   'auth.passwordTooShort': 'يجب أن تحتوي كلمة السر على {min} أحرف على الأقل',
   'auth.registrationFailed': 'تعذّر إنشاء الحساب',
   'auth.tryAgain': 'أعد المحاولة',
+  'register.details.title': 'لمدرستك (اختياري)',
+  'register.details.hint': 'ستطّلع على هذه المعلومات المدرسة التي تقبل انخراطك. يمكنك تركها فارغة.',
+  'register.details.phone': 'الهاتف',
+  'register.details.dateOfBirth': 'تاريخ الولادة',
+  'register.details.dateNotSet': 'غير محدّد',
+  'register.details.clearDate': 'مسح التاريخ',
+  'register.details.address': 'العنوان',
+  'register.details.addressPlaceholder': 'الشارع، المدينة',
+  'register.details.emergencyContact': 'جهة الاتصال في حالة الطوارئ',
+  'register.details.emergencyContactPlaceholder': 'اسم أحد الأقارب',
+  'register.details.emergencyPhone': 'هاتف الطوارئ',
 
   // Inscription de l'instructeur
   'auth.instructor.title': 'انضمّ إلى مدرستك',

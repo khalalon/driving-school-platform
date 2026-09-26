@@ -52,6 +52,25 @@ describe('AuthService', () => {
     expect(api.post).toHaveBeenCalledWith('/api/auth/register', data);
   });
 
+  it('register (A2) : les coordonnees facultatives partent telles quelles (D-50)', async () => {
+    api.post.mockResolvedValue(respond(tokens, 201));
+    const data = {
+      email: 'x@x.io',
+      password: 'Passw0rd!',
+      firstName: 'Nour',
+      lastName: 'Cherif',
+      phone: '+216 20 123 456',
+      dateOfBirth: '2001-03-09',
+      address: '5 avenue Habib Bourguiba',
+      emergencyContact: 'Leila Cherif',
+      emergencyPhone: '+216 20 999 888',
+    };
+
+    await authService.register(data);
+
+    expect(api.post).toHaveBeenCalledWith('/api/auth/register', data);
+  });
+
   it('getCurrentUser (A3) : GET /api/auth/me → l’utilisateur, avec schoolId / instructorId (D-19)', async () => {
     const me = {
       id: 'u1',

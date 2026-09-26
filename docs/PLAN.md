@@ -722,7 +722,7 @@ cd services/api && npx tsc --noEmit && npm test -- --testPathPattern='student|en
 ```
 **Hors périmètre** : modification de ces champs après coup (12.5 ne couvre que l'école).
 
-### - [ ] 12.3 — Écran d'inscription élève : les détails facultatifs
+### - [x] 12.3 — Écran d'inscription élève : les détails facultatifs
 **Objectif** : `RegisterScreen` gagne une section « Pour votre auto-école (facultatif) » : téléphone, date de naissance (sélecteur, jamais dans le futur), adresse, contact d'urgence (nom + téléphone). Champs vides = non envoyés. Textes au catalogue FR/AR (D-47), composants de 11.2, aucun champ obligatoire ajouté.
 **Fichiers** : `mobile-app/src/screens/auth/RegisterScreen.tsx`, `mobile-app/src/services/api/AuthService.ts`, `mobile-app/src/models/User.ts`, `mobile-app/src/i18n/{fr,ar}.ts`.
 **Critère de validation** :
