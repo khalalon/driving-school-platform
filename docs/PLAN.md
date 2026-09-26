@@ -3,7 +3,7 @@
 Règles de lecture (voir `CLAUDE.md`, règles d'or 3 et 5) :
 - On travaille dans l'ordre, sur la première tâche non cochée. Une tâche = un commit (message Conventional Commits, scope = domaine ou `infra` / `mobile` / `docs` / `e2e`), poussé sur `origin/main` aussitôt. Les tâches d'une même phase s'enchaînent sans validation intermédiaire ; arrêt obligatoire en fin de phase, sur question ouverte non tranchée, sur échec de critère non réparable dans la tâche, ou sur choix produit non tranché (D-36, 18/09/2026).
 - Une tâche est cochée **seulement** quand sa commande « Critère de validation » a été exécutée et que sa sortie a été montrée. Pas d'exception.
-- Si une tâche indique « Dépend de : Q-xx » et que la question n'est pas tranchée dans `DECISIONS.md`, on **s'arrête** et on demande. Phases 0 à 12 : Q-17 à Q-24 → D-40 à D-51. **Au 26/09/2026, Q-25 à Q-53 sont ouvertes** (feuille de route v1.1, phases 14 à 23) : aucune tâche de ces phases ne commence avant la réponse de l'humain.
+- Si une tâche indique « Dépend de : Q-xx » et que la question n'est pas tranchée dans `DECISIONS.md`, on **s'arrête** et on demande. Phases 0 à 12 : Q-17 à Q-24 → D-40 à D-51. **Au 26/09/2026, Q-25 à Q-53 sont ouvertes** (feuille de route v1.1, phases 14 à 23) : aucune tâche de ces phases ne commence avant la réponse de l'humain. La Phase 13 applique D-52 et ne dépend d'aucune question.
 - Chaque tâche livrée ajoute une ligne dans `CHANGELOG.md` et, si elle touche une route, met à jour `docs/API_CONTRACT.md` dans le même commit.
 - Les commandes sont écrites pour Git Bash (Windows) ou un shell POSIX, depuis la racine du dépôt sauf `cd` explicite.
 
@@ -772,7 +772,7 @@ Demande de l'auteur après la recette : des améliorations **métier**, précéd
 
 | Phase | Ce que ça apporte | Questions |
 |---|---|---|
-| 13 | Rénovation UI/UX (design, 3D) — **à rédiger avec l'auteur** | — |
+| 13 | Rénovation UI/UX « Circuit » : jetons, typo, thème sombre, composants, navigation, 3D, tous les écrans | D-52 (tranchée) |
 | 14 | Gérant de l'école : des droits distincts de ceux des moniteurs | Q-25 à Q-27 |
 | 15 | Agenda de l'instructeur, conflits d'horaire, créneaux libres pour l'élève | Q-28 à Q-30 |
 | 16 | Dossier administratif de l'élève (pièces reçues / manquantes) | Q-31, Q-32 |
@@ -785,7 +785,7 @@ Demande de l'auteur après la recette : des améliorations **métier**, précéd
 | 23 | Flotte de véhicules et échéances | Q-51 à Q-53 |
 
 Règles propres à cette feuille de route :
-- **Avant la Phase 14, l'humain répond à Q-25 … Q-53** (`docs/DECISIONS.md`) ; les réponses deviennent D-52 et suivantes dans un commit `docs(docs)`. Les tâches sont écrites pour l'option **recommandée** ; si une autre option est retenue, on réécrit les tâches concernées **dans ce même commit**, avant de coder.
+- **Avant la Phase 14, l'humain répond à Q-25 … Q-53** (`docs/DECISIONS.md`) ; les réponses deviennent D-53 et suivantes dans un commit `docs(docs)`. Les tâches sont écrites pour l'option **recommandée** ; si une autre option est retenue, on réécrit les tâches concernées **dans ce même commit**, avant de coder.
 - Les migrations prennent le **prochain numéro libre** au moment de la tâche (`015` pour la première) : on ne réserve pas de numéro à l'avance.
 - Toute nouvelle route entre au contrat dans le même commit, avec un identifiant qui suit la numérotation de sa section (L9, S10…) ou une nouvelle section pour un nouveau domaine. Tout nouveau code d'erreur est ajouté aux conventions transverses du contrat **et** traduit côté mobile (10.5).
 - Côté mobile : composants et règles d'interface issus de la Phase 13, textes au catalogue FR / AR (D-47) vérifiés en RTL, chaque nouvelle méthode de service a son test (`mockApiClient`), aucun appel réseau hors `src/services/api/`.
@@ -794,11 +794,206 @@ Règles propres à cette feuille de route :
 
 ---
 
-## Phase 13 — Rénovation UI/UX (à rédiger)
+## Phase 13 — Rénovation UI/UX « Circuit » (D-52)
 
-Demande de l'auteur du 26/09/2026 : refonte complète de l'interface mobile (design propre, intégration d'éléments 3D) **avant** les phases 14 à 23. La direction artistique, les bibliothèques retenues, la liste des écrans et les critères de validation sont définis avec l'auteur dans une session dédiée ; les tâches remplacent alors ce paragraphe, et la décision correspondante entre dans `docs/DECISIONS.md`.
+L'application passe entièrement dans la direction « Circuit » retenue par l'auteur : univers automobile, sombre au premier lancement, jaune signal et turquoise télémétrie, Barlow Condensed, 3D en temps réel sur l'accueil et le parcours, célébrations pré-rendues. **Référence visuelle** : rangée C du canevas « Directions visuelles — Auto-école » (lien dans D-52). Aucune route, aucune règle métier, aucun texte traduit ne change : les écrans gardent leurs destinations et leurs appels de service.
 
-**Tant que cette phase ne contient aucune tâche, s'arrêter et demander.**
+Règles propres à cette phase :
+- Toute couleur, taille, rayon, durée d'animation passe par un jeton du thème ; aucun code hexadécimal hors de `src/theme/`.
+- Chaque écran refait reçoit un **test de rendu** en clair, en sombre et en arabe (`renderInTheme`, 11.2) : pas de plantage, textes clés présents, cibles tactiles ≥ 48 dp.
+- « Réduire les animations » (réglage du téléphone) coupe les animations décoratives et remplace la 3D par son image fixe.
+- **Arrêt obligatoire après 13.8** : l'humain vérifie la fluidité de la 3D sur son téléphone avant d'y investir davantage. Arrêt normal en fin de phase pour la recette sur téléphone.
+- Tout téléchargement de fichier tiers (modèles 3D, animations) est d'abord proposé à l'humain : nom, source, taille, licence.
+
+### - [ ] 13.1 — Jetons « Circuit »
+**Objectif** : palette brute et jetons sémantiques remplacés par ceux de D-52, en sombre et en clair : fond, surfaces (3 niveaux), texte (primaire, secondaire, atténué), filets, `signal` / `signalText` / `signalSoft` / `textOnSignal`, `telemetry` / `telemetrySoft`, `gauge` (arcs et barres de progression), statuts (`success`, `warning`, `danger` et leurs variantes douces), `overlay`, `skeleton`. Rayons resserrés (4 / 6 / 8 / 12 / 16), ombres remplacées par des filets (style à plat). Le test de thème vérifie : mêmes jetons dans les deux thèmes, contraste texte / fond ≥ 4,5:1, **éléments graphiques porteurs de sens** (jauge, barres, bordures de champ) ≥ 3:1 sur leur fond. Les exports de compatibilité `src/theme/colors.ts` et `shadows.ts` sont supprimés (plus aucun import).
+**Fichiers** : `mobile-app/src/theme/{tokens,light,dark,index,spacing}.ts`, suppression de `colors.ts` et `shadows.ts`, `mobile-app/src/theme/__tests__/theme.test.ts`, écrans qui importaient encore l'ancien module.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && test ! -f src/theme/colors.ts && test ! -f src/theme/shadows.ts && echo OK
+```
+**Hors périmètre** : typographie (13.2), réglage du thème (13.3).
+
+### - [ ] 13.2 — Typographie : Barlow Condensed, Barlow, Cairo
+**Objectif** : polices chargées par `expo-font` depuis `@expo-google-fonts/barlow-condensed`, `@expo-google-fonts/barlow` et `@expo-google-fonts/cairo` (installées par `npx expo install`) ; l'écran de démarrage reste affiché jusqu'au chargement. `typography` devient une échelle de **rôles** : `display`, `title`, `heading`, `label` (capitales condensées espacées), `body`, `caption`, `numeric` (chiffres tabulaires pour heures, montants, compteurs). Un hook `useTextStyle(role)` renvoie la bonne famille selon la langue : **en arabe, Cairo, sans capitales ni espacement de lettres** (D-47, `utils/rtl.ts`). Test : chaque rôle en FR et en AR.
+**Fichiers** : `mobile-app/package.json`, `mobile-app/App.tsx`, `mobile-app/src/theme/typography.ts`, `mobile-app/src/theme/useTextStyle.ts` (nouveau), `mobile-app/jest.setup.js` (mock des polices), tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx expo-doctor && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : application aux écrans (13.13 et suivantes).
+
+### - [ ] 13.3 — Sombre par défaut, réglage du thème, écran Réglages
+**Objectif** : `ThemeContext` lit une préférence `dark | light | system` mémorisée dans AsyncStorage, **`dark` au premier lancement** ; `useThemePreference()` pour la lire et la changer. Nouvel écran « Réglages » (langue — sélecteur existant déplacé ici —, thème, déconnexion), ouvert depuis l'avatar de l'en-tête des deux accueils : l'instructeur n'avait pas d'onglet profil. La barre d'état suit le thème. `app.json` garde `userInterfaceStyle: automatic` (sinon « Système » ne suit plus le téléphone). Textes FR / AR. Tests : défaut sombre, persistance, « Système » suit `useColorScheme`.
+**Fichiers** : `mobile-app/src/context/ThemeContext.tsx`, `mobile-app/src/screens/common/SettingsScreen.tsx` (nouveau), `mobile-app/src/navigation/`, `mobile-app/src/i18n/{fr,ar}.ts`, tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && grep -q '"userInterfaceStyle": "automatic"' app.json && echo OK
+```
+**Hors périmètre** : synchronisation du réglage entre appareils.
+
+### - [ ] 13.4 — Mouvement et retour haptique
+**Objectif** : jetons de mouvement (`duration.fast / base / slow`, ressorts `snappy` / `gentle` pour Reanimated), `usePressFeedback()` (légère réduction d'échelle à l'appui, sans décaler la mise en page), `useReducedMotion()` branché sur le réglage du téléphone, `haptics.success()` / `haptics.selection()` (`expo-haptics`) réservés aux confirmations (demande envoyée, présence notée, célébration). Tests : animations coupées quand le réglage est actif.
+**Fichiers** : `mobile-app/src/theme/motion.ts` (nouveau), `mobile-app/src/hooks/{usePressFeedback,useReducedMotion}.ts` (nouveaux), `mobile-app/src/utils/haptics.ts` (nouveau), `package.json`, `jest.setup.js`, tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx expo-doctor && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : animations propres à un écran.
+
+### - [ ] 13.5 — Composants de base refaits
+**Objectif** : `Button` (signal, contour, discret, danger ; état chargement ; retour haptique), `Card` (à plat, filet), `Chip` / `Badge` de statut (**forme + texte**, jamais la couleur seule), `Field` (libellé visible, erreur sous le champ), `ListRow`, `AppBar` (titre condensé, avatar vers Réglages), `Screen`, `SectionHeader` (libellé en capitales), `Toast`, `Skeleton`, `EmptyState` refaits sur les jetons 13.1–13.4. Mêmes noms et mêmes props qu'en 11.2 quand c'est possible, pour limiter les retouches d'écrans. Les tests de rendu, de comportement et d'accessibilité existants passent sur les deux thèmes.
+**Fichiers** : `mobile-app/src/components/ui/*`, `mobile-app/src/components/ui/__tests__/*`.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && test -z "$(grep -rnE "['\"]#[0-9A-Fa-f]{3,8}['\"]" src/components --include='*.tsx')" && echo OK
+```
+**Hors périmètre** : composants propres à « Circuit » (13.6).
+
+### - [ ] 13.6 — Composants « Circuit » : jauge, secteurs, chiffres, barre d'onglets
+**Objectif** : `react-native-svg` installé (`npx expo install`). Nouveaux composants : `Gauge` (demi-cercle de progression, valeur au centre, libellé accessible « 3 étapes sur 5 »), `SectorBar` (parcours en 5 secteurs : fait / en cours / à venir, libellés), `StatRow` (libellé en capitales + chiffre tabulaire), `TimeBlock` (grande heure + ligne date · type · durée), `DateBadge`, `TabBar` (barre d'onglets personnalisée : icône + libellé condensé, onglet actif en signal, zone de sécurité respectée). Ces composants servent aussi aux graphiques des phases suivantes (22.3). Tests de rendu et d'accessibilité.
+**Fichiers** : `mobile-app/src/components/circuit/*` (nouveau dossier), `package.json`, tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx expo-doctor && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : 3D (13.8 et suivantes).
+
+### - [ ] 13.7 — Navigation repensée
+**Objectif** : les deux barres d'onglets (élève : Accueil / Leçons / Examens / Profil ; instructeur : Aujourd'hui / Demandes / Examens / Élèves, destinations de 8.4 inchangées) utilisent `TabBar` ; transitions de pile cohérentes (glissement vers la gauche en avant, vers la droite en retour, inversées en arabe) ; en-têtes unifiés par `AppBar` ; Réglages accessible depuis les deux rôles. Les noms de routes ne changent pas (ils serviront aux liens des notifications, 17.7).
+**Fichiers** : `mobile-app/src/navigation/{AppNavigator.tsx,types.ts}`, tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : contenu des écrans.
+
+### - [ ] 13.8 — Faisabilité 3D sur téléphone (arrêt pour vérification humaine)
+**Objectif** : `expo-gl`, `three` et `@react-three/fiber` installés (versions compatibles SDK 57 vérifiées par `npx expo install` et `expo-doctor`). Composant `Scene3D` qui encapsule toute scène : montage différé après le premier affichage, pause quand l'écran est quitté ou l'app en arrière-plan, **repli sur une image fixe** si « réduire les animations » est actif, si la scène plante (limite d'erreur) ou si les 60 premières images tournent en moyenne sous 40 i/s. Une scène d'essai (voiture de primitives, éclairage de nuit, rotation lente) sur l'accueil élève, derrière un indicateur `SHOW_3D_PROBE` à retirer en 13.10. Tests : repli sous « réduire les animations » et après une erreur (`expo-gl` mocké).
+**Arrêt** : l'humain ouvre l'app dans Expo Go sur son téléphone et confirme que la scène est fluide ; sinon la 3D temps réel repasse en pré-rendu (D-52 amendée) avant de continuer.
+**Fichiers** : `mobile-app/src/components/three/Scene3D.tsx` (nouveau), `mobile-app/src/components/three/ProbeScene.tsx` (nouveau), `package.json`, `jest.setup.js`, tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx expo-doctor && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : modèles définitifs (13.9).
+
+### - [ ] 13.9 — Modèles 3D libres de droits
+**Objectif** : choix et préparation des modèles CC0 (voiture ; éléments de circuit : piste, bordures, portique ; drapeau à damier), proposés à l'humain avant téléchargement (nom, source, taille, licence). Recoloration aux jetons D-52 (carrosserie sombre, feux signal), allègement : **total ≤ 3 Mo**, textures ≤ 1024 px, format `.glb`. Inventaire `mobile-app/assets/3d/credits.json` : pour chaque fichier, source, auteur, licence, modifications. Chargement par `expo-asset` (mocké en test).
+**Fichiers** : `mobile-app/assets/3d/*.glb`, `mobile-app/assets/3d/credits.json` (nouveau), `mobile-app/metro.config.js` (extension `glb`), tests (chaque `.glb` figure dans l'inventaire).
+**Critère de validation** :
+```bash
+cd mobile-app && test "$(du -ck assets/3d/*.glb | tail -1 | cut -f1)" -le 3072 && node -e "const c=require('./assets/3d/credits.json');const g=require('fs').readdirSync('assets/3d').filter(f=>f.endsWith('.glb'));if(!g.length||!g.every(f=>c.some(e=>e.file===f&&e.license)))process.exit(1)" && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : modèles sur mesure (remplacement futur, D-52).
+
+### - [ ] 13.10 — Scène 3D d'accueil
+**Objectif** : la voiture de nuit (phares allumés, reflets, orbite lente de la caméra) remplace la scène d'essai sur l'**écran de connexion** et dans l'en-tête de l'**accueil élève** ; version de jour quand le thème est clair. Image fixe de repli fournie dans les deux thèmes. Indicateur `SHOW_3D_PROBE` et `ProbeScene` supprimés.
+**Fichiers** : `mobile-app/src/components/three/HomeCarScene.tsx` (nouveau), `mobile-app/assets/3d/fallback/*`, `LoginScreen.tsx`, `StudentDashboard.tsx`, tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && ! grep -rq SHOW_3D_PROBE src && echo OK
+```
+**Hors périmètre** : reste de l'écran d'accueil (13.14).
+
+### - [ ] 13.11 — Parcours 3D : le circuit
+**Objectif** : circuit vu du ciel en 5 secteurs (Code → Examen théorique → Manœuvre → Parc → Examen pratique, ordre D-45), chaque secteur allumé selon la progression déjà calculée par l'accueil (P8 `completedLessonsByType`, examens X1) : fait en signal, en cours en télémétrie, à venir éteint. La voiture est posée sur le secteur en cours. Toucher un secteur ouvre son détail (leçons effectuées, prochaine leçon, examen). Repli 2D : `SectorBar` (13.6). Libellés accessibles, lisibles aussi sans la 3D.
+**Fichiers** : `mobile-app/src/components/three/JourneyTrackScene.tsx` (nouveau), `mobile-app/src/screens/student/StudentDashboard.tsx`, tests (progression → état de chaque secteur).
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : compétences par secteur (Phase 20).
+
+### - [ ] 13.12 — Célébrations pré-rendues
+**Objectif** : `lottie-react-native` installé ; trois animations (inscription acceptée, examen théorique réussi, **permis obtenu** = examen pratique réussi : drapeau à damier), fichiers proposés à l'humain avant téléchargement, licence permettant l'usage commercial inscrite dans `assets/3d/credits.json`. À l'ouverture de l'app, un événement **qui existe déjà** et n'a pas encore été célébré (E3 `approved`, X1 `result = passed`) déclenche la célébration une seule fois (identifiants mémorisés dans AsyncStorage), avec retour haptique ; bouton « Continuer » toujours visible ; « réduire les animations » → carte fixe. Textes FR / AR.
+**Fichiers** : `mobile-app/src/components/celebration/*` (nouveau), `mobile-app/assets/lottie/*.json`, `mobile-app/src/hooks/useCelebrations.ts` (nouveau), `StudentDashboard.tsx`, `package.json`, `jest.setup.js`, tests (une seule célébration par événement).
+**Critère de validation** :
+```bash
+cd mobile-app && npx expo-doctor && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : notification push de l'événement (Phase 17).
+
+### - [ ] 13.13 — Authentification refaite
+**Objectif** : `LoginScreen` (scène 3D de 13.10 en haut, formulaire en bas, sélecteur de langue), `RegisterScreen` (section facultative de 12.3 conservée), `InstructorRegistrationScreen`, sur les composants 13.5 / 13.6 et la typographie 13.2. Test de rendu clair / sombre / arabe pour chaque écran.
+**Fichiers** : `mobile-app/src/screens/auth/*`, `mobile-app/src/screens/auth/__tests__/*` (nouveau).
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && test -z "$(grep -rnE "['\"]#[0-9A-Fa-f]{3,8}['\"]" src/screens/auth --include='*.tsx')" && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 13.14 — Accueil élève refait
+**Objectif** : `StudentDashboard` selon la maquette C : « Tableau de bord » + salutation, scène d'accueil, carte jauge (étapes franchies) + compteurs par type (`StatRow`), « Prochaine session » (`TimeBlock`, délai « dans 2 j », instructeur), parcours (13.11), action principale « Demander une leçon ». États vide (pas encore inscrit → trouver une école), chargement (`Skeleton`) et erreur. Test de rendu clair / sombre / arabe.
+**Fichiers** : `mobile-app/src/screens/student/StudentDashboard.tsx`, `mobile-app/src/screens/student/__tests__/*` (nouveau).
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && test -z "$(grep -nE "['\"]#[0-9A-Fa-f]{3,8}['\"]" src/screens/student/StudentDashboard.tsx)" && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 13.15 — Écrans élève (1/2) : écoles et inscription
+**Objectif** : `SchoolsListScreen`, `SchoolDetailScreen` (fiche, instructeurs, tarifs), `MyEnrollmentRequestsScreen` refaits. Test de rendu clair / sombre / arabe pour chacun.
+**Fichiers** : ces trois écrans, tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 13.16 — Écrans élève (2/2) : leçons, examens, profil
+**Objectif** : `BookLessonScreen`, `MyLessonsScreen`, `RequestExamScreen`, `MyExamsScreen` (libellés par type conservés, D-42), `MyProfileScreen` et ses onglets refaits. Test de rendu clair / sombre / arabe pour chacun. Après cette tâche, aucun code hexadécimal dans `src/screens/student`.
+**Fichiers** : ces écrans et `my-profile/tabs/*`, tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && test -z "$(grep -rnE "['\"]#[0-9A-Fa-f]{3,8}['\"]" src/screens/student --include='*.tsx')" && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 13.17 — Accueil instructeur refait
+**Objectif** : `InstructorDashboard` dans le même langage : journée en cours (leçons du jour en `TimeBlock`, examens du jour), compteurs des files en attente (inscriptions, leçons, examens) en `StatRow` cliquables, accès « Mon école ». Pas de 3D côté instructeur : D-52 ne la prévoit que pour l'élève. Test de rendu clair / sombre / arabe.
+**Fichiers** : `mobile-app/src/screens/instructor/InstructorDashboard.tsx`, `mobile-app/src/screens/instructor/__tests__/*` (nouveau).
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 13.18 — Écrans instructeur (1/2) : demandes et réservation
+**Objectif** : `LessonRequestsScreen` (approbation multiple de 6.7 conservée), `EnrollmentRequestsScreen`, `ExamRequestsScreen` (libellés par type, D-42), `BookForStudentScreen`, `AttendanceModal` refaits. Test de rendu clair / sombre / arabe pour chacun.
+**Fichiers** : ces écrans, tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 13.19 — Écrans instructeur (2/2) : journée, fiche élève, école
+**Objectif** : `TodayLessonsScreen`, `TodayExamsScreen`, `StudentProfileScreen` et ses onglets, `MySchoolScreen` refaits. Test de rendu clair / sombre / arabe pour chacun. Après cette tâche, aucun code hexadécimal dans `src/screens`.
+**Fichiers** : ces écrans et `student-profile/tabs/*`, tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && test -z "$(grep -rnE "['\"]#[0-9A-Fa-f]{3,8}['\"]" src/screens --include='*.tsx')" && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 13.20 — Icône, écran de démarrage, barres système
+**Objectif** : icône et icône adaptative Android redessinées dans l'univers « Circuit » (signal sur fond `#0A0C0F`), écran de démarrage sombre (et clair quand le téléphone est clair, 11.6), barre de navigation Android et barre d'état alignées sur le thème actif. Le nom de l'application ne change pas.
+**Fichiers** : `mobile-app/assets/{icon,adaptive-icon,splash-icon,splash-icon-dark,favicon}.png`, `mobile-app/app.json`.
+**Critère de validation** :
+```bash
+cd mobile-app && npx expo-doctor && npx expo config --json > /dev/null && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : fiche du Play Store.
+
+### - [ ] 13.21 — Vérification finale de la refonte
+**Objectif** : passe complète sur les deux thèmes et les deux langues : contrastes (test de thème), cibles tactiles, lecteur d'écran (libellés des icônes seules, ordre de lecture), « réduire les animations », RTL arabe (flèches, transitions, jauge et secteurs dans le bon sens). Plus aucun code hexadécimal hors de `src/theme/`, plus aucun import de l'ancien thème, plus aucun composant de 11.2 inutilisé. `docs/ARCHITECTURE.md` décrit le nouveau système (jetons, composants, 3D, célébrations). La **recette sur téléphone** (Expo Go, parcours D-15 complet dans les deux thèmes, en français et en arabe) est faite par l'humain.
+**Fichiers** : corrections ponctuelles, `docs/ARCHITECTURE.md`.
+**Critère de validation** :
+```bash
+cd mobile-app && npx expo-doctor && npx tsc --noEmit && npx jest --silent && test -z "$(grep -rnE "['\"]#[0-9A-Fa-f]{3,8}['\"]" src --include='*.tsx' --include='*.ts' | grep -v '^src/theme/' | grep -v __tests__)" && echo OK
+```
+**Hors périmètre** : recette sur téléphone (humain).
 
 ---
 
