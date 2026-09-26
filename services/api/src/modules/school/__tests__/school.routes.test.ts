@@ -112,7 +112,11 @@ describe('Routes /api/schools (S1–S4 + administration)', () => {
       .set('Authorization', auth)
       .send({ currency: 'EUR' });
     expect(updated.status).toBe(200);
-    expect(schoolService.updateSchool).toHaveBeenCalledWith(UUID.school, { currency: 'EUR' });
+    expect(schoolService.updateSchool).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'admin' }),
+      UUID.school,
+      { currency: 'EUR' }
+    );
 
     const bad = await request(app)
       .put(`${base}/${UUID.school}`)
@@ -132,7 +136,11 @@ describe('Routes /api/schools (S1–S4 + administration)', () => {
       .set('Authorization', auth)
       .send({ name: 'Nouvelle' });
     expect(res.status).toBe(200);
-    expect(schoolService.updateSchool).toHaveBeenCalledWith(UUID.school, { name: 'Nouvelle' });
+    expect(schoolService.updateSchool).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'admin' }),
+      UUID.school,
+      { name: 'Nouvelle' }
+    );
 
     await request(app)
       .put(`${base}/${UUID.school}`)
@@ -200,6 +208,50 @@ describe('Routes /api/schools (S1–S4 + administration)', () => {
       .expect(204);
   });
 
+  it('S7–S9 (D-51) : un instructeur tient la fiche et la grille de son école, un élève non', async () => {
+    schoolService.getSchoolById.mockResolvedValue(school);
+    schoolService.updateSchool.mockResolvedValue({ ...school, phone: '+21611111111' });
+    pricingService.setPricing.mockResolvedValue({ id: 'p1', lessonType: 'Parc', price: 40 });
+    pricingService.deletePricing.mockResolvedValue(undefined);
+    const instructor = bearerFor('instructor');
+
+    await request(app)
+      .put(`${base}/${UUID.school}`)
+      .set('Authorization', instructor)
+      .send({ phone: '+21611111111' })
+      .expect(200);
+    // Le cloisonnement par école (403 FORBIDDEN_SCHOOL) est joué par le service, pas par la route
+    expect(schoolService.updateSchool).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'instructor' }),
+      UUID.school,
+      { phone: '+21611111111' }
+    );
+
+    await request(app)
+      .post(`${base}/${UUID.school}/pricing`)
+      .set('Authorization', instructor)
+      .send({ lessonType: 'Parc', price: 40, duration: 60 })
+      .expect(201);
+
+    await request(app)
+      .delete(`${base}/pricing/${UUID.instructor}`)
+      .set('Authorization', instructor)
+      .expect(204);
+
+    // Un élève reste dehors
+    const student = bearerFor('student');
+    await request(app)
+      .put(`${base}/${UUID.school}`)
+      .set('Authorization', student)
+      .send({ phone: '+21611111111' })
+      .expect(403);
+    await request(app)
+      .post(`${base}/${UUID.school}/pricing`)
+      .set('Authorization', student)
+      .send({ lessonType: 'Parc', price: 40, duration: 60 })
+      .expect(403);
+  });
+
   it('tarifs : lessonType hors vocabulaire D-18 → 400 ; Parc → 201 ; suppression 204', async () => {
     schoolService.getSchoolById.mockResolvedValue(school);
     pricingService.setPricing.mockResolvedValue({ id: 'p1', lessonType: 'Parc', price: 40 });
@@ -217,11 +269,11 @@ describe('Routes /api/schools (S1–S4 + administration)', () => {
       .set('Authorization', auth)
       .send({ lessonType: 'Parc', price: 40, duration: 60 });
     expect(ok.status).toBe(201);
-    expect(pricingService.setPricing).toHaveBeenCalledWith(UUID.school, {
-      lessonType: 'Parc',
-      price: 40,
-      duration: 60,
-    });
+    expect(pricingService.setPricing).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'admin' }),
+      UUID.school,
+      { lessonType: 'Parc', price: 40, duration: 60 }
+    );
 
     await request(app)
       .delete(`${base}/pricing/${UUID.instructor}`)

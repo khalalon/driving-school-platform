@@ -6,6 +6,8 @@ export interface IPricingRepository {
   setPricing(schoolId: string, data: SetPricingDTO): Promise<Pricing>;
   findBySchoolId(schoolId: string): Promise<Pricing[]>;
   findBySchoolAndType(schoolId: string, lessonType: LessonType): Promise<Pricing | null>;
+  /** Un tarif seul : son école décide qui a le droit de le retirer (D-51). */
+  findById(id: string): Promise<Pricing | null>;
   delete(id: string): Promise<void>;
 }
 
@@ -40,6 +42,14 @@ export class PricingRepository implements IPricingRepository {
     const result = await this.db.query<Pricing>(
       `SELECT ${PRICING_COLUMNS} FROM pricing WHERE school_id = $1 AND lesson_type = $2`,
       [schoolId, lessonType]
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async findById(id: string): Promise<Pricing | null> {
+    const result = await this.db.query<Pricing>(
+      `SELECT ${PRICING_COLUMNS} FROM pricing WHERE id = $1`,
+      [id]
     );
     return result.rows[0] ?? null;
   }

@@ -731,7 +731,7 @@ cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
 ```
 **Hors périmètre** : édition ultérieure de ces champs par l'élève.
 
-### - [ ] 12.4 — Fiche école modifiable par son instructeur (contrat)
+### - [x] 12.4 — Fiche école modifiable par son instructeur (contrat)
 **Objectif** : `PUT /api/schools/:id`, `POST /api/schools/:schoolId/pricing` et `DELETE /api/schools/pricing/:id` passent d'`admin` à « admin **ou** instructeur de cette école » (`SchoolGuard.assertSameSchool`, D-20 ; 403 `FORBIDDEN_SCHOOL` sinon). Champs modifiables : `name`, `address`, `phone`, `email`, `currency`. Le contrat §2 gagne les lignes S7, S8 et S9 et le §8 perd ces trois routes, **dans le même commit**.
 **Fichiers** : `services/api/src/modules/school/`, `docs/API_CONTRACT.md`, tests.
 **Critère de validation** :

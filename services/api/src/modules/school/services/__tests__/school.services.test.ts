@@ -98,7 +98,7 @@ describe('SchoolService', () => {
   it('updateSchool / deleteSchool : vérifient l’existence avant d’écrire', async () => {
     repository.findById.mockResolvedValue(null);
 
-    await expect(service.updateSchool('ghost', { name: 'X' })).rejects.toMatchObject({
+    await expect(service.updateSchool(admin, 'ghost', { name: 'X' })).rejects.toMatchObject({
       status: 404,
     });
     await expect(service.deleteSchool('ghost')).rejects.toMatchObject({ status: 404 });
@@ -107,11 +107,20 @@ describe('SchoolService', () => {
 
     repository.findById.mockResolvedValue(school);
     repository.update.mockResolvedValue({ ...school, name: 'Nouvelle' });
-    await expect(service.updateSchool('school-1', { name: 'Nouvelle' })).resolves.toMatchObject({
-      name: 'Nouvelle',
-    });
+    await expect(
+      service.updateSchool(admin, 'school-1', { name: 'Nouvelle' })
+    ).resolves.toMatchObject({ name: 'Nouvelle' });
     await service.deleteSchool('school-1');
     expect(repository.delete).toHaveBeenCalledWith('school-1');
+  });
+
+  it('updateSchool : un instructeur d’une autre école est refusé (D-51, D-20)', async () => {
+    repository.findById.mockResolvedValue(school);
+    // `instructorLookup` rattache l'instructeur de test à `school-1` : une autre école → 403
+    await expect(
+      service.updateSchool(instructor, 'school-2', { name: 'Nouvelle' })
+    ).rejects.toMatchObject({ status: 403, code: 'FORBIDDEN_SCHOOL' });
+    expect(repository.update).not.toHaveBeenCalled();
   });
 
   it('createSchool / getAllSchools délèguent', async () => {
@@ -186,29 +195,78 @@ describe('InstructorService', () => {
 describe('PricingService', () => {
   let repository: jest.Mocked<IPricingRepository>;
   let service: PricingService;
+  let guard: jest.Mocked<SchoolGuard>;
+
+  /** Instructeur de `school-1` ; le garde refuse toute autre école (D-20). */
+  const instructor = {
+    userId: 'user-instr',
+    email: 'i@x.io',
+    role: UserRole.INSTRUCTOR,
+  } as AuthUser;
 
   beforeEach(() => {
     repository = {
       setPricing: jest.fn(),
       findBySchoolId: jest.fn(),
       findBySchoolAndType: jest.fn(),
+      findById: jest.fn(),
       delete: jest.fn(),
     };
-    service = new PricingService(repository);
+    guard = {
+      assertSameSchool: jest.fn(),
+      requireSchool: jest.fn(),
+    } as unknown as jest.Mocked<SchoolGuard>;
+    service = new PricingService(repository, guard);
   });
 
   it('setPricing (upsert), liste, tarif par type, suppression', async () => {
     repository.setPricing.mockResolvedValue(pricing);
     repository.findBySchoolId.mockResolvedValue([pricing]);
     repository.findBySchoolAndType.mockResolvedValue(pricing);
+    repository.findById.mockResolvedValue(pricing);
 
     await expect(
-      service.setPricing('school-1', { lessonType: LessonType.PARC, price: 40, duration: 60 })
+      service.setPricing(instructor, 'school-1', {
+        lessonType: LessonType.PARC,
+        price: 40,
+        duration: 60,
+      })
     ).resolves.toEqual(pricing);
     await expect(service.getPricingBySchool('school-1')).resolves.toEqual([pricing]);
     await expect(service.getPricingByType('school-1', LessonType.PARC)).resolves.toEqual(pricing);
-    await service.deletePricing('pricing-1');
+    await service.deletePricing(instructor, 'pricing-1');
     expect(repository.delete).toHaveBeenCalledWith('pricing-1');
+  });
+
+  it('setPricing : cloisonné à l’école de l’instructeur (D-51, D-20)', async () => {
+    await service
+      .setPricing(instructor, 'school-1', {
+        lessonType: LessonType.PARC,
+        price: 40,
+        duration: 60,
+      })
+      .catch(() => undefined);
+
+    expect(guard.assertSameSchool).toHaveBeenCalledWith(instructor, 'school-1');
+  });
+
+  it('deletePricing : le tarif désigne son école, contrôlée avant la suppression', async () => {
+    repository.findById.mockResolvedValue({ ...pricing, schoolId: 'school-2' });
+
+    await service.deletePricing(instructor, 'pricing-1');
+
+    expect(guard.assertSameSchool).toHaveBeenCalledWith(instructor, 'school-2');
+    expect(repository.delete).toHaveBeenCalledWith('pricing-1');
+  });
+
+  it('deletePricing : 404 sur un tarif inconnu, sans suppression', async () => {
+    repository.findById.mockResolvedValue(null);
+
+    await expect(service.deletePricing(instructor, 'fantome')).rejects.toMatchObject({
+      status: 404,
+      code: 'NOT_FOUND',
+    });
+    expect(repository.delete).not.toHaveBeenCalled();
   });
 
   it('getPricingByType : null quand l’école n’a pas de tarif pour ce type (D-30)', async () => {

@@ -37,7 +37,7 @@ export function buildSchoolModule({
 }: SchoolModuleDeps): SchoolModule {
   const schoolService = new SchoolService(new SchoolRepository(db), roster, schoolGuard);
   const instructorService = new InstructorService(instructorRepository);
-  const pricingService = new PricingService(new PricingRepository(db));
+  const pricingService = new PricingService(new PricingRepository(db), schoolGuard);
   const controller = new SchoolController(schoolService, instructorService, pricingService);
 
   return {

@@ -70,7 +70,7 @@ export class SchoolController {
     }
     try {
       const id = uuidParam(req.params.id, 'École');
-      res.json(await this.schoolService.updateSchool(id, parsed.value));
+      res.json(await this.schoolService.updateSchool(getAuthUser(req), id, parsed.value));
     } catch (err) {
       sendCaughtError(res, err);
     }
@@ -156,7 +156,9 @@ export class SchoolController {
     try {
       const schoolId = uuidParam(req.params.schoolId, 'École');
       await this.schoolService.getSchoolById(schoolId);
-      res.status(201).json(await this.pricingService.setPricing(schoolId, parsed.value));
+      res
+        .status(201)
+        .json(await this.pricingService.setPricing(getAuthUser(req), schoolId, parsed.value));
     } catch (err) {
       sendCaughtError(res, err);
     }
@@ -174,7 +176,7 @@ export class SchoolController {
   deletePricing = async (req: Request, res: Response): Promise<void> => {
     try {
       const id = uuidParam(req.params.id, 'Tarif');
-      await this.pricingService.deletePricing(id);
+      await this.pricingService.deletePricing(getAuthUser(req), id);
       res.status(204).send();
     } catch (err) {
       sendCaughtError(res, err);
