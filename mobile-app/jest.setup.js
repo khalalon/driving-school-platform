@@ -32,3 +32,13 @@ jest.mock('expo-haptics', () => {
     selectionAsync: jest.fn(() => Promise.resolve()),
   };
 });
+
+// 3D (13.8) : pas de contexte GL hors téléphone. `Canvas` devient une vue qui garde ses
+// propriétés (`frameloop`) et rend ses enfants tels quels ; `useFrame` ne tourne jamais.
+jest.mock('@react-three/fiber/native', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const Canvas = ({ children, ...props }) =>
+    React.createElement(View, { ...props, testID: 'r3f-canvas' }, children);
+  return { Canvas, useFrame: jest.fn(), useThree: jest.fn(() => ({})) };
+});

@@ -53,6 +53,8 @@ import {
 } from '../../utils/format';
 import { Theme } from '../../theme';
 import { IoniconName } from '../../utils/rtl';
+import { Scene3D } from '../../components/three/Scene3D';
+import { ProbeScene, SHOW_3D_PROBE } from '../../components/three/ProbeScene';
 
 interface HomeData {
   lessons: Lesson[];
@@ -434,6 +436,29 @@ export const StudentDashboard = ({ navigation }: any) => {
           />
         }
       >
+        {SHOW_3D_PROBE ? (
+          <Scene3D
+            height={200}
+            accessibilityLabel={t('home.scene3d')}
+            style={styles.scene}
+            testID="probe-scene"
+            fallback={
+              <View style={styles.sceneFallback}>
+                <Ionicons name="car-sport-outline" size={56} color={theme.colors.textMuted} />
+              </View>
+            }
+          >
+            <ProbeScene
+              colors={{
+                body: theme.colors.surfaceMuted,
+                glass: theme.colors.surface,
+                lights: theme.colors.signal,
+                tyres: theme.colors.surface,
+                ground: theme.colors.surfaceRaised,
+              }}
+            />
+          </Scene3D>
+        ) : null}
         {renderBody()}
       </Screen>
     </View>
@@ -444,6 +469,13 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     flex: { flex: 1, backgroundColor: theme.colors.surface },
     content: { paddingTop: theme.spacing.base, gap: theme.spacing.base },
+    scene: {
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.surfaceRaised,
+    },
+    sceneFallback: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     skeletons: { gap: theme.spacing.base },
 
     // Prochaine leçon

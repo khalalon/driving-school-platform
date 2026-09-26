@@ -184,6 +184,7 @@ export const ar: Record<TranslationKey, string> = {
   'auth.checkDetailsAndCode': 'تحقّق من بياناتك ومن رمز المدرسة',
 
   // Accueil eleve (D-45)
+  'home.scene3d': 'سيارة ثلاثية الأبعاد تدور ببطء حول نفسها',
   'home.hello': 'مرحباً،',
   'home.student': 'المترشّح',
   'home.loadFailed': 'تعذّر تحميل الصفحة الرئيسية',

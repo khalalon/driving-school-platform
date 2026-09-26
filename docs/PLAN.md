@@ -868,7 +868,7 @@ cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
 ```
 **Hors périmètre** : contenu des écrans.
 
-### - [ ] 13.8 — Faisabilité 3D sur téléphone (arrêt pour vérification humaine)
+### - [x] 13.8 — Faisabilité 3D sur téléphone (arrêt pour vérification humaine)
 **Objectif** : `expo-gl`, `three` et `@react-three/fiber` installés (versions compatibles SDK 57 vérifiées par `npx expo install` et `expo-doctor`). Composant `Scene3D` qui encapsule toute scène : montage différé après le premier affichage, pause quand l'écran est quitté ou l'app en arrière-plan, **repli sur une image fixe** si « réduire les animations » est actif, si la scène plante (limite d'erreur) ou si les 60 premières images tournent en moyenne sous 40 i/s. Une scène d'essai (voiture de primitives, éclairage de nuit, rotation lente) sur l'accueil élève, derrière un indicateur `SHOW_3D_PROBE` à retirer en 13.10. Tests : repli sous « réduire les animations » et après une erreur (`expo-gl` mocké).
 **Arrêt** : l'humain ouvre l'app dans Expo Go sur son téléphone et confirme que la scène est fluide ; sinon la 3D temps réel repasse en pré-rendu (D-52 amendée) avant de continuer.
 **Fichiers** : `mobile-app/src/components/three/Scene3D.tsx` (nouveau), `mobile-app/src/components/three/ProbeScene.tsx` (nouveau), `package.json`, `jest.setup.js`, tests.
