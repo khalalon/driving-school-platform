@@ -15,10 +15,22 @@
  */
 
 import React, { Component, ReactNode, useContext, useEffect, useState } from 'react';
-import { AppState, InteractionManager, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
+import {
+  AppState,
+  InteractionManager,
+  LogBox,
+  StyleProp,
+  StyleSheet,
+  View,
+  ViewStyle,
+} from 'react-native';
 import { NavigationContext } from '@react-navigation/native';
 import { Canvas, useFrame } from '@react-three/fiber/native';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
+
+// `@react-three/fiber` 9.8 crée encore un `THREE.Clock`, que three 0.186 déclare obsolète :
+// l'avertissement vient de la bibliothèque, pas de notre code, et n'a aucun effet sur le rendu.
+LogBox.ignoreLogs(['THREE.Clock: This module has been deprecated']);
 
 /** Nombre d'images mesurées au démarrage, et débit minimal accepté. */
 export const FPS_SAMPLE = 60;
