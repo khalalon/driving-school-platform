@@ -41,7 +41,7 @@ import {
 } from '../../models/Lesson';
 import { Exam } from '../../models/Exam';
 import { FinancialSummary, MyProfile } from '../../models/Profile';
-import { JourneyStep, buildJourney } from '../../models/Journey';
+import { JourneyStep, JourneyStepKey, buildJourney } from '../../models/Journey';
 import { useSchoolCurrency } from '../../hooks/useSchoolCurrency';
 import {
   formatAmount,
@@ -57,6 +57,13 @@ import { Scene3D } from '../../components/three/Scene3D';
 import { HomeCarScene } from '../../components/three/HomeCarScene';
 import { HomeCarFallback } from '../../components/three/HomeCarFallback';
 import { homeCarPalette } from '../../components/three/homeCar';
+import { JourneyTrackScene } from '../../components/three/JourneyTrackScene';
+import {
+  carSectorIndex,
+  journeySectors,
+  journeyTrackPalette,
+} from '../../components/three/journeyTrack';
+import { SectorBar } from '../../components/circuit';
 
 interface HomeData {
   lessons: Lesson[];
@@ -87,6 +94,8 @@ export const StudentDashboard = ({ navigation }: any) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Étape ouverte dans le parcours (13.11) ; par défaut l'étape en cours. */
+  const [selectedStep, setSelectedStep] = useState<JourneyStepKey | null>(null);
   const schoolId = enrollment?.schoolId ?? null;
   const currency = useSchoolCurrency(schoolId);
 
@@ -237,51 +246,39 @@ export const StudentDashboard = ({ navigation }: any) => {
     );
   };
 
-  const renderStep = (step: JourneyStep, index: number, count: number) => {
-    const isLast = index === count - 1;
-    const icon: IoniconName =
-      step.state === 'done' ? 'checkmark-circle' : step.kind === 'exam' ? 'ribbon' : 'car';
-    const iconColor =
-      step.state === 'done'
-        ? theme.colors.success
-        : step.state === 'current'
-          ? theme.colors.signal
-          : step.state === 'started'
-            ? theme.colors.warning
-            : theme.colors.textMuted;
-
+  /** Détail d'une étape : son état, son avancement et l'action qui la fait progresser. */
+  const renderStepDetail = (step: JourneyStep) => {
+    const state = journeySectors([step])[0].state;
+    const tone = state === 'done' ? 'accent' : state === 'current' ? 'telemetry' : 'neutral';
     return (
-      <View key={step.key} style={styles.stepRow}>
-        <View style={styles.stepRail}>
-          <View
-            style={[
-              styles.stepDot,
-              step.state === 'current' && styles.stepDotCurrent,
-              step.state === 'done' && styles.stepDotDone,
-            ]}
-          >
-            <Ionicons name={icon} size={18} color={iconColor} />
-          </View>
-          {!isLast ? (
-            <View style={[styles.stepLine, step.state === 'done' && styles.stepLineDone]} />
-          ) : null}
+      <View style={styles.stepDetailCard} testID={`journey-detail-${step.key}`}>
+        <View style={styles.stepTitleRow}>
+          <Text style={styles.stepTitle}>{step.title}</Text>
+          <Badge label={t(`journey.state.${state}`)} tone={tone} dot />
         </View>
-
-        <View style={[styles.stepBody, step.state === 'current' && styles.stepBodyCurrent]}>
-          <View style={styles.stepTitleRow}>
-            <Text style={[styles.stepTitle, step.state === 'upcoming' && styles.stepTitleMuted]}>
-              {step.title}
-            </Text>
-            {step.state === 'current' ? <Badge label={t('home.now')} tone="accent" /> : null}
-          </View>
-          <Text style={styles.stepDetail}>{step.detail}</Text>
-        </View>
+        <Text style={styles.stepDetail}>{step.detail}</Text>
+        {step.state !== 'done' ? (
+          <Button
+            title={t(
+              step.kind === 'exam' ? 'journey.detail.requestExam' : 'journey.detail.requestLesson'
+            )}
+            onPress={step.kind === 'exam' ? () => navigation.navigate('RequestExam') : requestLesson}
+            variant={step.state === 'current' ? 'primary' : 'secondary'}
+            size="sm"
+            icon={step.kind === 'exam' ? 'ribbon-outline' : 'calendar-outline'}
+          />
+        ) : null}
       </View>
     );
   };
 
   const renderJourney = (home: HomeData) => {
     const steps = buildJourney(home.profile?.completedLessonsByType, home.exams, home.lessons);
+    const sectors = journeySectors(steps);
+    const carSector = carSectorIndex(steps);
+    const openKey =
+      selectedStep ?? steps[carSector ?? steps.length - 1]?.key ?? steps[0]?.key ?? null;
+    const openStep = steps.find((step) => step.key === openKey) ?? null;
     return (
       <Card>
         <SectionHeader
@@ -289,7 +286,30 @@ export const StudentDashboard = ({ navigation }: any) => {
           action={{ label: t('home.myExams'), onPress: () => navigation.navigate('MyExams') }}
           style={styles.journeyHeader}
         />
-        {steps.map((step, index) => renderStep(step, index, steps.length))}
+        <Scene3D
+          height={200}
+          fallbackHeight={0}
+          accessibilityLabel={t('journey.scene3d')}
+          style={styles.journeyScene}
+          testID="journey-track-scene"
+          fallback={<View style={styles.journeySceneFallback} />}
+        >
+          <JourneyTrackScene
+            sectors={sectors.map(({ key, state }) => ({ key, state }))}
+            carSector={carSector}
+            selectedKey={openKey}
+            palette={journeyTrackPalette(theme)}
+            onSelect={(key) => setSelectedStep(key as JourneyStepKey)}
+          />
+        </Scene3D>
+        <SectorBar
+          sectors={sectors}
+          selectedKey={openKey}
+          onSelect={(key) => setSelectedStep(key as JourneyStepKey)}
+          style={styles.journeySectors}
+          testID="journey-sectors"
+        />
+        {openStep ? renderStepDetail(openStep) : null}
       </Card>
     );
   };
@@ -494,34 +514,22 @@ const createStyles = (theme: Theme) =>
 
     // Parcours
     journeyHeader: { marginBottom: theme.spacing.md },
-    stepRow: { flexDirection: 'row', gap: theme.spacing.md },
-    stepRail: { alignItems: 'center', width: 36 },
-    stepDot: {
-      width: 36,
-      height: 36,
-      borderRadius: theme.radius.pill,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.colors.surfaceMuted,
+    journeyScene: {
+      borderRadius: theme.radius.md,
+      marginBottom: theme.spacing.md,
+      backgroundColor: theme.colors.surfaceRaised,
+    },
+    // Repli de la scène : la barre de secteurs, juste dessous, porte déjà tout le parcours
+    journeySceneFallback: { flex: 1, backgroundColor: theme.colors.surfaceMuted },
+    journeySectors: { marginBottom: theme.spacing.md },
+    stepDetailCard: {
+      gap: theme.spacing.sm,
+      padding: theme.spacing.md,
+      borderRadius: theme.radius.md,
       borderWidth: 1,
       borderColor: theme.colors.border,
+      backgroundColor: theme.colors.surface,
     },
-    stepDotCurrent: {
-      backgroundColor: theme.colors.signalSoft,
-      borderColor: theme.colors.signal,
-    },
-    stepDotDone: {
-      backgroundColor: theme.colors.successSoft,
-      borderColor: theme.colors.success,
-    },
-    stepLine: { flex: 1, width: 2, backgroundColor: theme.colors.border, marginVertical: 2 },
-    stepLineDone: { backgroundColor: theme.colors.success },
-    stepBody: {
-      flex: 1,
-      paddingBottom: theme.spacing.lg,
-      gap: 2,
-    },
-    stepBodyCurrent: {},
     stepTitleRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -534,7 +542,6 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.textPrimary,
       flexShrink: 1,
     },
-    stepTitleMuted: { color: theme.colors.textMuted, fontWeight: theme.typography.weight.medium },
     stepDetail: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
 
     // Dû et avoir

@@ -148,3 +148,27 @@ describe('StatRow', () => {
     unmountInTheme(tree);
   });
 });
+
+describe('SectorBar sélectionnable (13.11)', () => {
+  it('toucher un secteur le sélectionne ; le secteur choisi l’annonce', () => {
+    const onSelect = jest.fn();
+    const tree = renderInTheme(
+      <SectorBar sectors={SECTORS} onSelect={onSelect} selectedKey="manoeuvre" />,
+      'dark'
+    );
+    const manoeuvre = tree.root.findByProps({ testID: 'sector-manoeuvre' });
+    const parc = tree.root.findByProps({ testID: 'sector-parc' });
+    expect(manoeuvre.props.accessibilityState).toEqual({ selected: true });
+    expect(parc.props.accessibilityState).toEqual({ selected: false });
+
+    act(() => parc.props.onPress());
+    expect(onSelect).toHaveBeenCalledWith('parc');
+    unmountInTheme(tree);
+  });
+
+  it('sans onSelect, les secteurs ne sont pas des boutons', () => {
+    const tree = renderInTheme(<SectorBar sectors={SECTORS} />, 'dark');
+    expect(tree.root.findAllByProps({ accessibilityRole: 'button' })).toHaveLength(0);
+    unmountInTheme(tree);
+  });
+});

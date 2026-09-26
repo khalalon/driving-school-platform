@@ -46,3 +46,4 @@ jest.mock('@react-three/fiber/native', () => {
 // Scène d'accueil (13.10) : elle importe three.js (ESM, non transformé par Jest) et ses modèles.
 // Les écrans qui la montent la reçoivent vide ; sa logique est testée dans `homeCar.ts`.
 jest.mock('./src/components/three/HomeCarScene', () => ({ HomeCarScene: () => null }));
+jest.mock('./src/components/three/JourneyTrackScene', () => ({ JourneyTrackScene: () => null }));

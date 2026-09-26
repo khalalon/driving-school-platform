@@ -127,6 +127,12 @@ interface Scene3DProps {
   /** Image fixe de repli, à la même taille que la scène. */
   fallback: ReactNode;
   height: number;
+  /**
+   * Hauteur une fois la scène remplacée par son image (réduire les animations, erreur, lenteur) ;
+   * par défaut `height`. `0` replie le cadre quand une vue 2D voisine porte déjà l'information.
+   * Pendant le chargement, le cadre garde `height` : pas de saut de mise en page.
+   */
+  fallbackHeight?: number;
   /** Ce que montre la scène, pour les lecteurs d'écran (la 3D n'est pas lisible). */
   accessibilityLabel: string;
   /** Prévenu quand la scène cède la place à son image (suivi, tests). */
@@ -139,6 +145,7 @@ export const Scene3D = ({
   children,
   fallback,
   height,
+  fallbackHeight,
   accessibilityLabel,
   onFallback,
   style,
@@ -173,9 +180,12 @@ export const Scene3D = ({
     }
   }, [reason, onFallback]);
 
+  const boxHeight =
+    reason && reason !== 'loading' && fallbackHeight !== undefined ? fallbackHeight : height;
+
   return (
     <View
-      style={[{ height }, styles.root, style]}
+      style={[{ height: boxHeight }, styles.root, style]}
       accessible
       accessibilityRole="image"
       accessibilityLabel={accessibilityLabel}

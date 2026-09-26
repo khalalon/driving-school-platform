@@ -896,7 +896,7 @@ cd mobile-app && npx tsc --noEmit && npx jest --silent && ! grep -rq SHOW_3D_PRO
 ```
 **Hors périmètre** : reste de l'écran d'accueil (13.14).
 
-### - [ ] 13.11 — Parcours 3D : le circuit
+### - [x] 13.11 — Parcours 3D : le circuit
 **Objectif** : circuit vu du ciel en 5 secteurs (Code → Examen théorique → Manœuvre → Parc → Examen pratique, ordre D-45), chaque secteur allumé selon la progression déjà calculée par l'accueil (P8 `completedLessonsByType`, examens X1) : fait en signal, en cours en télémétrie, à venir éteint. La voiture est posée sur le secteur en cours. Toucher un secteur ouvre son détail (leçons effectuées, prochaine leçon, examen). Repli 2D : `SectorBar` (13.6). Libellés accessibles, lisibles aussi sans la 3D.
 **Fichiers** : `mobile-app/src/components/three/JourneyTrackScene.tsx` (nouveau), `mobile-app/src/screens/student/StudentDashboard.tsx`, tests (progression → état de chaque secteur).
 **Critère de validation** :

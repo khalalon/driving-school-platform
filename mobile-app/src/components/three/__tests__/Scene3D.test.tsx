@@ -133,3 +133,18 @@ describe('Scene3D', () => {
     act(() => tree.unmount());
   });
 });
+
+describe('Scene3D : hauteur de repli (13.11)', () => {
+  it('replie le cadre quand la scène cède la place et qu’une vue 2D voisine suffit', async () => {
+    (AccessibilityInfo.isReduceMotionEnabled as jest.Mock).mockResolvedValue(true);
+    const tree = await mount(
+      <Scene3D height={200} fallbackHeight={0} fallback={<Fallback />} accessibilityLabel="Circuit">
+        <Content />
+      </Scene3D>
+    );
+    const frame = tree.root.findByProps({ accessibilityRole: 'image' });
+    expect(frame.props.style[0]).toEqual({ height: 0 });
+    act(() => tree.unmount());
+  });
+});
+

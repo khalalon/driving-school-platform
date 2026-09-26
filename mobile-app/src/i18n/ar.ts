@@ -103,6 +103,12 @@ export const ar: Record<TranslationKey, string> = {
   // Parcours de l'accueil élève (D-45)
   'journey.step.theoryExam': 'امتحان قانون السير',
   'journey.step.practicalExam': 'امتحان السياقة',
+  'journey.state.done': 'مكتملة',
+  'journey.state.current': 'جارية',
+  'journey.state.todo': 'قادمة',
+  'journey.scene3d': 'حلبة المسار من الأعلى: يضيء كل جزء عندما تتقدّم المرحلة',
+  'journey.detail.requestLesson': 'طلب درس',
+  'journey.detail.requestExam': 'طلب الامتحان',
   'journey.lessons.none': 'لم تبدأ بعد',
   'journey.lessons.doneOne': 'حصة واحدة منجزة',
   'journey.lessons.doneMany': '{count} حصص منجزة',

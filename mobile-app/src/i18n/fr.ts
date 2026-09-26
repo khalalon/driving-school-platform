@@ -101,6 +101,12 @@ export const fr = {
   // Parcours de l'accueil élève (D-45)
   'journey.step.theoryExam': 'Examen du code',
   'journey.step.practicalExam': 'Examen de conduite',
+  'journey.state.done': 'terminé',
+  'journey.state.current': 'en cours',
+  'journey.state.todo': 'à venir',
+  'journey.scene3d': 'Circuit du parcours vu du ciel : chaque secteur s’allume quand l’étape avance',
+  'journey.detail.requestLesson': 'Demander une leçon',
+  'journey.detail.requestExam': 'Demander l’examen',
   'journey.lessons.none': 'Pas encore commencé',
   'journey.lessons.doneOne': '1 leçon effectuée',
   'journey.lessons.doneMany': '{count} leçons effectuées',

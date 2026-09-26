@@ -3,13 +3,17 @@
  * fait (signal, coche), en cours (télémétrie, flèche), à venir (piste, libellé atténué).
  * L'état se lit aussi par l'icône et le libellé, jamais par la seule couleur. C'est aussi le
  * repli 2D du parcours 3D (13.11). La rangée suit le sens de lecture (RTL en arabe).
+ * Avec `onSelect`, chaque secteur se touche (13.11) ; le secteur choisi (`selectedKey`) porte un
+ * trait sous son libellé.
  */
 
 import React from 'react';
-import { StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useTextStyle } from '../../theme';
+import { MIN_TOUCH_TARGET } from '../../theme/tokens';
+import { haptics } from '../../utils/haptics';
 import type { IoniconName } from '../../utils/rtl';
 
 export type SectorState = 'done' | 'current' | 'todo';
@@ -24,6 +28,9 @@ export interface Sector {
 
 interface SectorBarProps {
   sectors: Sector[];
+  /** Secteurs cliquables : ouvre le détail d'une étape. */
+  onSelect?: (key: string) => void;
+  selectedKey?: string | null;
   style?: StyleProp<ViewStyle>;
   testID?: string;
 }
@@ -34,7 +41,7 @@ const STATE_ICONS: Record<SectorState, IoniconName | null> = {
   todo: null,
 };
 
-export const SectorBar = ({ sectors, style, testID }: SectorBarProps) => {
+export const SectorBar = ({ sectors, onSelect, selectedKey, style, testID }: SectorBarProps) => {
   const theme = useTheme();
   const label = useTextStyle('label');
 
@@ -52,14 +59,9 @@ export const SectorBar = ({ sectors, style, testID }: SectorBarProps) => {
     <View style={[styles.row, { gap: theme.spacing.xs }, style]} testID={testID}>
       {sectors.map((sector) => {
         const icon = STATE_ICONS[sector.state];
-        return (
-          <View
-            key={sector.key}
-            style={[styles.sector, { gap: theme.spacing.xs + 2 }]}
-            accessible
-            accessibilityLabel={sector.accessibilityLabel}
-            testID={`sector-${sector.key}`}
-          >
+        const selected = sector.key === selectedKey;
+        const content = (
+          <>
             <View
               style={[
                 styles.bar,
@@ -84,7 +86,51 @@ export const SectorBar = ({ sectors, style, testID }: SectorBarProps) => {
                 {sector.label}
               </Text>
             </View>
-          </View>
+            {onSelect ? (
+              <View
+                style={[
+                  styles.selection,
+                  { backgroundColor: selected ? theme.colors.textPrimary : 'transparent' },
+                ]}
+              />
+            ) : null}
+          </>
+        );
+
+        if (!onSelect) {
+          return (
+            <View
+              key={sector.key}
+              style={[styles.sector, { gap: theme.spacing.xs + 2 }]}
+              accessible
+              accessibilityLabel={sector.accessibilityLabel}
+              testID={`sector-${sector.key}`}
+            >
+              {content}
+            </View>
+          );
+        }
+
+        return (
+          <Pressable
+            key={sector.key}
+            onPress={() => {
+              if (!selected) haptics.selection();
+              onSelect(sector.key);
+            }}
+            accessibilityRole="button"
+            accessibilityState={{ selected }}
+            accessibilityLabel={sector.accessibilityLabel}
+            testID={`sector-${sector.key}`}
+            style={({ pressed }) => [
+              styles.sector,
+              styles.pressable,
+              { gap: theme.spacing.xs + 2 },
+              pressed && { opacity: 0.7 },
+            ]}
+          >
+            {content}
+          </Pressable>
         );
       })}
     </View>
@@ -94,6 +140,8 @@ export const SectorBar = ({ sectors, style, testID }: SectorBarProps) => {
 const styles = StyleSheet.create({
   row: { flexDirection: 'row' },
   sector: { flex: 1, minWidth: 0 },
+  pressable: { minHeight: MIN_TOUCH_TARGET, justifyContent: 'center' },
+  selection: { height: 2, borderRadius: 1, marginTop: 2 },
   bar: { height: 10 },
   labelRow: { flexDirection: 'row', alignItems: 'center' },
   label: { flexShrink: 1 },
