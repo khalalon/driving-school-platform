@@ -859,7 +859,7 @@ cd mobile-app && npx expo-doctor && npx tsc --noEmit && npx jest --silent && ech
 ```
 **Hors périmètre** : 3D (13.8 et suivantes).
 
-### - [ ] 13.7 — Navigation repensée
+### - [x] 13.7 — Navigation repensée
 **Objectif** : les deux barres d'onglets (élève : Accueil / Leçons / Examens / Profil ; instructeur : Aujourd'hui / Demandes / Examens / Élèves, destinations de 8.4 inchangées) utilisent `TabBar` ; transitions de pile cohérentes (glissement vers la gauche en avant, vers la droite en retour, inversées en arabe) ; en-têtes unifiés par `AppBar` ; Réglages accessible depuis les deux rôles. Les noms de routes ne changent pas (ils serviront aux liens des notifications, 17.7).
 **Fichiers** : `mobile-app/src/navigation/{AppNavigator.tsx,types.ts}`, tests.
 **Critère de validation** :

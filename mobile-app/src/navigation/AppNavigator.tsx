@@ -4,7 +4,14 @@
  *
  * Une pile par rôle dont la racine est une barre d'onglets (8.4) : élève Home / Lessons /
  * Exams / Profile, instructeur Today / Requests / Exams / Students. Les autres écrans
- * s'empilent au-dessus des onglets et gardent leur bouton retour.
+ * s'empilent au-dessus des onglets et gardent leur bouton retour ; Réglages est commun aux
+ * deux rôles (13.3).
+ *
+ * Depuis 13.7 (D-52) : barre d'onglets « Circuit » (`CircuitTabBar`), en-têtes dessinés par
+ * chaque écran (`AppBar`), transitions de pile glissées avec les durées des jetons de mouvement
+ * — vers la gauche en avant, vers la droite en retour, **inversées en arabe** (le conteneur
+ * reçoit le sens de la langue choisie) — et coupées si « réduire les animations » est actif.
+ * Les noms de routes ne changent pas : ils serviront aux liens des notifications (17.7).
  */
 
 import React from 'react';
@@ -14,15 +21,21 @@ import {
   NavigationContainer,
   Theme as NavigationTheme,
 } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
+import {
+  CardStyleInterpolators,
+  StackNavigationOptions,
+  createStackNavigator,
+} from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../context/LanguageContext';
 import { UserRole } from '../models/User';
 import { AppStackParamList, InstructorTabParamList, StudentTabParamList } from './types';
 import { useTheme } from '../context/ThemeContext';
 import { Theme } from '../theme';
+import { exitDuration, motion } from '../theme/motion';
+import { useReducedMotion } from '../hooks/useReducedMotion';
+import { CircuitTabBar } from './CircuitTabBar';
 
 // Auth Screens
 import { LoginScreen } from '../screens/auth/LoginScreen';
@@ -56,26 +69,25 @@ const Stack = createStackNavigator<AppStackParamList>();
 const StudentTab = createBottomTabNavigator<StudentTabParamList>();
 const InstructorTab = createBottomTabNavigator<InstructorTabParamList>();
 
-type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
+/** Onglets : barre « Circuit », en-têtes dessinés par les écrans (13.7). */
+const tabScreenOptions = { headerShown: false } as const;
 
-const tabIcon =
-  (focused: IoniconName, idle: IoniconName) =>
-  ({ focused: isFocused, color, size }: { focused: boolean; color: string; size: number }) => (
-    <Ionicons name={isFocused ? focused : idle} size={size} color={color} />
-  );
-
-/** Onglets et en-têtes suivent les jetons du thème (11.3, D-48). */
-const tabScreenOptions = (theme: Theme) => ({
+/**
+ * Options de la pile (13.7) : glissement horizontal aux durées des jetons de mouvement (sortie
+ * plus courte que l'entrée), ou aucune animation si « réduire les animations » est actif.
+ * Le sens (RTL en arabe) est donné par la `direction` du conteneur, pas ici.
+ */
+export const stackScreenOptions = (reducedMotion: boolean): StackNavigationOptions => ({
   headerShown: false,
-  tabBarActiveTintColor: theme.colors.signal,
-  tabBarInactiveTintColor: theme.colors.textMuted,
-  tabBarLabelStyle: {
-    fontSize: theme.typography.size.xs,
-    fontWeight: theme.typography.weight.medium,
-  },
-  tabBarStyle: {
-    backgroundColor: theme.colors.surfaceRaised,
-    borderTopColor: theme.colors.border,
+  animation: reducedMotion ? 'none' : undefined,
+  gestureEnabled: true,
+  gestureDirection: 'horizontal',
+  cardStyleInterpolator: reducedMotion
+    ? CardStyleInterpolators.forNoAnimation
+    : CardStyleInterpolators.forHorizontalIOS,
+  transitionSpec: {
+    open: { animation: 'timing', config: { duration: motion.duration.slow } },
+    close: { animation: 'timing', config: { duration: exitDuration(motion.duration.slow) } },
   },
 });
 
@@ -99,28 +111,27 @@ const navigationTheme = (theme: Theme): NavigationTheme => {
 
 const StudentTabs = () => {
   const { t } = useI18n();
-  const theme = useTheme();
   return (
-    <StudentTab.Navigator screenOptions={tabScreenOptions(theme)}>
+    <StudentTab.Navigator screenOptions={tabScreenOptions} tabBar={CircuitTabBar}>
       <StudentTab.Screen
         name="StudentDashboard"
         component={StudentDashboard}
-        options={{ title: t('tabs.home'), tabBarIcon: tabIcon('home', 'home-outline') }}
+        options={{ title: t('tabs.home') }}
       />
       <StudentTab.Screen
         name="MyLessons"
         component={MyLessonsScreen}
-        options={{ title: t('tabs.lessons'), tabBarIcon: tabIcon('calendar', 'calendar-outline') }}
+        options={{ title: t('tabs.lessons') }}
       />
       <StudentTab.Screen
         name="MyExams"
         component={MyExamsScreen}
-        options={{ title: t('tabs.exams'), tabBarIcon: tabIcon('ribbon', 'ribbon-outline') }}
+        options={{ title: t('tabs.exams') }}
       />
       <StudentTab.Screen
         name="MyProfile"
         component={MyProfileScreen}
-        options={{ title: t('tabs.profile'), tabBarIcon: tabIcon('person', 'person-outline') }}
+        options={{ title: t('tabs.profile') }}
       />
     </StudentTab.Navigator>
   );
@@ -128,28 +139,27 @@ const StudentTabs = () => {
 
 const InstructorTabs = () => {
   const { t } = useI18n();
-  const theme = useTheme();
   return (
-    <InstructorTab.Navigator screenOptions={tabScreenOptions(theme)}>
+    <InstructorTab.Navigator screenOptions={tabScreenOptions} tabBar={CircuitTabBar}>
       <InstructorTab.Screen
         name="InstructorDashboard"
         component={InstructorDashboard}
-        options={{ title: t('tabs.today'), tabBarIcon: tabIcon('today', 'today-outline') }}
+        options={{ title: t('tabs.today') }}
       />
       <InstructorTab.Screen
         name="LessonRequests"
         component={LessonRequestsScreen}
-        options={{ title: t('tabs.requests'), tabBarIcon: tabIcon('time', 'time-outline') }}
+        options={{ title: t('tabs.requests') }}
       />
       <InstructorTab.Screen
         name="ExamRequests"
         component={ExamRequestsScreen}
-        options={{ title: t('tabs.exams'), tabBarIcon: tabIcon('ribbon', 'ribbon-outline') }}
+        options={{ title: t('tabs.exams') }}
       />
       <InstructorTab.Screen
         name="BookForStudent"
         component={BookForStudentScreen}
-        options={{ title: t('tabs.students'), tabBarIcon: tabIcon('people', 'people-outline') }}
+        options={{ title: t('tabs.students') }}
       />
     </InstructorTab.Navigator>
   );
@@ -157,19 +167,17 @@ const InstructorTabs = () => {
 
 export const AppNavigator = () => {
   const { user, isLoading } = useAuth();
+  const { isRTL } = useI18n();
   const theme = useTheme();
+  const reducedMotion = useReducedMotion();
 
   if (isLoading) {
     return null; // Or a loading screen
   }
 
   return (
-    <NavigationContainer theme={navigationTheme(theme)}>
-      <Stack.Navigator
-        screenOptions={{
-          headerShown: false,
-        }}
-      >
+    <NavigationContainer theme={navigationTheme(theme)} direction={isRTL ? 'rtl' : 'ltr'}>
+      <Stack.Navigator screenOptions={stackScreenOptions(reducedMotion)}>
         {!user ? (
           <>
             <Stack.Screen name="Login" component={LoginScreen} />
