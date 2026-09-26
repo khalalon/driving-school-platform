@@ -16,3 +16,7 @@ coverage/
 
 # Rapport JSON du harnais e2e (npm run test:e2e -- --json --outputFile=report.json)
 tests/report.json
+
+# Python (scripts de préparation, 13.9)
+__pycache__/
+*.pyc
