@@ -20,6 +20,7 @@ import {
   renderScreen,
   renderedText,
   smallTouchTargets,
+  unlabelledPressables,
   unmountInTheme,
 } from '../../../components/ui/__tests__/renderInTheme';
 
@@ -117,6 +118,7 @@ describe('tableau de bord d’un élève inscrit', () => {
 
     expect(tree.root.findAllByProps({ testID: 'journey-sectors' }).length).toBeGreaterThan(0);
     expect(smallTouchTargets(tree)).toEqual([]);
+    expect(unlabelledPressables(tree)).toEqual([]);
     unmountInTheme(tree);
   });
 

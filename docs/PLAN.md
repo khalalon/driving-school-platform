@@ -986,7 +986,7 @@ cd mobile-app && npx expo-doctor && npx expo config --json > /dev/null && npx ts
 ```
 **Hors périmètre** : fiche du Play Store.
 
-### - [ ] 13.21 — Vérification finale de la refonte
+### - [x] 13.21 — Vérification finale de la refonte
 **Objectif** : passe complète sur les deux thèmes et les deux langues : contrastes (test de thème), cibles tactiles, lecteur d'écran (libellés des icônes seules, ordre de lecture), « réduire les animations », RTL arabe (flèches, transitions, jauge et secteurs dans le bon sens). Plus aucun code hexadécimal hors de `src/theme/`, plus aucun import de l'ancien thème, plus aucun composant de 11.2 inutilisé. `docs/ARCHITECTURE.md` décrit le nouveau système (jetons, composants, 3D, célébrations). La **recette sur téléphone** (Expo Go, parcours D-15 complet dans les deux thèmes, en français et en arabe) est faite par l'humain.
 **Fichiers** : corrections ponctuelles, `docs/ARCHITECTURE.md`.
 **Critère de validation** :

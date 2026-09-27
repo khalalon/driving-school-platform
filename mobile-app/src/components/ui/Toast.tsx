@@ -14,6 +14,7 @@ import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { useTextStyle } from '../../theme';
 import { motion } from '../../theme/motion';
 import { IoniconName } from '../../utils/rtl';
+import { t } from '../../i18n';
 import { Tone, toneColors } from './tones';
 
 interface ToastProps {
@@ -88,7 +89,12 @@ export const Toast = ({ message, tone = 'success', onDismiss, testID }: ToastPro
         {message}
       </Text>
       {onDismiss ? (
-        <Pressable onPress={onDismiss} accessibilityRole="button" hitSlop={12}>
+        <Pressable
+          onPress={onDismiss}
+          accessibilityRole="button"
+          accessibilityLabel={t('common.close')}
+          hitSlop={12}
+        >
           <Ionicons name="close" size={18} color={theme.colors.textSecondary} />
         </Pressable>
       ) : (

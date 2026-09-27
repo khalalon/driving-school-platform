@@ -18,6 +18,7 @@ import {
   renderScreen,
   renderedText,
   smallTouchTargets,
+  unlabelledPressables,
   unmountInTheme,
 } from '../../../components/ui/__tests__/renderInTheme';
 
@@ -121,6 +122,7 @@ describe('accueil instructeur', () => {
     // Pas de 3D côté instructeur (D-52)
     expect(tree.root.findAll((n) => /car-scene|track-scene/.test(String(n.props?.testID)))).toHaveLength(0);
     expect(smallTouchTargets(tree)).toEqual([]);
+    expect(unlabelledPressables(tree)).toEqual([]);
     unmountInTheme(tree);
   });
 

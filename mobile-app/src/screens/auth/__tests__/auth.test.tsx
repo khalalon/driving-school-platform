@@ -14,6 +14,7 @@ import {
   renderScreen,
   renderedText,
   smallTouchTargets,
+  unlabelledPressables,
   unmountInTheme,
 } from '../../../components/ui/__tests__/renderInTheme';
 
@@ -53,6 +54,7 @@ describe.each(SCREENS)('%s', (_, Screen, keyText) => {
     await act(async () => undefined);
     expect(renderedText(tree)).toContain(keyText());
     expect(smallTouchTargets(tree)).toEqual([]);
+    expect(unlabelledPressables(tree)).toEqual([]);
     unmountInTheme(tree);
   });
 });

@@ -18,6 +18,8 @@ import {
   unmountInTheme,
 } from '../../ui/__tests__/renderInTheme';
 import { MIN_TOUCH_TARGET } from '../../../theme/tokens';
+import { applyLanguage } from '../../../i18n';
+import Svg from 'react-native-svg';
 
 const noop = () => undefined;
 
@@ -170,5 +172,20 @@ describe('SectorBar sélectionnable (13.11)', () => {
     const tree = renderInTheme(<SectorBar sectors={SECTORS} />, 'dark');
     expect(tree.root.findAllByProps({ accessibilityRole: 'button' })).toHaveLength(0);
     unmountInTheme(tree);
+  });
+});
+
+describe('sens de lecture (13.21)', () => {
+  afterEach(() => applyLanguage('fr'));
+
+  it('en arabe, la jauge se remplit de droite à gauche ; en français, de gauche à droite', () => {
+    const fr = renderInTheme(<Gauge value={3} max={5} accessibilityLabel="3/5" />, 'dark');
+    expect(StyleSheet.flatten(fr.root.findByType(Svg).props.style)).toBeUndefined();
+    unmountInTheme(fr);
+
+    applyLanguage('ar');
+    const ar = renderInTheme(<Gauge value={3} max={5} accessibilityLabel="3/5" />, 'dark');
+    expect(StyleSheet.flatten(ar.root.findByType(Svg).props.style)).toEqual({ transform: [{ scaleX: -1 }] });
+    unmountInTheme(ar);
   });
 });

@@ -159,3 +159,29 @@ export const SCREEN_VARIANTS: [string, ThemeName, Language][] = [
   ['sombre', 'dark', 'fr'],
   ['arabe', 'dark', 'ar'],
 ];
+
+/**
+ * Éléments pressables muets pour un lecteur d'écran (13.21) : ni `accessibilityLabel` ni texte
+ * visible dans leur contenu (une icône seule ne s'annonce pas). Renvoie leur `testID` ou leur rôle.
+ */
+export const unlabelledPressables = (tree: ReactTestRenderer): string[] =>
+  pressables(tree)
+    .filter((node) => {
+      const label = node.props.accessibilityLabel;
+      if (typeof label === 'string' && label.trim().length > 0) return false;
+      // Le mock d'Ionicons (jest.setup.js) écrit le nom de l'icône en texte : ce n'est pas un
+      // libellé, un lecteur d'écran n'annoncerait rien
+      const iconNames = new Set(
+        node
+          .findAll((child) => typeof child.props?.name === 'string' && child.props?.size !== undefined)
+          .map((icon) => icon.props.name as string)
+      );
+      const texts = node.findAll(
+        (child) =>
+          typeof child.props?.children === 'string' &&
+          child.props.children.trim().length > 0 &&
+          !iconNames.has(child.props.children)
+      );
+      return texts.length === 0;
+    })
+    .map((node) => String(node.props.testID ?? node.props.accessibilityRole ?? 'sans rôle'));

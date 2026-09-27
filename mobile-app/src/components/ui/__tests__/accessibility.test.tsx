@@ -4,10 +4,11 @@
  */
 
 import React from 'react';
-import { StyleSheet, Text } from 'react-native';
-import { AppBar, Badge, Button, Card, Chip, ListRow } from '../index';
+import { Pressable, StyleSheet, Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { AppBar, Badge, Button, Card, Chip, EmptyState, Field, ListRow, SectionHeader, Toast } from '../index';
 import { MIN_TOUCH_TARGET } from '../../../theme/tokens';
-import { pressables, renderInTheme, unmountInTheme } from './renderInTheme';
+import { pressables, renderInTheme, unlabelledPressables, unmountInTheme } from './renderInTheme';
 
 const noop = () => undefined;
 
@@ -73,6 +74,35 @@ describe('cibles tactiles et annonces (11.6)', () => {
   it('un badge n’est pas touchable : il n’annonce pas de bouton', () => {
     const tree = renderInTheme(<Badge label="Planifiée" tone="accent" />, 'light');
     expect(pressables(tree)).toHaveLength(0);
+    unmountInTheme(tree);
+  });
+});
+
+describe('lecteur d’écran : chaque élément pressable s’annonce (13.21)', () => {
+  const ALL: [string, React.ReactElement][] = [
+    ...CASES,
+    ['Field révélable', <Field label="Mot de passe" value="" onChangeText={noop} revealable />],
+    ['SectionHeader action', <SectionHeader title="Parcours" action={{ label: 'Tout voir', onPress: noop }} />],
+    ['EmptyState action', <EmptyState icon="car" title="Aucune leçon" action={{ label: 'Demander', onPress: noop }} />],
+    ['Toast fermable', <Toast message="Demande envoyée" onDismiss={noop} />],
+  ];
+
+  for (const [name, element] of ALL) {
+    it(`${name} : libellé ou texte pour chaque élément pressable`, () => {
+      const tree = renderInTheme(element, 'dark');
+      expect({ composant: name, muets: unlabelledPressables(tree) }).toEqual({ composant: name, muets: [] });
+      unmountInTheme(tree);
+    });
+  }
+
+  it('le contrôle repère bien une icône seule sans libellé', () => {
+    const tree = renderInTheme(
+      <Pressable onPress={noop} accessibilityRole="button" testID="icone-muette">
+        <Ionicons name="close" size={18} />
+      </Pressable>,
+      'dark'
+    );
+    expect(unlabelledPressables(tree)).toEqual(['icone-muette']);
     unmountInTheme(tree);
   });
 });
