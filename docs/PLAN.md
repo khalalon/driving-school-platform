@@ -1053,7 +1053,7 @@ cd mobile-app && test ! -f assets/3d/car-sedan.glb && npx tsc --noEmit && npx je
 ```
 **Hors périmètre** : —
 
-### - [ ] 13b.6 — Vérification de la phase
+### - [x] 13b.6 — Vérification de la phase
 **Objectif** : bundle Android exporté sans erreur, budget du modèle revérifié, aucun code couleur hors de `src/theme/`, `credits.json` complet, `docs/ARCHITECTURE.md` (section 3D) à jour. **Recette sur téléphone par l'humain** : fluidité, feu tricolore, geste et inclinaison, parcours, deux thèmes, arabe.
 **Fichiers** : corrections ponctuelles, `docs/ARCHITECTURE.md`.
 **Critère de validation** :
