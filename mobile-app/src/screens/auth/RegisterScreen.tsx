@@ -22,7 +22,8 @@ import { useTheme } from '../../context/ThemeContext';
 import { AppBar, Button, Field, Screen, SectionHeader } from '../../components/ui';
 import { ContactDetails, PASSWORD_MIN_LENGTH, toIsoDay } from '../../models/User';
 import { getApiErrorMessage } from '../../services/api/ApiError';
-import { Theme } from '../../theme';
+import { Theme, textStyle } from '../../theme';
+import type { Language } from '../../i18n';
 import { dateLocale } from '../../utils/format';
 import { mirrorIcon } from '../../utils/rtl';
 
@@ -33,10 +34,10 @@ const filledDetails = (details: ContactDetails): ContactDetails =>
   );
 
 export const RegisterScreen = ({ navigation }: any) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { register } = useAuth();
   const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, language), [theme, language]);
   const [loading, setLoading] = useState(false);
 
   const [email, setEmail] = useState('');
@@ -271,7 +272,7 @@ export const RegisterScreen = ({ navigation }: any) => {
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, language: Language) =>
   StyleSheet.create({
     flex: { flex: 1, backgroundColor: theme.colors.surface },
     content: { paddingTop: theme.spacing.lg, gap: theme.spacing.base },
@@ -280,11 +281,8 @@ const createStyles = (theme: Theme) =>
     submit: { marginTop: theme.spacing.sm },
     detailsHeader: { marginTop: theme.spacing.lg },
     section: { gap: theme.spacing.xs },
-    label: {
-      fontSize: theme.typography.size.sm,
-      fontWeight: theme.typography.weight.medium,
-      color: theme.colors.textSecondary,
-    },
+    // Même libellé et même cadre que `Field` : la date de naissance se lit comme un champ
+    label: { ...textStyle('label', language), color: theme.colors.textSecondary },
     dateButton: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -292,21 +290,14 @@ const createStyles = (theme: Theme) =>
       minHeight: 48,
       backgroundColor: theme.colors.surfaceRaised,
       borderWidth: 1,
-      borderColor: theme.colors.border,
+      borderColor: theme.colors.borderStrong,
       borderRadius: theme.radius.md,
       paddingHorizontal: theme.spacing.md,
     },
-    pressed: { opacity: 0.7 },
-    dateText: { flex: 1, fontSize: theme.typography.size.base, color: theme.colors.textPrimary },
-    datePlaceholder: {
-      flex: 1,
-      fontSize: theme.typography.size.base,
-      color: theme.colors.textMuted,
-    },
-    loginLink: { alignItems: 'center', paddingVertical: theme.spacing.md },
-    loginLinkText: { fontSize: theme.typography.size.base, color: theme.colors.textSecondary },
-    loginLinkBold: {
-      fontWeight: theme.typography.weight.semibold,
-      color: theme.colors.signalText,
-    },
+    pressed: { backgroundColor: theme.colors.surfaceMuted },
+    dateText: { ...textStyle('body', language), flex: 1, color: theme.colors.textPrimary },
+    datePlaceholder: { ...textStyle('body', language), flex: 1, color: theme.colors.textMuted },
+    loginLink: { alignItems: 'center', justifyContent: 'center', minHeight: 48 },
+    loginLinkText: { ...textStyle('body', language), color: theme.colors.textSecondary },
+    loginLinkBold: { ...textStyle('bodyStrong', language), color: theme.colors.signalText },
   });

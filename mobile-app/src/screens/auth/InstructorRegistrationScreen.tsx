@@ -21,14 +21,15 @@ import { useTheme } from '../../context/ThemeContext';
 import { AppBar, Button, Card, Field, Screen } from '../../components/ui';
 import { PASSWORD_MIN_LENGTH } from '../../models/User';
 import { getApiErrorMessage } from '../../services/api/ApiError';
-import { Theme } from '../../theme';
+import { Theme, textStyle } from '../../theme';
+import type { Language } from '../../i18n';
 import { mirrorIcon } from '../../utils/rtl';
 
 export const InstructorRegistrationScreen = ({ navigation }: any) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { register } = useAuth();
   const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, language), [theme, language]);
   const [loading, setLoading] = useState(false);
 
   const [firstName, setFirstName] = useState('');
@@ -212,24 +213,15 @@ export const InstructorRegistrationScreen = ({ navigation }: any) => {
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, language: Language) =>
   StyleSheet.create({
     flex: { flex: 1, backgroundColor: theme.colors.surface },
     content: { paddingTop: theme.spacing.lg, gap: theme.spacing.base },
     info: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.md },
-    infoText: {
-      flex: 1,
-      fontSize: theme.typography.size.sm,
-      color: theme.colors.signalText,
-      lineHeight: theme.typography.size.sm * theme.typography.lineHeight.normal,
-    },
+    infoText: { ...textStyle('body', language), flex: 1, color: theme.colors.textPrimary },
     row: { flexDirection: 'row', gap: theme.spacing.md },
     half: { flex: 1 },
     submit: { marginTop: theme.spacing.sm },
-    loginLink: { alignItems: 'center', paddingVertical: theme.spacing.md },
-    loginLinkText: {
-      fontSize: theme.typography.size.base,
-      color: theme.colors.signalText,
-      fontWeight: theme.typography.weight.medium,
-    },
+    loginLink: { alignItems: 'center', justifyContent: 'center', minHeight: 48 },
+    loginLinkText: { ...textStyle('bodyStrong', language), color: theme.colors.signalText },
   });

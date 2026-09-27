@@ -17,14 +17,15 @@ import { HomeCarScene } from '../../components/three/HomeCarScene';
 import { HomeCarFallback } from '../../components/three/HomeCarFallback';
 import { homeCarPalette } from '../../components/three/homeCar';
 import { getApiErrorMessage } from '../../services/api/ApiError';
-import { Theme } from '../../theme';
+import { Theme, textStyle } from '../../theme';
+import type { Language } from '../../i18n';
 import { mirrorIcon } from '../../utils/rtl';
 
 export const LoginScreen = ({ navigation }: any) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { login } = useAuth();
   const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, language), [theme, language]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -128,7 +129,7 @@ export const LoginScreen = ({ navigation }: any) => {
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, language: Language) =>
   StyleSheet.create({
     flex: { flex: 1, backgroundColor: theme.colors.surface },
     content: { justifyContent: 'center', paddingHorizontal: theme.spacing.xl },
@@ -141,26 +142,21 @@ const createStyles = (theme: Theme) =>
       marginBottom: theme.spacing.xl,
     },
     title: {
-      fontSize: theme.typography.size['3xl'],
-      fontWeight: theme.typography.weight.bold,
+      ...textStyle('display', language),
       color: theme.colors.textPrimary,
       marginBottom: theme.spacing.xs,
       textAlign: 'center',
     },
     subtitle: {
-      fontSize: theme.typography.size.base,
+      ...textStyle('body', language),
       color: theme.colors.textSecondary,
       textAlign: 'center',
     },
     form: { width: '100%', gap: theme.spacing.base },
     divider: { flexDirection: 'row', alignItems: 'center', marginVertical: theme.spacing.sm },
-    dividerLine: {
-      flex: 1,
-      height: StyleSheet.hairlineWidth,
-      backgroundColor: theme.colors.border,
-    },
+    dividerLine: { flex: 1, height: 1, backgroundColor: theme.colors.border },
     dividerText: {
-      fontSize: theme.typography.size.sm,
+      ...textStyle('label', language),
       color: theme.colors.textMuted,
       marginHorizontal: theme.spacing.base,
     },

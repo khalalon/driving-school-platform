@@ -914,7 +914,7 @@ cd mobile-app && npx expo-doctor && npx tsc --noEmit && npx jest --silent && ech
 ```
 **Hors périmètre** : notification push de l'événement (Phase 17).
 
-### - [ ] 13.13 — Authentification refaite
+### - [x] 13.13 — Authentification refaite
 **Objectif** : `LoginScreen` (scène 3D de 13.10 en haut, formulaire en bas, sélecteur de langue), `RegisterScreen` (section facultative de 12.3 conservée), `InstructorRegistrationScreen`, sur les composants 13.5 / 13.6 et la typographie 13.2. Test de rendu clair / sombre / arabe pour chaque écran.
 **Fichiers** : `mobile-app/src/screens/auth/*`, `mobile-app/src/screens/auth/__tests__/*` (nouveau).
 **Critère de validation** :
