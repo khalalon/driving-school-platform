@@ -1,5 +1,16 @@
 [
   {
+    "file": "car.glb",
+    "usage": "Voiture de l’auto-école (accueil, parcours) — D-53",
+    "source": "Khronos glTF Sample Assets — Car Concept (glTF-Binary/CarConcept.glb)",
+    "url": "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/CarConcept",
+    "author": "Eric Chadwick (modèle et textures), d’après un modèle du domaine public de Unity Fan",
+    "owner": "© 2024 Darmstadt Graphics Group GmbH",
+    "license": "CC-BY 4.0 (https://creativecommons.org/licenses/by/4.0/)",
+    "modifications": "Intérieur, essuie-glaces, moteur, plaque, étriers, variantes de peinture et toutes les textures retirés (dont les logos Khronos et 3D Commerce, marques exclues de la licence) ; vitres opaques ; matériaux regroupés par rôle et recolorés au thème ; roues sans braquage ; géométrie soudée et simplifiée (scripts/prepare_car.py).",
+    "bytes": 1177900
+  },
+  {
     "file": "car-sedan.glb",
     "usage": "Voiture de l’auto-école (accueil, parcours)",
     "source": "Kenney — Car Kit 3.1 (sedan.glb)",

@@ -25,6 +25,10 @@ export const ar: Record<TranslationKey, string> = {
   'settings.theme.hint': '«حسب الهاتف» يتبع إعداد الوضع الفاتح أو الداكن في الهاتف.',
   'settings.account': 'الحساب',
   'settings.signedInAs': 'متصل بـ {email}',
+  'settings.credits': 'حقوق المحتوى',
+  'settings.credits.car':
+    'السيارة ثلاثية الأبعاد: « Car Concept » من إنجاز Eric Chadwick، © 2024 Darmstadt Graphics Group GmbH، رخصة CC-BY 4.0 (creativecommons.org/licenses/by/4.0)، معدّلة للتطبيق.',
+  'settings.credits.others': 'الديكور ثلاثي الأبعاد: Kenney (kenney.nl)، ملك عام (CC0).',
 
   // الاحتفالات (13.12)
   'celebration.continue': 'متابعة',

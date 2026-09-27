@@ -21,6 +21,10 @@ export const fr = {
   'settings.theme.hint': '« Système » suit le réglage clair ou sombre du téléphone.',
   'settings.account': 'Compte',
   'settings.signedInAs': 'Connecté avec {email}',
+  'settings.credits': 'Crédits',
+  'settings.credits.car':
+    'Voiture 3D : « Car Concept » d’Eric Chadwick, © 2024 Darmstadt Graphics Group GmbH, licence CC-BY 4.0 (creativecommons.org/licenses/by/4.0), modifiée pour l’application.',
+  'settings.credits.others': 'Décor 3D : Kenney (kenney.nl), domaine public (CC0).',
 
   // Célébrations (13.12)
   'celebration.continue': 'Continuer',

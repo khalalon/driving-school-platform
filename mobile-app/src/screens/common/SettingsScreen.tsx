@@ -1,7 +1,8 @@
 /**
  * SettingsScreen (13.3, D-52) — réglages communs aux deux rôles : langue (D-47), thème
  * Sombre / Clair / Système (sombre au premier lancement), déconnexion. Ouvert depuis l'en-tête
- * des accueils élève et instructeur : l'instructeur n'a pas d'onglet profil.
+ * des accueils élève et instructeur : l'instructeur n'a pas d'onglet profil. Les crédits des
+ * modèles 3D y figurent : la voiture est sous CC-BY 4.0, qui impose de citer l'auteur (D-53).
  */
 
 import React, { useMemo, useState } from 'react';
@@ -91,6 +92,16 @@ export const SettingsScreen = ({ navigation }: any) => {
               fullWidth
               testID="settings-logout"
             />
+          </View>
+        </Card>
+
+        <Card>
+          <View style={styles.section} testID="settings-credits">
+            <Text style={styles.sectionTitle} accessibilityRole="header">
+              {t('settings.credits')}
+            </Text>
+            <Text style={styles.hint}>{t('settings.credits.car')}</Text>
+            <Text style={styles.hint}>{t('settings.credits.others')}</Text>
           </View>
         </Card>
       </Screen>

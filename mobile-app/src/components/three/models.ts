@@ -1,6 +1,8 @@
 /**
  * Modèles 3D de l'application (13.9, D-52) : kits Kenney (CC0) préparés par
- * `scripts/prepare_models.py`, inventoriés dans `assets/3d/credits.json`.
+ * `scripts/prepare_models.py`, et la voiture réaliste « Car Concept » de Khronos (CC-BY 4.0,
+ * créditée dans Réglages — D-53) préparée par `scripts/prepare_car.py`. Tous inventoriés dans
+ * `assets/3d/credits.json`.
  *
  * Aucun modèle ne porte de texture : chaque partie est un matériau uni nommé par son rôle, qu'une
  * scène recolore au rendu selon le thème (`MODEL_MATERIALS`). Un `.glb` est servi par Metro comme
@@ -11,7 +13,9 @@ import { Asset } from 'expo-asset';
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 export const MODELS = {
-  /** Voiture de l'auto-école : accueil (13.10), parcours (13.11). */
+  /** Voiture réaliste de l'auto-école (13b.1, D-53) : roues en nœuds `wheel-*` séparés. */
+  car: require('../../../assets/3d/car.glb'),
+  /** Ancienne berline Kenney : parcours (13.11), jusqu'à 13b.5. */
   sedan: require('../../../assets/3d/car-sedan.glb'),
   /** Cône de manœuvre : secteurs Manœuvre et Parc. */
   cone: require('../../../assets/3d/cone.glb'),
@@ -26,8 +30,21 @@ export const MODELS = {
 
 export type ModelKey = keyof typeof MODELS;
 
-/** Matériaux recolorables de chaque modèle (noms posés par `prepare_models.py`). */
+/** Matériaux recolorables de chaque modèle (noms posés par `prepare_models.py` et `prepare_car.py`). */
 export const MODEL_MATERIALS = {
+  car: [
+    'paint',
+    'paintAccent',
+    'glass',
+    'headlight',
+    'taillight',
+    'indicator',
+    'tyre',
+    'rim',
+    'chrome',
+    'trim',
+    'mechanical',
+  ],
   sedan: ['paint', 'glass', 'dark', 'rim', 'chrome', 'headlight', 'indicator', 'taillight'],
   cone: ['cone', 'stripe'],
   track: ['road', 'grass', 'grey'],

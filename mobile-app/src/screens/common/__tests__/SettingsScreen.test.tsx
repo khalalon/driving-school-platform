@@ -59,6 +59,21 @@ describe('SettingsScreen', () => {
     unmountInTheme(tree);
   });
 
+  it.each(['fr', 'ar'] as const)('cite l’auteur et la licence de la voiture 3D (%s, D-53)', (language) => {
+    applyLanguage(language);
+    const tree = renderInTheme(<SettingsScreen navigation={navigation} />, 'dark');
+    const credits = tree.root.findByProps({ testID: 'settings-credits' });
+    const texts = credits
+      .findAll((node) => typeof node.props?.children === 'string')
+      .map((node) => node.props.children as string);
+    expect(texts).toContain(translate('settings.credits.car'));
+    const car = translate('settings.credits.car');
+    expect(car).toContain('Eric Chadwick');
+    expect(car).toContain('CC-BY 4.0');
+    expect(car).toContain('creativecommons.org/licenses/by/4.0');
+    unmountInTheme(tree);
+  });
+
   it('choisir « Clair » mémorise le choix', async () => {
     const tree = renderInTheme(<SettingsScreen navigation={navigation} />, 'dark');
     const light = pressables(tree).find((node) => node.props.testID === 'theme-light');
