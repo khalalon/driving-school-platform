@@ -959,7 +959,7 @@ cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
 ```
 **Hors périmètre** : —
 
-### - [ ] 13.18 — Écrans instructeur (1/2) : demandes et réservation
+### - [x] 13.18 — Écrans instructeur (1/2) : demandes et réservation
 **Objectif** : `LessonRequestsScreen` (approbation multiple de 6.7 conservée), `EnrollmentRequestsScreen`, `ExamRequestsScreen` (libellés par type, D-42), `BookForStudentScreen`, `AttendanceModal` refaits. Test de rendu clair / sombre / arabe pour chacun.
 **Fichiers** : ces écrans, tests.
 **Critère de validation** :

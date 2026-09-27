@@ -30,7 +30,8 @@ import { useTheme } from '../../context/ThemeContext';
 import { AppBar, Button, Card, EmptyState, Field, SkeletonCard } from '../../components/ui';
 import { examProcedure, examTypeLabel, Exam, ExamStatus, ExamType } from '../../models/Exam';
 import { dateLocale, formatDate, formatPersonName } from '../../utils/format';
-import { Theme } from '../../theme';
+import { Theme, textStyle } from '../../theme';
+import type { Language } from '../../i18n';
 
 /** Motif de refus : 10 à 500 caractères, même règle que le backend. */
 const REASON_MIN = 10;
@@ -59,10 +60,10 @@ const firstFutureSlot = (wanted: string | null | undefined, now: Date = new Date
 };
 
 export const ExamRequestsScreen = ({ navigation }: any) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { showToast } = useToast();
   const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, language), [theme, language]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [requests, setRequests] = useState<Exam[]>([]);
@@ -479,7 +480,7 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, language: Language) =>
   StyleSheet.create({
     flex: { flex: 1, backgroundColor: theme.colors.surface },
     skeletons: { padding: theme.spacing.base, gap: theme.spacing.md },
@@ -498,20 +499,19 @@ const createStyles = (theme: Theme) =>
     iconPractical: { backgroundColor: theme.colors.warningSoft },
     info: { flex: 1, gap: 2 },
     type: {
-      fontSize: theme.typography.size.base,
-      fontWeight: theme.typography.weight.semibold,
+      ...textStyle('bodyStrong', language),
       color: theme.colors.textPrimary,
     },
-    student: { fontSize: theme.typography.size.sm, color: theme.colors.textPrimary },
+    student: { ...textStyle('caption', language), color: theme.colors.textPrimary },
     metaRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
-    meta: { flex: 1, fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    meta: { ...textStyle('caption', language), flex: 1, color: theme.colors.textSecondary },
     quote: {
       marginTop: theme.spacing.xs,
       backgroundColor: theme.colors.surfaceMuted,
       borderRadius: theme.radius.md,
       padding: theme.spacing.md,
     },
-    quoteText: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    quoteText: { ...textStyle('caption', language), color: theme.colors.textSecondary },
     actions: { flexDirection: 'row', gap: theme.spacing.md },
     action: { flex: 1 },
 
@@ -523,15 +523,13 @@ const createStyles = (theme: Theme) =>
     },
     modal: { gap: theme.spacing.md },
     modalTitle: {
-      fontSize: theme.typography.size.lg,
-      fontWeight: theme.typography.weight.bold,
+      ...textStyle('heading', language),
       color: theme.colors.textPrimary,
     },
-    modalSubtitle: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    modalSubtitle: { ...textStyle('caption', language), color: theme.colors.textSecondary },
     section: { gap: theme.spacing.sm },
     label: {
-      fontSize: theme.typography.size.sm,
-      fontWeight: theme.typography.weight.medium,
+      ...textStyle('label', language),
       color: theme.colors.textSecondary,
     },
     dateRow: { flexDirection: 'row', gap: theme.spacing.md },
@@ -548,7 +546,7 @@ const createStyles = (theme: Theme) =>
     },
     grow: { flex: 1 },
     pressed: { opacity: 0.7 },
-    dateText: { fontSize: theme.typography.size.base, color: theme.colors.textPrimary },
+    dateText: { ...textStyle('body', language), color: theme.colors.textPrimary },
     textarea: { minHeight: 80 },
     modalActions: { flexDirection: 'row', gap: theme.spacing.md },
   });

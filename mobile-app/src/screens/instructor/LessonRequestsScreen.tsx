@@ -36,7 +36,8 @@ import { lessonTypeLabel, Lesson, LessonStatus, LessonType } from '../../models/
 import { SchoolInstructor, SchoolPricing } from '../../models/School';
 import { useSchoolCurrency } from '../../hooks/useSchoolCurrency';
 import { dateLocale, formatAmount, formatDateTime, formatPersonName } from '../../utils/format';
-import { Theme } from '../../theme';
+import { Theme, textStyle } from '../../theme';
+import type { Language } from '../../i18n';
 
 /** Motif de refus : 10 à 500 caractères, même règle que le backend (D-29). */
 const REASON_MIN = 10;
@@ -66,11 +67,11 @@ const firstFutureSlot = (wanted: string | null | undefined, now: Date = new Date
 };
 
 export const LessonRequestsScreen = ({ navigation }: any) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { showToast } = useToast();
   const { user } = useAuth();
   const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, language), [theme, language]);
   const schoolId = user?.schoolId;
   const currency = useSchoolCurrency(schoolId);
 
@@ -699,7 +700,7 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, language: Language) =>
   StyleSheet.create({
     flex: { flex: 1, backgroundColor: theme.colors.surface },
     skeletons: { padding: theme.spacing.base, gap: theme.spacing.md },
@@ -718,20 +719,19 @@ const createStyles = (theme: Theme) =>
     },
     info: { flex: 1, gap: 2 },
     student: {
-      fontSize: theme.typography.size.base,
-      fontWeight: theme.typography.weight.semibold,
+      ...textStyle('bodyStrong', language),
       color: theme.colors.textPrimary,
     },
     metaRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
-    meta: { flex: 1, fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
-    preferred: { flex: 1, fontSize: theme.typography.size.sm, color: theme.colors.warningText },
+    meta: { ...textStyle('caption', language), flex: 1, color: theme.colors.textSecondary },
+    preferred: { ...textStyle('caption', language), flex: 1, color: theme.colors.warningText },
     quote: {
       marginTop: theme.spacing.xs,
       backgroundColor: theme.colors.surfaceMuted,
       borderRadius: theme.radius.md,
       padding: theme.spacing.md,
     },
-    quoteText: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    quoteText: { ...textStyle('caption', language), color: theme.colors.textSecondary },
     actions: { flexDirection: 'row', gap: theme.spacing.md },
     action: { flex: 1 },
 
@@ -745,9 +745,8 @@ const createStyles = (theme: Theme) =>
       borderTopColor: theme.colors.border,
     },
     batchText: {
+      ...textStyle('caption', language),
       flex: 1,
-      fontSize: theme.typography.size.sm,
-      fontWeight: theme.typography.weight.medium,
       color: theme.colors.textPrimary,
     },
 
@@ -760,15 +759,13 @@ const createStyles = (theme: Theme) =>
     modal: { maxHeight: '88%' },
     modalBody: { gap: theme.spacing.md },
     modalTitle: {
-      fontSize: theme.typography.size.lg,
-      fontWeight: theme.typography.weight.bold,
+      ...textStyle('heading', language),
       color: theme.colors.textPrimary,
     },
-    modalSubtitle: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    modalSubtitle: { ...textStyle('caption', language), color: theme.colors.textSecondary },
     section: { gap: theme.spacing.sm },
     label: {
-      fontSize: theme.typography.size.sm,
-      fontWeight: theme.typography.weight.medium,
+      ...textStyle('label', language),
       color: theme.colors.textSecondary,
     },
     dateRow: { flexDirection: 'row', gap: theme.spacing.md },
@@ -785,8 +782,8 @@ const createStyles = (theme: Theme) =>
     },
     grow: { flex: 1 },
     pressed: { opacity: 0.7 },
-    dateText: { fontSize: theme.typography.size.base, color: theme.colors.textPrimary },
-    hint: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    dateText: { ...textStyle('body', language), color: theme.colors.textPrimary },
+    hint: { ...textStyle('caption', language), color: theme.colors.textSecondary },
     textarea: { minHeight: 80 },
     modalActions: { flexDirection: 'row', gap: theme.spacing.md },
   });

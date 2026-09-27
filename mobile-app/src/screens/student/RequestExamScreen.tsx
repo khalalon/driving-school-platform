@@ -204,7 +204,7 @@ const createStyles = (theme: Theme, language: Language) =>
     infoText: { ...textStyle('caption', language), color: theme.colors.signalText },
     section: { gap: theme.spacing.sm },
     label: {
-      ...textStyle('caption', language),
+      ...textStyle('label', language),
       color: theme.colors.textSecondary,
     },
     types: { flexDirection: 'row', gap: theme.spacing.sm, flexWrap: 'wrap' },

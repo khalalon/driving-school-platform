@@ -26,7 +26,8 @@ import {
 import { TranslationKey } from '../../i18n';
 import { EnrollmentRequest, EnrollmentStatus } from '../../models/Enrollment';
 import { formatDate, formatPersonName } from '../../utils/format';
-import { Theme } from '../../theme';
+import { Theme, textStyle } from '../../theme';
+import type { Language } from '../../i18n';
 import { mirrorIcon } from '../../utils/rtl';
 
 type FilterType = 'pending' | 'all';
@@ -42,10 +43,10 @@ const STATUS: Record<EnrollmentStatus, { tone: Tone; labelKey: TranslationKey }>
 };
 
 export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { showToast } = useToast();
   const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, language), [theme, language]);
   const { schoolId } = route.params || {};
 
   const [loading, setLoading] = useState(true);
@@ -332,7 +333,7 @@ export const EnrollmentRequestsScreen = ({ navigation, route }: any) => {
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, language: Language) =>
   StyleSheet.create({
     flex: { flex: 1, backgroundColor: theme.colors.surface },
     filters: {
@@ -356,12 +357,11 @@ const createStyles = (theme: Theme) =>
     },
     info: { flex: 1, gap: 2 },
     name: {
-      fontSize: theme.typography.size.base,
-      fontWeight: theme.typography.weight.semibold,
+      ...textStyle('bodyStrong', language),
       color: theme.colors.textPrimary,
     },
-    meta: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
-    date: { fontSize: theme.typography.size.xs, color: theme.colors.textMuted },
+    meta: { ...textStyle('caption', language), color: theme.colors.textSecondary },
+    date: { ...textStyle('caption', language), color: theme.colors.textMuted },
     quote: {
       backgroundColor: theme.colors.surfaceMuted,
       borderRadius: theme.radius.md,
@@ -369,11 +369,10 @@ const createStyles = (theme: Theme) =>
       gap: theme.spacing.xs,
     },
     quoteLabel: {
-      fontSize: theme.typography.size.xs,
-      fontWeight: theme.typography.weight.medium,
+      ...textStyle('caption', language),
       color: theme.colors.textMuted,
     },
-    quoteText: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    quoteText: { ...textStyle('caption', language), color: theme.colors.textSecondary },
     reason: {
       backgroundColor: theme.colors.dangerSoft,
       borderRadius: theme.radius.md,
@@ -381,11 +380,10 @@ const createStyles = (theme: Theme) =>
       gap: theme.spacing.xs,
     },
     reasonLabel: {
-      fontSize: theme.typography.size.xs,
-      fontWeight: theme.typography.weight.semibold,
+      ...textStyle('label', language),
       color: theme.colors.dangerText,
     },
-    reasonText: { fontSize: theme.typography.size.sm, color: theme.colors.dangerText },
+    reasonText: { ...textStyle('caption', language), color: theme.colors.dangerText },
     actions: { flexDirection: 'row', gap: theme.spacing.md },
     action: { flex: 1 },
 
@@ -397,8 +395,7 @@ const createStyles = (theme: Theme) =>
     },
     modal: { gap: theme.spacing.md },
     modalTitle: {
-      fontSize: theme.typography.size.lg,
-      fontWeight: theme.typography.weight.bold,
+      ...textStyle('heading', language),
       color: theme.colors.textPrimary,
     },
     modalInput: { minHeight: 96 },

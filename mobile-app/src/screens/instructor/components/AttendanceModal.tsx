@@ -12,7 +12,9 @@ import { formatPersonName, formatTime } from '../../../utils/format';
 import { useI18n } from '../../../context/LanguageContext';
 import { useTheme } from '../../../context/ThemeContext';
 import { Button, Card, Field } from '../../../components/ui';
-import { Theme } from '../../../theme';
+import { Theme, textStyle } from '../../../theme';
+import { MIN_TOUCH_TARGET } from '../../../theme/tokens';
+import type { Language } from '../../../i18n';
 
 const RATINGS = [1, 2, 3, 4, 5];
 
@@ -33,9 +35,9 @@ export const AttendanceModal = ({
   onClose,
   onConfirm,
 }: AttendanceModalProps) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, language), [theme, language]);
   const [attended, setAttended] = useState(initialAttended);
   const [feedback, setFeedback] = useState('');
   const [rating, setRating] = useState<number | null>(null);
@@ -129,7 +131,8 @@ export const AttendanceModal = ({
                     key={star}
                     onPress={() => setRating(rating === star ? null : star)}
                     accessibilityRole="button"
-                    accessibilityLabel={`${star}`}
+                    accessibilityLabel={`${star}/5`}
+                    accessibilityState={{ selected: rating !== null && star <= rating }}
                     style={styles.star}
                   >
                     <Ionicons
@@ -174,7 +177,7 @@ export const AttendanceModal = ({
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, language: Language) =>
   StyleSheet.create({
     overlay: {
       flex: 1,
@@ -185,15 +188,13 @@ const createStyles = (theme: Theme) =>
     modal: { gap: theme.spacing.md },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     title: {
-      fontSize: theme.typography.size.lg,
-      fontWeight: theme.typography.weight.bold,
+      ...textStyle('heading', language),
       color: theme.colors.textPrimary,
     },
-    subtitle: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    subtitle: { ...textStyle('caption', language), color: theme.colors.textSecondary },
     section: { gap: theme.spacing.sm },
     label: {
-      fontSize: theme.typography.size.sm,
-      fontWeight: theme.typography.weight.medium,
+      ...textStyle('label', language),
       color: theme.colors.textSecondary,
     },
     choices: { flexDirection: 'row', gap: theme.spacing.md },
@@ -213,14 +214,18 @@ const createStyles = (theme: Theme) =>
     },
     choiceAbsent: { borderColor: theme.colors.danger, backgroundColor: theme.colors.dangerSoft },
     choiceText: {
-      fontSize: theme.typography.size.sm,
-      fontWeight: theme.typography.weight.medium,
+      ...textStyle('caption', language),
       color: theme.colors.textSecondary,
     },
     choiceTextPresent: { color: theme.colors.successText },
     choiceTextAbsent: { color: theme.colors.dangerText },
     ratingRow: { flexDirection: 'row', gap: theme.spacing.sm },
-    star: { padding: theme.spacing.xs },
+    star: {
+      minWidth: MIN_TOUCH_TARGET,
+      minHeight: MIN_TOUCH_TARGET,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     feedback: { minHeight: 72 },
     actions: { flexDirection: 'row', gap: theme.spacing.md },
     action: { flex: 1 },

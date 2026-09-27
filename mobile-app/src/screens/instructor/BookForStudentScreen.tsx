@@ -24,7 +24,9 @@ import { lessonTypeLabel, LESSON_TYPES, LessonType } from '../../models/Lesson';
 import { SchoolPricing, SchoolStudent } from '../../models/School';
 import { useSchoolCurrency } from '../../hooks/useSchoolCurrency';
 import { dateLocale, formatAmount, formatPersonName } from '../../utils/format';
-import { Theme } from '../../theme';
+import { Theme, textStyle } from '../../theme';
+import { MIN_TOUCH_TARGET } from '../../theme/tokens';
+import type { Language } from '../../i18n';
 
 const DEFAULT_DURATION_MINUTES = 60;
 
@@ -37,11 +39,11 @@ const tomorrowMorning = (): Date => {
 };
 
 export const BookForStudentScreen = ({ navigation }: any) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { showToast } = useToast();
   const { user } = useAuth();
   const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, language), [theme, language]);
   const schoolId = user?.schoolId;
   const currency = useSchoolCurrency(schoolId);
 
@@ -221,6 +223,7 @@ export const BookForStudentScreen = ({ navigation }: any) => {
                       hitSlop={8}
                       accessibilityRole="button"
                       accessibilityLabel={t('bookFor.viewProfile')}
+                      style={styles.iconButton}
                     >
                       <Ionicons
                         name="person-circle-outline"
@@ -278,6 +281,7 @@ export const BookForStudentScreen = ({ navigation }: any) => {
                           hitSlop={8}
                           accessibilityRole="button"
                           accessibilityLabel={t('bookFor.viewProfile')}
+                          style={styles.iconButton}
                         >
                           <Ionicons
                             name="person-circle-outline"
@@ -416,21 +420,19 @@ export const BookForStudentScreen = ({ navigation }: any) => {
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, language: Language) =>
   StyleSheet.create({
     flex: { flex: 1, backgroundColor: theme.colors.surface },
     content: { paddingTop: theme.spacing.base, gap: theme.spacing.lg },
     info: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.md },
     infoText: {
+      ...textStyle('caption', language),
       flex: 1,
-      fontSize: theme.typography.size.sm,
       color: theme.colors.signalText,
-      lineHeight: theme.typography.size.sm * theme.typography.lineHeight.normal,
     },
     section: { gap: theme.spacing.sm },
     label: {
-      fontSize: theme.typography.size.sm,
-      fontWeight: theme.typography.weight.medium,
+      ...textStyle('label', language),
       color: theme.colors.textSecondary,
     },
     search: { marginBottom: theme.spacing.sm },
@@ -440,10 +442,17 @@ const createStyles = (theme: Theme) =>
     },
     rowLast: { paddingHorizontal: theme.spacing.base },
     rowActions: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
+    // Icône seule : la zone touchable fait la taille d'un pouce, pas celle du dessin
+    iconButton: {
+      minWidth: MIN_TOUCH_TARGET,
+      minHeight: MIN_TOUCH_TARGET,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     listLoader: { padding: theme.spacing.base, gap: theme.spacing.sm },
     empty: {
+      ...textStyle('caption', language),
       padding: theme.spacing.base,
-      fontSize: theme.typography.size.sm,
       color: theme.colors.textMuted,
     },
     types: { flexDirection: 'row', gap: theme.spacing.sm, flexWrap: 'wrap' },
@@ -461,8 +470,8 @@ const createStyles = (theme: Theme) =>
     },
     grow: { flex: 1 },
     pressed: { opacity: 0.7 },
-    dateText: { fontSize: theme.typography.size.base, color: theme.colors.textPrimary },
-    hint: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    dateText: { ...textStyle('body', language), color: theme.colors.textPrimary },
+    hint: { ...textStyle('caption', language), color: theme.colors.textSecondary },
     notes: { minHeight: 96 },
     submit: { marginTop: theme.spacing.sm },
   });
