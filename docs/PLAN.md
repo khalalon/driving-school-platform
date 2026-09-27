@@ -1026,7 +1026,7 @@ cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
 ```
 **Hors périmètre** : feu tricolore (13b.3), gestes (13b.4).
 
-### - [ ] 13b.3 — Feu tricolore sur l'accueil
+### - [x] 13b.3 — Feu tricolore sur l'accueil
 **Objectif** : après l'arrivée, la scène tourne en cycle : un feu tricolore (construit en code : mât, boîtier, trois feux émissifs) approche sur le bas-côté droit, passe à l'orange puis au rouge ; la voiture **freine** (feux stop allumés) et s'arrête à la ligne d'arrêt ; le rouge tient, le feu passe au **vert**, la voiture **repart** et le feu passe derrière elle ; puis le cycle recommence. Le cycle est une fonction pure du temps dans `homeCar.ts` (vitesse, couleur du feu, distance du feu, freinage), testée sans GL : jamais de marche arrière, arrêt avant la ligne, jamais de départ au rouge.
 **Fichiers** : `mobile-app/src/components/three/{homeCar.ts,HomeCarScene.tsx,TrafficLight.tsx}` (nouveau), tests.
 **Critère de validation** :

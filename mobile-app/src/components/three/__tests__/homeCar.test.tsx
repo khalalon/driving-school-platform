@@ -11,12 +11,17 @@ import {
   FULL_BRAKE,
   INTRO_DISTANCE,
   INTRO_DURATION,
+  TRAFFIC,
+  TRAFFIC_CYCLE,
   WHEEL_RADIUS,
   brakeLevel,
+  cameraRig,
   easeOutCubic,
   homeCarPalette,
   introState,
   scrollOffset,
+  signalFocus,
+  trafficState,
   wheelTurn,
 } from '../homeCar';
 import { HomeCarFallback } from '../HomeCarFallback';
@@ -115,6 +120,95 @@ describe('arrivée de la voiture', () => {
     expect(scrollOffset(10, 0.5, 24)).toBeLessThan(10);
     expect(scrollOffset(22, 100, 24)).toBeGreaterThanOrEqual(0);
     expect(scrollOffset(22, 100, 24)).toBeLessThan(24);
+  });
+});
+
+describe('feu tricolore (13b.3)', () => {
+  const STEP = 1 / 60;
+  const samples = Array.from({ length: Math.round(TRAFFIC_CYCLE / STEP) }, (_, i) => {
+    const t = i * STEP;
+    return { t, ...trafficState(t) };
+  });
+
+  it('jamais de marche arrière : la vitesse reste entre 0 et la croisière', () => {
+    for (const sample of samples) {
+      expect(sample.speed).toBeGreaterThanOrEqual(0);
+      expect(sample.speed).toBeLessThanOrEqual(CRUISE_SPEED + 1e-9);
+    }
+    // Le feu ne recule jamais vers la voiture : sa distance ne fait que diminuer
+    for (let i = 1; i < samples.length; i += 1) {
+      expect(samples[i].lightDistance).toBeLessThanOrEqual(samples[i - 1].lightDistance + 1e-9);
+    }
+  });
+
+  it('la voiture s’arrête avant la ligne, au rouge, pied sur le frein', () => {
+    const stopped = samples.filter((sample) => sample.speed === 0);
+    expect(stopped.length).toBeGreaterThan(0);
+    for (const sample of stopped) {
+      expect(sample.lightDistance).toBeCloseTo(TRAFFIC.stopGap);
+      expect(sample.lightDistance).toBeGreaterThan(0);
+    }
+    // Rouge pendant tout l'arrêt ; seule la dernière image, celle du départ, est verte
+    for (const sample of stopped.slice(0, -1)) {
+      expect(sample.signal).toBe('red');
+      expect(sample.braking).toBe(1);
+    }
+    expect(stopped[stopped.length - 1].signal).toBe('green');
+    // Tant que la ligne n'est pas passée, la voiture n'y arrive jamais au rouge
+    for (const sample of samples) {
+      if (sample.signal !== 'green') expect(sample.lightDistance).toBeGreaterThan(0);
+    }
+  });
+
+  it('jamais de départ au rouge : la voiture n’accélère qu’au vert', () => {
+    for (let i = 1; i < samples.length; i += 1) {
+      if (samples[i].speed > samples[i - 1].speed + 1e-9) {
+        expect({ t: samples[i].t, signal: samples[i].signal }).toEqual({
+          t: samples[i].t,
+          signal: 'green',
+        });
+      }
+    }
+  });
+
+  it('les couleurs se suivent vert → orange → rouge → vert, une fois par cycle', () => {
+    const order = samples
+      .map((sample) => sample.signal)
+      .filter((signal, i, all) => i === 0 || signal !== all[i - 1]);
+    expect(order).toEqual(['green', 'orange', 'red', 'green']);
+  });
+
+  it('le cycle se répète sans à-coup, le feu hors champ au moment du raccord', () => {
+    const end = trafficState(TRAFFIC_CYCLE - 1e-6);
+    const start = trafficState(TRAFFIC_CYCLE);
+    expect(start.speed).toBeCloseTo(end.speed);
+    expect(start.speed).toBe(CRUISE_SPEED);
+    // Le feu apparaît derrière la caméra et disparaît dans le brouillard du fond
+    expect(start.lightDistance).toBeGreaterThan(18);
+    expect(end.lightDistance).toBeLessThan(-18);
+    expect(trafficState(TRAFFIC_CYCLE * 3 + 5)).toEqual(trafficState(5));
+  });
+
+  it('la caméra s’élargit quand le feu est proche, et seulement alors', () => {
+    expect(signalFocus(40)).toBe(0);
+    expect(signalFocus(-20)).toBe(0);
+    // Voiture arrêtée à la ligne : plan large complet
+    expect(signalFocus(TRAFFIC.stopGap)).toBe(1);
+    const far = cameraRig(0, 40);
+    const near = cameraRig(0, TRAFFIC.stopGap);
+    expect(near.distance).toBeGreaterThan(far.distance);
+    expect(near.lookY).toBeGreaterThan(far.lookY);
+    // Sans à-coup : le poids varie peu d'une image à l'autre sur tout le cycle
+    let previous = signalFocus(trafficState(0).lightDistance);
+    for (let t = 1 / 60; t < TRAFFIC_CYCLE; t += 1 / 60) {
+      const focus = signalFocus(trafficState(t).lightDistance);
+      expect(Math.abs(focus - previous)).toBeLessThan(0.05);
+      previous = focus;
+    }
+  });
+
+  it('la fin de l’arrivée enchaîne sur la croisière du cycle', () => {
+    expect(introState(INTRO_DURATION).groundSpeed).toBeCloseTo(trafficState(0).speed);
   });
 });
 

@@ -1,9 +1,10 @@
 /**
- * Scène d'accueil (13.10, D-52 ; rendu réaliste 13b.2, D-53) : la voiture de l'auto-école sort
- * de l'obscurité phares allumés, freine jusqu'à sa place (feux stop), puis « roule » sur place —
- * le marquage jaune et les lampadaires défilent, les roues tournent — pendant que la caméra
- * oscille lentement autour d'elle. De nuit en thème sombre (brouillard, faisceaux des phares),
- * de jour en thème clair.
+ * Scène d'accueil (13.10, D-52 ; rendu réaliste 13b.2, feu tricolore 13b.3, D-53) : la voiture
+ * de l'auto-école sort de l'obscurité phares allumés, freine jusqu'à sa place (feux stop), puis
+ * « roule » sur place — le marquage jaune et les lampadaires défilent, les roues tournent —
+ * pendant que la caméra oscille lentement autour d'elle. Ensuite, en boucle, un feu tricolore
+ * arrive : orange, rouge, la voiture s'arrête à la ligne, vert, elle repart (`trafficState`).
+ * De nuit en thème sombre (brouillard, faisceaux des phares), de jour en thème clair.
  *
  * Réalisme : la carrosserie vernie reflète un environnement calculé dans la scène (aucun
  * fichier HDR) ; une ombre de contact, texture dégradée construite en code, la pose au sol.
@@ -19,11 +20,16 @@ import * as THREE from 'three';
 import { GLTF, GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { MODELS, ModelKey } from './models';
+import { TrafficLight } from './TrafficLight';
 import {
   HomeCarPalette,
+  INTRO_DURATION,
+  TrafficState,
   brakeLevel,
+  cameraRig,
   introState,
   scrollOffset,
+  trafficState,
   wheelTurn,
 } from './homeCar';
 
@@ -296,6 +302,7 @@ export const HomeCarScene = ({ palette }: { palette: HomeCarPalette }) => {
   const travelled = useRef(0);
   const groundSpeed = useRef(0);
   const brake = useRef(0);
+  const traffic = useRef<TrafficState>(trafficState(0));
   const motion = useMemo<Motion>(() => ({ groundSpeed, brake }), []);
   const carGroup = useRef<THREE.Group>(null);
   const beamTarget = useMemo(() => {
@@ -307,17 +314,30 @@ export const HomeCarScene = ({ palette }: { palette: HomeCarPalette }) => {
   useFrame((state, delta) => {
     elapsed.current += delta;
     const intro = introState(elapsed.current);
-    // Feux stop lissés : une image lente ne doit pas les faire clignoter
-    const target = brakeLevel(groundSpeed.current, intro.groundSpeed, delta);
+    // Pendant l'arrivée, le feu attend hors champ (début de cycle) ; ensuite, il mène la danse
+    traffic.current = trafficState(intro.done ? elapsed.current - INTRO_DURATION : 0);
+    const scroll = intro.done ? traffic.current.speed : intro.speed;
+    const ground = intro.done ? traffic.current.speed : intro.groundSpeed;
+    // Feux stop lissés : une image lente ne doit pas les faire clignoter. Au rouge, la voiture
+    // arrêtée garde le pied sur le frein.
+    const target = Math.max(
+      brakeLevel(groundSpeed.current, ground, delta),
+      intro.done ? traffic.current.braking : 0
+    );
     brake.current += (target - brake.current) * Math.min(delta * 10, 1);
-    groundSpeed.current = intro.groundSpeed;
-    travelled.current += intro.speed * delta;
+    groundSpeed.current = ground;
+    travelled.current += scroll * delta;
     if (carGroup.current) carGroup.current.position.z = intro.carZ;
 
-    // Caméra : trois-quarts avant, qui oscille lentement autour de la voiture
-    const angle = 0.6 + Math.sin(elapsed.current * 0.2) * 0.45;
-    state.camera.position.set(Math.sin(angle) * 5.2, 1.7, Math.cos(angle) * 5.2);
-    state.camera.lookAt(0, 0.4, 0);
+    // Caméra : trois-quarts avant, qui oscille lentement autour de la voiture ; plan large
+    // quand le feu est proche, pour garder sa tête dans le cadre
+    const rig = cameraRig(elapsed.current, traffic.current.lightDistance);
+    state.camera.position.set(
+      Math.sin(rig.angle) * rig.distance,
+      rig.height,
+      Math.cos(rig.angle) * rig.distance
+    );
+    state.camera.lookAt(0, rig.lookY, 0);
   });
 
   const night = palette.mode === 'night';
@@ -340,6 +360,7 @@ export const HomeCarScene = ({ palette }: { palette: HomeCarPalette }) => {
         <LightPosts palette={palette} travelled={travelled} />
       </Suspense>
       <Dashes palette={palette} travelled={travelled} />
+      <TrafficLight palette={palette} state={traffic} noseZ={NOSE_Z} />
 
       <group ref={carGroup} position={[0, 0, -10]}>
         <ContactShadow palette={palette} />

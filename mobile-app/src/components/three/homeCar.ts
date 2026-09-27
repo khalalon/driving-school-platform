@@ -27,6 +27,16 @@ export interface HomeCarPalette {
   beam: string;
   taillight: string;
   post: string;
+  /** Feu tricolore (13b.3) : boîtier, feux allumés, feu éteint, ligne d'arrêt. */
+  signalHousing: string;
+  signalRed: string;
+  signalOrange: string;
+  signalGreen: string;
+  signalOff: string;
+  stopLine: string;
+  /** Intensité d'un feu allumé ; halo coloré qu'il projette sur la voiture. */
+  signalGlow: number;
+  signalHalo: number;
   /** Jantes polies, rétroviseurs. */
   chrome: string;
   /** Ombre de contact sous la voiture. */
@@ -67,6 +77,14 @@ export const homeCarPalette = (theme: Theme): HomeCarPalette => {
     beam: colors.signal,
     taillight: colors.danger,
     post: night ? colors.border : colors.borderStrong,
+    signalHousing: night ? colors.surfaceRaised : colors.textPrimary,
+    signalRed: colors.danger,
+    signalOrange: colors.warning,
+    signalGreen: colors.success,
+    signalOff: night ? colors.surfaceMuted : colors.textSecondary,
+    stopLine: night ? colors.textPrimary : colors.surfaceRaised,
+    signalGlow: night ? 2.6 : 1.4,
+    signalHalo: night ? 3 : 0.8,
     chrome: colors.textSecondary,
     shadow: theme.shadows.lg.shadowColor,
     shadowOpacity: night ? 0.8 : 0.45,
@@ -143,4 +161,118 @@ export const wheelTurn = (distance: number): number => distance / WHEEL_RADIUS;
 export const scrollOffset = (base: number, travelled: number, span: number): number => {
   const z = (base - travelled) % span;
   return z < 0 ? z + span : z;
+};
+
+/**
+ * Feu tricolore de l'accueil (13b.3, D-53). Après l'arrivée, la scène tourne en cycle :
+ * croisière, le feu passe à l'orange puis au rouge, la voiture freine et s'arrête juste avant la
+ * ligne, le rouge tient, le feu passe au vert, la voiture repart et le feu s'éloigne derrière
+ * elle, puis un nouveau feu arrive. Durées en secondes ; les distances en découlent.
+ */
+export const TRAFFIC = {
+  cruiseBefore: 4,
+  brake: 2,
+  stop: 2.5,
+  accelerate: 2.5,
+  cruiseAfter: 5,
+  /** Le feu passe à l'orange un peu avant le début du freinage… */
+  orangeLead: 0.6,
+  /** … et au rouge un peu après : la voiture freine déjà. */
+  redAfter: 0.8,
+  /** Écart entre le nez de la voiture arrêtée et la ligne d'arrêt. */
+  stopGap: 0.4,
+} as const;
+
+export const TRAFFIC_CYCLE =
+  TRAFFIC.cruiseBefore + TRAFFIC.brake + TRAFFIC.stop + TRAFFIC.accelerate + TRAFFIC.cruiseAfter;
+
+export type SignalColor = 'green' | 'orange' | 'red';
+
+export interface TrafficState {
+  /** Vitesse de la voiture sur la route (= vitesse de défilement du décor). */
+  speed: number;
+  /** Distance du nez de la voiture à la ligne d'arrêt ; négative une fois la ligne passée. */
+  lightDistance: number;
+  signal: SignalColor;
+  /** 1 pendant le freinage et à l'arrêt (pied sur le frein au rouge), 0 sinon. */
+  braking: number;
+}
+
+/** État du cycle `t` secondes après la fin de l'arrivée (le cycle se répète). */
+export const trafficState = (t: number): TrafficState => {
+  const V = CRUISE_SPEED;
+  const { cruiseBefore, brake, stop, accelerate, orangeLead, redAfter, stopGap } = TRAFFIC;
+  const brakeDistance = (V * brake) / 2;
+  const startDistance = stopGap + brakeDistance + V * cruiseBefore;
+  const u = ((t % TRAFFIC_CYCLE) + TRAFFIC_CYCLE) % TRAFFIC_CYCLE;
+
+  const endBrake = cruiseBefore + brake;
+  const endStop = endBrake + stop;
+  const endAccelerate = endStop + accelerate;
+  const stoppedAt = V * cruiseBefore + brakeDistance;
+
+  let speed: number;
+  let travelled: number;
+  if (u < cruiseBefore) {
+    speed = V;
+    travelled = V * u;
+  } else if (u < endBrake) {
+    const x = u - cruiseBefore;
+    speed = V * (1 - x / brake);
+    travelled = V * cruiseBefore + V * x - (V * x * x) / (2 * brake);
+  } else if (u < endStop) {
+    speed = 0;
+    travelled = stoppedAt;
+  } else if (u < endAccelerate) {
+    const x = u - endStop;
+    speed = (V * x) / accelerate;
+    travelled = stoppedAt + (V * x * x) / (2 * accelerate);
+  } else {
+    speed = V;
+    travelled = stoppedAt + (V * accelerate) / 2 + V * (u - endAccelerate);
+  }
+
+  let signal: SignalColor = 'green';
+  if (u >= cruiseBefore - orangeLead && u < cruiseBefore + redAfter) signal = 'orange';
+  else if (u >= cruiseBefore + redAfter && u < endStop) signal = 'red';
+
+  const braking = u >= cruiseBefore && u < endStop ? 1 : 0;
+  return { speed, lightDistance: startDistance - travelled, signal, braking };
+};
+
+const smoothstep = (edge0: number, edge1: number, x: number): number => {
+  const t = Math.min(Math.max((x - edge0) / (edge1 - edge0), 0), 1);
+  return t * t * (3 - 2 * t);
+};
+
+/**
+ * Poids du plan large (0 à 1) selon la distance du feu : la tête du feu, proche de la caméra
+ * quand la voiture s'arrête, sortirait du cadre par le haut. Le plan s'élargit pendant que le
+ * feu approche et revient une fois le feu passé derrière la voiture.
+ */
+export const signalFocus = (lightDistance: number): number =>
+  smoothstep(12, 6, lightDistance) * smoothstep(-10, -4, lightDistance);
+
+export interface CameraRig {
+  /** Angle autour de la voiture (0 = plein avant, vers +z ; positif = côté gauche de la voiture). */
+  angle: number;
+  distance: number;
+  height: number;
+  /** Hauteur du point visé sur l'axe de la voiture. */
+  lookY: number;
+}
+
+const CLOSE = { distance: 5.2, height: 1.7, lookY: 0.4 };
+const WIDE = { distance: 6.8, height: 2, lookY: 1 };
+
+/** Caméra de l'accueil : trois-quarts avant qui oscille lentement, élargie près du feu. */
+export const cameraRig = (elapsed: number, lightDistance: number): CameraRig => {
+  const focus = signalFocus(lightDistance);
+  const mix = (a: number, b: number) => a + (b - a) * focus;
+  return {
+    angle: 0.6 + Math.sin(elapsed * 0.2) * 0.45,
+    distance: mix(CLOSE.distance, WIDE.distance),
+    height: mix(CLOSE.height, WIDE.height),
+    lookY: mix(CLOSE.lookY, WIDE.lookY),
+  };
 };
