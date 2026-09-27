@@ -1,5 +1,8 @@
 /**
- * Accueil de l'instructeur — « Aujourd'hui » (D-45, 8.3), refondu sur le système (11.4).
+ * Accueil de l'instructeur — « Aujourd'hui » (maquette C, 13.17, D-52) : la leçon en cours ou la
+ * prochaine du jour en grande heure, les files d'attente en lignes de télémétrie cliquables, puis
+ * le planning, les examens et la charge de la semaine. Pas de 3D : c'est un outil de travail.
+ * Historique : « Aujourd'hui » (D-45, 8.3), refondu sur le système (11.4).
  * Single Responsibility: l'accueil de l'instructeur montre sa journée et ce qui l'attend.
  *
  * Bandeau des demandes (L1 `scope=school` pending, X1 pending, E4 pending), timeline du jour
@@ -47,10 +50,12 @@ import {
   initialsOf,
   toLocalDateKey,
 } from '../../utils/format';
-import { Theme } from '../../theme';
+import { Theme, textStyle } from '../../theme';
+import type { Language } from '../../i18n';
 import { MIN_TOUCH_TARGET } from '../../theme/tokens';
 import { IoniconName, mirrorIcon } from '../../utils/rtl';
 import { AttendanceModal } from './components/AttendanceModal';
+import { StatRow, TimeBlock } from '../../components/circuit';
 
 interface TodayData {
   today: Lesson[];
@@ -79,10 +84,10 @@ const weekLoad = (lessons: Lesson[], from: Date = new Date()) =>
   });
 
 export const InstructorDashboard = ({ navigation }: any) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { user } = useAuth();
   const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, language), [theme, language]);
   const schoolId = user?.schoolId ?? null;
   const [data, setData] = useState<TodayData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -161,81 +166,99 @@ export const InstructorDashboard = ({ navigation }: any) => {
     }
   };
 
-  /** Ce qui attend une réponse : une ligne par file, masquée quand elle est vide. */
+  /** Ce qui attend une réponse : les trois files, toujours visibles (un zéro est une information). */
   const renderRequests = (home: TodayData) => {
     const lessons = home.pendingLessons.length;
     const codes = home.pendingLessons.filter((l) => l.type === LessonType.CODE).length;
     const exams = home.exams.filter((e) => e.status === ExamStatus.PENDING).length;
     const enrollments = home.pendingEnrollments;
 
-    if (lessons + exams + enrollments === 0) {
-      return (
-        <Card style={styles.quiet} elevation="none">
-          <Ionicons name="checkmark-done" size={18} color={theme.colors.successText} />
-          <Text style={styles.quietText}>{t('today.noRequests')}</Text>
-        </Card>
-      );
-    }
+    return (
+      <Card testID="queues">
+        <SectionHeader title={t('today.queues')} style={styles.sectionHeader} />
+        <StatRow
+          label={t('today.queue.lessons')}
+          value={lessons}
+          emphasis={lessons > 0}
+          onPress={() => navigation.navigate('LessonRequests')}
+          testID="queue-lessons"
+        />
+        {codes >= 2 ? (
+          <Text style={styles.requestHint}>{t('today.codesTogether', { count: codes })}</Text>
+        ) : null}
+        <StatRow
+          label={t('today.queue.exams')}
+          value={exams}
+          emphasis={exams > 0}
+          onPress={() => navigation.navigate('ExamRequests')}
+          testID="queue-exams"
+        />
+        <StatRow
+          label={t('today.queue.enrollments')}
+          value={enrollments}
+          emphasis={enrollments > 0}
+          onPress={openEnrollmentRequests}
+          testID="queue-enrollments"
+        />
+        {lessons + exams + enrollments === 0 ? (
+          <View style={styles.quiet}>
+            <Ionicons name="checkmark-done" size={18} color={theme.colors.successText} />
+            <Text style={styles.quietText}>{t('today.noRequests')}</Text>
+          </View>
+        ) : null}
+      </Card>
+    );
+  };
 
-    const rows = [
-      lessons > 0 && {
-        key: 'lessons',
-        icon: 'time-outline' as IoniconName,
-        text:
-          lessons === 1
-            ? t('today.lessonRequestOne')
-            : t('today.lessonRequestMany', { count: lessons }),
-        hint: codes >= 2 ? t('today.codesTogether', { count: codes }) : null,
-        onPress: () => navigation.navigate('LessonRequests'),
-      },
-      exams > 0 && {
-        key: 'exams',
-        icon: 'ribbon-outline' as IoniconName,
-        text:
-          exams === 1 ? t('today.examRequestOne') : t('today.examRequestMany', { count: exams }),
-        hint: null,
-        onPress: () => navigation.navigate('ExamRequests'),
-      },
-      enrollments > 0 && {
-        key: 'enrollments',
-        icon: 'people-outline' as IoniconName,
-        text:
-          enrollments === 1
-            ? t('today.enrollmentRequestOne')
-            : t('today.enrollmentRequestMany', { count: enrollments }),
-        hint: null,
-        onPress: openEnrollmentRequests,
-      },
-    ].filter(Boolean) as {
-      key: string;
-      icon: IoniconName;
-      text: string;
-      hint: string | null;
-      onPress: () => void;
-    }[];
+  /** La leçon en cours, sinon la prochaine du jour : l'heure d'abord, lisible d'un coup d'œil. */
+  const renderFocus = (home: TodayData) => {
+    const lessons = [...home.today]
+      .filter((l) => l.status === LessonStatus.SCHEDULED && l.scheduledDate)
+      .sort((a, b) => (a.scheduledDate ?? '').localeCompare(b.scheduledDate ?? ''));
+    const current = pickCurrentLesson(lessons);
+    const focus =
+      current ??
+      lessons.find((l) => new Date(l.scheduledDate as string).getTime() > Date.now()) ??
+      null;
+    if (!focus) return null;
 
     return (
-      <Card style={styles.requests} padded={false}>
-        {rows.map((row) => (
-          <Pressable
-            key={row.key}
-            onPress={row.onPress}
-            accessibilityRole="button"
-            accessibilityLabel={row.text}
-            style={({ pressed }) => [styles.requestRow, pressed && styles.pressed]}
-          >
-            <Ionicons name={row.icon} size={20} color={theme.colors.warningText} />
-            <View style={styles.requestBody}>
-              <Text style={styles.requestText}>{row.text}</Text>
-              {row.hint ? <Text style={styles.requestHint}>{row.hint}</Text> : null}
-            </View>
-            <Ionicons
-              name={mirrorIcon('chevron-forward')}
-              size={18}
-              color={theme.colors.warningText}
+      <Card highlighted testID="focus-lesson">
+        <TimeBlock
+          kicker={current ? t('today.focus.now') : t('today.focus.next')}
+          time={formatTime(focus.scheduledDate)}
+          line={[
+            lessonTypeLabel(focus.type),
+            focus.durationMinutes ? t('format.minutes', { count: focus.durationMinutes }) : null,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+          trailing={
+            <Text style={styles.focusStudent} numberOfLines={2}>
+              {formatPersonName(focus.student, t('today.student'))}
+            </Text>
+          }
+        />
+        {current ? (
+          <View style={styles.attendanceRow}>
+            <Button
+              title={t('today.present')}
+              onPress={() => openAttendance(current, true)}
+              size="sm"
+              icon="checkmark-circle"
+              haptic="success"
+              style={styles.attendanceButton}
             />
-          </Pressable>
-        ))}
+            <Button
+              title={t('today.absent')}
+              onPress={() => openAttendance(current, false)}
+              variant="secondary"
+              size="sm"
+              icon="close-circle"
+              style={styles.attendanceButton}
+            />
+          </View>
+        ) : null}
       </Card>
     );
   };
@@ -502,6 +525,7 @@ export const InstructorDashboard = ({ navigation }: any) => {
     return (
       <>
         {error ? <Text style={styles.errorBanner}>{error}</Text> : null}
+        {renderFocus(data)}
         {renderRequests(data)}
         {renderTimeline(data)}
         {renderExams(data)}
@@ -556,41 +580,42 @@ export const InstructorDashboard = ({ navigation }: any) => {
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, language: Language) =>
   StyleSheet.create({
     flex: { flex: 1, backgroundColor: theme.colors.surface },
     content: { paddingTop: theme.spacing.base, gap: theme.spacing.base },
     sectionHeader: { marginBottom: theme.spacing.md },
     pressed: { opacity: 0.7 },
 
+    // Leçon en cours ou prochaine
+    focusStudent: {
+      ...textStyle('bodyStrong', language),
+      color: theme.colors.textPrimary,
+      textAlign: 'right',
+      maxWidth: 140,
+    },
+
     // Files d'attente
-    quiet: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
-    quietText: { fontSize: theme.typography.size.sm, color: theme.colors.successText },
-    requests: { backgroundColor: theme.colors.warningSoft, borderColor: theme.colors.warning },
-    requestRow: {
+    quiet: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: theme.spacing.md,
-      paddingHorizontal: theme.spacing.base,
-      paddingVertical: theme.spacing.md,
-      minHeight: MIN_TOUCH_TARGET,
+      gap: theme.spacing.sm,
+      marginTop: theme.spacing.sm,
     },
-    requestBody: { flex: 1, gap: 2 },
-    requestText: {
-      fontSize: theme.typography.size.sm,
-      fontWeight: theme.typography.weight.medium,
-      color: theme.colors.warningText,
-    },
-    requestHint: { fontSize: theme.typography.size.xs, color: theme.colors.warningText },
+    quietText: { ...textStyle('caption', language), color: theme.colors.successText },
+    requestHint: { ...textStyle('caption', language), color: theme.colors.textMuted },
 
     // Timeline du jour
     timelineRow: { flexDirection: 'row', gap: theme.spacing.sm },
     timeColumn: { width: 56, paddingTop: 2 },
-    time: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
-    timeCurrent: {
-      color: theme.colors.signalText,
-      fontWeight: theme.typography.weight.semibold,
+    time: {
+      ...textStyle('numeric', language),
+      fontSize: 18,
+      lineHeight: 22,
+      color: theme.colors.textSecondary,
     },
+    // Chiffres déjà en gras condensé : « maintenant » se marque par la couleur seule
+    timeCurrent: { color: theme.colors.signalText },
     rail: { width: 16, alignItems: 'center' },
     dot: { width: 12, height: 12, borderRadius: 6, marginTop: 5 },
     dotDone: { backgroundColor: theme.colors.success },
@@ -611,12 +636,11 @@ const createStyles = (theme: Theme) =>
       gap: theme.spacing.sm,
     },
     studentName: {
+      ...textStyle('bodyStrong', language),
       flexShrink: 1,
-      fontSize: theme.typography.size.base,
-      fontWeight: theme.typography.weight.semibold,
       color: theme.colors.textPrimary,
     },
-    lessonMeta: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    lessonMeta: { ...textStyle('caption', language), color: theme.colors.textSecondary },
     attendanceRow: { flexDirection: 'row', gap: theme.spacing.sm, marginTop: theme.spacing.xs },
     attendanceButton: { flex: 1 },
 
@@ -633,23 +657,26 @@ const createStyles = (theme: Theme) =>
     // Charge de la semaine
     weekRow: { flexDirection: 'row', gap: theme.spacing.xs, height: 120 },
     weekDay: { flex: 1, alignItems: 'center', gap: theme.spacing.xs },
-    weekCount: { fontSize: theme.typography.size.xs, color: theme.colors.textSecondary },
+    weekCount: {
+      ...textStyle('numeric', language),
+      fontSize: 14,
+      lineHeight: 18,
+      color: theme.colors.textSecondary,
+    },
     barTrack: { flex: 1, width: '60%', justifyContent: 'flex-end' },
+    // Barres porteuses d'information : couleurs à contraste vérifié (≥ 3:1) sur la carte
     bar: {
       width: '100%',
-      borderRadius: theme.radius.sm,
-      backgroundColor: theme.colors.signalSoft,
+      borderRadius: theme.radius.xs,
+      backgroundColor: theme.colors.telemetry,
     },
-    barToday: { backgroundColor: theme.colors.signal },
-    weekLabel: { fontSize: theme.typography.size.xs, color: theme.colors.textMuted },
-    weekLabelToday: {
-      color: theme.colors.signalText,
-      fontWeight: theme.typography.weight.semibold,
-    },
+    barToday: { backgroundColor: theme.colors.gauge },
+    weekLabel: { ...textStyle('label', language), fontSize: 11, color: theme.colors.textMuted },
+    weekLabelToday: { color: theme.colors.signalText },
 
     linksRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
     errorBanner: {
-      fontSize: theme.typography.size.sm,
+      ...textStyle('caption', language),
       color: theme.colors.dangerText,
       backgroundColor: theme.colors.dangerSoft,
       borderRadius: theme.radius.md,

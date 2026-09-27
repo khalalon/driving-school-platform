@@ -950,7 +950,7 @@ cd mobile-app && npx tsc --noEmit && npx jest --silent && test -z "$(grep -rnE "
 ```
 **Hors périmètre** : —
 
-### - [ ] 13.17 — Accueil instructeur refait
+### - [x] 13.17 — Accueil instructeur refait
 **Objectif** : `InstructorDashboard` dans le même langage : journée en cours (leçons du jour en `TimeBlock`, examens du jour), compteurs des files en attente (inscriptions, leçons, examens) en `StatRow` cliquables, accès « Mon école ». Pas de 3D côté instructeur : D-52 ne la prévoit que pour l'élève. Test de rendu clair / sombre / arabe.
 **Fichiers** : `mobile-app/src/screens/instructor/InstructorDashboard.tsx`, `mobile-app/src/screens/instructor/__tests__/*` (nouveau).
 **Critère de validation** :
