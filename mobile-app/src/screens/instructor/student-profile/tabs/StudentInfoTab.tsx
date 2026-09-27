@@ -22,13 +22,14 @@ import {
   SectionHeader,
   SkeletonCard,
 } from '../../../../components/ui';
-import { Theme } from '../../../../theme';
+import { Theme, textStyle } from '../../../../theme';
+import type { Language } from '../../../../i18n';
 
 export const StudentInfoTab = ({ route }: any) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { showToast } = useToast();
   const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, language), [theme, language]);
   const { studentId, schoolId } = route.params;
   const currency = useSchoolCurrency(schoolId);
 
@@ -265,23 +266,21 @@ export const StudentInfoTab = ({ route }: any) => {
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, language: Language) =>
   StyleSheet.create({
     content: { paddingTop: theme.spacing.base, gap: theme.spacing.md },
     empty: { flex: 1 },
     card: { gap: theme.spacing.sm },
     infoRow: { flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.md },
-    infoLabel: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    infoLabel: { ...textStyle('caption', language), color: theme.colors.textSecondary },
     infoValue: {
+      ...textStyle('caption', language),
       flexShrink: 1,
       textAlign: 'right',
-      fontSize: theme.typography.size.sm,
-      fontWeight: theme.typography.weight.medium,
       color: theme.colors.textPrimary,
     },
     money: {
-      fontSize: theme.typography.size.sm,
-      fontWeight: theme.typography.weight.semibold,
+      ...textStyle('label', language),
       color: theme.colors.textPrimary,
     },
     divider: {
@@ -300,14 +299,15 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.colors.surfaceMuted,
     },
     statValue: {
-      fontSize: theme.typography.size['2xl'],
-      fontWeight: theme.typography.weight.bold,
+      ...textStyle('numeric', language),
+      fontSize: 30,
+      lineHeight: 32,
       color: theme.colors.textPrimary,
     },
     statSuccess: { color: theme.colors.successText },
-    statLabel: { fontSize: theme.typography.size.xs, color: theme.colors.textSecondary },
-    notes: { fontSize: theme.typography.size.sm, color: theme.colors.textPrimary },
-    hint: { fontSize: theme.typography.size.xs, color: theme.colors.textMuted },
+    statLabel: { ...textStyle('caption', language), color: theme.colors.textSecondary },
+    notes: { ...textStyle('caption', language), color: theme.colors.textPrimary },
+    hint: { ...textStyle('caption', language), color: theme.colors.textMuted },
 
     overlay: {
       flex: 1,
@@ -317,8 +317,7 @@ const createStyles = (theme: Theme) =>
     },
     modal: { gap: theme.spacing.md },
     modalTitle: {
-      fontSize: theme.typography.size.lg,
-      fontWeight: theme.typography.weight.bold,
+      ...textStyle('heading', language),
       color: theme.colors.textPrimary,
     },
     notesInput: { minHeight: 140 },

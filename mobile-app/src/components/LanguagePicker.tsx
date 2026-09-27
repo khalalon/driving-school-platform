@@ -10,7 +10,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useI18n } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { LANGUAGES } from '../i18n';
-import { Theme } from '../theme';
+import { Theme, textStyle } from '../theme';
+import type { Language } from '../i18n';
 import { Chip } from './ui';
 
 interface LanguagePickerProps {
@@ -21,7 +22,7 @@ interface LanguagePickerProps {
 export const LanguagePicker = ({ compact = false }: LanguagePickerProps) => {
   const { language, setLanguage, t } = useI18n();
   const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, language), [theme, language]);
 
   return (
     <View style={compact ? styles.compactContainer : styles.container}>
@@ -46,7 +47,7 @@ export const LanguagePicker = ({ compact = false }: LanguagePickerProps) => {
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, language: Language) =>
   StyleSheet.create({
     container: {
       backgroundColor: theme.colors.surfaceRaised,
@@ -57,10 +58,9 @@ const createStyles = (theme: Theme) =>
     compactContainer: { alignItems: 'center' },
     titleRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
     title: {
-      fontSize: theme.typography.size.base,
-      fontWeight: theme.typography.weight.semibold,
+      ...textStyle('bodyStrong', language),
       color: theme.colors.textPrimary,
     },
     row: { flexDirection: 'row', gap: theme.spacing.sm },
-    hint: { fontSize: theme.typography.size.xs, color: theme.colors.textMuted },
+    hint: { ...textStyle('caption', language), color: theme.colors.textMuted },
   });

@@ -30,7 +30,8 @@ import {
   SkeletonCard,
   Tone,
 } from '../../../../components/ui';
-import { Theme } from '../../../../theme';
+import { Theme, textStyle } from '../../../../theme';
+import type { Language } from '../../../../i18n';
 import { IoniconName } from '../../../../utils/rtl';
 
 const resultTone = (result: string): Tone => {
@@ -56,10 +57,10 @@ const resultIcon = (result: string): IoniconName => {
 };
 
 export const StudentExamsTab = ({ route }: any) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { showToast } = useToast();
   const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, language), [theme, language]);
   const { studentId, schoolId } = route.params;
   const currency = useSchoolCurrency(schoolId);
 
@@ -284,7 +285,7 @@ export const StudentExamsTab = ({ route }: any) => {
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, language: Language) =>
   StyleSheet.create({
     flex: { flex: 1, backgroundColor: theme.colors.surface },
     skeletons: {
@@ -304,15 +305,14 @@ const createStyles = (theme: Theme) =>
     },
     typeRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, flex: 1 },
     type: {
+      ...textStyle('bodyStrong', language),
       flex: 1,
-      fontSize: theme.typography.size.base,
-      fontWeight: theme.typography.weight.semibold,
       color: theme.colors.textPrimary,
     },
     details: { gap: theme.spacing.xs },
     metaRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
-    meta: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
-    result: { fontSize: theme.typography.size.base, fontWeight: theme.typography.weight.semibold },
+    meta: { ...textStyle('caption', language), color: theme.colors.textSecondary },
+    result: { ...textStyle('bodyStrong', language) },
     quote: {
       backgroundColor: theme.colors.surfaceMuted,
       borderRadius: theme.radius.md,
@@ -320,12 +320,11 @@ const createStyles = (theme: Theme) =>
       gap: theme.spacing.xs,
     },
     quoteLabel: {
-      fontSize: theme.typography.size.xs,
-      fontWeight: theme.typography.weight.medium,
+      ...textStyle('caption', language),
       color: theme.colors.textMuted,
     },
-    quoteText: { fontSize: theme.typography.size.sm, color: theme.colors.textPrimary },
-    note: { fontSize: theme.typography.size.xs, color: theme.colors.textSecondary },
+    quoteText: { ...textStyle('caption', language), color: theme.colors.textPrimary },
+    note: { ...textStyle('caption', language), color: theme.colors.textSecondary },
 
     overlay: {
       flex: 1,
@@ -335,14 +334,12 @@ const createStyles = (theme: Theme) =>
     },
     modal: { gap: theme.spacing.md },
     modalTitle: {
-      fontSize: theme.typography.size.lg,
-      fontWeight: theme.typography.weight.bold,
+      ...textStyle('heading', language),
       color: theme.colors.textPrimary,
     },
     section: { gap: theme.spacing.sm },
     label: {
-      fontSize: theme.typography.size.sm,
-      fontWeight: theme.typography.weight.medium,
+      ...textStyle('label', language),
       color: theme.colors.textSecondary,
     },
     methods: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },

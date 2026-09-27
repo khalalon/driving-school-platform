@@ -17,8 +17,8 @@ import {
 import { LanguagePicker } from '../../components/LanguagePicker';
 import { AppBar, Button, Card, Chip, Screen } from '../../components/ui';
 import type { IoniconName } from '../../utils/rtl';
-import { Theme } from '../../theme';
-import type { TranslationKey } from '../../i18n';
+import { Theme, textStyle } from '../../theme';
+import type { Language, TranslationKey } from '../../i18n';
 
 const THEME_OPTIONS: Record<ThemePreference, { label: TranslationKey; icon: IoniconName }> = {
   dark: { label: 'settings.theme.dark', icon: 'moon-outline' },
@@ -27,12 +27,12 @@ const THEME_OPTIONS: Record<ThemePreference, { label: TranslationKey; icon: Ioni
 };
 
 export const SettingsScreen = ({ navigation }: any) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const theme = useTheme();
   const { preference, setPreference } = useThemePreference();
   const { user, logout } = useAuth();
   const [loggingOut, setLoggingOut] = useState(false);
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, language), [theme, language]);
 
   const handleLogout = async () => {
     setLoggingOut(true);
@@ -98,16 +98,15 @@ export const SettingsScreen = ({ navigation }: any) => {
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, language: Language) =>
   StyleSheet.create({
     flex: { flex: 1, backgroundColor: theme.colors.surface },
     content: { padding: theme.spacing.base, gap: theme.spacing.base },
     section: { gap: theme.spacing.md },
     sectionTitle: {
-      fontSize: theme.typography.size.base,
-      fontWeight: theme.typography.weight.semibold,
+      ...textStyle('bodyStrong', language),
       color: theme.colors.textPrimary,
     },
     row: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
-    hint: { fontSize: theme.typography.size.xs, color: theme.colors.textMuted },
+    hint: { ...textStyle('caption', language), color: theme.colors.textMuted },
   });

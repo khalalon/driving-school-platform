@@ -968,7 +968,7 @@ cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
 ```
 **Hors périmètre** : —
 
-### - [ ] 13.19 — Écrans instructeur (2/2) : journée, fiche élève, école
+### - [x] 13.19 — Écrans instructeur (2/2) : journée, fiche élève, école
 **Objectif** : `TodayLessonsScreen`, `TodayExamsScreen`, `StudentProfileScreen` et ses onglets, `MySchoolScreen` refaits. Test de rendu clair / sombre / arabe pour chacun. Après cette tâche, aucun code hexadécimal dans `src/screens`.
 **Fichiers** : ces écrans et `student-profile/tabs/*`, tests.
 **Critère de validation** :

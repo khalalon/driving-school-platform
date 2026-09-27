@@ -18,7 +18,8 @@ import { AppBar, Badge, Button, Card, Chip, EmptyState, SkeletonCard } from '../
 import { lessonTypeLabel, Lesson, LessonStatus, MarkAttendanceData } from '../../models/Lesson';
 import { TranslationKey } from '../../i18n';
 import { formatPersonName, formatTime, toLocalDateKey } from '../../utils/format';
-import { Theme } from '../../theme';
+import { Theme, textStyle } from '../../theme';
+import type { Language } from '../../i18n';
 import { AttendanceModal } from './components/AttendanceModal';
 
 type FilterType = 'upcoming' | 'completed';
@@ -29,10 +30,10 @@ const FILTERS: { key: FilterType; labelKey: TranslationKey }[] = [
 ];
 
 export const TodayLessonsScreen = ({ navigation }: any) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { showToast } = useToast();
   const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, language), [theme, language]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -224,7 +225,7 @@ export const TodayLessonsScreen = ({ navigation }: any) => {
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, language: Language) =>
   StyleSheet.create({
     flex: { flex: 1, backgroundColor: theme.colors.surface },
     filters: {
@@ -248,17 +249,17 @@ const createStyles = (theme: Theme) =>
       minWidth: 68,
     },
     time: {
-      fontSize: theme.typography.size.sm,
-      fontWeight: theme.typography.weight.semibold,
+      ...textStyle('numeric', language),
+      fontSize: 20,
+      lineHeight: 24,
       color: theme.colors.signalText,
     },
     info: { flex: 1, gap: 2 },
     student: {
-      fontSize: theme.typography.size.base,
-      fontWeight: theme.typography.weight.semibold,
+      ...textStyle('bodyStrong', language),
       color: theme.colors.textPrimary,
     },
     metaRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
-    meta: { flex: 1, fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
-    attendance: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    meta: { ...textStyle('caption', language), flex: 1, color: theme.colors.textSecondary },
+    attendance: { ...textStyle('caption', language), color: theme.colors.textSecondary },
   });

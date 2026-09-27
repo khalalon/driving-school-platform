@@ -12,12 +12,12 @@ import { StudentExamsTab } from './tabs/StudentExamsTab';
 import { useI18n } from '../../../context/LanguageContext';
 import { useTheme } from '../../../context/ThemeContext';
 import { AppBar } from '../../../components/ui';
-import { Theme } from '../../../theme';
+import { Theme, textStyle } from '../../../theme';
 
 const Tab = createMaterialTopTabNavigator();
 
 export const StudentProfileScreen = ({ route, navigation }: any) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { studentId, schoolId, studentName } = route.params;
@@ -28,21 +28,18 @@ export const StudentProfileScreen = ({ route, navigation }: any) => {
 
       <Tab.Navigator
         screenOptions={{
-          tabBarActiveTintColor: theme.colors.signal,
+          // `signalText` et non `signal` : le jaune pur serait illisible sur fond clair
+          tabBarActiveTintColor: theme.colors.signalText,
           tabBarInactiveTintColor: theme.colors.textSecondary,
-          tabBarLabelStyle: {
-            fontSize: theme.typography.size.sm,
-            fontWeight: theme.typography.weight.semibold,
-            textTransform: 'none',
-          },
+          tabBarLabelStyle: { ...textStyle('label', language), fontSize: 14 },
           tabBarStyle: {
-            backgroundColor: theme.colors.surfaceRaised,
+            backgroundColor: theme.colors.surface,
             elevation: 0,
             shadowOpacity: 0,
-            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderBottomWidth: 1,
             borderBottomColor: theme.colors.border,
           },
-          tabBarIndicatorStyle: { backgroundColor: theme.colors.signal, height: 3 },
+          tabBarIndicatorStyle: { backgroundColor: theme.colors.gauge, height: 3 },
         }}
       >
         <Tab.Screen

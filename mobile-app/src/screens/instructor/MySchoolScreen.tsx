@@ -31,17 +31,18 @@ import { getApiErrorMessage } from '../../services/api/ApiError';
 import { School, SchoolPricing } from '../../models/School';
 import { lessonTypeLabel, LESSON_TYPES, LessonType } from '../../models/Lesson';
 import { formatAmount } from '../../utils/format';
-import { Theme } from '../../theme';
+import { Theme, textStyle } from '../../theme';
+import type { Language } from '../../i18n';
 
 /** Devise : trois lettres, comme le backend l'exige (D-43). */
 const CURRENCY_PATTERN = /^[A-Za-z]{3}$/;
 const DEFAULT_DURATION_MINUTES = 60;
 
 export const MySchoolScreen = ({ navigation }: any) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { user } = useAuth();
   const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, language), [theme, language]);
   const { showToast } = useToast();
   const schoolId = user?.schoolId ?? null;
 
@@ -436,18 +437,17 @@ const InfoRow = ({
   </View>
 );
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, language: Language) =>
   StyleSheet.create({
     flex: { flex: 1, backgroundColor: theme.colors.surface },
     content: { paddingTop: theme.spacing.base, gap: theme.spacing.md },
     card: { gap: theme.spacing.sm },
     infoRow: { flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.md },
-    infoLabel: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    infoLabel: { ...textStyle('caption', language), color: theme.colors.textSecondary },
     infoValue: {
+      ...textStyle('caption', language),
       flexShrink: 1,
       textAlign: 'right',
-      fontSize: theme.typography.size.sm,
-      fontWeight: theme.typography.weight.medium,
       color: theme.colors.textPrimary,
     },
     actions: { flexDirection: 'row', gap: theme.spacing.md, marginTop: theme.spacing.sm },
@@ -459,12 +459,11 @@ const createStyles = (theme: Theme) =>
       gap: theme.spacing.sm,
     },
     label: {
-      fontSize: theme.typography.size.sm,
-      fontWeight: theme.typography.weight.medium,
+      ...textStyle('label', language),
       color: theme.colors.textSecondary,
     },
     types: { flexDirection: 'row', gap: theme.spacing.sm, flexWrap: 'wrap' },
-    warning: { fontSize: theme.typography.size.xs, color: theme.colors.warningText },
+    warning: { ...textStyle('caption', language), color: theme.colors.warningText },
     row: {
       paddingHorizontal: theme.spacing.base,
       borderBottomWidth: StyleSheet.hairlineWidth,

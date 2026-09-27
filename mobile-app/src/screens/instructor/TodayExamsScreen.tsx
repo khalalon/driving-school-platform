@@ -24,13 +24,14 @@ import {
   ExamType,
 } from '../../models/Exam';
 import { formatPersonName, formatTime, toLocalDateKey } from '../../utils/format';
-import { Theme } from '../../theme';
+import { Theme, textStyle } from '../../theme';
+import type { Language } from '../../i18n';
 
 export const TodayExamsScreen = ({ navigation }: any) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { showToast } = useToast();
   const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, language), [theme, language]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [exams, setExams] = useState<Exam[]>([]);
@@ -303,7 +304,7 @@ export const TodayExamsScreen = ({ navigation }: any) => {
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, language: Language) =>
   StyleSheet.create({
     flex: { flex: 1, backgroundColor: theme.colors.surface },
     skeletons: { padding: theme.spacing.base, gap: theme.spacing.md },
@@ -322,13 +323,12 @@ const createStyles = (theme: Theme) =>
     iconPractical: { backgroundColor: theme.colors.warningSoft },
     info: { flex: 1, gap: 2 },
     type: {
-      fontSize: theme.typography.size.base,
-      fontWeight: theme.typography.weight.semibold,
+      ...textStyle('bodyStrong', language),
       color: theme.colors.textPrimary,
     },
-    student: { fontSize: theme.typography.size.sm, color: theme.colors.textPrimary },
+    student: { ...textStyle('caption', language), color: theme.colors.textPrimary },
     metaRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
-    meta: { flex: 1, fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    meta: { ...textStyle('caption', language), flex: 1, color: theme.colors.textSecondary },
     score: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -338,13 +338,13 @@ const createStyles = (theme: Theme) =>
       padding: theme.spacing.md,
     },
     scoreLabel: {
-      fontSize: theme.typography.size.sm,
+      ...textStyle('caption', language),
       color: theme.colors.successText,
-      fontWeight: theme.typography.weight.medium,
     },
     scoreValue: {
-      fontSize: theme.typography.size.lg,
-      fontWeight: theme.typography.weight.bold,
+      ...textStyle('numeric', language),
+      fontSize: 28,
+      lineHeight: 30,
       color: theme.colors.successText,
     },
 
@@ -356,15 +356,13 @@ const createStyles = (theme: Theme) =>
     },
     modal: { gap: theme.spacing.md },
     modalTitle: {
-      fontSize: theme.typography.size.lg,
-      fontWeight: theme.typography.weight.bold,
+      ...textStyle('heading', language),
       color: theme.colors.textPrimary,
     },
-    modalSubtitle: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    modalSubtitle: { ...textStyle('caption', language), color: theme.colors.textSecondary },
     section: { gap: theme.spacing.sm },
     label: {
-      fontSize: theme.typography.size.sm,
-      fontWeight: theme.typography.weight.medium,
+      ...textStyle('label', language),
       color: theme.colors.textSecondary,
     },
     choices: { flexDirection: 'row', gap: theme.spacing.md },
