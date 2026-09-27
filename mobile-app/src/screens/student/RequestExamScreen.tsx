@@ -13,7 +13,8 @@ import { useI18n } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 import { AppBar, Button, Card, Chip, Field, Screen } from '../../components/ui';
 import { examTypeLabel, ExamType } from '../../models/Exam';
-import { Theme } from '../../theme';
+import { Theme, textStyle } from '../../theme';
+import type { Language } from '../../i18n';
 import { dateLocale } from '../../utils/format';
 
 /** Demain à 9 h : première date proposée, dans le futur (exigé par X2). */
@@ -25,9 +26,9 @@ const defaultPreferredDate = (): Date => {
 };
 
 export const RequestExamScreen = ({ navigation }: any) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, language), [theme, language]);
   const [loading, setLoading] = useState(false);
   const [examType, setExamType] = useState<ExamType>(ExamType.THEORY);
   const [date, setDate] = useState(defaultPreferredDate);
@@ -190,22 +191,20 @@ export const RequestExamScreen = ({ navigation }: any) => {
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, language: Language) =>
   StyleSheet.create({
     flex: { flex: 1, backgroundColor: theme.colors.surface },
     content: { paddingTop: theme.spacing.base, gap: theme.spacing.lg },
     info: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.md },
     infoBody: { flex: 1, gap: 2 },
     infoTitle: {
-      fontSize: theme.typography.size.sm,
-      fontWeight: theme.typography.weight.semibold,
+      ...textStyle('label', language),
       color: theme.colors.signalText,
     },
-    infoText: { fontSize: theme.typography.size.sm, color: theme.colors.signalText },
+    infoText: { ...textStyle('caption', language), color: theme.colors.signalText },
     section: { gap: theme.spacing.sm },
     label: {
-      fontSize: theme.typography.size.sm,
-      fontWeight: theme.typography.weight.medium,
+      ...textStyle('caption', language),
       color: theme.colors.textSecondary,
     },
     types: { flexDirection: 'row', gap: theme.spacing.sm, flexWrap: 'wrap' },
@@ -223,8 +222,8 @@ const createStyles = (theme: Theme) =>
     },
     grow: { flex: 1 },
     pressed: { opacity: 0.7 },
-    dateText: { fontSize: theme.typography.size.base, color: theme.colors.textPrimary },
-    helper: { fontSize: theme.typography.size.xs, color: theme.colors.textMuted },
+    dateText: { ...textStyle('body', language), color: theme.colors.textPrimary },
+    helper: { ...textStyle('caption', language), color: theme.colors.textMuted },
     message: { minHeight: 96 },
     submit: { marginTop: theme.spacing.sm },
   });

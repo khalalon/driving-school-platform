@@ -16,12 +16,13 @@ import { useI18n } from '../../../../context/LanguageContext';
 import { useTheme } from '../../../../context/ThemeContext';
 import { Badge, Card, EmptyState, SkeletonCard } from '../../../../components/ui';
 import { formatAmount, formatDate, formatDateTime } from '../../../../utils/format';
-import { Theme } from '../../../../theme';
+import { Theme, textStyle } from '../../../../theme';
+import type { Language } from '../../../../i18n';
 
 export const MyLessonsPaymentTab = ({ route }: any) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, language), [theme, language]);
   const { schoolId } = route.params;
   const currency = useSchoolCurrency(schoolId);
   const [loading, setLoading] = useState(true);
@@ -186,7 +187,7 @@ export const MyLessonsPaymentTab = ({ route }: any) => {
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, language: Language) =>
   StyleSheet.create({
     flex: { flex: 1, backgroundColor: theme.colors.surface },
     skeletons: {
@@ -201,14 +202,13 @@ const createStyles = (theme: Theme) =>
     head: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm },
     info: { flex: 1, gap: 2 },
     type: {
-      fontSize: theme.typography.size.base,
-      fontWeight: theme.typography.weight.semibold,
+      ...textStyle('bodyStrong', language),
       color: theme.colors.textPrimary,
     },
-    date: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    date: { ...textStyle('caption', language), color: theme.colors.textSecondary },
     details: { gap: theme.spacing.xs },
     metaRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
-    meta: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    meta: { ...textStyle('caption', language), color: theme.colors.textSecondary },
     quote: {
       backgroundColor: theme.colors.surfaceMuted,
       borderRadius: theme.radius.md,
@@ -216,11 +216,10 @@ const createStyles = (theme: Theme) =>
       gap: theme.spacing.xs,
     },
     quoteLabel: {
-      fontSize: theme.typography.size.xs,
-      fontWeight: theme.typography.weight.medium,
+      ...textStyle('caption', language),
       color: theme.colors.textMuted,
     },
-    quoteText: { fontSize: theme.typography.size.sm, color: theme.colors.textPrimary },
+    quoteText: { ...textStyle('caption', language), color: theme.colors.textPrimary },
     rating: { flexDirection: 'row', gap: 2 },
     payment: {
       paddingTop: theme.spacing.sm,
@@ -236,13 +235,11 @@ const createStyles = (theme: Theme) =>
     },
     paymentLabel: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
     paymentLabelText: {
-      fontSize: theme.typography.size.sm,
-      fontWeight: theme.typography.weight.medium,
+      ...textStyle('caption', language),
       color: theme.colors.textPrimary,
     },
     amount: {
-      fontSize: theme.typography.size.base,
-      fontWeight: theme.typography.weight.semibold,
-    },
-    note: { fontSize: theme.typography.size.xs, color: theme.colors.textSecondary },
+    ...textStyle('bodyStrong', language),
+  },
+    note: { ...textStyle('caption', language), color: theme.colors.textSecondary },
   });

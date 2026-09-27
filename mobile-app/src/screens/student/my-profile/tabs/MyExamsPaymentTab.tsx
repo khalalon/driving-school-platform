@@ -15,7 +15,8 @@ import { useI18n } from '../../../../context/LanguageContext';
 import { useTheme } from '../../../../context/ThemeContext';
 import { Badge, Card, EmptyState, SkeletonCard, Tone } from '../../../../components/ui';
 import { formatAmount, formatDate, formatDateTime } from '../../../../utils/format';
-import { Theme } from '../../../../theme';
+import { Theme, textStyle } from '../../../../theme';
+import type { Language } from '../../../../i18n';
 import { IoniconName } from '../../../../utils/rtl';
 
 const resultTone = (result: string): Tone => {
@@ -41,9 +42,9 @@ const resultIcon = (result: string): IoniconName => {
 };
 
 export const MyExamsPaymentTab = ({ route }: any) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, language), [theme, language]);
   const { schoolId } = route.params;
   const currency = useSchoolCurrency(schoolId);
   const [loading, setLoading] = useState(true);
@@ -165,7 +166,7 @@ export const MyExamsPaymentTab = ({ route }: any) => {
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, language: Language) =>
   StyleSheet.create({
     flex: { flex: 1, backgroundColor: theme.colors.surface },
     skeletons: {
@@ -179,18 +180,16 @@ const createStyles = (theme: Theme) =>
     card: { gap: theme.spacing.sm },
     info: { gap: 2 },
     type: {
-      fontSize: theme.typography.size.base,
-      fontWeight: theme.typography.weight.semibold,
+      ...textStyle('bodyStrong', language),
       color: theme.colors.textPrimary,
     },
-    date: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    date: { ...textStyle('caption', language), color: theme.colors.textSecondary },
     result: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md },
     resultBody: { flex: 1, gap: 2 },
     resultText: {
-      fontSize: theme.typography.size.base,
-      fontWeight: theme.typography.weight.semibold,
-    },
-    score: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    ...textStyle('bodyStrong', language),
+  },
+    score: { ...textStyle('caption', language), color: theme.colors.textSecondary },
     quote: {
       backgroundColor: theme.colors.surfaceMuted,
       borderRadius: theme.radius.md,
@@ -198,11 +197,10 @@ const createStyles = (theme: Theme) =>
       gap: theme.spacing.xs,
     },
     quoteLabel: {
-      fontSize: theme.typography.size.xs,
-      fontWeight: theme.typography.weight.medium,
+      ...textStyle('caption', language),
       color: theme.colors.textMuted,
     },
-    quoteText: { fontSize: theme.typography.size.sm, color: theme.colors.textPrimary },
+    quoteText: { ...textStyle('caption', language), color: theme.colors.textPrimary },
     payment: {
       paddingTop: theme.spacing.sm,
       borderTopWidth: StyleSheet.hairlineWidth,
@@ -217,9 +215,8 @@ const createStyles = (theme: Theme) =>
     },
     paymentLabel: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
     paymentLabelText: {
-      fontSize: theme.typography.size.sm,
-      fontWeight: theme.typography.weight.medium,
+      ...textStyle('caption', language),
       color: theme.colors.textPrimary,
     },
-    note: { fontSize: theme.typography.size.xs, color: theme.colors.textSecondary },
+    note: { ...textStyle('caption', language), color: theme.colors.textSecondary },
   });

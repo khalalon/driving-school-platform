@@ -161,7 +161,8 @@ describe('navigation', () => {
         typeof node.props?.onPress === 'function' &&
         String(node.props?.accessibilityLabel ?? '') === t('school.pricing')
     )[0];
-    if (tab) act(() => tab.props.onPress());
+    expect(tab).toBeDefined();
+    act(() => tab.props.onPress());
     expect(renderedText(tree).join(' ')).toMatch(/45/);
     unmountInTheme(tree);
   });

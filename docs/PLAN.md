@@ -941,7 +941,7 @@ cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
 ```
 **Hors périmètre** : —
 
-### - [ ] 13.16 — Écrans élève (2/2) : leçons, examens, profil
+### - [x] 13.16 — Écrans élève (2/2) : leçons, examens, profil
 **Objectif** : `BookLessonScreen`, `MyLessonsScreen`, `RequestExamScreen`, `MyExamsScreen` (libellés par type conservés, D-42), `MyProfileScreen` et ses onglets refaits. Test de rendu clair / sombre / arabe pour chacun. Après cette tâche, aucun code hexadécimal dans `src/screens/student`.
 **Fichiers** : ces écrans et `my-profile/tabs/*`, tests.
 **Critère de validation** :

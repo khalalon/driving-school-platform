@@ -21,13 +21,13 @@ import { AppBar, EmptyState, SkeletonCard } from '../../../components/ui';
 import { enrollmentService } from '../../../services/api/EnrollmentService';
 import { getApiErrorMessage } from '../../../services/api/ApiError';
 import { EnrollmentStatus } from '../../../models/Enrollment';
-import { Theme } from '../../../theme';
+import { Theme, textStyle } from '../../../theme';
 import { initialsOf } from '../../../utils/format';
 
 const Tab = createMaterialTopTabNavigator();
 
 export const MyProfileScreen = ({ route, navigation }: any) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const theme = useTheme();
   const { user } = useAuth();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -91,21 +91,18 @@ export const MyProfileScreen = ({ route, navigation }: any) => {
       <Tab.Navigator
         key={schoolId}
         screenOptions={{
-          tabBarActiveTintColor: theme.colors.signal,
+          // `signalText` et non `signal` : le jaune pur serait illisible sur fond clair
+          tabBarActiveTintColor: theme.colors.signalText,
           tabBarInactiveTintColor: theme.colors.textSecondary,
-          tabBarLabelStyle: {
-            fontSize: theme.typography.size.sm,
-            fontWeight: theme.typography.weight.semibold,
-            textTransform: 'none',
-          },
+          tabBarLabelStyle: { ...textStyle('label', language), fontSize: 14 },
           tabBarStyle: {
-            backgroundColor: theme.colors.surfaceRaised,
+            backgroundColor: theme.colors.surface,
             elevation: 0,
             shadowOpacity: 0,
-            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderBottomWidth: 1,
             borderBottomColor: theme.colors.border,
           },
-          tabBarIndicatorStyle: { backgroundColor: theme.colors.signal, height: 3 },
+          tabBarIndicatorStyle: { backgroundColor: theme.colors.gauge, height: 3 },
         }}
       >
         <Tab.Screen

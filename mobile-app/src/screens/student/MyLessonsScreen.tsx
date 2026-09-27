@@ -37,7 +37,8 @@ import {
 } from '../../components/ui';
 import { TranslationKey } from '../../i18n';
 import { dateLocale, formatAmount, formatPersonName, formatTime } from '../../utils/format';
-import { Theme } from '../../theme';
+import { Theme, textStyle } from '../../theme';
+import type { Language } from '../../i18n';
 
 type FilterType = 'pending' | 'upcoming' | 'completed' | 'closed';
 
@@ -74,10 +75,10 @@ const lessonDateOf = (lesson: Lesson): Date | null => {
 };
 
 export const MyLessonsScreen = ({ navigation }: any) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { showToast } = useToast();
   const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, language), [theme, language]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -326,7 +327,7 @@ export const MyLessonsScreen = ({ navigation }: any) => {
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, language: Language) =>
   StyleSheet.create({
     flex: { flex: 1, backgroundColor: theme.colors.surface },
     filters: {
@@ -349,32 +350,30 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
     },
     dateMonth: {
-      fontSize: theme.typography.size.xs,
-      fontWeight: theme.typography.weight.semibold,
+      ...textStyle('label', language),
       color: theme.colors.signalText,
       textTransform: 'uppercase',
     },
     dateDay: {
-      fontSize: theme.typography.size.xl,
-      fontWeight: theme.typography.weight.bold,
+      ...textStyle('numeric', language),
+      fontSize: 22,
+      lineHeight: 24,
       color: theme.colors.signalText,
     },
     info: { flex: 1, gap: 2 },
     type: {
-      fontSize: theme.typography.size.base,
-      fontWeight: theme.typography.weight.semibold,
+      ...textStyle('bodyStrong', language),
       color: theme.colors.textPrimary,
     },
     metaRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
-    meta: { flex: 1, fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    meta: { ...textStyle('caption', language), flex: 1, color: theme.colors.textSecondary },
     priceRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
     price: {
+      ...textStyle('body', language),
       flex: 1,
-      fontSize: theme.typography.size.base,
-      fontWeight: theme.typography.weight.medium,
       color: theme.colors.textPrimary,
     },
-    note: { fontSize: theme.typography.size.sm, color: theme.colors.successText },
+    note: { ...textStyle('caption', language), color: theme.colors.successText },
     reason: {
       flexDirection: 'row',
       gap: theme.spacing.sm,
@@ -382,6 +381,6 @@ const createStyles = (theme: Theme) =>
       borderRadius: theme.radius.md,
       padding: theme.spacing.md,
     },
-    reasonText: { flex: 1, fontSize: theme.typography.size.sm, color: theme.colors.dangerText },
-    hint: { fontSize: theme.typography.size.xs, color: theme.colors.textMuted },
+    reasonText: { ...textStyle('caption', language), flex: 1, color: theme.colors.dangerText },
+    hint: { ...textStyle('caption', language), color: theme.colors.textMuted },
   });

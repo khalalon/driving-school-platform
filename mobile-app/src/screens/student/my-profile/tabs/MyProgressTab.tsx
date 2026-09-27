@@ -14,13 +14,14 @@ import { useI18n } from '../../../../context/LanguageContext';
 import { useTheme } from '../../../../context/ThemeContext';
 import { Card, EmptyState, Screen, SectionHeader, SkeletonCard } from '../../../../components/ui';
 import { formatAmount, formatDate, formatPersonName } from '../../../../utils/format';
-import { Theme } from '../../../../theme';
+import { Theme, textStyle } from '../../../../theme';
+import type { Language } from '../../../../i18n';
 import { IoniconName } from '../../../../utils/rtl';
 
 export const MyProgressTab = ({ route }: any) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, language), [theme, language]);
   const { schoolId } = route.params;
   const currency = useSchoolCurrency(schoolId);
   const [loading, setLoading] = useState(true);
@@ -193,24 +194,22 @@ export const MyProgressTab = ({ route }: any) => {
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, language: Language) =>
   StyleSheet.create({
     content: { paddingTop: theme.spacing.base, gap: theme.spacing.md },
     empty: { flex: 1 },
     card: { gap: theme.spacing.sm },
     infoRow: { flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.md },
-    infoLabel: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    infoLabel: { ...textStyle('caption', language), color: theme.colors.textSecondary },
     infoValue: {
+      ...textStyle('caption', language),
       flexShrink: 1,
       textAlign: 'right',
-      fontSize: theme.typography.size.sm,
-      fontWeight: theme.typography.weight.medium,
       color: theme.colors.textPrimary,
     },
     progress: { gap: theme.spacing.xs },
     progressLabel: {
-      fontSize: theme.typography.size.sm,
-      fontWeight: theme.typography.weight.medium,
+      ...textStyle('caption', language),
       color: theme.colors.textPrimary,
     },
     track: {
@@ -222,7 +221,7 @@ const createStyles = (theme: Theme) =>
     fill: { height: '100%', borderRadius: theme.radius.pill },
     fillAccent: { backgroundColor: theme.colors.signal },
     fillSuccess: { backgroundColor: theme.colors.success },
-    progressText: { fontSize: theme.typography.size.xs, color: theme.colors.textSecondary },
+    progressText: { ...textStyle('caption', language), color: theme.colors.textSecondary },
     moneyRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -232,12 +231,11 @@ const createStyles = (theme: Theme) =>
       borderBottomColor: theme.colors.border,
     },
     moneyLabel: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
-    moneyLabelText: { fontSize: theme.typography.size.sm, color: theme.colors.textPrimary },
+    moneyLabelText: { ...textStyle('caption', language), color: theme.colors.textPrimary },
     moneyAmount: {
-      fontSize: theme.typography.size.base,
-      fontWeight: theme.typography.weight.semibold,
-    },
-    hint: { fontSize: theme.typography.size.xs, color: theme.colors.textMuted },
+    ...textStyle('bodyStrong', language),
+  },
+    hint: { ...textStyle('caption', language), color: theme.colors.textMuted },
     lastPayment: {
       flexDirection: 'row',
       justifyContent: 'space-between',

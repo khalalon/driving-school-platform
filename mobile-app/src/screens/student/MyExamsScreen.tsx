@@ -29,7 +29,8 @@ import { useTheme } from '../../context/ThemeContext';
 import { AppBar, Badge, Card, Chip, EmptyState, SkeletonCard, Tone } from '../../components/ui';
 import { TranslationKey } from '../../i18n';
 import { formatAmount, formatDate, formatTime } from '../../utils/format';
-import { Theme } from '../../theme';
+import { Theme, textStyle } from '../../theme';
+import type { Language } from '../../i18n';
 
 type FilterType = 'pending' | 'scheduled' | 'completed' | 'closed';
 
@@ -59,9 +60,9 @@ const statusTone = (status: ExamStatus): Tone => {
 };
 
 export const MyExamsScreen = ({ navigation }: any) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, language), [theme, language]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [exams, setExams] = useState<Exam[]>([]);
@@ -284,7 +285,7 @@ export const MyExamsScreen = ({ navigation }: any) => {
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, language: Language) =>
   StyleSheet.create({
     flex: { flex: 1, backgroundColor: theme.colors.surface },
     filters: {
@@ -310,15 +311,14 @@ const createStyles = (theme: Theme) =>
     iconPractical: { backgroundColor: theme.colors.warningSoft },
     info: { flex: 1, gap: theme.spacing.xs, alignItems: 'flex-start' },
     type: {
-      fontSize: theme.typography.size.base,
-      fontWeight: theme.typography.weight.semibold,
+      ...textStyle('bodyStrong', language),
       color: theme.colors.textPrimary,
     },
     block: { gap: theme.spacing.sm },
     metaRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
-    metaLabel: { fontSize: theme.typography.size.sm, color: theme.colors.textMuted },
-    meta: { flex: 1, fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
-    hint: { fontSize: theme.typography.size.xs, color: theme.colors.textMuted },
+    metaLabel: { ...textStyle('caption', language), color: theme.colors.textMuted },
+    meta: { ...textStyle('caption', language), flex: 1, color: theme.colors.textSecondary },
+    hint: { ...textStyle('caption', language), color: theme.colors.textMuted },
     quote: {
       backgroundColor: theme.colors.surfaceMuted,
       borderRadius: theme.radius.md,
@@ -326,11 +326,10 @@ const createStyles = (theme: Theme) =>
       gap: theme.spacing.xs,
     },
     quoteLabel: {
-      fontSize: theme.typography.size.xs,
+      ...textStyle('caption', language),
       color: theme.colors.textMuted,
-      fontWeight: theme.typography.weight.medium,
     },
-    quoteText: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    quoteText: { ...textStyle('caption', language), color: theme.colors.textSecondary },
     score: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -340,13 +339,13 @@ const createStyles = (theme: Theme) =>
       padding: theme.spacing.md,
     },
     scoreLabel: {
-      fontSize: theme.typography.size.sm,
+      ...textStyle('caption', language),
       color: theme.colors.successText,
-      fontWeight: theme.typography.weight.medium,
     },
     scoreValue: {
-      fontSize: theme.typography.size.lg,
-      fontWeight: theme.typography.weight.bold,
+      ...textStyle('numeric', language),
+      fontSize: 28,
+      lineHeight: 30,
       color: theme.colors.successText,
     },
     reason: {
@@ -358,17 +357,15 @@ const createStyles = (theme: Theme) =>
     },
     reasonBody: { flex: 1, gap: 2 },
     reasonLabel: {
-      fontSize: theme.typography.size.sm,
-      fontWeight: theme.typography.weight.semibold,
+      ...textStyle('label', language),
       color: theme.colors.dangerText,
     },
-    reasonText: { fontSize: theme.typography.size.sm, color: theme.colors.dangerText },
-    reasonHint: { fontSize: theme.typography.size.xs, color: theme.colors.dangerText },
+    reasonText: { ...textStyle('caption', language), color: theme.colors.dangerText },
+    reasonHint: { ...textStyle('caption', language), color: theme.colors.dangerText },
     paymentRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
     payment: {
+      ...textStyle('body', language),
       flex: 1,
-      fontSize: theme.typography.size.base,
-      fontWeight: theme.typography.weight.medium,
       color: theme.colors.textPrimary,
     },
   });

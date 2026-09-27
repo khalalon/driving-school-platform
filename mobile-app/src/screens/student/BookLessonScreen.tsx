@@ -15,7 +15,8 @@ import { useI18n } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 import { AppBar, Button, Card, Chip, Field, Screen, SkeletonCard } from '../../components/ui';
 import { lessonTypeLabel, LESSON_TYPES, LessonType } from '../../models/Lesson';
-import { Theme } from '../../theme';
+import { Theme, textStyle } from '../../theme';
+import type { Language } from '../../i18n';
 import { IoniconName } from '../../utils/rtl';
 import { dateLocale } from '../../utils/format';
 
@@ -34,9 +35,9 @@ const defaultRequestedDate = (): Date => {
 };
 
 export const BookLessonScreen = ({ navigation, route }: any) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, language), [theme, language]);
   const { schoolId, preferredInstructorId, instructorName } = route.params;
 
   const [loading, setLoading] = useState(false);
@@ -278,22 +279,20 @@ export const BookLessonScreen = ({ navigation, route }: any) => {
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, language: Language) =>
   StyleSheet.create({
     flex: { flex: 1, backgroundColor: theme.colors.surface },
     content: { paddingTop: theme.spacing.base, gap: theme.spacing.lg },
     info: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.md },
     infoBody: { flex: 1, gap: 2 },
     infoTitle: {
-      fontSize: theme.typography.size.sm,
-      fontWeight: theme.typography.weight.semibold,
+      ...textStyle('label', language),
       color: theme.colors.signalText,
     },
-    infoText: { fontSize: theme.typography.size.sm, color: theme.colors.signalText },
+    infoText: { ...textStyle('caption', language), color: theme.colors.signalText },
     section: { gap: theme.spacing.sm },
     label: {
-      fontSize: theme.typography.size.sm,
-      fontWeight: theme.typography.weight.medium,
+      ...textStyle('caption', language),
       color: theme.colors.textSecondary,
     },
     types: { flexDirection: 'row', gap: theme.spacing.sm, flexWrap: 'wrap' },
@@ -311,8 +310,8 @@ const createStyles = (theme: Theme) =>
     },
     grow: { flex: 1 },
     pressed: { opacity: 0.7 },
-    dateText: { fontSize: theme.typography.size.base, color: theme.colors.textPrimary },
-    helper: { fontSize: theme.typography.size.xs, color: theme.colors.textMuted },
+    dateText: { ...textStyle('body', language), color: theme.colors.textPrimary },
+    helper: { ...textStyle('caption', language), color: theme.colors.textMuted },
     instructorCard: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md },
     instructorIcon: {
       width: 40,
@@ -324,8 +323,7 @@ const createStyles = (theme: Theme) =>
     },
     instructorBody: { flex: 1, gap: 2 },
     instructorName: {
-      fontSize: theme.typography.size.base,
-      fontWeight: theme.typography.weight.medium,
+      ...textStyle('body', language),
       color: theme.colors.textPrimary,
     },
     notes: { minHeight: 96 },
