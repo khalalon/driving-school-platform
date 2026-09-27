@@ -68,9 +68,12 @@ describe('arrivée de la voiture', () => {
     expect(easeOutCubic(0.9) - easeOutCubic(0.8)).toBeLessThan(easeOutCubic(0.2) - easeOutCubic(0.1));
   });
 
-  it('le décor défile en boucle sans sortir de sa plage', () => {
+  it('le décor défile vers l’arrière de la voiture (-z), en boucle sans sortir de sa plage', () => {
     expect(scrollOffset(2, 0, 24)).toBe(2);
-    expect(scrollOffset(2, 23, 24)).toBe(1);
+    // La voiture avance vers +z : un tiret devant elle se rapproche puis passe derrière
+    expect(scrollOffset(2, 1, 24)).toBe(1);
+    expect(scrollOffset(2, 3, 24)).toBe(23);
+    expect(scrollOffset(10, 0.5, 24)).toBeLessThan(10);
     expect(scrollOffset(22, 100, 24)).toBeGreaterThanOrEqual(0);
     expect(scrollOffset(22, 100, 24)).toBeLessThan(24);
   });

@@ -83,8 +83,12 @@ export const introState = (elapsed: number): { carZ: number; speed: number; done
   return { carZ, speed, done: progress >= 1 };
 };
 
-/** Décalage d'un élément répété (tirets, lampadaires) qui défile en boucle sur `span` unités. */
+/**
+ * Décalage d'un élément répété (tirets, lampadaires) qui défile en boucle sur `span` unités.
+ * La voiture regarde vers +z (roues avant du modèle à z > 0) : quand elle avance, le décor
+ * doit glisser vers -z, de l'avant vers l'arrière — sinon elle semble rouler en marche arrière.
+ */
 export const scrollOffset = (base: number, travelled: number, span: number): number => {
-  const z = (base + travelled) % span;
+  const z = (base - travelled) % span;
   return z < 0 ? z + span : z;
 };
