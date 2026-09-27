@@ -1,8 +1,12 @@
 /**
- * Parcours 3D (13.11, D-52) : le circuit ovale vu du ciel, un secteur par étape (ordre D-45).
- * Fait → jaune signal, en cours → turquoise qui pulse doucement, à venir → piste éteinte.
- * La voiture de l'auto-école roule sur le secteur en cours ; des cônes balisent Manœuvre et
- * Parc. Toucher un secteur appelle `onSelect` (détail de l'étape, sous la scène).
+ * Parcours 3D (13.11, D-52 ; caméra qui suit la voiture 13b.5, D-53) : le circuit ovale vu du
+ * ciel, un secteur par étape (ordre D-45). Fait → jaune signal, en cours → turquoise qui pulse
+ * doucement, à venir → piste éteinte. Des cônes balisent Manœuvre et Parc.
+ *
+ * À l'ouverture, la voiture de l'auto-école part de la ligne de départ et roule jusqu'au
+ * secteur en cours, roues qui tournent, pendant que la caméra la suit ; puis la caméra remonte
+ * en vue d'ensemble. Choisir une étape (sur la barre de secteurs ou en touchant la piste,
+ * `onSelect`) fait glisser la caméra au-dessus de son secteur (`focusKey`).
  *
  * Se monte dans `Scene3D` (repli : la `SectorBar`, toujours visible sous la scène). Les couleurs
  * arrivent en propriétés : le `Canvas` ne voit pas le thème.
@@ -15,11 +19,19 @@ import { GLTF, GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MODELS, ModelKey } from './models';
 import {
   JourneyTrackPalette,
+  PERIMETER,
   TRACK,
+  driveU,
+  journeyCamera,
+  parkingU,
   sectorRange,
   stadiumHeading,
   stadiumPoint,
 } from './journeyTrack';
+import { WHEEL_RADIUS } from './homeCar';
+
+/** La voiture réaliste (2,6 unités de long) ramenée à l'échelle de la piste (0,94 de long). */
+const CAR_SCALE = 0.36;
 import type { SectorState } from '../circuit/SectorBar';
 
 const useModel = (key: ModelKey): GLTF => useLoader(GLTFLoader, MODELS[key] as string) as GLTF;
@@ -102,18 +114,36 @@ const SectorMesh = ({
   );
 };
 
-/** Voiture qui roule en boucle sur le secteur en cours. */
-const Car = ({ sectorIndex, count, palette }: { sectorIndex: number; count: number; palette: JourneyTrackPalette }) => {
-  const gltf = useModel('sedan');
+/** Voiture qui roule de la ligne de départ jusqu'à sa place (`elapsed` partagé avec la caméra). */
+const Car = ({
+  target,
+  elapsed,
+  palette,
+}: {
+  target: number;
+  elapsed: React.MutableRefObject<number>;
+  palette: JourneyTrackPalette;
+}) => {
+  const gltf = useModel('car');
   const car = useMemo(() => {
     const root = gltf.scene.clone(true);
-    root.scale.setScalar(0.32);
+    root.scale.setScalar(CAR_SCALE);
+    const tint: Record<string, string> = {
+      paint: palette.car,
+      paintAccent: palette.glass,
+      glass: palette.glass,
+      tyre: palette.glass,
+      rim: palette.glass,
+      trim: palette.glass,
+      chrome: palette.chrome,
+      mechanical: palette.chrome,
+    };
     root.traverse((object) => {
       const mesh = object as THREE.Mesh;
       if (!mesh.isMesh) return;
       const material = (mesh.material as THREE.MeshStandardMaterial).clone();
-      if (material.name === 'paint') material.color.set(palette.car);
-      if (material.name === 'glass') material.color.set(palette.glass);
+      const color = tint[material.name];
+      if (color) material.color.set(color);
       if (material.name === 'headlight') {
         material.emissive.set(palette.headlight);
         material.emissiveIntensity = palette.night ? 2 : 0.4;
@@ -122,14 +152,24 @@ const Car = ({ sectorIndex, count, palette }: { sectorIndex: number; count: numb
     });
     return root;
   }, [gltf, palette]);
-  const [from, to] = sectorRange(sectorIndex, count);
+  const wheels = useMemo(() => {
+    const found: THREE.Object3D[] = [];
+    car.traverse((object) => {
+      if (object.name.startsWith('wheel-')) found.push(object);
+    });
+    return found;
+  }, [car]);
+  const lastU = useRef(0);
 
-  useFrame((state) => {
-    const progress = (state.clock.elapsedTime * 0.12) % 1;
-    const u = from + (to - from) * (0.08 + progress * 0.84);
+  useFrame(() => {
+    const u = driveU(elapsed.current, target);
     const p = stadiumPoint(u);
-    car.position.set(p.x, 0.04, p.z);
+    car.position.set(p.x, 0.02, p.z);
     car.rotation.y = stadiumHeading(u);
+    // Roues : la distance parcourue sur la piste, ramenée à l'échelle de la voiture
+    const turn = ((u - lastU.current) * PERIMETER) / (WHEEL_RADIUS * CAR_SCALE);
+    for (const wheel of wheels) wheel.rotation.x += turn;
+    lastU.current = u;
   });
 
   return <primitive object={car} />;
@@ -164,25 +204,44 @@ export const JourneyTrackScene = ({
   sectors,
   carSector,
   selectedKey,
+  focusKey,
   palette,
   onSelect,
 }: {
   sectors: TrackSector[];
   /** Secteur de la voiture ; `null` quand tout est conclu (voiture sur la ligne d'arrivée). */
   carSector: number | null;
+  /** Secteur mis en avant (celui dont le détail est ouvert sous la scène). */
   selectedKey?: string | null;
+  /** Étape choisie par l'élève : la caméra glisse vers son secteur. Sans choix, vue d'ensemble. */
+  focusKey?: string | null;
   palette: JourneyTrackPalette;
   onSelect?: (key: string) => void;
 }) => {
+  const elapsed = useRef(0);
+  const look = useRef(new THREE.Vector3(0, 0, 0.3));
+  const placed = useRef(false);
+  const target = parkingU(carSector, sectors.length);
+  const focusIndex = focusKey ? sectors.findIndex((sector) => sector.key === focusKey) : -1;
+
   const kerb = useMemo(() => ribbonGeometry(0, 1, TRACK.width + 0.24, 0.015), []);
   const start = stadiumPoint(0);
   const coneSectors = [2, 3].filter((index) => index < sectors.length);
 
-  useFrame((state) => {
-    // Vue du ciel légèrement inclinée, qui oscille à peine
-    const sway = Math.sin(state.clock.elapsedTime * 0.15) * 0.8;
-    state.camera.position.set(sway, 8.6, 6.4);
-    state.camera.lookAt(0, 0, 0.3);
+  useFrame((state, delta) => {
+    elapsed.current += delta;
+    const pose = journeyCamera(
+      elapsed.current,
+      target,
+      focusIndex >= 0 ? focusIndex : null,
+      sectors.length
+    );
+    // La caméra glisse vers la pose voulue : un choix d'étape ne la fait jamais sauter
+    const follow = placed.current ? 1 - Math.exp(-4 * delta) : 1;
+    placed.current = true;
+    state.camera.position.lerp(new THREE.Vector3(...pose.position), follow);
+    look.current.lerp(new THREE.Vector3(...pose.look), follow);
+    state.camera.lookAt(look.current);
   });
 
   return (
@@ -221,11 +280,7 @@ export const JourneyTrackScene = ({
         {coneSectors.map((index) => (
           <Cones key={index} sectorIndex={index} count={sectors.length} />
         ))}
-        <Car
-          sectorIndex={carSector ?? sectors.length - 1}
-          count={sectors.length}
-          palette={palette}
-        />
+        <Car target={target} elapsed={elapsed} palette={palette} />
       </Suspense>
     </>
   );

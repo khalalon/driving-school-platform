@@ -1044,7 +1044,7 @@ cd mobile-app && npx expo-doctor && npx tsc --noEmit && npx jest --silent && ech
 ```
 **Hors périmètre** : gestes sur la scène du parcours.
 
-### - [ ] 13b.5 — Parcours suivi par la caméra
+### - [x] 13b.5 — Parcours suivi par la caméra
 **Objectif** : `JourneyTrackScene` passe sur `car.glb` (Kenney `car-sedan.glb` supprimé avec son entrée de `credits.json`) ; à l'ouverture, la voiture part de la ligne de départ et **roule jusqu'au secteur en cours** pendant que la caméra la suit, puis la caméra remonte en vue d'ensemble ; **choisir une étape** (sur la barre de secteurs, comme aujourd'hui) **déplace la caméra** vers ce secteur. Trajets et caméra = fonctions pures dans `journeyTrack.ts`, testées sans GL (la voiture s'arrête sur le bon secteur, sens de la piste respecté).
 **Fichiers** : `mobile-app/src/components/three/{JourneyTrackScene.tsx,journeyTrack.ts,models.ts}`, `mobile-app/assets/3d/`, `mobile-app/src/screens/student/StudentDashboard.tsx`, tests.
 **Critère de validation** :

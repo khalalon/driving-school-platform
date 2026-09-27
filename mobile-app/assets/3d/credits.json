@@ -11,16 +11,6 @@
     "bytes": 1177900
   },
   {
-    "file": "car-sedan.glb",
-    "usage": "Voiture de l’auto-école (accueil, parcours)",
-    "source": "Kenney — Car Kit 3.1 (sedan.glb)",
-    "url": "https://kenney.nl/assets/car-kit",
-    "author": "Kenney (www.kenney.nl)",
-    "license": "CC0 1.0",
-    "modifications": "Texture palette cuite en matériaux unis nommés par rôle, recolorés aux jetons « Circuit » (D-52)",
-    "bytes": 161040
-  },
-  {
     "file": "cone.glb",
     "usage": "Cône de manœuvre (secteurs Manœuvre / Parc)",
     "source": "Kenney — Car Kit 3.1 (cone.glb)",

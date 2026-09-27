@@ -1,10 +1,13 @@
 /**
- * Logique du parcours 3D (13.11, D-52), sans three.js : le circuit ovale vu du ciel, ses cinq
- * secteurs (ordre D-45) et leur état, tirés de `buildJourney` — rien n'est recalculé ici.
+ * Logique du parcours 3D (13.11, D-52 ; caméra qui suit la voiture 13b.5, D-53), sans three.js :
+ * le circuit ovale vu du ciel, ses cinq secteurs (ordre D-45) et leur état, tirés de
+ * `buildJourney` — rien n'est recalculé ici — puis le trajet de la voiture et la caméra.
  *
  * - fait → jaune signal ; en cours → turquoise télémétrie ; à venir → piste éteinte.
  *   Une étape « commencée » sans être l'étape courante reste éteinte, mais son détail le dit.
- * - La voiture roule sur le secteur en cours (sur la ligne d'arrivée quand tout est conclu).
+ * - À l'ouverture, la voiture part de la ligne de départ et roule jusqu'au secteur en cours (la
+ *   ligne d'arrivée quand tout est conclu) ; la caméra la suit, puis remonte en vue d'ensemble.
+ *   Choisir une étape déplace la caméra au-dessus de son secteur.
  */
 
 import type { Theme } from '../../theme';
@@ -17,7 +20,7 @@ export const TRACK = { straight: 5, radius: 2.2, width: 0.9 } as const;
 /** Jour entre deux secteurs, en fraction du tour. */
 export const SECTOR_GAP = 0.012;
 
-const PERIMETER = 2 * TRACK.straight + 2 * Math.PI * TRACK.radius;
+export const PERIMETER = 2 * TRACK.straight + 2 * Math.PI * TRACK.radius;
 
 export interface TrackPoint {
   x: number;
@@ -90,7 +93,9 @@ export interface JourneyTrackPalette {
   current: string;
   todo: string;
   car: string;
+  /** Toit, vitres, pneus : la teinte sombre de la voiture. */
   glass: string;
+  chrome: string;
   headlight: string;
   cone: string;
   night: boolean;
@@ -108,8 +113,97 @@ export const journeyTrackPalette = (theme: Theme): JourneyTrackPalette => {
     todo: colors.gaugeTrack,
     car: night ? colors.textPrimary : colors.signal,
     glass: colors.surface,
-    headlight: colors.signalSoft,
+    chrome: colors.textSecondary,
+    // Blanc craie : `signalSoft` est un fond sombre en thème sombre (même piège que l'accueil)
+    headlight: night ? colors.textPrimary : colors.surfaceRaised,
     cone: colors.warning,
     night,
   };
+};
+
+/** Trajet d'ouverture (secondes) : la voiture roule, puis la caméra remonte. */
+export const DRIVE = { duration: 3.2, rise: 1.6 } as const;
+
+const easeInOut = (x: number): number => {
+  const t = Math.min(Math.max(x, 0), 1);
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+};
+
+const smoothstep = (edge0: number, edge1: number, x: number): number => {
+  const t = Math.min(Math.max((x - edge0) / (edge1 - edge0), 0), 1);
+  return t * t * (3 - 2 * t);
+};
+
+/**
+ * Fraction de tour où la voiture se gare : le milieu du secteur en cours, ou un tour complet
+ * (la ligne d'arrivée) quand tout est conclu.
+ */
+export const parkingU = (carSector: number | null, count: number): number => {
+  if (carSector === null) return 1;
+  const [from, to] = sectorRange(carSector, count);
+  return (from + to) / 2;
+};
+
+/** Position de la voiture (fraction de tour) `elapsed` secondes après l'ouverture. */
+export const driveU = (elapsed: number, target: number): number =>
+  target * easeInOut(elapsed / DRIVE.duration);
+
+export interface CameraPose {
+  position: [number, number, number];
+  look: [number, number, number];
+}
+
+/** Vue d'ensemble du circuit, légèrement inclinée, qui oscille à peine. */
+export const overviewPose = (elapsed: number): CameraPose => ({
+  position: [Math.sin(elapsed * 0.15) * 0.8, 8.6, 6.4],
+  look: [0, 0, 0.3],
+});
+
+/** Caméra de poursuite : derrière la voiture, au-dessus, visant devant elle. */
+export const chasePose = (u: number): CameraPose => {
+  const p = stadiumPoint(u);
+  const heading = stadiumHeading(u);
+  const dx = Math.sin(heading);
+  const dz = Math.cos(heading);
+  return {
+    position: [p.x - dx * 1.9, 0.95, p.z - dz * 1.9],
+    look: [p.x + dx * 1.4, 0.1, p.z + dz * 1.4],
+  };
+};
+
+/**
+ * Vue d'un secteur choisi : en hauteur, reculée vers l'extérieur de la piste et vers le bas de
+ * l'écran, pour montrer le secteur entre ses deux voisins.
+ */
+export const sectorPose = (index: number, count: number): CameraPose => {
+  const [from, to] = sectorRange(index, count);
+  const p = stadiumPoint((from + to) / 2);
+  const out = Math.hypot(p.x, p.z) || 1;
+  return {
+    position: [p.x * 0.4 + (p.x / out) * 1.5, 5.2, p.z * 0.4 + (p.z / out) * 1.5 + 3.4],
+    look: [p.x, 0, p.z],
+  };
+};
+
+const mixPose = (a: CameraPose, b: CameraPose, w: number): CameraPose => {
+  const mix = (x: number, y: number) => x + (y - x) * w;
+  return {
+    position: [mix(a.position[0], b.position[0]), mix(a.position[1], b.position[1]), mix(a.position[2], b.position[2])],
+    look: [mix(a.look[0], b.look[0]), mix(a.look[1], b.look[1]), mix(a.look[2], b.look[2])],
+  };
+};
+
+/**
+ * Où la caméra veut être : elle suit la voiture pendant le trajet, puis remonte vers la vue
+ * d'ensemble — ou vers le secteur choisi s'il y en a un. La scène y glisse en douceur.
+ */
+export const journeyCamera = (
+  elapsed: number,
+  target: number,
+  selected: number | null,
+  count: number
+): CameraPose => {
+  const chase = chasePose(driveU(elapsed, target));
+  const rest = selected === null ? overviewPose(elapsed) : sectorPose(selected, count);
+  return mixPose(chase, rest, smoothstep(DRIVE.duration, DRIVE.duration + DRIVE.rise, elapsed));
 };

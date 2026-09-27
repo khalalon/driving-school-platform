@@ -340,6 +340,7 @@ export const StudentDashboard = ({ navigation }: any) => {
             sectors={sectors.map(({ key, state }) => ({ key, state }))}
             carSector={carSector}
             selectedKey={openKey}
+            focusKey={selectedStep}
             palette={journeyTrackPalette(theme)}
             onSelect={(key) => setSelectedStep(key as JourneyStepKey)}
           />

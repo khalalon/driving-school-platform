@@ -13,10 +13,8 @@ import { Asset } from 'expo-asset';
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 export const MODELS = {
-  /** Voiture réaliste de l'auto-école (13b.1, D-53) : roues en nœuds `wheel-*` séparés. */
+  /** Voiture réaliste de l'auto-école (13b.1, D-53) : accueil et parcours ; roues en nœuds `wheel-*` séparés. */
   car: require('../../../assets/3d/car.glb'),
-  /** Ancienne berline Kenney : parcours (13.11), jusqu'à 13b.5. */
-  sedan: require('../../../assets/3d/car-sedan.glb'),
   /** Cône de manœuvre : secteurs Manœuvre et Parc. */
   cone: require('../../../assets/3d/cone.glb'),
   trackStraight: require('../../../assets/3d/track-straight.glb'),
@@ -45,7 +43,6 @@ export const MODEL_MATERIALS = {
     'trim',
     'mechanical',
   ],
-  sedan: ['paint', 'glass', 'dark', 'rim', 'chrome', 'headlight', 'indicator', 'taillight'],
   cone: ['cone', 'stripe'],
   track: ['road', 'grass', 'grey'],
 } as const;

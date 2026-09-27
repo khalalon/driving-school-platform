@@ -6,7 +6,7 @@ Sources (téléchargées hors dépôt) :
   - Racing Kit 1.0 https://kenney.nl/assets/racing-kit   (kenney_racing-kit.zip)
 
 Ce que fait le script, pour chaque modèle retenu :
-  1. La voiture et le cône tirent leurs couleurs d'une texture palette externe
+  1. Le cône tire ses couleurs d'une texture palette externe
      (`Textures/colormap.png`), que React Native ne sait pas retrouver. La palette est « cuite » :
      chaque triangle rejoint un matériau de couleur unie selon la case de palette qu'il utilise,
      et la texture disparaît. Les matériaux portent un nom de rôle (`paint`, `glass`,
@@ -49,17 +49,8 @@ CIRCUIT = {
 }
 
 # Case de palette (colonne, rangée) → (rôle, couleur). Cases de 32 × 128 px dans la palette
-# 512 × 512 du Car Kit ; relevées sur les coordonnées de texture de la berline et du cône.
-CAR_CELLS = {
-    (13, 1): ('paint', 'graphite'),
-    (7, 2): ('glass', 'glass'),
-    (5, 2): ('dark', 'asphalt900'),
-    (11, 2): ('rim', 'concrete400'),
-    (13, 2): ('chrome', 'chalk200'),
-    (1, 3): ('headlight', 'signalSoft'),
-    (3, 3): ('indicator', 'signal'),
-    (5, 3): ('taillight', 'red'),
-}
+# 512 × 512 du Car Kit ; relevées sur les coordonnées de texture du cône. La berline Kenney
+# (`car-sedan.glb`) a été remplacée par la voiture réaliste de `prepare_car.py` (13b.5, D-53).
 CONE_CELLS = {
     (11, 1): ('cone', 'cone'),
     (13, 2): ('stripe', 'white'),
@@ -75,7 +66,6 @@ TRACK_MATERIALS = {
 }
 
 CAR_MODELS = [
-    ('Models/GLB format/sedan.glb', 'car-sedan.glb', 'Voiture de l’auto-école (accueil, parcours)'),
     ('Models/GLB format/cone.glb', 'cone.glb', 'Cône de manœuvre (secteurs Manœuvre / Parc)'),
 ]
 TRACK_MODELS = [
@@ -264,8 +254,7 @@ def main(source_dir: str) -> None:
     credits = []
     for source, target, usage in CAR_MODELS:
         doc, binary = read_glb(car_zip.read(source))
-        cells = CAR_CELLS if 'sedan' in source else CONE_CELLS
-        bake_palette(doc, binary, cells, palette)
+        bake_palette(doc, binary, CONE_CELLS, palette)
         binary = compact(doc, binary)
         data = write_glb(doc, binary)
         open(os.path.join(OUT, target), 'wb').write(data)

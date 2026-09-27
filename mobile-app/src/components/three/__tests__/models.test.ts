@@ -78,7 +78,6 @@ describe('fichiers de assets/3d', () => {
   it('les matériaux recolorables existent dans les fichiers', () => {
     const names = (file: string) => (gltfJson(file).materials ?? []).map((m) => m.name);
     expect(names('car.glb')).toEqual(expect.arrayContaining([...MODEL_MATERIALS.car]));
-    expect(names('car-sedan.glb')).toEqual(expect.arrayContaining([...MODEL_MATERIALS.sedan]));
     expect(names('cone.glb')).toEqual(expect.arrayContaining([...MODEL_MATERIALS.cone]));
     expect(names('track-straight.glb')).toEqual(expect.arrayContaining([...MODEL_MATERIALS.track]));
   });
@@ -130,14 +129,14 @@ describe('resolveModelUri', () => {
   it('télécharge le modèle au besoin puis renvoie son chemin local', async () => {
     const asset = {
       localUri: null as string | null,
-      uri: 'http://metro/assets/car-sedan.glb',
+      uri: 'http://metro/assets/car.glb',
       downloadAsync: jest.fn(async function (this: { localUri: string | null }) {
-        asset.localUri = 'file:///cache/car-sedan.glb';
+        asset.localUri = 'file:///cache/car.glb';
       }),
     };
     (Asset.fromModule as jest.Mock).mockReturnValue(asset);
 
-    await expect(resolveModelUri('sedan')).resolves.toBe('file:///cache/car-sedan.glb');
+    await expect(resolveModelUri('car')).resolves.toBe('file:///cache/car.glb');
     expect(asset.downloadAsync).toHaveBeenCalledTimes(1);
   });
 
