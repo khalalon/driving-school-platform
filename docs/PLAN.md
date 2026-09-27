@@ -932,7 +932,7 @@ cd mobile-app && npx tsc --noEmit && npx jest --silent && test -z "$(grep -nE "[
 ```
 **Hors périmètre** : —
 
-### - [ ] 13.15 — Écrans élève (1/2) : écoles et inscription
+### - [x] 13.15 — Écrans élève (1/2) : écoles et inscription
 **Objectif** : `SchoolsListScreen`, `SchoolDetailScreen` (fiche, instructeurs, tarifs), `MyEnrollmentRequestsScreen` refaits. Test de rendu clair / sombre / arabe pour chacun.
 **Fichiers** : ces trois écrans, tests.
 **Critère de validation** :

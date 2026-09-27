@@ -14,13 +14,14 @@ import { useTheme } from '../../context/ThemeContext';
 import { AppBar, Badge, Button, Card, EmptyState, SkeletonCard, Tone } from '../../components/ui';
 import { EnrollmentRequest, EnrollmentStatus } from '../../models/Enrollment';
 import { formatDate } from '../../utils/format';
-import { Theme } from '../../theme';
+import { Theme, textStyle } from '../../theme';
+import type { Language } from '../../i18n';
 import { mirrorIcon } from '../../utils/rtl';
 
 export const MyEnrollmentRequestsScreen = ({ navigation }: any) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, language), [theme, language]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [requests, setRequests] = useState<EnrollmentRequest[]>([]);
@@ -156,7 +157,7 @@ export const MyEnrollmentRequestsScreen = ({ navigation }: any) => {
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, language: Language) =>
   StyleSheet.create({
     flex: { flex: 1, backgroundColor: theme.colors.surface },
     skeletons: { padding: theme.spacing.base, gap: theme.spacing.md },
@@ -166,12 +167,11 @@ const createStyles = (theme: Theme) =>
     head: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm },
     schoolInfo: { flex: 1, gap: 2 },
     schoolName: {
-      fontSize: theme.typography.size.base,
-      fontWeight: theme.typography.weight.semibold,
+      ...textStyle('bodyStrong', language),
       color: theme.colors.textPrimary,
     },
     metaRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
-    meta: { flex: 1, fontSize: theme.typography.size.sm, color: theme.colors.textMuted },
+    meta: { ...textStyle('caption', language), flex: 1, color: theme.colors.textMuted },
     quote: {
       backgroundColor: theme.colors.surfaceMuted,
       borderRadius: theme.radius.md,
@@ -179,11 +179,10 @@ const createStyles = (theme: Theme) =>
       gap: theme.spacing.xs,
     },
     quoteLabel: {
-      fontSize: theme.typography.size.xs,
+      ...textStyle('caption', language),
       color: theme.colors.textMuted,
-      fontWeight: theme.typography.weight.medium,
     },
-    quoteText: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    quoteText: { ...textStyle('caption', language), color: theme.colors.textSecondary },
     reason: {
       flexDirection: 'row',
       gap: theme.spacing.sm,
@@ -193,11 +192,10 @@ const createStyles = (theme: Theme) =>
     },
     reasonBody: { flex: 1, gap: 2 },
     reasonLabel: {
-      fontSize: theme.typography.size.xs,
-      fontWeight: theme.typography.weight.semibold,
+      ...textStyle('label', language),
       color: theme.colors.dangerText,
     },
-    reasonText: { fontSize: theme.typography.size.sm, color: theme.colors.dangerText },
+    reasonText: { ...textStyle('caption', language), color: theme.colors.dangerText },
     footer: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -206,5 +204,5 @@ const createStyles = (theme: Theme) =>
       borderTopColor: theme.colors.border,
       paddingTop: theme.spacing.sm,
     },
-    date: { fontSize: theme.typography.size.xs, color: theme.colors.textMuted },
+    date: { ...textStyle('caption', language), color: theme.colors.textMuted },
   });

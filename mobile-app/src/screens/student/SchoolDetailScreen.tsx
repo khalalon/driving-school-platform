@@ -28,14 +28,15 @@ import { School, SchoolInstructor, SchoolPricing } from '../../models/School';
 import { EnrollmentStatusInfo, EnrollmentStatus } from '../../models/Enrollment';
 import { lessonTypeLabel } from '../../models/Lesson';
 import { formatAmount, formatPersonName } from '../../utils/format';
-import { Theme } from '../../theme';
+import { Theme, textStyle } from '../../theme';
+import type { Language } from '../../i18n';
 
 type TabKey = 'about' | 'instructors' | 'pricing';
 
 export const SchoolDetailScreen = ({ navigation, route }: any) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, language), [theme, language]);
   const { schoolId } = route.params;
   const [loading, setLoading] = useState(true);
   const [school, setSchool] = useState<School | null>(null);
@@ -345,15 +346,14 @@ export const SchoolDetailScreen = ({ navigation, route }: any) => {
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, language: Language) =>
   StyleSheet.create({
     flex: { flex: 1, backgroundColor: theme.colors.surface },
     content: { paddingTop: theme.spacing.base, gap: theme.spacing.base },
     banner: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md },
     bannerText: {
+      ...textStyle('body', language),
       flex: 1,
-      fontSize: theme.typography.size.base,
-      fontWeight: theme.typography.weight.medium,
       color: theme.colors.textPrimary,
     },
     tabs: { flexDirection: 'row', gap: theme.spacing.sm, flexWrap: 'wrap' },
@@ -363,8 +363,7 @@ const createStyles = (theme: Theme) =>
     },
     rowLast: { paddingHorizontal: theme.spacing.base },
     price: {
-      fontSize: theme.typography.size.base,
-      fontWeight: theme.typography.weight.bold,
+      ...textStyle('bodyStrong', language),
       color: theme.colors.textPrimary,
     },
 
@@ -376,11 +375,10 @@ const createStyles = (theme: Theme) =>
     },
     modal: { gap: theme.spacing.md },
     modalTitle: {
-      fontSize: theme.typography.size.lg,
-      fontWeight: theme.typography.weight.bold,
+      ...textStyle('heading', language),
       color: theme.colors.textPrimary,
     },
-    modalSubtitle: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    modalSubtitle: { ...textStyle('caption', language), color: theme.colors.textSecondary },
     messageInput: { minHeight: 96 },
     modalActions: { flexDirection: 'row', gap: theme.spacing.md },
     modalAction: { flex: 1 },

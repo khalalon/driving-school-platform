@@ -13,13 +13,14 @@ import { useI18n } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 import { AppBar, Card, EmptyState, SkeletonCard } from '../../components/ui';
 import { School } from '../../models/School';
-import { Theme } from '../../theme';
+import { Theme, textStyle } from '../../theme';
+import type { Language } from '../../i18n';
 import { mirrorIcon } from '../../utils/rtl';
 
 export const SchoolsListScreen = ({ navigation }: any) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, language), [theme, language]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [schools, setSchools] = useState<School[]>([]);
@@ -121,7 +122,7 @@ export const SchoolsListScreen = ({ navigation }: any) => {
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, language: Language) =>
   StyleSheet.create({
     flex: { flex: 1, backgroundColor: theme.colors.surface },
     skeletons: { padding: theme.spacing.base, gap: theme.spacing.md },
@@ -138,10 +139,9 @@ const createStyles = (theme: Theme) =>
     },
     info: { flex: 1, gap: 2 },
     name: {
-      fontSize: theme.typography.size.base,
-      fontWeight: theme.typography.weight.semibold,
+      ...textStyle('bodyStrong', language),
       color: theme.colors.textPrimary,
     },
     metaRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
-    meta: { flex: 1, fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    meta: { ...textStyle('caption', language), flex: 1, color: theme.colors.textSecondary },
   });
