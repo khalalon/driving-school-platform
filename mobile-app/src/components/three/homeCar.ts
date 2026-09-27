@@ -258,12 +258,15 @@ export interface CameraRig {
   angle: number;
   distance: number;
   height: number;
-  /** Hauteur du point visé sur l'axe de la voiture. */
+  /** Point visé : décalé vers le feu (côté -x) et relevé pendant le plan large. */
+  lookX: number;
   lookY: number;
 }
 
-const CLOSE = { distance: 5.2, height: 1.7, lookY: 0.4 };
-const WIDE = { distance: 6.8, height: 2, lookY: 1 };
+// Plan large réglé au champ réel de la scène (40°) et au cadre de l'écran de connexion
+// (≈ 360 × 220) : feu et voiture restent dans le cadre aux deux bouts du balancement
+const CLOSE = { distance: 5.2, height: 1.7, lookX: 0, lookY: 0.4 };
+const WIDE = { distance: 7.4, height: 2.1, lookX: -0.8, lookY: 1 };
 
 /** Caméra de l'accueil : trois-quarts avant qui oscille lentement, élargie près du feu. */
 export const cameraRig = (elapsed: number, lightDistance: number): CameraRig => {
@@ -273,6 +276,7 @@ export const cameraRig = (elapsed: number, lightDistance: number): CameraRig => 
     angle: 0.6 + Math.sin(elapsed * 0.2) * 0.45,
     distance: mix(CLOSE.distance, WIDE.distance),
     height: mix(CLOSE.height, WIDE.height),
+    lookX: mix(CLOSE.lookX, WIDE.lookX),
     lookY: mix(CLOSE.lookY, WIDE.lookY),
   };
 };

@@ -7,6 +7,7 @@ import React from 'react';
 import { AccessibilityInfo, AppState, Text, View } from 'react-native';
 import { act, create, ReactTestRenderer } from 'react-test-renderer';
 import { FPS_SAMPLE, Scene3D, isTooSlow } from '../Scene3D';
+import { OrbitState, createOrbit } from '../orbit';
 
 type AppStateListener = (state: string) => void;
 let appStateListener: AppStateListener | undefined;
@@ -148,3 +149,62 @@ describe('Scene3D : hauteur de repli (13.11)', () => {
   });
 });
 
+
+describe('Scene3D : voiture au doigt et inclinaison (13b.4)', () => {
+  const sensor = () =>
+    (jest.requireMock('expo-sensors') as {
+      Accelerometer: { emit: (r: { x: number; y: number; z: number }) => void; listenerCount: () => number };
+    }).Accelerometer;
+
+  const mountWithOrbit = (orbit: OrbitState) =>
+    mount(
+      <Scene3D height={200} fallback={<Fallback />} accessibilityLabel="Voiture" orbit={orbit}>
+        <Content />
+      </Scene3D>
+    );
+
+  it('le geste horizontal revient à la scène, le geste vertical reste au défilement', async () => {
+    const orbit = createOrbit();
+    const tree = await mountWithOrbit(orbit);
+    const surface = tree.root.findByProps({ testID: 'scene-gesture' });
+    const claims = surface.props.onMoveShouldSetResponder as (event: unknown) => boolean;
+    expect(typeof claims).toBe('function');
+    act(() => tree.unmount());
+  });
+
+  it('le capteur n’écoute que pendant que la scène tourne, et se tait en arrière-plan', async () => {
+    const orbit = createOrbit();
+    const tree = await mountWithOrbit(orbit);
+    expect(sensor().listenerCount()).toBe(1);
+    act(() => sensor().emit({ x: 0.2, y: -0.7, z: 0.1 }));
+    expect(orbit.reading).toEqual({ x: 0.2, y: -0.7 });
+
+    await act(async () => appStateListener?.('background'));
+    expect(sensor().listenerCount()).toBe(0);
+    // Capteur arrêté : la scène revient au centre
+    expect(orbit.reading).toBeNull();
+
+    await act(async () => appStateListener?.('active'));
+    expect(sensor().listenerCount()).toBe(1);
+    act(() => tree.unmount());
+    expect(sensor().listenerCount()).toBe(0);
+  });
+
+  it('« réduire les animations » : ni geste ni capteur', async () => {
+    (AccessibilityInfo.isReduceMotionEnabled as jest.Mock).mockResolvedValue(true);
+    const tree = await mountWithOrbit(createOrbit());
+    expect(has(tree, 'scene-gesture')).toBe(false);
+    expect(sensor().listenerCount()).toBe(0);
+    act(() => tree.unmount());
+  });
+
+  it('sans `orbit`, pas de capteur', async () => {
+    const tree = await mount(
+      <Scene3D height={200} fallback={<Fallback />} accessibilityLabel="Voiture">
+        <Content />
+      </Scene3D>
+    );
+    expect(sensor().listenerCount()).toBe(0);
+    act(() => tree.unmount());
+  });
+});

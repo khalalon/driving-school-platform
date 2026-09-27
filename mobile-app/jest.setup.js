@@ -64,3 +64,19 @@ jest.mock('expo-navigation-bar', () => {
   NavigationBar.setHidden = jest.fn();
   return { NavigationBar };
 });
+
+// Accéléromètre (13b.4) : module natif absent hors téléphone. Les tests émettent des mesures en
+// appelant le dernier écouteur enregistré (`Accelerometer.emit`).
+jest.mock('expo-sensors', () => {
+  const listeners = new Set();
+  const Accelerometer = {
+    setUpdateInterval: jest.fn(),
+    addListener: jest.fn((listener) => {
+      listeners.add(listener);
+      return { remove: jest.fn(() => listeners.delete(listener)) };
+    }),
+    emit: (reading) => listeners.forEach((listener) => listener(reading)),
+    listenerCount: () => listeners.size,
+  };
+  return { Accelerometer };
+});

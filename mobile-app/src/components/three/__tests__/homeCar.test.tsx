@@ -198,6 +198,8 @@ describe('feu tricolore (13b.3)', () => {
     const near = cameraRig(0, TRAFFIC.stopGap);
     expect(near.distance).toBeGreaterThan(far.distance);
     expect(near.lookY).toBeGreaterThan(far.lookY);
+    // La visée glisse vers le feu, planté sur le bas-côté droit de la voiture (côté -x)
+    expect(near.lookX).toBeLessThan(far.lookX);
     // Sans à-coup : le poids varie peu d'une image à l'autre sur tout le cycle
     let previous = signalFocus(trafficState(0).lightDistance);
     for (let t = 1 / 60; t < TRAFFIC_CYCLE; t += 1 / 60) {

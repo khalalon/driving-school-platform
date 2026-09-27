@@ -11,22 +11,38 @@
  * La boucle de rendu s'arrête quand l'écran n'est plus affiché ou que l'app passe en arrière-
  * plan : pas de batterie brûlée pour rien.
  *
+ * Avec `orbit` (13b.4, D-53), la scène se tourne au doigt — geste horizontal seulement, le
+ * défilement vertical de l'écran passe toujours — et suit l'inclinaison du téléphone
+ * (accéléromètre d'`expo-sensors`). Geste et capteur n'existent que tant que la scène tourne :
+ * ni l'un ni l'autre sous « réduire les animations », hors écran ou en arrière-plan.
+ *
  * Attention : `Canvas` crée son propre arbre React — les contextes (thème, langue) n'y passent
  * pas. Une scène reçoit ses couleurs **en propriétés**, lues avant par l'écran.
  */
 
-import React, { Component, ReactNode, useContext, useEffect, useState } from 'react';
+import React, { Component, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import {
   AppState,
   LogBox,
+  PanResponder,
   StyleProp,
   StyleSheet,
   View,
   ViewStyle,
 } from 'react-native';
+import { Accelerometer } from 'expo-sensors';
 import { NavigationContext } from '@react-navigation/native';
 import { Canvas, useFrame } from '@react-three/fiber/native';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
+import {
+  OrbitState,
+  clearTilt,
+  dragOrbit,
+  isHorizontalDrag,
+  releaseDrag,
+  setTilt,
+  startDrag,
+} from './orbit';
 
 // `@react-three/fiber` 9.8 crée encore un `THREE.Clock`, que three 0.186 déclare obsolète :
 // l'avertissement vient de la bibliothèque, pas de notre code, et n'a aucun effet sur le rendu.
@@ -114,6 +130,53 @@ const useAppActive = (): boolean => {
   return active;
 };
 
+/** Intervalle du capteur : 30 mesures par seconde suffisent à un décalage lissé. */
+export const TILT_INTERVAL_MS = 33;
+
+/** Écoute l'inclinaison tant que `active` ; la scène revient au centre à l'arrêt. */
+const useTilt = (orbit: OrbitState | undefined, active: boolean) => {
+  useEffect(() => {
+    if (!orbit || !active) return;
+    let subscription: { remove: () => void } | undefined;
+    try {
+      Accelerometer.setUpdateInterval(TILT_INTERVAL_MS);
+      subscription = Accelerometer.addListener(({ x, y }) => setTilt(orbit, x, y));
+    } catch {
+      // Pas d'accéléromètre : la scène se passe de l'effet
+    }
+    return () => {
+      subscription?.remove();
+      clearTilt(orbit);
+    };
+  }, [orbit, active]);
+};
+
+/** Glisser horizontalement fait tourner la scène (voir `orbit.ts`). */
+const useOrbitGesture = (orbit: OrbitState | undefined) =>
+  useMemo(() => {
+    if (!orbit) return undefined;
+    let lastDx = 0;
+    const end = (vx: number) => {
+      releaseDrag(orbit, vx);
+      lastDx = 0;
+    };
+    return PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gesture) => isHorizontalDrag(gesture.dx, gesture.dy),
+      onPanResponderGrant: () => {
+        startDrag(orbit);
+        lastDx = 0;
+      },
+      onPanResponderMove: (_, gesture) => {
+        dragOrbit(orbit, gesture.dx - lastDx);
+        lastDx = gesture.dx;
+      },
+      onPanResponderRelease: (_, gesture) => end(gesture.vx),
+      onPanResponderTerminate: (_, gesture) => end(gesture.vx),
+      // Un geste commencé à l'horizontale reste à la scène jusqu'au lâcher
+      onPanResponderTerminationRequest: () => false,
+    }).panHandlers;
+  }, [orbit]);
+
 interface IdleScheduler {
   requestIdleCallback?: (callback: () => void) => number;
   cancelIdleCallback?: (handle: number) => void;
@@ -135,6 +198,8 @@ interface Scene3DProps {
   fallbackHeight?: number;
   /** Ce que montre la scène, pour les lecteurs d'écran (la 3D n'est pas lisible). */
   accessibilityLabel: string;
+  /** Voiture au doigt et inclinaison (13b.4) : l'objet est lu par la scène à chaque image. */
+  orbit?: OrbitState;
   /** Prévenu quand la scène cède la place à son image (suivi, tests). */
   onFallback?: (reason: Scene3DFallbackReason) => void;
   style?: StyleProp<ViewStyle>;
@@ -147,6 +212,7 @@ export const Scene3D = ({
   height,
   fallbackHeight,
   accessibilityLabel,
+  orbit,
   onFallback,
   style,
   testID,
@@ -180,6 +246,10 @@ export const Scene3D = ({
     }
   }, [reason, onFallback]);
 
+  const running = !reason && focused && appActive;
+  useTilt(orbit, running);
+  const gesture = useOrbitGesture(orbit);
+
   const boxHeight =
     reason && reason !== 'loading' && fallbackHeight !== undefined ? fallbackHeight : height;
 
@@ -195,14 +265,16 @@ export const Scene3D = ({
         fallback
       ) : (
         <SceneBoundary fallback={fallback} onError={() => setFailure('error')}>
-          <Canvas
-            style={styles.fill}
-            frameloop={focused && appActive ? 'always' : 'never'}
-            camera={{ position: [0, 1.6, 5.2], fov: 40 }}
-          >
-            <FpsProbe onSlow={() => setFailure('slow')} />
-            {children}
-          </Canvas>
+          <View style={styles.fill} testID="scene-gesture" {...gesture}>
+            <Canvas
+              style={styles.fill}
+              frameloop={focused && appActive ? 'always' : 'never'}
+              camera={{ position: [0, 1.6, 5.2], fov: 40 }}
+            >
+              <FpsProbe onSlow={() => setFailure('slow')} />
+              {children}
+            </Canvas>
+          </View>
         </SceneBoundary>
       )}
     </View>

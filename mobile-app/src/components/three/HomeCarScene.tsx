@@ -21,6 +21,7 @@ import { GLTF, GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { MODELS, ModelKey } from './models';
 import { TrafficLight } from './TrafficLight';
+import { OrbitState, stepOrbit, tiltOffset } from './orbit';
 import {
   HomeCarPalette,
   INTRO_DURATION,
@@ -297,7 +298,13 @@ const Beams = ({ palette }: { palette: HomeCarPalette }) => (
   </>
 );
 
-export const HomeCarScene = ({ palette }: { palette: HomeCarPalette }) => {
+interface HomeCarSceneProps {
+  palette: HomeCarPalette;
+  /** Voiture au doigt et inclinaison (13b.4) ; sans lui, la caméra suit son seul balancement. */
+  orbit?: OrbitState;
+}
+
+export const HomeCarScene = ({ palette, orbit }: HomeCarSceneProps) => {
   const elapsed = useRef(0);
   const travelled = useRef(0);
   const groundSpeed = useRef(0);
@@ -332,12 +339,16 @@ export const HomeCarScene = ({ palette }: { palette: HomeCarPalette }) => {
     // Caméra : trois-quarts avant, qui oscille lentement autour de la voiture ; plan large
     // quand le feu est proche, pour garder sa tête dans le cadre
     const rig = cameraRig(elapsed.current, traffic.current.lightDistance);
-    state.camera.position.set(
-      Math.sin(rig.angle) * rig.distance,
-      rig.height,
-      Math.cos(rig.angle) * rig.distance
-    );
-    state.camera.lookAt(0, rig.lookY, 0);
+    let angle = rig.angle;
+    let height = rig.height;
+    if (orbit) {
+      stepOrbit(orbit, delta);
+      const tilt = tiltOffset(orbit);
+      angle += orbit.offset + tilt.angle;
+      height = Math.max(0.6, height + tilt.height);
+    }
+    state.camera.position.set(Math.sin(angle) * rig.distance, height, Math.cos(angle) * rig.distance);
+    state.camera.lookAt(rig.lookX, rig.lookY, 0);
   });
 
   const night = palette.mode === 'night';

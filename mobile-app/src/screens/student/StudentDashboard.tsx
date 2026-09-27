@@ -60,6 +60,7 @@ import type { Language } from '../../i18n';
 import { IoniconName } from '../../utils/rtl';
 import { Scene3D } from '../../components/three/Scene3D';
 import { HomeCarScene } from '../../components/three/HomeCarScene';
+import { useOrbit } from '../../components/three/orbit';
 import { HomeCarFallback } from '../../components/three/HomeCarFallback';
 import { homeCarPalette } from '../../components/three/homeCar';
 import { JourneyTrackScene } from '../../components/three/JourneyTrackScene';
@@ -94,6 +95,7 @@ export const StudentDashboard = ({ navigation }: any) => {
   const { t, language } = useI18n();
   const { user } = useAuth();
   const theme = useTheme();
+  const orbit = useOrbit();
   const styles = useMemo(() => createStyles(theme, language), [theme, language]);
   // `undefined` = pas encore chargé, `null` = aucune inscription approuvée
   const [enrollment, setEnrollment] = useState<EnrollmentRequest | null | undefined>(undefined);
@@ -506,9 +508,10 @@ export const StudentDashboard = ({ navigation }: any) => {
           accessibilityLabel={t('home.scene3d')}
           style={styles.scene}
           testID="home-car-scene"
+          orbit={orbit}
           fallback={<HomeCarFallback />}
         >
-          <HomeCarScene palette={homeCarPalette(theme)} />
+          <HomeCarScene palette={homeCarPalette(theme)} orbit={orbit} />
         </Scene3D>
         {renderBody()}
       </Screen>

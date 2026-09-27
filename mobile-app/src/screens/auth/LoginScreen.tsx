@@ -14,6 +14,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { Button, Field, Screen } from '../../components/ui';
 import { Scene3D } from '../../components/three/Scene3D';
 import { HomeCarScene } from '../../components/three/HomeCarScene';
+import { useOrbit } from '../../components/three/orbit';
 import { HomeCarFallback } from '../../components/three/HomeCarFallback';
 import { homeCarPalette } from '../../components/three/homeCar';
 import { getApiErrorMessage } from '../../services/api/ApiError';
@@ -25,6 +26,7 @@ export const LoginScreen = ({ navigation }: any) => {
   const { t, language } = useI18n();
   const { login } = useAuth();
   const theme = useTheme();
+  const orbit = useOrbit();
   const styles = useMemo(() => createStyles(theme, language), [theme, language]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -62,9 +64,10 @@ export const LoginScreen = ({ navigation }: any) => {
           accessibilityLabel={t('home.scene3d')}
           style={styles.scene}
           testID="login-car-scene"
+          orbit={orbit}
           fallback={<HomeCarFallback />}
         >
-          <HomeCarScene palette={homeCarPalette(theme)} />
+          <HomeCarScene palette={homeCarPalette(theme)} orbit={orbit} />
         </Scene3D>
 
         <View style={styles.header}>

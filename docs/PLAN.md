@@ -1035,7 +1035,7 @@ cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
 ```
 **Hors périmètre** : —
 
-### - [ ] 13b.4 — Voiture au doigt et gyroscope
+### - [x] 13b.4 — Voiture au doigt et gyroscope
 **Objectif** : sur la scène d'accueil, glisser horizontalement fait **tourner la caméra autour de la voiture** (avec élan, puis retour doux au balancement automatique après quelques secondes sans geste) ; l'**inclinaison du téléphone** décale légèrement la caméra (`expo-sensors`, installé par `npx expo install`, présent dans Expo Go). Sous « réduire les animations » : ni geste ni capteur (image fixe) ; capteur arrêté quand la scène est en pause (hors écran, arrière-plan). Le geste ne bloque pas le défilement vertical de l'écran. Logique pure (élan, retour, bornes de l'inclinaison) testée sans GL ; mock de `expo-sensors` dans `jest.setup.js`.
 **Fichiers** : `mobile-app/src/components/three/{Scene3D.tsx,HomeCarScene.tsx,orbit.ts}` (nouveau), `mobile-app/package.json`, `mobile-app/jest.setup.js`, tests.
 **Critère de validation** :
