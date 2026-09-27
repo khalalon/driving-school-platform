@@ -200,6 +200,9 @@ export const ar: Record<TranslationKey, string> = {
 
   // Accueil eleve (D-45)
   'home.scene3d': 'سيارة مدرسة السياقة تسير ليلاً وأضواؤها مشتعلة',
+  'home.dashboard': 'لوحة القيادة',
+  'home.stepsCaption': 'مراحل',
+  'home.stepsA11y': '{done} مراحل منجزة من {total}',
   'home.hello': 'مرحباً،',
   'home.student': 'المترشّح',
   'home.loadFailed': 'تعذّر تحميل الصفحة الرئيسية',

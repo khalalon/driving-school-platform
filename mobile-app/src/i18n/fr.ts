@@ -199,6 +199,9 @@ export const fr = {
 
   // Accueil eleve (D-45)
   'home.scene3d': 'Voiture de l’auto-école qui roule de nuit, phares allumés',
+  'home.dashboard': 'Tableau de bord',
+  'home.stepsCaption': 'étapes',
+  'home.stepsA11y': '{done} étapes franchies sur {total}',
   'home.hello': 'Bonjour,',
   'home.student': 'Élève',
   'home.loadFailed': 'Impossible de charger votre accueil',

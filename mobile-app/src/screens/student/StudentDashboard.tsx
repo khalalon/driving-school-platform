@@ -1,5 +1,8 @@
 /**
- * Accueil de l'élève — « Mon parcours » (D-45, 8.2), refondu sur le système (11.3).
+ * Accueil de l'élève — « Tableau de bord » (maquette C, 13.14, D-52) : scène d'accueil 3D,
+ * jauge des étapes franchies et compteurs de leçons par type, prochaine session (grande heure,
+ * délai, instructeur), parcours en circuit (13.11), action principale « Demander une leçon ».
+ * Historique : « Mon parcours » (D-45, 8.2), refondu sur le système (11.3).
  * Single Responsibility: l'accueil de l'élève raconte son parcours.
  *
  * L'école active est celle de l'inscription approuvée (une seule, D-22), retrouvée par E3 à
@@ -37,6 +40,7 @@ import {
   lessonTypeLabel,
   Lesson,
   LessonStatus,
+  LessonType,
   canStudentCancel,
 } from '../../models/Lesson';
 import { Exam } from '../../models/Exam';
@@ -51,7 +55,8 @@ import {
   formatTime,
   initialsOf,
 } from '../../utils/format';
-import { Theme } from '../../theme';
+import { Theme, textStyle } from '../../theme';
+import type { Language } from '../../i18n';
 import { IoniconName } from '../../utils/rtl';
 import { Scene3D } from '../../components/three/Scene3D';
 import { HomeCarScene } from '../../components/three/HomeCarScene';
@@ -63,7 +68,7 @@ import {
   journeySectors,
   journeyTrackPalette,
 } from '../../components/three/journeyTrack';
-import { SectorBar } from '../../components/circuit';
+import { Gauge, SectorBar, StatRow, TimeBlock } from '../../components/circuit';
 import { CelebrationModal } from '../../components/celebration/CelebrationModal';
 import { useCelebrations } from '../../hooks/useCelebrations';
 
@@ -86,10 +91,10 @@ const findNextLesson = (lessons: Lesson[], now: Date = new Date()): Lesson | nul
   null;
 
 export const StudentDashboard = ({ navigation }: any) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { user } = useAuth();
   const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, language), [theme, language]);
   // `undefined` = pas encore chargé, `null` = aucune inscription approuvée
   const [enrollment, setEnrollment] = useState<EnrollmentRequest | null | undefined>(undefined);
   const [data, setData] = useState<HomeData | null>(null);
@@ -186,26 +191,28 @@ export const StudentDashboard = ({ navigation }: any) => {
     const pendingCount = lessons.filter((l) => l.status === LessonStatus.PENDING).length;
 
     return (
-      <Card highlighted style={styles.nextCard}>
-        <View style={styles.nextHead}>
-          <Text style={styles.nextLabel}>{t('home.nextLesson')}</Text>
-          {next ? <Badge label={formatCountdown(next.scheduledDate)} tone="accent" dot /> : null}
-        </View>
-
+      <Card highlighted style={styles.nextCard} testID="next-lesson">
         {next ? (
           <>
-            <Text style={styles.nextTitle}>{lessonTypeLabel(next.type)}</Text>
-            <Text style={styles.nextWhen}>
-              {formatDate(next.scheduledDate)} · {formatTime(next.scheduledDate)}
-              {next.durationMinutes
-                ? ` · ${t('format.minutes', { count: next.durationMinutes })}`
-                : ''}
-            </Text>
-            <Text style={styles.nextMeta}>
-              {t('home.withInstructor', {
-                name: formatPersonName(next.instructor, t('home.yourInstructor')),
-              })}
-            </Text>
+            <TimeBlock
+              kicker={t('home.nextLesson')}
+              time={formatTime(next.scheduledDate)}
+              line={[
+                formatDate(next.scheduledDate),
+                lessonTypeLabel(next.type),
+                next.durationMinutes ? t('format.minutes', { count: next.durationMinutes }) : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+              trailing={
+                <>
+                  <Badge label={formatCountdown(next.scheduledDate)} tone="accent" dot />
+                  <Text style={styles.nextMeta} numberOfLines={1}>
+                    {formatPersonName(next.instructor, t('home.yourInstructor'))}
+                  </Text>
+                </>
+              }
+            />
             <View style={styles.nextActions}>
               <Button
                 title={t('home.allLessons')}
@@ -225,6 +232,7 @@ export const StudentDashboard = ({ navigation }: any) => {
           </>
         ) : (
           <>
+            <Text style={styles.nextLabel}>{t('home.nextLesson')}</Text>
             <Text style={styles.nextTitle}>{t('home.noLesson')}</Text>
             <Text style={styles.nextMeta}>
               {pendingCount === 0
@@ -276,8 +284,36 @@ export const StudentDashboard = ({ navigation }: any) => {
     );
   };
 
-  const renderJourney = (home: HomeData) => {
-    const steps = buildJourney(home.profile?.completedLessonsByType, home.exams, home.lessons);
+  /** Jauge des étapes franchies et leçons effectuées par type (P8 `completedLessonsByType`). */
+  const renderProgress = (home: HomeData, steps: JourneyStep[]) => {
+    const done = steps.filter((step) => step.state === 'done').length;
+    const counts = home.profile?.completedLessonsByType;
+    return (
+      <Card testID="progress-card">
+        {enrollment?.schoolName ? (
+          <Text style={styles.progressSchool} numberOfLines={1}>
+            {enrollment.schoolName}
+          </Text>
+        ) : null}
+        <View style={styles.progressRow}>
+          <Gauge
+            value={done}
+            max={steps.length}
+            caption={t('home.stepsCaption')}
+            accessibilityLabel={t('home.stepsA11y', { done, total: steps.length })}
+            size={156}
+          />
+          <View style={styles.progressStats}>
+            {[LessonType.CODE, LessonType.MANOEUVRE, LessonType.PARC].map((type) => (
+              <StatRow key={type} label={lessonTypeLabel(type)} value={counts?.[type] ?? 0} />
+            ))}
+          </View>
+        </View>
+      </Card>
+    );
+  };
+
+  const renderJourney = (steps: JourneyStep[]) => {
     const sectors = journeySectors(steps);
     const carSector = carSectorIndex(steps);
     const openKey =
@@ -426,13 +462,15 @@ export const StudentDashboard = ({ navigation }: any) => {
         </Card>
       );
     }
+    const steps = buildJourney(data.profile?.completedLessonsByType, data.exams, data.lessons);
     return (
       <>
         {error ? <Text style={styles.errorBanner}>{error}</Text> : null}
+        {renderProgress(data, steps)}
         {renderNextLesson(data.lessons)}
-        {renderJourney(data)}
-        {renderMoney(data.financial)}
+        {renderJourney(steps)}
         {renderActions()}
+        {renderMoney(data.financial)}
         {renderLinks()}
       </>
     );
@@ -443,7 +481,7 @@ export const StudentDashboard = ({ navigation }: any) => {
       <CelebrationModal celebration={celebration.current} onContinue={celebration.dismiss} />
       <AppBar
         title={`${t('home.hello')} ${user?.firstName || t('home.student')}`}
-        subtitle={enrollment?.schoolName ?? undefined}
+        subtitle={t('home.dashboard')}
         large
         avatar={{
           initials: initialsOf(user?.firstName, user?.lastName),
@@ -478,7 +516,7 @@ export const StudentDashboard = ({ navigation }: any) => {
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, language: Language) =>
   StyleSheet.create({
     flex: { flex: 1, backgroundColor: theme.colors.surface },
     content: { paddingTop: theme.spacing.base, gap: theme.spacing.base },
@@ -490,26 +528,20 @@ const createStyles = (theme: Theme) =>
     },
     skeletons: { gap: theme.spacing.base },
 
-    // Prochaine leçon
+    // Jauge et compteurs
+    progressSchool: {
+      ...textStyle('label', language),
+      color: theme.colors.textSecondary,
+      marginBottom: theme.spacing.sm,
+    },
+    progressRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md },
+    progressStats: { flex: 1, gap: theme.spacing.xs },
+
+    // Prochaine session
     nextCard: { gap: theme.spacing.xs },
-    nextHead: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: theme.spacing.xs,
-    },
-    nextLabel: {
-      fontSize: theme.typography.size.sm,
-      color: theme.colors.signalText,
-      fontWeight: theme.typography.weight.semibold,
-    },
-    nextTitle: {
-      fontSize: theme.typography.size['2xl'],
-      fontWeight: theme.typography.weight.bold,
-      color: theme.colors.textPrimary,
-    },
-    nextWhen: { fontSize: theme.typography.size.base, color: theme.colors.textSecondary },
-    nextMeta: { fontSize: theme.typography.size.sm, color: theme.colors.textMuted },
+    nextLabel: { ...textStyle('label', language), color: theme.colors.signalText },
+    nextTitle: { ...textStyle('title', language), color: theme.colors.textPrimary },
+    nextMeta: { ...textStyle('caption', language), color: theme.colors.textSecondary },
     nextActions: {
       flexDirection: 'row',
       gap: theme.spacing.sm,
@@ -541,21 +573,17 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'space-between',
       gap: theme.spacing.sm,
     },
-    stepTitle: {
-      fontSize: theme.typography.size.base,
-      fontWeight: theme.typography.weight.semibold,
-      color: theme.colors.textPrimary,
-      flexShrink: 1,
-    },
-    stepDetail: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    stepTitle: { ...textStyle('heading', language), color: theme.colors.textPrimary, flexShrink: 1 },
+    stepDetail: { ...textStyle('body', language), color: theme.colors.textSecondary },
 
     // Dû et avoir
     tilesRow: { flexDirection: 'row', gap: theme.spacing.md },
     tile: { flex: 1, gap: theme.spacing.xs },
-    tileLabel: { fontSize: theme.typography.size.sm, color: theme.colors.textSecondary },
+    tileLabel: { ...textStyle('label', language), color: theme.colors.textSecondary },
     tileValue: {
-      fontSize: theme.typography.size.xl,
-      fontWeight: theme.typography.weight.bold,
+      ...textStyle('numeric', language),
+      fontSize: 26,
+      lineHeight: 30,
       color: theme.colors.textPrimary,
     },
     tileValueDue: { color: theme.colors.dangerText },
@@ -567,7 +595,7 @@ const createStyles = (theme: Theme) =>
     linksRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
 
     errorBanner: {
-      fontSize: theme.typography.size.sm,
+      ...textStyle('body', language),
       color: theme.colors.dangerText,
       backgroundColor: theme.colors.dangerSoft,
       borderRadius: theme.radius.md,

@@ -923,7 +923,7 @@ cd mobile-app && npx tsc --noEmit && npx jest --silent && test -z "$(grep -rnE "
 ```
 **Hors périmètre** : —
 
-### - [ ] 13.14 — Accueil élève refait
+### - [x] 13.14 — Accueil élève refait
 **Objectif** : `StudentDashboard` selon la maquette C : « Tableau de bord » + salutation, scène d'accueil, carte jauge (étapes franchies) + compteurs par type (`StatRow`), « Prochaine session » (`TimeBlock`, délai « dans 2 j », instructeur), parcours (13.11), action principale « Demander une leçon ». États vide (pas encore inscrit → trouver une école), chargement (`Skeleton`) et erreur. Test de rendu clair / sombre / arabe.
 **Fichiers** : `mobile-app/src/screens/student/StudentDashboard.tsx`, `mobile-app/src/screens/student/__tests__/*` (nouveau).
 **Critère de validation** :
