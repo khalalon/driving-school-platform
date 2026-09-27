@@ -1017,7 +1017,7 @@ cd mobile-app && test $(stat -c %s assets/3d/car.glb) -le 3145728 && npx tsc --n
 ```
 **Hors périmètre** : utilisation dans les scènes (13b.2, 13b.5).
 
-### - [ ] 13b.2 — Rendu réaliste de la scène d'accueil
+### - [x] 13b.2 — Rendu réaliste de la scène d'accueil
 **Objectif** : `HomeCarScene` passe sur `car.glb` : peinture vernie (vernis du modèle conservé) aux couleurs du thème, **reflets d'environnement** calculés dans la scène (environnement procédural, aucun fichier HDR), ombre de contact sous la voiture (texture dégradée construite en code, pas d'ombres portées), phares avec faisceaux de nuit, **feux stop** dont l'intensité suit le freinage, roues qui tournent au bon sens. Si l'environnement ne peut pas être calculé sur le téléphone, la scène reste lisible sans reflets. `HomeCarFallback` redessiné d'après la nouvelle silhouette.
 **Fichiers** : `mobile-app/src/components/three/{HomeCarScene.tsx,homeCar.ts,HomeCarFallback.tsx}`, tests (`homeCar` : feux stop selon la décélération, palette des deux thèmes).
 **Critère de validation** :
