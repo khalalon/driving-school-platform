@@ -3,7 +3,7 @@
 Règles de lecture (voir `CLAUDE.md`, règles d'or 3 et 5) :
 - On travaille dans l'ordre, sur la première tâche non cochée. Une tâche = un commit (message Conventional Commits, scope = domaine ou `infra` / `mobile` / `docs` / `e2e`), poussé sur `origin/main` aussitôt. Les tâches d'une même phase s'enchaînent sans validation intermédiaire ; arrêt obligatoire en fin de phase, sur question ouverte non tranchée, sur échec de critère non réparable dans la tâche, ou sur choix produit non tranché (D-36, 18/09/2026).
 - Une tâche est cochée **seulement** quand sa commande « Critère de validation » a été exécutée et que sa sortie a été montrée. Pas d'exception.
-- Si une tâche indique « Dépend de : Q-xx » et que la question n'est pas tranchée dans `DECISIONS.md`, on **s'arrête** et on demande. Phases 0 à 12 : Q-17 à Q-24 → D-40 à D-51. **Au 26/09/2026, Q-25 à Q-53 sont ouvertes** (feuille de route v1.1, phases 14 à 23) : aucune tâche de ces phases ne commence avant la réponse de l'humain. La Phase 13 applique D-52 et ne dépend d'aucune question.
+- Si une tâche indique « Dépend de : Q-xx » et que la question n'est pas tranchée dans `DECISIONS.md`, on **s'arrête** et on demande. Phases 0 à 12 : Q-17 à Q-24 → D-40 à D-51. **Au 26/09/2026, Q-25 à Q-53 sont ouvertes** (feuille de route v1.1, phases 14 à 23) : aucune tâche de ces phases ne commence avant la réponse de l'humain. La Phase 13 applique D-52, la Phase 13b applique D-53 ; aucune des deux ne dépend d'une question.
 - Chaque tâche livrée ajoute une ligne dans `CHANGELOG.md` et, si elle touche une route, met à jour `docs/API_CONTRACT.md` dans le même commit.
 - Les commandes sont écrites pour Git Bash (Windows) ou un shell POSIX, depuis la racine du dépôt sauf `cd` explicite.
 
@@ -773,6 +773,7 @@ Demande de l'auteur après la recette : des améliorations **métier**, précéd
 | Phase | Ce que ça apporte | Questions |
 |---|---|---|
 | 13 | Rénovation UI/UX « Circuit » : jetons, typo, thème sombre, composants, navigation, 3D, tous les écrans | D-52 (tranchée) |
+| 13b | Voiture réaliste, feu tricolore, voiture au doigt et gyroscope, parcours suivi par la caméra | D-53 (tranchée) |
 | 14 | Gérant de l'école : des droits distincts de ceux des moniteurs | Q-25 à Q-27 |
 | 15 | Agenda de l'instructeur, conflits d'horaire, créneaux libres pour l'élève | Q-28 à Q-30 |
 | 16 | Dossier administratif de l'élève (pièces reçues / manquantes) | Q-31, Q-32 |
@@ -785,7 +786,7 @@ Demande de l'auteur après la recette : des améliorations **métier**, précéd
 | 23 | Flotte de véhicules et échéances | Q-51 à Q-53 |
 
 Règles propres à cette feuille de route :
-- **Avant la Phase 14, l'humain répond à Q-25 … Q-53** (`docs/DECISIONS.md`) ; les réponses deviennent D-53 et suivantes dans un commit `docs(docs)`. Les tâches sont écrites pour l'option **recommandée** ; si une autre option est retenue, on réécrit les tâches concernées **dans ce même commit**, avant de coder.
+- **Avant la Phase 14, l'humain répond à Q-25 … Q-53** (`docs/DECISIONS.md`) ; les réponses deviennent D-54 et suivantes dans un commit `docs(docs)`. Les tâches sont écrites pour l'option **recommandée** ; si une autre option est retenue, on réécrit les tâches concernées **dans ce même commit**, avant de coder.
 - Les migrations prennent le **prochain numéro libre** au moment de la tâche (`015` pour la première) : on ne réserve pas de numéro à l'avance.
 - Toute nouvelle route entre au contrat dans le même commit, avec un identifiant qui suit la numérotation de sa section (L9, S10…) ou une nouvelle section pour un nouveau domaine. Tout nouveau code d'erreur est ajouté aux conventions transverses du contrat **et** traduit côté mobile (10.5).
 - Côté mobile : composants et règles d'interface issus de la Phase 13, textes au catalogue FR / AR (D-47) vérifiés en RTL, chaque nouvelle méthode de service a son test (`mockApiClient`), aucun appel réseau hors `src/services/api/`.
@@ -992,6 +993,72 @@ cd mobile-app && npx expo-doctor && npx expo config --json > /dev/null && npx ts
 **Critère de validation** :
 ```bash
 cd mobile-app && npx expo-doctor && npx tsc --noEmit && npx jest --silent && test -z "$(grep -rnE "['\"]#[0-9A-Fa-f]{3,8}['\"]" src --include='*.tsx' --include='*.ts' | grep -v '^src/theme/' | grep -v __tests__)" && echo OK
+```
+**Hors périmètre** : recette sur téléphone (humain).
+
+---
+
+## Phase 13b — Voiture réaliste et mise en scène (D-53)
+
+Retour de recette de la Phase 13 : le modèle Kenney fait « jouet ». La voiture devient le « Car Concept » de Khronos (CC-BY 4.0, crédité dans l'application) et quatre effets s'ajoutent : rendu réaliste, feu tricolore, voiture au doigt et gyroscope, parcours suivi par la caméra. Aucun écran, aucune route, aucun texte existant ne change en dehors des scènes 3D et de la ligne « Crédits » des Réglages.
+
+Règles propres à cette phase :
+- Toutes les règles de la Phase 13 restent vraies : couleurs en propriétés depuis le thème, scènes dans `Scene3D`, logique pure testée sans GL, image fixe sous « réduire les animations ».
+- **Budget du modèle** : fichier ≤ 3 Mo, ≤ 60 000 triangles, textures ≤ 512 px, une vingtaine d'appels de dessin au plus. Mesurés par le script de préparation, pas estimés.
+- Pas de nouveau téléchargement de fichier tiers : le modèle a été accepté par l'auteur (D-53), le feu tricolore et le décor sont construits en code.
+- Arrêt normal en fin de phase pour la recette sur téléphone.
+
+### - [ ] 13b.1 — Modèle « Car Concept » préparé pour le téléphone
+**Objectif** : `scripts/prepare_car.py` part du `CarConcept.glb` d'origine (téléchargé hors dépôt, chemin en argument) et produit `mobile-app/assets/3d/car.glb` : intérieur, essuie-glaces, pédales, plaque et variantes de peinture retirés, **logos Khronos et 3D Commerce retirés**, vitres en matériau opaque teinté (pas de transmission), matériaux fusionnés et renommés par rôle (`paint`, `paintAccent`, `glass`, `headlight`, `taillight`, `indicator`, `tyre`, `rim`, `trim`, `mechanical`), roues gardées comme nœuds séparés (`wheel-*`) pour tourner, repère ramené à celui de la scène (Y en haut, avant vers +z, longueur alignée sur l'ancienne berline), géométrie simplifiée et textures réduites dans le budget de la phase (étapes lourdes confiées à `@gltf-transform/cli` lancé par `npx` à version fixée : aucune dépendance ajoutée au dépôt). Le script affiche triangles, appels de dessin et taille. `credits.json` : entrée CC-BY complète (auteur, propriétaire, licence, modifications). Réglages : ligne « Crédits » (FR / AR) qui cite le modèle et sa licence.
+**Fichiers** : `scripts/prepare_car.py` (nouveau), `mobile-app/assets/3d/{car.glb,credits.json}`, `mobile-app/src/components/three/models.ts`, `mobile-app/src/screens/common/SettingsScreen.tsx`, `mobile-app/src/i18n/{fr,ar}.ts`, tests (registre des modèles, crédits affichés).
+**Critère de validation** :
+```bash
+cd mobile-app && test $(stat -c %s assets/3d/car.glb) -le 3145728 && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : utilisation dans les scènes (13b.2, 13b.5).
+
+### - [ ] 13b.2 — Rendu réaliste de la scène d'accueil
+**Objectif** : `HomeCarScene` passe sur `car.glb` : peinture vernie (vernis du modèle conservé) aux couleurs du thème, **reflets d'environnement** calculés dans la scène (environnement procédural, aucun fichier HDR), ombre de contact sous la voiture (texture dégradée construite en code, pas d'ombres portées), phares avec faisceaux de nuit, **feux stop** dont l'intensité suit le freinage, roues qui tournent au bon sens. Si l'environnement ne peut pas être calculé sur le téléphone, la scène reste lisible sans reflets. `HomeCarFallback` redessiné d'après la nouvelle silhouette.
+**Fichiers** : `mobile-app/src/components/three/{HomeCarScene.tsx,homeCar.ts,HomeCarFallback.tsx}`, tests (`homeCar` : feux stop selon la décélération, palette des deux thèmes).
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : feu tricolore (13b.3), gestes (13b.4).
+
+### - [ ] 13b.3 — Feu tricolore sur l'accueil
+**Objectif** : après l'arrivée, la scène tourne en cycle : un feu tricolore (construit en code : mât, boîtier, trois feux émissifs) approche sur le bas-côté droit, passe à l'orange puis au rouge ; la voiture **freine** (feux stop allumés) et s'arrête à la ligne d'arrêt ; le rouge tient, le feu passe au **vert**, la voiture **repart** et le feu passe derrière elle ; puis le cycle recommence. Le cycle est une fonction pure du temps dans `homeCar.ts` (vitesse, couleur du feu, distance du feu, freinage), testée sans GL : jamais de marche arrière, arrêt avant la ligne, jamais de départ au rouge.
+**Fichiers** : `mobile-app/src/components/three/{homeCar.ts,HomeCarScene.tsx,TrafficLight.tsx}` (nouveau), tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 13b.4 — Voiture au doigt et gyroscope
+**Objectif** : sur la scène d'accueil, glisser horizontalement fait **tourner la caméra autour de la voiture** (avec élan, puis retour doux au balancement automatique après quelques secondes sans geste) ; l'**inclinaison du téléphone** décale légèrement la caméra (`expo-sensors`, installé par `npx expo install`, présent dans Expo Go). Sous « réduire les animations » : ni geste ni capteur (image fixe) ; capteur arrêté quand la scène est en pause (hors écran, arrière-plan). Le geste ne bloque pas le défilement vertical de l'écran. Logique pure (élan, retour, bornes de l'inclinaison) testée sans GL ; mock de `expo-sensors` dans `jest.setup.js`.
+**Fichiers** : `mobile-app/src/components/three/{Scene3D.tsx,HomeCarScene.tsx,orbit.ts}` (nouveau), `mobile-app/package.json`, `mobile-app/jest.setup.js`, tests.
+**Critère de validation** :
+```bash
+cd mobile-app && npx expo-doctor && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : gestes sur la scène du parcours.
+
+### - [ ] 13b.5 — Parcours suivi par la caméra
+**Objectif** : `JourneyTrackScene` passe sur `car.glb` (Kenney `car-sedan.glb` supprimé avec son entrée de `credits.json`) ; à l'ouverture, la voiture part de la ligne de départ et **roule jusqu'au secteur en cours** pendant que la caméra la suit, puis la caméra remonte en vue d'ensemble ; **choisir une étape** (sur la barre de secteurs, comme aujourd'hui) **déplace la caméra** vers ce secteur. Trajets et caméra = fonctions pures dans `journeyTrack.ts`, testées sans GL (la voiture s'arrête sur le bon secteur, sens de la piste respecté).
+**Fichiers** : `mobile-app/src/components/three/{JourneyTrackScene.tsx,journeyTrack.ts,models.ts}`, `mobile-app/assets/3d/`, `mobile-app/src/screens/student/StudentDashboard.tsx`, tests.
+**Critère de validation** :
+```bash
+cd mobile-app && test ! -f assets/3d/car-sedan.glb && npx tsc --noEmit && npx jest --silent && echo OK
+```
+**Hors périmètre** : —
+
+### - [ ] 13b.6 — Vérification de la phase
+**Objectif** : bundle Android exporté sans erreur, budget du modèle revérifié, aucun code couleur hors de `src/theme/`, `credits.json` complet, `docs/ARCHITECTURE.md` (section 3D) à jour. **Recette sur téléphone par l'humain** : fluidité, feu tricolore, geste et inclinaison, parcours, deux thèmes, arabe.
+**Fichiers** : corrections ponctuelles, `docs/ARCHITECTURE.md`.
+**Critère de validation** :
+```bash
+cd mobile-app && npx expo-doctor && npx tsc --noEmit && npx jest --silent && npx expo export --platform android --output-dir /tmp/export-13b > /dev/null && test -z "$(grep -rnE "['\"]#[0-9A-Fa-f]{3,8}['\"]" src --include='*.tsx' --include='*.ts' | grep -v '^src/theme/' | grep -v __tests__)" && echo OK
 ```
 **Hors périmètre** : recette sur téléphone (humain).
 
