@@ -11,6 +11,7 @@ import React, { createContext, useCallback, useContext, useMemo, useState } from
 import { useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
+import { NavigationBar } from 'expo-navigation-bar';
 import { Theme, ThemeName, themes } from '../theme';
 
 export type ThemePreference = 'dark' | 'light' | 'system';
@@ -100,8 +101,18 @@ export const useThemePreference = (): ThemePreferenceValue => {
   return context;
 };
 
-/** Barre d'état lisible sur le thème affiché (et non sur celui du téléphone). */
+/**
+ * Barres système lisibles sur le thème affiché (et non sur celui du téléphone) : barre d'état et,
+ * sur Android, boutons de la barre de navigation (13.20). L'affichage est bord à bord (SDK 57) :
+ * les barres sont transparentes, seule la couleur de leurs icônes suit le thème.
+ */
 export const ThemedStatusBar = () => {
   const theme = useTheme();
-  return <StatusBar style={theme.name === 'dark' ? 'light' : 'dark'} />;
+  const style = theme.name === 'dark' ? 'light' : 'dark';
+  return (
+    <>
+      <StatusBar style={style} />
+      <NavigationBar style={style} />
+    </>
+  );
 };

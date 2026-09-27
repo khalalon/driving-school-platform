@@ -977,7 +977,7 @@ cd mobile-app && npx tsc --noEmit && npx jest --silent && test -z "$(grep -rnE "
 ```
 **Hors périmètre** : —
 
-### - [ ] 13.20 — Icône, écran de démarrage, barres système
+### - [x] 13.20 — Icône, écran de démarrage, barres système
 **Objectif** : icône et icône adaptative Android redessinées dans l'univers « Circuit » (signal sur fond `#0A0C0F`), écran de démarrage sombre (et clair quand le téléphone est clair, 11.6), barre de navigation Android et barre d'état alignées sur le thème actif. Le nom de l'application ne change pas.
 **Fichiers** : `mobile-app/assets/{icon,adaptive-icon,splash-icon,splash-icon-dark,favicon}.png`, `mobile-app/app.json`.
 **Critère de validation** :

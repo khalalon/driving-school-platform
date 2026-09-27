@@ -16,7 +16,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#1E42C4"
+        "backgroundColor": "#0A0C0F"
       },
       "package": "com.drivingschool.app"
     },
@@ -30,11 +30,12 @@
         {
           "image": "./assets/splash-icon.png",
           "resizeMode": "contain",
-          "backgroundColor": "#FBFAF7",
+          "backgroundColor": "#EEF0F3",
           "dark": {
             "image": "./assets/splash-icon-dark.png",
-            "backgroundColor": "#11151F"
-          }
+            "backgroundColor": "#0A0C0F"
+          },
+          "imageWidth": 200
         }
       ],
       "expo-font",

@@ -56,3 +56,11 @@ jest.mock('lottie-react-native', () => {
   const LottieView = (props) => React.createElement(View, props);
   return { __esModule: true, default: LottieView };
 });
+
+// Barre de navigation Android (13.20) : module natif absent hors téléphone.
+jest.mock('expo-navigation-bar', () => {
+  const NavigationBar = () => null;
+  NavigationBar.setStyle = jest.fn();
+  NavigationBar.setHidden = jest.fn();
+  return { NavigationBar };
+});
