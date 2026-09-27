@@ -236,7 +236,8 @@ def main():
     }
     for name, data in animations.items():
         target = os.path.join(OUT, f'{name}.json')
-        with open(target, 'w', encoding='utf-8') as f:
+        with open(target, 'w', encoding='utf-8', newline='
+') as f:
             json.dump(data, f, separators=(',', ':'))
             f.write('\n')
         print(f'{name}.json {os.path.getsize(target)} octets, calques : {[l["nm"] for l in data["layers"]]}')

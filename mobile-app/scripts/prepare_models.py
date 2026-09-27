@@ -296,7 +296,8 @@ def main(source_dir: str) -> None:
             'bytes': len(data),
         })
 
-    with open(os.path.join(OUT, 'credits.json'), 'w', encoding='utf-8') as f:
+    with open(os.path.join(OUT, 'credits.json'), 'w', encoding='utf-8', newline='
+') as f:
         json.dump(credits, f, ensure_ascii=False, indent=2)
         f.write('\n')
     total = sum(c['bytes'] for c in credits)
