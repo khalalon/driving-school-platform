@@ -236,11 +236,42 @@ def main():
     }
     for name, data in animations.items():
         target = os.path.join(OUT, f'{name}.json')
-        with open(target, 'w', encoding='utf-8', newline='
-') as f:
+        with open(target, 'w', encoding='utf-8', newline='\n') as f:
             json.dump(data, f, separators=(',', ':'))
             f.write('\n')
         print(f'{name}.json {os.path.getsize(target)} octets, calques : {[l["nm"] for l in data["layers"]]}')
+    update_credits(animations)
+
+
+USAGES = {
+    'enrolled': 'Célébration : inscription acceptée',
+    'theory': 'Célébration : examen du code réussi',
+    'licence': 'Célébration : permis obtenu (drapeau à damier)',
+}
+
+
+def update_credits(animations):
+    """Inscrit les animations dans l'inventaire partagé `assets/3d/credits.json` (13.9)."""
+    credits_path = os.path.normpath(os.path.join(HERE, '..', 'assets', '3d', 'credits.json'))
+    existing = []
+    if os.path.exists(credits_path):
+        with open(credits_path, encoding='utf-8') as f:
+            existing = json.load(f)
+    ours = [{
+        'file': f'lottie/{name}.json',
+        'usage': USAGES[name],
+        'source': 'Création originale du projet (scripts/make_celebrations.py)',
+        'url': None,
+        'author': 'Driving School Platform',
+        'license': 'Création originale du projet — aucun tiers',
+        'modifications': 'Calques nommés par rôle, recolorés au rendu aux jetons « Circuit » (D-52)',
+        'bytes': os.path.getsize(os.path.join(OUT, f'{name}.json')),
+    } for name in animations]
+    files = {c['file'] for c in ours}
+    merged = [c for c in existing if c['file'] not in files] + ours
+    with open(credits_path, 'w', encoding='utf-8', newline='\n') as f:
+        json.dump(merged, f, ensure_ascii=False, indent=2)
+        f.write('\n')
 
 
 if __name__ == '__main__':

@@ -296,9 +296,16 @@ def main(source_dir: str) -> None:
             'bytes': len(data),
         })
 
-    with open(os.path.join(OUT, 'credits.json'), 'w', encoding='utf-8', newline='
-') as f:
-        json.dump(credits, f, ensure_ascii=False, indent=2)
+    # L'inventaire est partagé (animations de 13.12) : on ne remplace que nos propres entrées
+    credits_path = os.path.join(OUT, 'credits.json')
+    ours = {c['file'] for c in credits}
+    existing = []
+    if os.path.exists(credits_path):
+        with open(credits_path, encoding='utf-8') as f:
+            existing = json.load(f)
+    merged = credits + [c for c in existing if c['file'] not in ours]
+    with open(credits_path, 'w', encoding='utf-8', newline='\n') as f:
+        json.dump(merged, f, ensure_ascii=False, indent=2)
         f.write('\n')
     total = sum(c['bytes'] for c in credits)
     for c in credits:
