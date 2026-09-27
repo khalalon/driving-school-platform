@@ -905,7 +905,7 @@ cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
 ```
 **Hors périmètre** : compétences par secteur (Phase 20).
 
-### - [ ] 13.12 — Célébrations pré-rendues
+### - [x] 13.12 — Célébrations pré-rendues
 **Objectif** : `lottie-react-native` installé ; trois animations (inscription acceptée, examen théorique réussi, **permis obtenu** = examen pratique réussi : drapeau à damier), fichiers proposés à l'humain avant téléchargement, licence permettant l'usage commercial inscrite dans `assets/3d/credits.json`. À l'ouverture de l'app, un événement **qui existe déjà** et n'a pas encore été célébré (E3 `approved`, X1 `result = passed`) déclenche la célébration une seule fois (identifiants mémorisés dans AsyncStorage), avec retour haptique ; bouton « Continuer » toujours visible ; « réduire les animations » → carte fixe. Textes FR / AR.
 **Fichiers** : `mobile-app/src/components/celebration/*` (nouveau), `mobile-app/assets/lottie/*.json`, `mobile-app/src/hooks/useCelebrations.ts` (nouveau), `StudentDashboard.tsx`, `package.json`, `jest.setup.js`, tests (une seule célébration par événement).
 **Critère de validation** :

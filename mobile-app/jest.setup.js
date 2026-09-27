@@ -47,3 +47,12 @@ jest.mock('@react-three/fiber/native', () => {
 // Les écrans qui la montent la reçoivent vide ; sa logique est testée dans `homeCar.ts`.
 jest.mock('./src/components/three/HomeCarScene', () => ({ HomeCarScene: () => null }));
 jest.mock('./src/components/three/JourneyTrackScene', () => ({ JourneyTrackScene: () => null }));
+
+// Célébrations (13.12) : lottie-react-native est natif. L'animation devient une vue qui garde
+// ses propriétés (source, colorFilters, autoPlay) pour que les tests les vérifient.
+jest.mock('lottie-react-native', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const LottieView = (props) => React.createElement(View, props);
+  return { __esModule: true, default: LottieView };
+});

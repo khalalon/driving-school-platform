@@ -64,6 +64,8 @@ import {
   journeyTrackPalette,
 } from '../../components/three/journeyTrack';
 import { SectorBar } from '../../components/circuit';
+import { CelebrationModal } from '../../components/celebration/CelebrationModal';
+import { useCelebrations } from '../../hooks/useCelebrations';
 
 interface HomeData {
   lessons: Lesson[];
@@ -96,6 +98,8 @@ export const StudentDashboard = ({ navigation }: any) => {
   const [error, setError] = useState<string | null>(null);
   /** Étape ouverte dans le parcours (13.11) ; par défaut l'étape en cours. */
   const [selectedStep, setSelectedStep] = useState<JourneyStepKey | null>(null);
+  /** Événements à fêter (13.12) : inscription acceptée, code réussi, permis obtenu. */
+  const celebration = useCelebrations(enrollment, data?.exams);
   const schoolId = enrollment?.schoolId ?? null;
   const currency = useSchoolCurrency(schoolId);
 
@@ -436,6 +440,7 @@ export const StudentDashboard = ({ navigation }: any) => {
 
   return (
     <View style={styles.flex}>
+      <CelebrationModal celebration={celebration.current} onContinue={celebration.dismiss} />
       <AppBar
         title={`${t('home.hello')} ${user?.firstName || t('home.student')}`}
         subtitle={enrollment?.schoolName ?? undefined}

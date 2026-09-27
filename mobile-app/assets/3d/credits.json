@@ -78,5 +78,35 @@
     "license": "CC0 1.0",
     "modifications": "Matériaux recolorés aux jetons « Circuit » (D-52)",
     "bytes": 16596
+  },
+  {
+    "file": "lottie/enrolled.json",
+    "usage": "Célébration : inscription acceptée",
+    "source": "Création originale du projet (scripts/make_celebrations.py)",
+    "url": null,
+    "author": "Driving School Platform",
+    "license": "Création originale du projet — aucun tiers",
+    "modifications": "Calques nommés par rôle, recolorés au rendu aux jetons « Circuit » (D-52)",
+    "bytes": 28973
+  },
+  {
+    "file": "lottie/theory.json",
+    "usage": "Célébration : examen du code réussi",
+    "source": "Création originale du projet (scripts/make_celebrations.py)",
+    "url": null,
+    "author": "Driving School Platform",
+    "license": "Création originale du projet — aucun tiers",
+    "modifications": "Calques nommés par rôle, recolorés au rendu aux jetons « Circuit » (D-52)",
+    "bytes": 30957
+  },
+  {
+    "file": "lottie/licence.json",
+    "usage": "Célébration : permis obtenu (drapeau à damier)",
+    "source": "Création originale du projet (scripts/make_celebrations.py)",
+    "url": null,
+    "author": "Driving School Platform",
+    "license": "Création originale du projet — aucun tiers",
+    "modifications": "Calques nommés par rôle, recolorés au rendu aux jetons « Circuit » (D-52)",
+    "bytes": 73986
   }
 ]

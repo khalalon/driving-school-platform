@@ -26,6 +26,15 @@ export const ar: Record<TranslationKey, string> = {
   'settings.account': 'الحساب',
   'settings.signedInAs': 'متصل بـ {email}',
 
+  // الاحتفالات (13.12)
+  'celebration.continue': 'متابعة',
+  'celebration.enrolled.title': 'تم قبول تسجيلك!',
+  'celebration.enrolled.message': '{school} ترحّب بك. الخطوة الأولى: قانون الطرقات.',
+  'celebration.theory.title': 'نجحت في امتحان القانون!',
+  'celebration.theory.message': 'امتحان القانون أصبح وراءك. حان وقت السياقة.',
+  'celebration.licence.title': 'حصلت على رخصة السياقة!',
+  'celebration.licence.message': 'تهانينا، نجحت في امتحان السياقة. طريق السلامة!',
+
   // Vocabulaire commun
   'common.ok': 'حسناً',
   'common.cancel': 'إلغاء',

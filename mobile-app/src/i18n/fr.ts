@@ -22,6 +22,15 @@ export const fr = {
   'settings.account': 'Compte',
   'settings.signedInAs': 'Connecté avec {email}',
 
+  // Célébrations (13.12)
+  'celebration.continue': 'Continuer',
+  'celebration.enrolled.title': 'Inscription acceptée !',
+  'celebration.enrolled.message': '{school} vous accueille. Première étape : le code.',
+  'celebration.theory.title': 'Code réussi !',
+  'celebration.theory.message': 'L’examen du code est derrière vous. Place à la conduite.',
+  'celebration.licence.title': 'Permis obtenu !',
+  'celebration.licence.message': 'Félicitations, vous avez réussi l’examen de conduite. Bonne route !',
+
   // Vocabulaire commun
   'common.ok': 'OK',
   'common.cancel': 'Annuler',
