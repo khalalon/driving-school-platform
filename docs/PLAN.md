@@ -3,7 +3,7 @@
 Règles de lecture (voir `CLAUDE.md`, règles d'or 3 et 5) :
 - On travaille dans l'ordre, sur la première tâche non cochée. Une tâche = un commit (message Conventional Commits, scope = domaine ou `infra` / `mobile` / `docs` / `e2e`), poussé sur `origin/main` aussitôt. Les tâches d'une même phase s'enchaînent sans validation intermédiaire ; arrêt obligatoire en fin de phase, sur question ouverte non tranchée, sur échec de critère non réparable dans la tâche, ou sur choix produit non tranché (D-36, 18/09/2026).
 - Une tâche est cochée **seulement** quand sa commande « Critère de validation » a été exécutée et que sa sortie a été montrée. Pas d'exception.
-- Si une tâche indique « Dépend de : Q-xx » et que la question n'est pas tranchée dans `DECISIONS.md`, on **s'arrête** et on demande. Phases 0 à 12 : Q-17 à Q-24 → D-40 à D-51. **Au 26/09/2026, Q-25 à Q-53 sont ouvertes** (feuille de route v1.1, phases 14 à 23) : aucune tâche de ces phases ne commence avant la réponse de l'humain. Le 03/10/2026 : Q-25 → D-54, Q-26 → D-56, Q-27 → D-57, Q-53 → D-55 (tâches 23.x réécrites) ; **la Phase 14 peut commencer**, les autres questions restent ouvertes. La Phase 13 applique D-52, la Phase 13b applique D-53 ; aucune des deux ne dépend d'une question.
+- Si une tâche indique « Dépend de : Q-xx » et que la question n'est pas tranchée dans `DECISIONS.md`, on **s'arrête** et on demande. Phases 0 à 12 : Q-17 à Q-24 → D-40 à D-51. **Au 26/09/2026, Q-25 à Q-53 sont ouvertes** (feuille de route v1.1, phases 14 à 23) : aucune tâche de ces phases ne commence avant la réponse de l'humain. Le 03/10/2026 : Q-25 → D-54, Q-26 → D-56, Q-27 → D-57, Q-53 → D-55 (tâches 23.x réécrites) ; Q-28 → D-58, Q-29 → D-59, Q-30 → D-60 : **la Phase 15 peut commencer**, les autres questions restent ouvertes. La Phase 13 applique D-52, la Phase 13b applique D-53 ; aucune des deux ne dépend d'une question.
 - Chaque tâche livrée ajoute une ligne dans `CHANGELOG.md` et, si elle touche une route, met à jour `docs/API_CONTRACT.md` dans le même commit.
 - Les commandes sont écrites pour Git Bash (Windows) ou un shell POSIX, depuis la racine du dépôt sauf `cd` explicite.
 
@@ -775,7 +775,7 @@ Demande de l'auteur après la recette : des améliorations **métier**, précéd
 | 13 | Rénovation UI/UX « Circuit » : jetons, typo, thème sombre, composants, navigation, 3D, tous les écrans | D-52 (tranchée) |
 | 13b | Voiture réaliste, feu tricolore, voiture au doigt et gyroscope, parcours suivi par la caméra | D-53 (tranchée) |
 | 14 | Gérant de l'école : des droits distincts de ceux des moniteurs | D-54, D-56, D-57 (tranchées) |
-| 15 | Agenda de l'instructeur, conflits d'horaire, créneaux libres pour l'élève | Q-28 à Q-30 |
+| 15 | Agenda de l'instructeur, conflits d'horaire, créneaux libres pour l'élève | D-58, D-59, D-60 (tranchées) |
 | 16 | Dossier administratif de l'élève (pièces reçues / manquantes) | Q-31, Q-32 |
 | 17 | Notifications push, rappels de leçon, centre de notifications | Q-33 à Q-37 |
 | 18 | Paiements partiels, reçus, caisse de l'école | Q-38 à Q-40 |
@@ -1119,13 +1119,13 @@ test -f tests/e2e/manager.e2e.test.ts && docker compose up -d --build --force-re
 
 ---
 
-## Phase 15 — Agenda et conflits d'horaire (Q-28, Q-29, Q-30)
+## Phase 15 — Agenda et conflits d'horaire (D-58, D-59, D-60)
 
-L'instructeur planifie aujourd'hui sans voir son planning, et rien n'empêche deux leçons à la même heure. Cette phase donne un agenda, contrôle les chevauchements, puis (Q-30 (b)) laisse l'élève choisir parmi de vrais créneaux libres.
+L'instructeur planifie aujourd'hui sans voir son planning, et rien n'empêche deux leçons à la même heure. Cette phase donne un agenda, contrôle les chevauchements, puis (D-60) laisse l'élève choisir parmi de vrais créneaux libres.
 
 ### - [ ] 15.1 — Route agenda
-**Objectif** : `GET /api/lessons/agenda?from=&to=&instructorId=` (instructeur de l'école / admin) : leçons `scheduled` et `completed` dont `scheduledDate` ∈ [`from`, `to`[ (plage ≤ 31 jours, 400 `VALIDATION_ERROR` sinon), triées par date, au format `Lesson`. Portée : toute l'école, `instructorId` filtre (Q-29 (b)). Contrat §4, ligne L9.
-**Dépend de** : Q-29.
+**Objectif** : `GET /api/lessons/agenda?from=&to=&instructorId=` (instructeur de l'école / admin) : leçons `scheduled` et `completed` dont `scheduledDate` ∈ [`from`, `to`[ (plage ≤ 31 jours, 400 `VALIDATION_ERROR` sinon), triées par date, au format `Lesson`. Portée : toute l'école, `instructorId` filtre (D-59). Contrat §4, ligne L9.
+**Dépend de** : D-59.
 **Fichiers** : `services/api/src/modules/lesson/{routes,controllers,services,repositories,validators}`, tests, `docs/API_CONTRACT.md`.
 **Critère de validation** :
 ```bash
@@ -1134,8 +1134,8 @@ cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPat
 **Hors périmètre** : examens dans l'agenda (pas d'instructeur attitré, D-33).
 
 ### - [ ] 15.2 — Chevauchements refusés ou signalés à la planification
-**Objectif** : L4 et L5 vérifient qu'aucune leçon `scheduled` **du même instructeur ou du même élève** ne chevauche [`scheduledDate`, `scheduledDate + durationMinutes`[. Conflit → 409 `SCHEDULE_CONFLICT` avec `conflict: { lessonId, scheduledDate, durationMinutes, instructorId, studentId }` dans le corps d'erreur ; `force: true` dans le payload passe outre (Q-28 (b)). Vérification et écriture dans la **même transaction**, sous verrou (`pg_advisory_xact_lock` sur l'instructeur) pour que deux approbations simultanées ne passent pas toutes les deux. Un `ScheduleConflictChecker` injecté, réutilisé en 23.3 pour les véhicules. Contrat L4, L5, code d'erreur.
-**Dépend de** : Q-28.
+**Objectif** : L4 et L5 vérifient qu'aucune leçon `scheduled` **du même instructeur ou du même élève** ne chevauche [`scheduledDate`, `scheduledDate + durationMinutes`[. Conflit → 409 `SCHEDULE_CONFLICT` avec `conflict: { lessonId, scheduledDate, durationMinutes, instructorId, studentId }` dans le corps d'erreur ; `force: true` dans le payload passe outre (D-58). Vérification et écriture dans la **même transaction**, sous verrou (`pg_advisory_xact_lock` sur l'instructeur) pour que deux approbations simultanées ne passent pas toutes les deux. Un `ScheduleConflictChecker` injecté, réutilisé en 23.3 pour les véhicules. Contrat L4, L5, code d'erreur.
+**Dépend de** : D-58.
 **Fichiers** : `services/api/src/modules/lesson/services/`, `services/api/src/modules/lesson/repositories/`, tests, `docs/API_CONTRACT.md`.
 **Critère de validation** :
 ```bash
@@ -1145,7 +1145,7 @@ cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPat
 
 ### - [ ] 15.3 — Écran Agenda
 **Objectif** : écran « Agenda » instructeur : semaine en cours, semaine précédente / suivante / aujourd'hui, un bloc par leçon (heure, durée, type, élève), tap → fiche élève, filtre par instructeur. Accès depuis la navigation définie en Phase 13. `LessonService.getAgenda(from, to, instructorId?)` + test.
-**Dépend de** : Q-29.
+**Dépend de** : D-59.
 **Fichiers** : `mobile-app/src/screens/instructor/AgendaScreen.tsx` (nouveau), `mobile-app/src/services/api/LessonService.ts`, `mobile-app/src/config/api.config.ts`, navigation, `mobile-app/src/i18n/{fr,ar}.ts`, tests.
 **Critère de validation** :
 ```bash
@@ -1155,7 +1155,7 @@ cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
 
 ### - [ ] 15.4 — Conflit affiché au moment de planifier
 **Objectif** : l'approbation (`LessonRequestsScreen`) et la réservation directe (`BookForStudentScreen`) affichent le conflit renvoyé (heure et élève de la leçon en conflit) et proposent « Planifier quand même » (renvoi avec `force: true`) ; `SCHEDULE_CONFLICT` traduit FR / AR.
-**Dépend de** : Q-28.
+**Dépend de** : D-58.
 **Fichiers** : `mobile-app/src/screens/instructor/{LessonRequestsScreen,BookForStudentScreen}.tsx`, `mobile-app/src/services/api/`, `mobile-app/src/i18n/{fr,ar}.ts`, tests.
 **Critère de validation** :
 ```bash
@@ -1174,7 +1174,7 @@ test -f tests/e2e/agenda.e2e.test.ts && docker compose up -d --build --force-rec
 
 ### - [ ] 15.6 — Disponibilités des instructeurs
 **Objectif** : migration `0NN_instructor_availability.sql` : `instructor_availability (id, instructor_id → instructors, weekday 0–6, start_time TIME, end_time TIME, CHECK (end_time > start_time))`. Routes `GET /api/instructors/me/availability` et `PUT /api/instructors/me/availability` (l'instructeur remplace **sa semaine type** en une fois ; plages d'un même jour sans chevauchement, 400 sinon). Nouvelle section du contrat.
-**Dépend de** : Q-30.
+**Dépend de** : D-60.
 **Fichiers** : `migrations/0NN_instructor_availability.sql`, `services/api/src/modules/lesson/` (ou module `schedule` si la tâche le juge plus clair), tests, `docs/API_CONTRACT.md`.
 **Critère de validation** :
 ```bash
@@ -1184,7 +1184,7 @@ test -f tests/e2e/agenda.e2e.test.ts && docker compose up -d --build --force-rec
 
 ### - [ ] 15.7 — Créneaux libres pour l'élève
 **Objectif** : `GET /api/lessons/free-slots?type=&from=&to=` (élève avec inscription `approved`, école résolue par D-22 ; 403 `NOT_ENROLLED` sinon) : créneaux de la durée du tarif du type (S4 `duration`, 60 min à défaut), tirés des disponibilités des instructeurs de l'école, moins les leçons `scheduled` qui les chevauchent, uniquement dans le futur, plage ≤ 14 jours. Chaque créneau : `{ start, end, instructorId, instructorFirstName, instructorLastName }`. **L2 ne change pas** : l'élève envoie `requestedDate = start` et `preferredInstructorId = instructorId`, la demande reste `pending` (D-01). Contrat §4, ligne L10.
-**Dépend de** : Q-30.
+**Dépend de** : D-60.
 **Fichiers** : `services/api/src/modules/lesson/`, tests, `docs/API_CONTRACT.md`.
 **Critère de validation** :
 ```bash
@@ -1194,7 +1194,7 @@ cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPat
 
 ### - [ ] 15.8 — Écran « Mes disponibilités »
 **Objectif** : l'instructeur saisit sa semaine type (plages par jour, ajout / retrait), enregistrée d'un bloc (PUT). Service + test.
-**Dépend de** : Q-30.
+**Dépend de** : D-60.
 **Fichiers** : `mobile-app/src/screens/instructor/MyAvailabilityScreen.tsx` (nouveau), service, `api.config.ts`, navigation, i18n, tests.
 **Critère de validation** :
 ```bash
@@ -1204,7 +1204,7 @@ cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
 
 ### - [ ] 15.9 — L'élève choisit un créneau libre
 **Objectif** : `BookLessonScreen` propose, après le choix du type, les créneaux libres groupés par jour (instructeur affiché) ; en choisir un pré-remplit la demande. Repli « Proposer une autre date » (saisie libre actuelle) si aucun créneau ou si l'école n'a publié aucune disponibilité.
-**Dépend de** : Q-30.
+**Dépend de** : D-60.
 **Fichiers** : `mobile-app/src/screens/student/BookLessonScreen.tsx`, `mobile-app/src/services/api/LessonService.ts`, i18n, tests.
 **Critère de validation** :
 ```bash

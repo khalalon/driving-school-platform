@@ -137,42 +137,18 @@ Deux sections. « Décisions prises » fait autorité : on ne la rediscute pas d
 | **D-55** | Q-53 : quelles échéances suivre ? | **Assurance, visite technique, vignette (des dates) et vidange au kilométrage** (option b). Dates : alerte à J-30 au tableau de bord, notification au gérant à J-30 et J-7. **Vidange** : (1) le **kilométrage** de chaque voiture est mis à jour **à la main sur sa fiche** (écran Flotte) par **tout instructeur de l'école**, quand il y pense — aucun relevé pendant les leçons ; (2) l'**intervalle de vidange** est propre à **chaque véhicule**, saisi par le gérant, **10 000 km par défaut** ; (3) la vidange est due au kilométrage de la dernière vidange plus l'intervalle ; **alerte à 1 000 km de l'échéance, puis une seconde fois une fois dépassée** (tableau de bord et notification au gérant, une fois par seuil et par échéance) ; (4) le geste « vidange faite » remet le compteur de vidange au kilométrage du moment et suit les droits de gestion de la flotte (D-56 (g) : gérant seul). | Réponses de l'auteur (03/10/2026) : option (b), non recommandée, puis trois précisions posées dans le chat, réponses recommandées. | Tâches 23.1, 23.2, 23.4, 23.5 et 23.6 réécrites. Limite assumée : un compteur que personne ne met à jour ne déclenche jamais l'alerte de vidange ; la fiche véhicule affiche la date du dernier relevé pour que ça se voie. |
 | **D-56** | Q-26 : quelles actions sont réservées au gérant ? | **Au gérant seul** : (a) modifier la fiche école et la grille tarifaire (S7, S8, S9 — retirées aux simples instructeurs, qui les avaient par D-51) ; (b) gérer la liste des pièces du dossier ; (c) voir la caisse de l'école ; (d) annuler un versement ; (e) gérer le catalogue de forfaits ; (f) voir le tableau de bord ; (g) gérer la flotte de véhicules. **Ouvert à tout instructeur de l'école** : (h) encaisser un versement. Le gérant, instructeur lui aussi (D-54), garde toutes les actions des instructeurs. | Réponse de l'auteur (03/10/2026) : « le gérant a accès à toutes les actions », précisée dans le chat — l'encaissement reste ouvert aux moniteurs, qui reçoivent souvent l'argent en voiture. C'est l'option recommandée. | `SchoolGuard.assertManager` (14.3) sur (a)–(g) ; les gardes des phases 16, 18, 19, 22, 23 telles qu'écrites. |
 | **D-57** | Q-27 : comment devient-on gérant ? | **Les deux voies** (option c) : un **code d'inscription gérant** (`school_codes.role = 'manager'`, une utilisation) émis par le script d'onboarding pour les nouvelles écoles, **et** la désignation par l'administrateur d'un instructeur existant (`scripts/set-manager.sh <email>`) pour les écoles pilotes déjà inscrites. | Réponse de l'auteur (03/10/2026), option recommandée : les écoles pilotes ont déjà leurs instructeurs, il faut pouvoir désigner leur gérant sans nouvelle inscription. | Tâches 14.1 et 14.2 telles qu'écrites. |
+| **D-58** | Q-28 : deux leçons qui se chevauchent pour un même instructeur ou un même élève ? | **Avertissement que l'instructeur peut lever** (option b) : L4 / L5 répondent 409 `SCHEDULE_CONFLICT` avec la leçon en conflit ; l'instructeur peut **forcer** la planification (`force: true`). Pas de règle par type de leçon : forcer couvre aussi le code en salle. | Réponse de l'auteur (03/10/2026), option recommandée. | Tâches 15.2 et 15.4 telles qu'écrites. Le véhicule (Q-52) suit sa propre règle. |
+| **D-59** | Q-29 : qui voit quoi dans l'agenda ? | **Tout instructeur voit l'agenda de toute son école**, avec un filtre par instructeur (option b). | Réponse de l'auteur (03/10/2026), option recommandée : même logique que la file partagée des demandes (D-32), utile pour se répartir les élèves. | Tâches 15.1 et 15.3 telles qu'écrites. |
+| **D-60** | Q-30 : l'élève choisit-il parmi des créneaux libres ? | **Oui, sous approbation** (option b) : chaque instructeur publie sa **semaine type de disponibilités** ; l'élève choisit un créneau libre ; **la demande reste à approuver** par l'école (D-01 inchangé). | Réponse de l'auteur (03/10/2026), option recommandée : on garde le contrôle de l'école en supprimant la négociation de date. | Tâches 15.6 à 15.10 telles qu'écrites. |
 
 
 ## Questions ouvertes
 
-Historique : Q-17 → D-40, Q-18 → D-41, Q-19 → D-42, Q-20 → D-43, Q-21 → D-44, Q-22 → D-49, Q-23 → D-50, Q-24 → D-51, Q-25 → D-54, Q-26 → D-56, Q-27 → D-57, Q-53 → D-55 ; D-45 (design accepté), D-46 (SDK Expo), D-47 (français et arabe) et D-48 (design system et thèmes) prises sans question. **À vérifier sur le terrain** : le rattachement type → procédure d'examen (D-44) et les termes arabes du métier (D-47).
+Historique : Q-17 → D-40, Q-18 → D-41, Q-19 → D-42, Q-20 → D-43, Q-21 → D-44, Q-22 → D-49, Q-23 → D-50, Q-24 → D-51, Q-25 → D-54, Q-26 → D-56, Q-27 → D-57, Q-28 → D-58, Q-29 → D-59, Q-30 → D-60, Q-53 → D-55 ; D-45 (design accepté), D-46 (SDK Expo), D-47 (français et arabe) et D-48 (design system et thèmes) prises sans question. **À vérifier sur le terrain** : le rattachement type → procédure d'examen (D-44) et les termes arabes du métier (D-47).
 
 ### Feuille de route v1.1 (26/09/2026) — Q-25 à Q-53
 
 Après la recette sur téléphone (aucun bug), l'auteur a demandé des améliorations métier. Elles sont découpées en phases 14 à 23 dans `docs/PLAN.md` ; chaque phase dépend des questions ci-dessous. **Répondre par lettre.** La « recommandation » est une proposition de Claude, pas une décision : une réponse du type « toutes les recommandations sauf Q-xx → (b) » suffit. Une fois tranchées, les questions deviennent des décisions D-54 et suivantes (D-53 a été prise entre-temps pour la 3D réaliste), et les tâches écrites pour une autre option que celle retenue sont réécrites **avant** de commencer la phase.
-
-#### Phase 15 — Agenda et conflits d'horaire
-
-### Q-28 — Deux leçons qui se chevauchent pour un même instructeur ou un même élève ?
-Aujourd'hui rien n'empêche L4 / L5 de planifier deux leçons à la même heure.
-- **(a)** Bloquant : 409 `SCHEDULE_CONFLICT`, il faut choisir une autre heure.
-- **(b)** Avertissement : 409 `SCHEDULE_CONFLICT` avec la leçon en conflit, et l'instructeur peut **forcer** (`force: true`).
-- **(c)** Bloquant, sauf pour les leçons `CODE` (séances de code données à plusieurs élèves dans la même salle).
-
-**Recommandation** : (b). Couvre le code en salle et les cas exceptionnels sans inventer de règle par type.
-Bloque : 15.2, 15.4.
-
-### Q-29 — Qui voit quoi dans l'agenda ?
-- **(a)** Chaque instructeur voit **ses** leçons seulement.
-- **(b)** Tout instructeur voit l'agenda de **toute son école**, avec un filtre par instructeur.
-
-**Recommandation** : (b). Même logique que la file partagée des demandes (D-32) ; utile pour se répartir les élèves.
-Bloque : 15.1, 15.3.
-
-### Q-30 — L'élève choisit-il parmi des créneaux libres ?
-Aujourd'hui l'élève écrit une date souhaitée et l'instructeur fixe la vraie date : plusieurs allers-retours sont fréquents.
-- **(a)** Non : l'agenda sert seulement à l'instructeur ; 15.6 à 15.10 sont supprimées.
-- **(b)** Oui : chaque instructeur publie sa **semaine type de disponibilités** ; l'élève choisit un créneau libre, **la demande reste à approuver** par l'école (D-01 inchangé).
-- **(c)** Oui, et choisir un créneau **réserve directement** la leçon, sans approbation.
-
-**Recommandation** : (b). On garde le contrôle de l'école tout en supprimant la négociation de date.
-Bloque : 15.6 à 15.10.
 
 #### Phase 16 — Dossier administratif de l'élève
 
