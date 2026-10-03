@@ -20,7 +20,13 @@ import { AppBar, Button, Card, Chip, Field, ListRow, Screen, Skeleton } from '..
 import { lessonService } from '../../services/api/LessonService';
 import { schoolService } from '../../services/api/SchoolService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
-import { lessonTypeLabel, LESSON_TYPES, LessonType } from '../../models/Lesson';
+import { offerScheduleConflict } from './components/scheduleConflict';
+import {
+  BookLessonForStudentData,
+  lessonTypeLabel,
+  LESSON_TYPES,
+  LessonType,
+} from '../../models/Lesson';
 import { SchoolPricing, SchoolStudent } from '../../models/School';
 import { useSchoolCurrency } from '../../hooks/useSchoolCurrency';
 import { dateLocale, formatAmount, formatPersonName } from '../../utils/format';
@@ -167,17 +173,23 @@ export const BookForStudentScreen = ({ navigation }: any) => {
       return;
     }
 
+    await submitBooking({
+      studentId: selectedStudent.studentId,
+      type: lessonType,
+      scheduledDate: scheduledDate.toISOString(),
+      durationMinutes,
+      price: priceValue,
+      notes: notes.trim() || undefined,
+    });
+  };
+
+  /** L4 ; un conflit d'horaire (D-58) peut être levé par « Planifier quand même ». */
+  const submitBooking = async (data: BookLessonForStudentData) => {
+    if (!selectedStudent) return;
     try {
       setLoading(true);
       // L4 : studentId = users.id choisi dans S6 ; leçon planifiée, prix figé (D-30)
-      await lessonService.bookLessonForStudent({
-        studentId: selectedStudent.studentId,
-        type: lessonType,
-        scheduledDate: scheduledDate.toISOString(),
-        durationMinutes,
-        price: priceValue,
-        notes: notes.trim() || undefined,
-      });
+      await lessonService.bookLessonForStudent(data);
 
       showToast(
         t('bookFor.booked', {
@@ -186,6 +198,9 @@ export const BookForStudentScreen = ({ navigation }: any) => {
       );
       navigation.navigate('InstructorDashboard');
     } catch (error) {
+      if (offerScheduleConflict(error, () => submitBooking({ ...data, force: true }))) {
+        return;
+      }
       Alert.alert(t('common.error'), getApiErrorMessage(error, t('bookFor.bookFailed')));
     } finally {
       setLoading(false);

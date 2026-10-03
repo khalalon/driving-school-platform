@@ -16,6 +16,7 @@ describe('ScheduleConflictChecker (15.2, D-58)', () => {
     durationMinutes: 60,
     instructorId: 'instr-1',
     studentId: 'user-9',
+    student: { id: 'user-9', firstName: 'Yasmine', lastName: 'Amri' },
   };
   let source: jest.Mocked<ScheduleConflictSource>;
   let checker: ScheduleConflictChecker;

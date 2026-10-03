@@ -32,7 +32,14 @@ import { AppBar, Button, Card, EmptyState, Field, SkeletonCard } from '../../com
 import { lessonService } from '../../services/api/LessonService';
 import { schoolService } from '../../services/api/SchoolService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
-import { lessonTypeLabel, Lesson, LessonStatus, LessonType } from '../../models/Lesson';
+import { offerScheduleConflict } from './components/scheduleConflict';
+import {
+  ApproveLessonData,
+  lessonTypeLabel,
+  Lesson,
+  LessonStatus,
+  LessonType,
+} from '../../models/Lesson';
 import { SchoolInstructor, SchoolPricing } from '../../models/School';
 import { useSchoolCurrency } from '../../hooks/useSchoolCurrency';
 import { dateLocale, formatAmount, formatDateTime, formatPersonName } from '../../utils/format';
@@ -239,13 +246,20 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
       return;
     }
 
-    const data = {
+    const data: ApproveLessonData = {
       scheduledDate: scheduledDate.toISOString(),
       durationMinutes,
       price: priceValue,
       adminNotes: adminNotes.trim() || undefined,
     };
+    await submitApproval(data);
+  };
 
+  /**
+   * Envoi des approbations. Une demande seule en conflit d'horaire (409 SCHEDULE_CONFLICT,
+   * D-58) affiche la leçon en conflit et peut être planifiée quand même (`force: true`).
+   */
+  const submitApproval = async (data: ApproveLessonData) => {
     try {
       setProcessing(true);
       if (approveTargets.length === 1) {
@@ -282,6 +296,9 @@ export const LessonRequestsScreen = ({ navigation }: any) => {
       closeApprove();
       loadRequests();
     } catch (error) {
+      if (offerScheduleConflict(error, () => submitApproval({ ...data, force: true }))) {
+        return;
+      }
       // 409 : un collègue a déjà traité la demande ; 400 PRICE_REQUIRED : grille incomplète
       Alert.alert(t('common.error'), getApiErrorMessage(error, t('lessonRequests.approveFailed')));
       loadRequests();

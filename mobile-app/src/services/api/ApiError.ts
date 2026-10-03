@@ -9,10 +9,13 @@
 
 import { AxiosError } from 'axios';
 import { TranslationKey, t } from '../../i18n';
+import type { ScheduleConflict } from '../../models/Lesson';
 
 export interface ApiErrorBody {
   error?: string;
   message?: string;
+  /** 409 SCHEDULE_CONFLICT (15.2) : la leçon qui occupe déjà le créneau. */
+  conflict?: ScheduleConflict;
 }
 
 const bodyOf = (error: unknown): ApiErrorBody | undefined => {
@@ -22,6 +25,12 @@ const bodyOf = (error: unknown): ApiErrorBody | undefined => {
 
 /** Code stable renvoyé par le backend (`CANCEL_WINDOW_CLOSED`, `NOT_ENROLLED`…), s'il y en a un. */
 export const getApiErrorCode = (error: unknown): string | undefined => bodyOf(error)?.error;
+
+/** La leçon en conflit d'un 409 `SCHEDULE_CONFLICT` (L4, L5 — D-58), sinon `undefined`. */
+export const getScheduleConflict = (error: unknown): ScheduleConflict | undefined => {
+  const body = bodyOf(error);
+  return body?.error === 'SCHEDULE_CONFLICT' && body.conflict ? body.conflict : undefined;
+};
 
 /**
  * Codes du contrat (§1–8) et leur clé de traduction. Un code qui n'est pas dans le contrat n'est
@@ -39,6 +48,7 @@ const ERROR_KEYS: Record<string, TranslationKey> = {
   CANCEL_WINDOW_CLOSED: 'error.CANCEL_WINDOW_CLOSED',
   PRICE_REQUIRED: 'error.PRICE_REQUIRED',
   INVALID_SCHOOL_CODE: 'error.INVALID_SCHOOL_CODE',
+  SCHEDULE_CONFLICT: 'error.SCHEDULE_CONFLICT',
   INTERNAL_ERROR: 'error.INTERNAL_ERROR',
 };
 

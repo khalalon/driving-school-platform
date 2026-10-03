@@ -142,6 +142,8 @@ export interface ScheduleConflict {
   durationMinutes: number;
   instructorId: string;
   studentId: string;
+  /** Pour l'écran : qui occupe déjà le créneau (15.4). */
+  student: { id: string; firstName: string; lastName: string };
 }
 
 /** Ce que le repository écrit à l'approbation (L5) : instructeur = l'appelant (D-32), prix figé (D-30), avoir imputé (D-40). */

@@ -1153,7 +1153,7 @@ cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
 ```
 **Hors périmètre** : glisser-déposer pour déplacer une leçon.
 
-### - [ ] 15.4 — Conflit affiché au moment de planifier
+### - [x] 15.4 — Conflit affiché au moment de planifier
 **Objectif** : l'approbation (`LessonRequestsScreen`) et la réservation directe (`BookForStudentScreen`) affichent le conflit renvoyé (heure et élève de la leçon en conflit) et proposent « Planifier quand même » (renvoi avec `force: true`) ; `SCHEDULE_CONFLICT` traduit FR / AR.
 **Dépend de** : D-58.
 **Fichiers** : `mobile-app/src/screens/instructor/{LessonRequestsScreen,BookForStudentScreen}.tsx`, `mobile-app/src/services/api/`, `mobile-app/src/i18n/{fr,ar}.ts`, tests.

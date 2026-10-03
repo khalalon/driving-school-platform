@@ -313,6 +313,8 @@ describe('LessonRepository (schéma 007, objet Lesson du contrat)', () => {
     expect(sql).toMatch(/l\.scheduled_date < \$4/);
     expect(sql).toMatch(/make_interval\(mins => COALESCE\(l\.duration_minutes, 60\)\) > \$3/);
     expect(sql).toMatch(/l\.id <> \$5::uuid/);
+    // Le nom de l'élève qui occupe le créneau, pour l'écran (15.4)
+    expect(sql).toMatch(/json_build_object\('id', su\.id, 'firstName', su\.first_name/);
     expect(params).toEqual([
       UUID.instructor,
       UUID.student,

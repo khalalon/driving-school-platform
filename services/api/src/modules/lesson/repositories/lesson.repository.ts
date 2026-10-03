@@ -207,9 +207,12 @@ export class LessonRepository implements ILessonRepository {
     const result = await executor.query<ScheduleConflict>(
       `SELECT l.id AS "lessonId", l.scheduled_date AS "scheduledDate",
               l.duration_minutes AS "durationMinutes", l.instructor_id AS "instructorId",
-              s.user_id AS "studentId"
+              s.user_id AS "studentId",
+              json_build_object('id', su.id, 'firstName', su.first_name,
+                                'lastName', su.last_name) AS student
        FROM lessons l
        JOIN students s ON s.id = l.student_id
+       JOIN users su ON su.id = s.user_id
        WHERE l.status = 'scheduled'
          AND (l.instructor_id = $1 OR s.user_id = $2)
          AND l.scheduled_date < $4

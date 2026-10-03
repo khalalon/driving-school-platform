@@ -5,6 +5,7 @@
  * cibles tactiles suffisantes.
  */
 import React from 'react';
+import { Alert, AlertButton } from 'react-native';
 import { act } from 'react-test-renderer';
 import { LessonRequestsScreen } from '../LessonRequestsScreen';
 import { EnrollmentRequestsScreen } from '../EnrollmentRequestsScreen';
@@ -208,6 +209,81 @@ describe('fenêtre de présence', () => {
     await settle();
     act(() => tree.root.findAllByProps({ accessibilityLabel: t('common.save') })[0].props.onPress());
     expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ attended: true }));
+    unmountInTheme(tree);
+  });
+});
+
+describe('conflit d’horaire à la planification (15.4, D-58)', () => {
+  const conflict = {
+    lessonId: 'l9',
+    scheduledDate: inTwoDays,
+    durationMinutes: 60,
+    instructorId: 'i1',
+    studentId: 'u9',
+    student: { id: 'u9', firstName: 'Nour', lastName: 'Cherif' },
+  };
+  const conflictError = {
+    response: { status: 409, data: { error: 'SCHEDULE_CONFLICT', message: 'pris', conflict } },
+  };
+
+  /** Le bouton dont le libellé (accessibilityLabel) est `label`. */
+  const press = async (tree: ReturnType<typeof renderScreen>, label: string) => {
+    const [button] = tree.root.findAll(
+      (node) =>
+        node.props?.accessibilityLabel === label && typeof node.props?.onPress === 'function'
+    );
+    await act(async () => {
+      await button.props.onPress();
+    });
+  };
+
+  it('approbation : la leçon en conflit est montrée, « Planifier quand même » renvoie force', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    (lessonService.approveLesson as jest.Mock)
+      .mockRejectedValueOnce(conflictError)
+      .mockResolvedValueOnce({ id: 'l1', status: LessonStatus.SCHEDULED });
+
+    const tree = renderScreen(<LessonRequestsScreen navigation={navigation} />, 'dark');
+    await settle();
+    await press(tree, t('lessonRequests.schedule'));
+    await press(tree, t('lessonRequests.confirm'));
+
+    const [title, message, buttons] = alert.mock.calls[0] as [string, string, AlertButton[]];
+    expect(title).toBe(t('conflict.title'));
+    expect(message).toContain('Nour Cherif');
+    expect(buttons.map((button) => button.text)).toEqual([
+      t('common.cancel'),
+      t('conflict.forceAnyway'),
+    ]);
+    expect((lessonService.approveLesson as jest.Mock).mock.calls[0][1].force).toBeUndefined();
+
+    await act(async () => {
+      buttons[1].onPress?.();
+      await Promise.resolve();
+    });
+    expect((lessonService.approveLesson as jest.Mock).mock.calls[1][1]).toMatchObject({
+      force: true,
+      durationMinutes: 60,
+    });
+    alert.mockRestore();
+    unmountInTheme(tree);
+  });
+
+  it('une autre erreur garde le message habituel, sans proposer de forcer', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    (lessonService.approveLesson as jest.Mock).mockRejectedValueOnce({
+      response: { status: 409, data: { error: 'CONFLICT', message: 'déjà traitée' } },
+    });
+    const tree = renderScreen(<LessonRequestsScreen navigation={navigation} />, 'dark');
+    await settle();
+    await press(tree, t('lessonRequests.schedule'));
+    await press(tree, t('lessonRequests.confirm'));
+
+    const [title, message, buttons] = alert.mock.calls[0] as [string, string, AlertButton[]?];
+    expect(title).toBe(t('common.error'));
+    expect(message).toBe(t('error.CONFLICT'));
+    expect(buttons).toBeUndefined();
+    alert.mockRestore();
     unmountInTheme(tree);
   });
 });

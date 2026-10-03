@@ -171,6 +171,19 @@ export interface ApproveLessonData {
   durationMinutes: number;
   price?: number;
   adminNotes?: string;
+  /** Planifier malgré un chevauchement signalé (15.4, D-58). */
+  force?: boolean;
+}
+
+/** Leçon en conflit renvoyée avec 409 `SCHEDULE_CONFLICT` par L4 / L5 (15.2, D-58). */
+export interface ScheduleConflict {
+  lessonId: string;
+  scheduledDate: string;
+  durationMinutes: number;
+  instructorId: string;
+  /** users.id */
+  studentId: string;
+  student: PersonSummary;
 }
 
 /**
@@ -190,6 +203,8 @@ export interface BookLessonForStudentData {
   durationMinutes: number;
   price?: number;
   notes?: string;
+  /** Planifier malgré un chevauchement signalé (15.4, D-58). */
+  force?: boolean;
 }
 
 /** L7 : présence par identifiant de leçon. */
