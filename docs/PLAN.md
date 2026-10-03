@@ -1182,7 +1182,7 @@ test -f tests/e2e/agenda.e2e.test.ts && docker compose up -d --build --force-rec
 ```
 **Hors périmètre** : congés et absences ponctuelles de l'instructeur (tâche future si demandée).
 
-### - [ ] 15.7 — Créneaux libres pour l'élève
+### - [x] 15.7 — Créneaux libres pour l'élève
 **Objectif** : `GET /api/lessons/free-slots?type=&from=&to=` (élève avec inscription `approved`, école résolue par D-22 ; 403 `NOT_ENROLLED` sinon) : créneaux de la durée du tarif du type (S4 `duration`, 60 min à défaut), tirés des disponibilités des instructeurs de l'école, moins les leçons `scheduled` qui les chevauchent, uniquement dans le futur, plage ≤ 14 jours. Chaque créneau : `{ start, end, instructorId, instructorFirstName, instructorLastName }`. **L2 ne change pas** : l'élève envoie `requestedDate = start` et `preferredInstructorId = instructorId`, la demande reste `pending` (D-01). Contrat §4, ligne L10.
 **Dépend de** : D-60.
 **Fichiers** : `services/api/src/modules/lesson/`, tests, `docs/API_CONTRACT.md`.

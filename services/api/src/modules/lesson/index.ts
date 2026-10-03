@@ -3,12 +3,14 @@ import { Pool } from 'pg';
 import { PgTransactionRunner } from '../../db/transaction';
 import { SchoolGuard } from '../../http/authz';
 import { AvailabilityController } from './controllers/availability.controller';
+import { FreeSlotsController } from './controllers/free-slots.controller';
 import { LessonController } from './controllers/lesson.controller';
 import { AvailabilityRepository } from './repositories/availability.repository';
 import { LessonRepository } from './repositories/lesson.repository';
 import { createAvailabilityRouter } from './routes/availability.routes';
 import { createLessonRouter } from './routes/lesson.routes';
 import { AvailabilityService } from './services/availability.service';
+import { FreeSlotsService } from './services/free-slots.service';
 import { ScheduleConflictChecker } from './services/schedule-conflict.checker';
 import {
   CreditLedger,
@@ -66,12 +68,15 @@ export function buildLessonModule({
     students,
     new ScheduleConflictChecker(lessonRepository)
   );
-  const availabilityService = new AvailabilityService(
-    new AvailabilityRepository(db, transactions),
-    instructors
-  );
+  const availabilityRepository = new AvailabilityRepository(db, transactions);
+  const availabilityService = new AvailabilityService(availabilityRepository, instructors);
+  const freeSlotsService = new FreeSlotsService(students, pricing, availabilityRepository);
   return {
-    router: createLessonRouter(new LessonController(lessonService), requireAuth),
+    router: createLessonRouter(
+      new LessonController(lessonService),
+      requireAuth,
+      new FreeSlotsController(freeSlotsService)
+    ),
     availabilityRouter: createAvailabilityRouter(
       new AvailabilityController(availabilityService),
       requireAuth

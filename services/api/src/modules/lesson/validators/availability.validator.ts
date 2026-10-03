@@ -1,5 +1,10 @@
 import Joi, { CustomHelpers } from 'joi';
-import { AvailabilitySlot, ReplaceAvailabilityDTO } from '../types/availability.types';
+import { LESSON_TYPES } from '../../../types/domain';
+import {
+  AvailabilitySlot,
+  FreeSlotsQuery,
+  ReplaceAvailabilityDTO,
+} from '../types/availability.types';
 
 /** `HH:MM` sur 24 h. */
 const clock = Joi.string().pattern(/^([01]\d|2[0-3]):[0-5]\d$/, 'heure HH:MM');
@@ -46,3 +51,23 @@ export const replaceAvailabilitySchema = Joi.object<ReplaceAvailabilityDTO>({
       return sorted;
     }, 'plages sans chevauchement'),
 });
+
+/** Plage maximale des créneaux libres (L10) : deux semaines. */
+export const FREE_SLOTS_MAX_DAYS = 14;
+
+/** L10 (15.7) : type de leçon, `from` < `to`, plage ≤ 14 jours. */
+export const freeSlotsQuerySchema = Joi.object<FreeSlotsQuery>({
+  type: Joi.string()
+    .valid(...LESSON_TYPES)
+    .required(),
+  from: Joi.date().iso().required(),
+  to: Joi.date().iso().greater(Joi.ref('from')).required(),
+}).custom((value: FreeSlotsQuery, helpers: CustomHelpers) => {
+  const days = (value.to.getTime() - value.from.getTime()) / 86_400_000;
+  if (days > FREE_SLOTS_MAX_DAYS) {
+    return helpers.message({
+      custom: `La plage des créneaux ne peut pas dépasser ${FREE_SLOTS_MAX_DAYS} jours`,
+    }) as never;
+  }
+  return value;
+}, 'plage des créneaux');

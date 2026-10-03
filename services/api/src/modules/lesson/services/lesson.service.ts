@@ -33,9 +33,12 @@ export interface InstructorLookup {
   findByUserId(userId: string): Promise<{ id: string; schoolId: string } | null>;
 }
 
-/** Ce que le module attend du module school : la grille tarifaire (D-30). */
+/** Ce que le module attend du module school : la grille tarifaire (prix D-30, durée 15.7). */
 export interface PricingLookup {
-  getPricingByType(schoolId: string, lessonType: LessonType): Promise<{ price: number } | null>;
+  getPricingByType(
+    schoolId: string,
+    lessonType: LessonType
+  ): Promise<{ price: number; duration?: number } | null>;
 }
 
 /**

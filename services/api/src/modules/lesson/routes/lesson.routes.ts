@@ -1,12 +1,14 @@
 import { RequestHandler, Router } from 'express';
 import { authorize } from '../../../middleware/auth.middleware';
 import { UserRole } from '../../../types/auth';
+import { FreeSlotsController } from '../controllers/free-slots.controller';
 import { LessonController } from '../controllers/lesson.controller';
 
-/** L1–L7 et L9 du contrat (§4) ; `GET /:id` conservé (§8). Cloisonnement dans le service (D-20). */
+/** L1–L7, L9, L10 du contrat (§4) ; `GET /:id` conservé (§8). Cloisonnement dans le service (D-20). */
 export function createLessonRouter(
   controller: LessonController,
-  requireAuth: RequestHandler
+  requireAuth: RequestHandler,
+  freeSlots?: FreeSlotsController
 ): Router {
   const router = Router();
 
@@ -23,6 +25,10 @@ export function createLessonRouter(
   );
   // L9 (15.1) : agenda de l'école ; déclarée avant `/:id`.
   router.get('/agenda', ...schoolStaff, controller.getAgenda);
+  // L10 (15.7) : créneaux libres pour l'élève ; déclarée avant `/:id`.
+  if (freeSlots) {
+    router.get('/free-slots', requireAuth, authorize(UserRole.STUDENT), freeSlots.getFreeSlots);
+  }
   router.get('/:id', requireAuth, controller.getLesson);
   // L5 : un instructeur seulement — il devient l'instructeur de la leçon (D-32).
   router.put('/:id/approve', requireAuth, authorize(UserRole.INSTRUCTOR), controller.approveLesson);
