@@ -55,6 +55,7 @@ import { MyProfileScreen } from '../screens/student/my-profile/MyProfileScreen';
 
 // Instructor Screens
 import { InstructorDashboard } from '../screens/instructor/InstructorDashboard';
+import { AgendaScreen } from '../screens/instructor/AgendaScreen';
 import { TodayLessonsScreen } from '../screens/instructor/TodayLessonsScreen';
 import { LessonRequestsScreen } from '../screens/instructor/LessonRequestsScreen';
 import { BookForStudentScreen } from '../screens/instructor/BookForStudentScreen';
@@ -145,6 +146,11 @@ const InstructorTabs = () => {
         name="InstructorDashboard"
         component={InstructorDashboard}
         options={{ title: t('tabs.today') }}
+      />
+      <InstructorTab.Screen
+        name="Agenda"
+        component={AgendaScreen}
+        options={{ title: t('tabs.agenda') }}
       />
       <InstructorTab.Screen
         name="LessonRequests"

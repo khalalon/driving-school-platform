@@ -1143,7 +1143,7 @@ cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPat
 ```
 **Hors périmètre** : véhicules (23.3).
 
-### - [ ] 15.3 — Écran Agenda
+### - [x] 15.3 — Écran Agenda
 **Objectif** : écran « Agenda » instructeur : semaine en cours, semaine précédente / suivante / aujourd'hui, un bloc par leçon (heure, durée, type, élève), tap → fiche élève, filtre par instructeur. Accès depuis la navigation définie en Phase 13. `LessonService.getAgenda(from, to, instructorId?)` + test.
 **Dépend de** : D-59.
 **Fichiers** : `mobile-app/src/screens/instructor/AgendaScreen.tsx` (nouveau), `mobile-app/src/services/api/LessonService.ts`, `mobile-app/src/config/api.config.ts`, navigation, `mobile-app/src/i18n/{fr,ar}.ts`, tests.

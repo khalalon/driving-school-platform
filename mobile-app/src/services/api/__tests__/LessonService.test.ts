@@ -150,4 +150,18 @@ describe('LessonService', () => {
       attended: false,
     });
   });
+
+  it('getAgenda (L9, 15.3) : GET /api/lessons/agenda { from, to, instructorId? }', async () => {
+    api.get.mockResolvedValue(respond([lesson]));
+    const from = '2026-10-04T23:00:00.000Z';
+    const to = '2026-10-11T23:00:00.000Z';
+
+    await expect(lessonService.getAgenda(from, to)).resolves.toEqual([lesson]);
+    expect(api.get).toHaveBeenLastCalledWith('/api/lessons/agenda', { params: { from, to } });
+
+    await lessonService.getAgenda(from, to, 'i2');
+    expect(api.get).toHaveBeenLastCalledWith('/api/lessons/agenda', {
+      params: { from, to, instructorId: 'i2' },
+    });
+  });
 });

@@ -70,6 +70,7 @@ export const API_CONFIG = {
       APPROVE: '/api/lessons/:id/approve',
       REJECT: '/api/lessons/:id/reject',
       ATTENDANCE: '/api/lessons/:id/attendance',
+      AGENDA: '/api/lessons/agenda',
     },
     // §5 Examens
     EXAMS: {

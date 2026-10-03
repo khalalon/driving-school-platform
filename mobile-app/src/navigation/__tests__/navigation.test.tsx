@@ -81,6 +81,7 @@ describe('CircuitTabBar', () => {
     const student: (keyof StudentTabParamList)[] = ['StudentDashboard', 'MyLessons', 'MyExams', 'MyProfile'];
     const instructor: (keyof InstructorTabParamList)[] = [
       'InstructorDashboard',
+      'Agenda',
       'LessonRequests',
       'ExamRequests',
       'BookForStudent',

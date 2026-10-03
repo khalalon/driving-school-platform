@@ -37,9 +37,10 @@ export type StudentStackParamList = {
   Settings: undefined;
 };
 
-/** Onglets instructeur : Today, Requests, Exams, Students. */
+/** Onglets instructeur : Today, Agenda (15.3), Requests, Exams, Students. */
 export type InstructorTabParamList = {
   InstructorDashboard: undefined;
+  Agenda: undefined;
   LessonRequests: undefined;
   ExamRequests: undefined;
   BookForStudent: undefined;

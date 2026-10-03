@@ -1,5 +1,5 @@
 /**
- * Lesson Service — §4 du contrat (L1–L7).
+ * Lesson Service — §4 du contrat (L1–L7, L9).
  * Single Responsibility: Handle lesson-related API operations
  */
 
@@ -52,6 +52,19 @@ export class LessonService {
   }
 
   // ----- Instructeur -----
+
+  /**
+   * L9 (15.3, D-59) : l'agenda de toute l'école sur [from, to[ (ISO, ≤ 31 jours), leçons
+   * planifiées et faites, triées par date ; `instructorId` n'en garde qu'un.
+   */
+  async getAgenda(from: string, to: string, instructorId?: string): Promise<Lesson[]> {
+    const params: Record<string, string> = { from, to };
+    if (instructorId) params.instructorId = instructorId;
+    const response = await apiClient.get<Lesson[]>(API_CONFIG.ENDPOINTS.LESSONS.AGENDA, {
+      params,
+    });
+    return response.data;
+  }
 
   /** L5 : l'instructeur qui approuve devient l'instructeur de la leçon (D-32). */
   async approveLesson(lessonId: string, data: ApproveLessonData): Promise<Lesson> {

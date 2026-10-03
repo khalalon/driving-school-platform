@@ -19,6 +19,7 @@ export const TAB_ICONS: Record<string, { icon: IoniconName; activeIcon: IoniconN
   MyExams: { icon: 'ribbon-outline', activeIcon: 'ribbon' },
   MyProfile: { icon: 'person-outline', activeIcon: 'person' },
   InstructorDashboard: { icon: 'speedometer-outline', activeIcon: 'speedometer' },
+  Agenda: { icon: 'calendar-outline', activeIcon: 'calendar' },
   LessonRequests: { icon: 'time-outline', activeIcon: 'time' },
   ExamRequests: { icon: 'ribbon-outline', activeIcon: 'ribbon' },
   BookForStudent: { icon: 'people-outline', activeIcon: 'people' },
