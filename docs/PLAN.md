@@ -3,7 +3,7 @@
 Règles de lecture (voir `CLAUDE.md`, règles d'or 3 et 5) :
 - On travaille dans l'ordre, sur la première tâche non cochée. Une tâche = un commit (message Conventional Commits, scope = domaine ou `infra` / `mobile` / `docs` / `e2e`), poussé sur `origin/main` aussitôt. Les tâches d'une même phase s'enchaînent sans validation intermédiaire ; arrêt obligatoire en fin de phase, sur question ouverte non tranchée, sur échec de critère non réparable dans la tâche, ou sur choix produit non tranché (D-36, 18/09/2026).
 - Une tâche est cochée **seulement** quand sa commande « Critère de validation » a été exécutée et que sa sortie a été montrée. Pas d'exception.
-- Si une tâche indique « Dépend de : Q-xx » et que la question n'est pas tranchée dans `DECISIONS.md`, on **s'arrête** et on demande. Phases 0 à 12 : Q-17 à Q-24 → D-40 à D-51. **Au 26/09/2026, Q-25 à Q-53 sont ouvertes** (feuille de route v1.1, phases 14 à 23) : aucune tâche de ces phases ne commence avant la réponse de l'humain. La Phase 13 applique D-52, la Phase 13b applique D-53 ; aucune des deux ne dépend d'une question.
+- Si une tâche indique « Dépend de : Q-xx » et que la question n'est pas tranchée dans `DECISIONS.md`, on **s'arrête** et on demande. Phases 0 à 12 : Q-17 à Q-24 → D-40 à D-51. **Au 26/09/2026, Q-25 à Q-53 sont ouvertes** (feuille de route v1.1, phases 14 à 23) : aucune tâche de ces phases ne commence avant la réponse de l'humain. Le 03/10/2026 : Q-25 → D-54, Q-53 → D-55 (tâches 23.x réécrites) ; les autres restent ouvertes. La Phase 13 applique D-52, la Phase 13b applique D-53 ; aucune des deux ne dépend d'une question.
 - Chaque tâche livrée ajoute une ligne dans `CHANGELOG.md` et, si elle touche une route, met à jour `docs/API_CONTRACT.md` dans le même commit.
 - Les commandes sont écrites pour Git Bash (Windows) ou un shell POSIX, depuis la racine du dépôt sauf `cd` explicite.
 
@@ -774,7 +774,7 @@ Demande de l'auteur après la recette : des améliorations **métier**, précéd
 |---|---|---|
 | 13 | Rénovation UI/UX « Circuit » : jetons, typo, thème sombre, composants, navigation, 3D, tous les écrans | D-52 (tranchée) |
 | 13b | Voiture réaliste, feu tricolore, voiture au doigt et gyroscope, parcours suivi par la caméra | D-53 (tranchée) |
-| 14 | Gérant de l'école : des droits distincts de ceux des moniteurs | Q-25 à Q-27 |
+| 14 | Gérant de l'école : des droits distincts de ceux des moniteurs | D-54 (Q-25) ; Q-26, Q-27 |
 | 15 | Agenda de l'instructeur, conflits d'horaire, créneaux libres pour l'élève | Q-28 à Q-30 |
 | 16 | Dossier administratif de l'élève (pièces reçues / manquantes) | Q-31, Q-32 |
 | 17 | Notifications push, rappels de leçon, centre de notifications | Q-33 à Q-37 |
@@ -783,7 +783,7 @@ Demande de l'auteur après la recette : des améliorations **métier**, précéd
 | 20 | Progression pédagogique par compétence | Q-45 à Q-47 |
 | 21 | Examens : numéro de tentative, repasse, grille de prix | Q-48, Q-49 |
 | 22 | Tableau de bord du gérant | Q-50 |
-| 23 | Flotte de véhicules et échéances | Q-51 à Q-53 |
+| 23 | Flotte de véhicules, échéances et vidange | Q-51, Q-52 ; D-55 (Q-53) |
 
 Règles propres à cette feuille de route :
 - **Avant la Phase 14, l'humain répond à Q-25 … Q-53** (`docs/DECISIONS.md`) ; les réponses deviennent D-54 et suivantes dans un commit `docs(docs)`. Les tâches sont écrites pour l'option **recommandée** ; si une autre option est retenue, on réécrit les tâches concernées **dans ce même commit**, avant de coder.
@@ -1064,13 +1064,13 @@ cd mobile-app && npx expo-doctor && npx tsc --noEmit && npx jest --silent && npx
 
 ---
 
-## Phase 14 — Gérant de l'école (Q-25, Q-26, Q-27)
+## Phase 14 — Gérant de l'école (D-54, Q-26, Q-27)
 
-Tous les instructeurs d'une école ont aujourd'hui les mêmes droits. Avant d'ajouter de l'argent (caisse, forfaits) et du pilotage (tableau de bord), il faut pouvoir réserver certaines actions au **gérant**. Tâches écrites pour Q-25 (b) : un drapeau sur l'instructeur, pas un nouveau rôle.
+Tous les instructeurs d'une école ont aujourd'hui les mêmes droits. Avant d'ajouter de l'argent (caisse, forfaits) et du pilotage (tableau de bord), il faut pouvoir réserver certaines actions au **gérant**. Tâches écrites pour D-54 (Q-25 (b)) : un drapeau sur l'instructeur, pas un nouveau rôle.
 
 ### - [ ] 14.1 — Drapeau gérant et code d'inscription gérant
 **Objectif** : migration `0NN_school_manager.sql` (idempotente) : `instructors.is_manager BOOLEAN NOT NULL DEFAULT false` ; la contrainte `CHECK` de `school_codes.role` accepte `manager` (contrainte recréée dans la nouvelle migration, 002 n'est pas modifiée). A2 avec un code `manager` crée un instructeur (`users.role = 'instructor'`) avec `is_manager = true`, dans la même transaction que la consommation du code. A3 (`/me`) renvoie `isManager` pour un instructeur. Contrat §1 (A2, A3) mis à jour.
-**Dépend de** : Q-25, Q-27.
+**Dépend de** : D-54, Q-27.
 **Fichiers** : `migrations/0NN_school_manager.sql`, `services/api/src/modules/auth/`, `services/api/src/modules/school/repositories/`, tests, `docs/API_CONTRACT.md`.
 **Critère de validation** :
 ```bash
@@ -1707,23 +1707,23 @@ test -f tests/e2e/dashboard.e2e.test.ts && docker compose up -d --build --force-
 
 ---
 
-## Phase 23 — Flotte de véhicules (Q-51, Q-52, Q-53)
+## Phase 23 — Flotte de véhicules (Q-51, Q-52, D-55)
 
-Les leçons de Manœuvre et de Parc mobilisent une voiture : rien n'empêche de la réserver deux fois, et personne n'est prévenu avant la fin de l'assurance ou de la visite technique.
+Les leçons de Manœuvre et de Parc mobilisent une voiture : rien n'empêche de la réserver deux fois, et personne n'est prévenu avant la fin de l'assurance, de la visite technique ou avant la vidange (D-55 : kilométrage mis à jour à la main sur la fiche, intervalle par véhicule à 10 000 km par défaut, alerte à 1 000 km puis une fois dépassée).
 
 ### - [ ] 23.1 — Véhicules
-**Objectif** : migration `0NN_vehicles.sql` : `vehicles (id, school_id, plate, model, transmission ∈ manual|automatic, active, insurance_until, inspection_until, vignette_until, UNIQUE (school_id, plate))` ; `lessons.vehicle_id` nullable.
-**Dépend de** : Q-53.
+**Objectif** : migration `0NN_vehicles.sql` : `vehicles (id, school_id, plate, model, transmission ∈ manual|automatic, active, insurance_until, inspection_until, vignette_until, mileage_km INTEGER NOT NULL CHECK (mileage_km >= 0), mileage_updated_at, oil_change_interval_km INTEGER NOT NULL DEFAULT 10000 CHECK (oil_change_interval_km > 0), last_oil_change_km INTEGER NOT NULL CHECK (last_oil_change_km >= 0), UNIQUE (school_id, plate))` (D-55) ; `lessons.vehicle_id` nullable.
+**Dépend de** : D-55.
 **Fichiers** : `migrations/0NN_vehicles.sql`, tests.
 **Critère de validation** :
 ```bash
-./scripts/migrate.sh && ./scripts/migrate.sh && docker exec driving-school-postgres psql -U admin -d driving_school -c "\d vehicles" | grep inspection_until && echo OK
+./scripts/migrate.sh && ./scripts/migrate.sh && docker exec driving-school-postgres psql -U admin -d driving_school -c "\d vehicles" | grep -E "inspection_until|oil_change_interval_km|last_oil_change_km|mileage_km" | wc -l | grep -q 4 && echo OK
 ```
-**Hors périmètre** : kilométrage et vidange (Q-53 (b) non retenue).
+**Hors périmètre** : relevé du compteur pendant les leçons (D-55 : saisie à la main sur la fiche).
 
 ### - [ ] 23.2 — Routes de la flotte
-**Objectif** : lecture des véhicules de l'école (instructeur de l'école) ; création, modification, désactivation (gérant). Nouvelle section du contrat.
-**Dépend de** : Q-26.
+**Objectif** : lecture des véhicules de l'école (instructeur de l'école) ; création, modification (dont l'intervalle de vidange, 10 000 km par défaut), désactivation et **« vidange faite »** (`last_oil_change_km` ← kilométrage du moment) réservées à la gestion de la flotte (Q-26 (g)) ; **mise à jour du kilométrage** ouverte à **tout instructeur de l'école** (`mileage_updated_at` posé à chaque relevé) — D-55. À la création, le kilométrage est obligatoire et le kilométrage de la dernière vidange vaut le kilométrage saisi s'il n'est pas fourni. Chaque véhicule renvoyé porte `nextOilChangeKm` (dernière vidange + intervalle) et `kmBeforeOilChange` (négatif une fois dépassée). Nouvelle section du contrat.
+**Dépend de** : Q-26, D-55.
 **Fichiers** : `services/api/src/modules/vehicle/` (nouveau module, `buildVehicle()`), `services/api/src/app.ts`, tests, `docs/API_CONTRACT.md`.
 **Critère de validation** :
 ```bash
@@ -1742,8 +1742,8 @@ cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPat
 **Hors périmètre** : —
 
 ### - [ ] 23.4 — Échéances
-**Objectif** : le tableau de bord (22.1) gagne les échéances à moins de 30 jours (véhicule, type, date) ; la tâche planifiée de 17.5 notifie le gérant à J-30 et J-7 (une fois par échéance et par seuil, colonne ou table de suivi dans une migration).
-**Dépend de** : Q-53.
+**Objectif** : le tableau de bord (22.1) gagne les échéances : dates à moins de 30 jours (véhicule, type, date) et **vidanges** à moins de 1 000 km ou dépassées (véhicule, kilomètres restants ou dépassés, date du dernier relevé) ; la tâche planifiée de 17.5 notifie le gérant à J-30 et J-7 pour les dates, **à 1 000 km puis une fois dépassée** pour la vidange — une fois par échéance et par seuil (table de suivi dans une migration ; une « vidange faite » ouvre une nouvelle échéance). Les seuils de vidange sont aussi vérifiés au moment où le kilométrage est mis à jour, pour ne pas attendre la tâche planifiée. — D-55.
+**Dépend de** : D-55.
 **Fichiers** : `migrations/0NN_vehicle_alerts.sql`, `services/api/src/modules/{vehicle,notification,school}/`, tests, `docs/API_CONTRACT.md`.
 **Critère de validation** :
 ```bash
@@ -1752,8 +1752,8 @@ cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPat
 **Hors périmètre** : —
 
 ### - [ ] 23.5 — Mobile : flotte
-**Objectif** : écran « Flotte » (gérant : ajout, modification, désactivation, dates d'échéance en évidence) ; sélecteur de véhicule à l'approbation et à la réservation directe ; conflit de véhicule affiché ; véhicule visible dans l'agenda, filtre par véhicule.
-**Dépend de** : Q-51, Q-52.
+**Objectif** : écran « Flotte » (gérant : ajout, modification dont l'intervalle de vidange, désactivation, « vidange faite » ; dates d'échéance et vidange en évidence — « vidange dans 800 km » / « vidange dépassée de 150 km », date du dernier relevé) ; **tout moniteur** met à jour le kilométrage d'une voiture depuis sa fiche (D-55) ; sélecteur de véhicule à l'approbation et à la réservation directe ; conflit de véhicule affiché ; véhicule visible dans l'agenda, filtre par véhicule.
+**Dépend de** : Q-51, Q-52, D-55.
 **Fichiers** : `mobile-app/src/screens/instructor/FleetScreen.tsx` (nouveau), `LessonRequestsScreen.tsx`, `BookForStudentScreen.tsx`, `AgendaScreen.tsx`, service, i18n, tests.
 **Critère de validation** :
 ```bash
@@ -1762,7 +1762,7 @@ cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
 **Hors périmètre** : —
 
 ### - [ ] 23.6 — Bout en bout : flotte
-**Objectif** : e2e « flotte » : le gérant crée un véhicule ; deux leçons sur ce véhicule à la même heure → 409 `SCHEDULE_CONFLICT` même avec `force: true` ; une assurance qui expire dans 10 jours apparaît au tableau de bord.
+**Objectif** : e2e « flotte » : le gérant crée un véhicule ; deux leçons sur ce véhicule à la même heure → 409 `SCHEDULE_CONFLICT` même avec `force: true` ; une assurance qui expire dans 10 jours apparaît au tableau de bord ; un moniteur (non gérant) porte le compteur à 9 200 km sur un intervalle de 10 000 → la vidange apparaît au tableau de bord (800 km restants) ; « vidange faite » par le gérant la fait disparaître ; le moniteur reçoit 403 sur « vidange faite ».
 **Fichiers** : `tests/e2e/fleet.e2e.test.ts` (nouveau).
 **Critère de validation** :
 ```bash

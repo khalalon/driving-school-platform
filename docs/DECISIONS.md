@@ -129,25 +129,23 @@ Deux sections. « Décisions prises » fait autorité : on ne la rediscute pas d
 |---|---|---|---|---|
 | **D-53** | — (deux choix présentés dans le chat, réponses de l'auteur) | **La voiture des scènes 3D devient réaliste et la mise en scène s'enrichit.** Modèle : **« Car Concept »** des modèles d'exemple glTF de Khronos (Eric Chadwick, © 2024 Darmstadt Graphics Group GmbH, **CC-BY 4.0**, dérivé d'un modèle du domaine public de Unity Fan), allégé pour le téléphone : intérieur, essuie-glaces, pédales et variantes de peinture retirés, **logos Khronos et 3D Commerce retirés** (marques exclues de la licence), vitres opaques teintées, matériaux renommés par rôle et recolorés au thème. La licence CC-BY impose de **créditer l'auteur dans l'application** : ligne « Crédits » dans Réglages. Cela **remplace « modèles CC0 uniquement » de D-52** pour ce seul fichier ; les autres modèles restent CC0. Mise en scène retenue : **(1)** rendu réaliste (reflets d'environnement sur la carrosserie vernie, ombre au sol, feux stop au freinage) ; **(2)** **feu tricolore** sur l'accueil : la voiture freine au rouge, repart au vert ; **(3)** voiture qu'on **fait tourner au doigt**, caméra légèrement déplacée par l'**inclinaison du téléphone** ; **(4)** parcours élève : la voiture **roule jusqu'à l'étape en cours**, caméra qui la suit, et choisir une étape y déplace la caméra. | Recette de la Phase 13 par l'auteur (27/09/2026) : la voiture semblait rouler en marche arrière (corrigé, 13.10 fix) et le modèle Kenney fait « jouet » ; demande d'une voiture réelle et de plus d'innovation. Aucune berline réaliste n'est à la fois CC0, légère et téléchargeable sans compte : l'auteur a préféré lâcher le CC0 plutôt que de télécharger lui-même un modèle. | Phase 13b (13b.1 à 13b.6). Tout reste coupé sous « réduire les animations » (image fixe, pas de gyroscope). Le modèle plus lourd peut faire basculer plus souvent un téléphone modeste sur l'image fixe (seuil de 40 i/s de 13.8) : c'est voulu, la recette le vérifie. |
 
+### Décisions du 03/10/2026 (feuille de route v1.1, premières réponses)
+
+| ID | Ex-question | Décision | Justification | Note d'application |
+|---|---|---|---|---|
+| **D-54** | Q-25 : faut-il distinguer le gérant des moniteurs ? | **Oui, par un drapeau `is_manager` sur `instructors`** (option b). Le gérant reste un instructeur : il donne des leçons comme les autres, avec des droits en plus. Pas de nouveau rôle dans `users.role`, pas de second compte. | Réponse de l'auteur (03/10/2026), option recommandée : dans une petite auto-école le gérant est presque toujours aussi moniteur. | Phase 14 telle qu'écrite. Les droits réservés au gérant (Q-26) et la manière de le devenir (Q-27) restent à trancher : la Phase 14 ne commence pas avant. |
+| **D-55** | Q-53 : quelles échéances suivre ? | **Assurance, visite technique, vignette (des dates) et vidange au kilométrage** (option b). Dates : alerte à J-30 au tableau de bord, notification au gérant à J-30 et J-7. **Vidange** : (1) le **kilométrage** de chaque voiture est mis à jour **à la main sur sa fiche** (écran Flotte) par **tout instructeur de l'école**, quand il y pense — aucun relevé pendant les leçons ; (2) l'**intervalle de vidange** est propre à **chaque véhicule**, saisi par le gérant, **10 000 km par défaut** ; (3) la vidange est due au kilométrage de la dernière vidange plus l'intervalle ; **alerte à 1 000 km de l'échéance, puis une seconde fois une fois dépassée** (tableau de bord et notification au gérant, une fois par seuil et par échéance) ; (4) le geste « vidange faite » remet le compteur de vidange au kilométrage du moment et suit les droits de gestion de la flotte (Q-26 (g)). | Réponses de l'auteur (03/10/2026) : option (b), non recommandée, puis trois précisions posées dans le chat, réponses recommandées. | Tâches 23.1, 23.2, 23.4, 23.5 et 23.6 réécrites. Limite assumée : un compteur que personne ne met à jour ne déclenche jamais l'alerte de vidange ; la fiche véhicule affiche la date du dernier relevé pour que ça se voie. |
+
 
 ## Questions ouvertes
 
-Historique : Q-17 → D-40, Q-18 → D-41, Q-19 → D-42, Q-20 → D-43, Q-21 → D-44, Q-22 → D-49, Q-23 → D-50, Q-24 → D-51 ; D-45 (design accepté), D-46 (SDK Expo), D-47 (français et arabe) et D-48 (design system et thèmes) prises sans question. **À vérifier sur le terrain** : le rattachement type → procédure d'examen (D-44) et les termes arabes du métier (D-47).
+Historique : Q-17 → D-40, Q-18 → D-41, Q-19 → D-42, Q-20 → D-43, Q-21 → D-44, Q-22 → D-49, Q-23 → D-50, Q-24 → D-51, Q-25 → D-54, Q-53 → D-55 ; D-45 (design accepté), D-46 (SDK Expo), D-47 (français et arabe) et D-48 (design system et thèmes) prises sans question. **À vérifier sur le terrain** : le rattachement type → procédure d'examen (D-44) et les termes arabes du métier (D-47).
 
 ### Feuille de route v1.1 (26/09/2026) — Q-25 à Q-53
 
 Après la recette sur téléphone (aucun bug), l'auteur a demandé des améliorations métier. Elles sont découpées en phases 14 à 23 dans `docs/PLAN.md` ; chaque phase dépend des questions ci-dessous. **Répondre par lettre.** La « recommandation » est une proposition de Claude, pas une décision : une réponse du type « toutes les recommandations sauf Q-xx → (b) » suffit. Une fois tranchées, les questions deviennent des décisions D-54 et suivantes (D-53 a été prise entre-temps pour la 3D réaliste), et les tâches écrites pour une autre option que celle retenue sont réécrites **avant** de commencer la phase.
 
 #### Phase 14 — Gérant de l'école
-
-### Q-25 — Faut-il distinguer le gérant des moniteurs ?
-Aujourd'hui tous les instructeurs d'une école ont les mêmes droits : un moniteur salarié peut modifier les tarifs (S8) et verra demain la caisse de l'école.
-- **(a)** Non, statu quo : tous les instructeurs sont égaux. La Phase 14 est supprimée ; partout où le plan dit « gérant », lire « tout instructeur de l'école ».
-- **(b)** Oui, par un **drapeau `is_manager`** sur `instructors` : le gérant reste un instructeur (il donne aussi des leçons), avec des droits en plus.
-- **(c)** Oui, par un **nouveau rôle `manager`** dans `users.role`, distinct d'`instructor` (le gérant ne donne pas de leçons dans l'app).
-
-**Recommandation** : (b). Dans une petite auto-école le gérant est presque toujours aussi moniteur ; un rôle distinct obligerait à lui créer deux comptes.
-Bloque : toute la Phase 14 et les tâches « gérant » des phases 16, 18, 19, 22, 23.
 
 ### Q-26 — Quelles actions sont réservées au gérant ? (plusieurs choix)
 - **(a)** Modifier la fiche école et la grille tarifaire (S7, S8, S9, aujourd'hui ouvertes à tout instructeur par D-51).
@@ -400,9 +398,3 @@ Bloque : 23.3.
 **Recommandation** : (b).
 Bloque : 23.3.
 
-### Q-53 — Quelles échéances suivre ?
-- **(a)** Assurance, visite technique, vignette (des dates) ; alerte à J-30 sur le tableau de bord et notification au gérant.
-- **(b)** Comme (a), plus la vidange au kilométrage (il faut alors saisir le kilométrage).
-
-**Recommandation** : (a).
-Bloque : 23.1, 23.4.
