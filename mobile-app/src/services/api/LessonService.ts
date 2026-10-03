@@ -1,5 +1,5 @@
 /**
- * Lesson Service — §4 du contrat (L1–L7, L9).
+ * Lesson Service — §4 du contrat (L1–L7, L9, L10).
  * Single Responsibility: Handle lesson-related API operations
  */
 
@@ -9,8 +9,10 @@ import {
   ApproveLessonData,
   BatchApprovalResult,
   BookLessonForStudentData,
+  FreeSlot,
   Lesson,
   LessonFilters,
+  LessonType,
   MarkAttendanceData,
   RequestLessonData,
 } from '../../models/Lesson';
@@ -41,6 +43,17 @@ export class LessonService {
       API_CONFIG.ENDPOINTS.LESSONS.LIST,
       params ? { params } : undefined
     );
+    return response.data;
+  }
+
+  /**
+   * L10 (15.9, D-60) : créneaux libres d'un type de leçon sur [from, to[ (≤ 14 jours) dans
+   * l'école de l'élève ; 403 `NOT_ENROLLED` sans inscription approuvée.
+   */
+  async getFreeSlots(type: LessonType, from: string, to: string): Promise<FreeSlot[]> {
+    const response = await apiClient.get<FreeSlot[]>(API_CONFIG.ENDPOINTS.LESSONS.FREE_SLOTS, {
+      params: { type, from, to },
+    });
     return response.data;
   }
 

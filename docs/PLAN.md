@@ -1202,7 +1202,7 @@ cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
 ```
 **Hors périmètre** : —
 
-### - [ ] 15.9 — L'élève choisit un créneau libre
+### - [x] 15.9 — L'élève choisit un créneau libre
 **Objectif** : `BookLessonScreen` propose, après le choix du type, les créneaux libres groupés par jour (instructeur affiché) ; en choisir un pré-remplit la demande. Repli « Proposer une autre date » (saisie libre actuelle) si aucun créneau ou si l'école n'a publié aucune disponibilité.
 **Dépend de** : D-60.
 **Fichiers** : `mobile-app/src/screens/student/BookLessonScreen.tsx`, `mobile-app/src/services/api/LessonService.ts`, i18n, tests.

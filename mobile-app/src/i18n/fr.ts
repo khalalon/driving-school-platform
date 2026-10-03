@@ -333,6 +333,13 @@ export const fr = {
   'school.modalSubtitle': "Dites à l'école pourquoi vous souhaitez vous inscrire",
   'school.modalPlaceholder': "Je souhaite m'inscrire parce que…",
   'school.sendRequest': 'Envoyer la demande',
+  'book.freeSlots': 'Créneaux libres',
+  'book.freeSlotsHint': 'Choisissez un créneau : l’école confirmera la leçon.',
+  'book.otherDate': 'Proposer une autre date',
+  'book.backToSlots': 'Voir les créneaux libres',
+  'book.noFreeSlots': 'Aucun créneau publié pour les deux prochaines semaines : proposez une date.',
+  'book.pickSlotTitle': 'Choisissez un créneau',
+  'book.pickSlotText': 'Touchez un créneau libre, ou proposez une autre date.',
   'book.title': 'Demander une leçon',
   'book.preferenceHint': 'Simple préférence : tout instructeur de l’école peut approuver.',
   'book.pickInstructorHint':

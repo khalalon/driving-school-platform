@@ -30,7 +30,13 @@ import {
 } from '../../../components/ui/__tests__/renderInTheme';
 
 jest.mock('../../../services/api/LessonService', () => ({
-  lessonService: { getMyLessons: jest.fn(), cancelLesson: jest.fn(), requestLesson: jest.fn() },
+  lessonService: {
+    getMyLessons: jest.fn(),
+    cancelLesson: jest.fn(),
+    requestLesson: jest.fn(),
+    // 15.9 : aucun créneau publié → la demande garde la saisie libre de la date
+    getFreeSlots: jest.fn(() => Promise.resolve([])),
+  },
 }));
 jest.mock('../../../services/api/ExamService', () => ({
   examService: { getMyExams: jest.fn(), requestExam: jest.fn() },

@@ -164,4 +164,17 @@ describe('LessonService', () => {
       params: { from, to, instructorId: 'i2' },
     });
   });
+
+  it('getFreeSlots (L10, 15.9) : GET /api/lessons/free-slots { type, from, to }', async () => {
+    const slot = { start: '2026-10-13T08:00:00.000Z', instructorId: 'i1' };
+    api.get.mockResolvedValue(respond([slot]));
+    const from = '2026-10-12T00:00:00.000Z';
+    const to = '2026-10-26T00:00:00.000Z';
+
+    await expect(lessonService.getFreeSlots(LessonType.PARC, from, to)).resolves.toEqual([slot]);
+    expect(api.get).toHaveBeenLastCalledWith('/api/lessons/free-slots', {
+      params: { type: 'Parc', from, to },
+    });
+  });
 });
+

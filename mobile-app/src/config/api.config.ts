@@ -75,6 +75,7 @@ export const API_CONFIG = {
       REJECT: '/api/lessons/:id/reject',
       ATTENDANCE: '/api/lessons/:id/attendance',
       AGENDA: '/api/lessons/agenda',
+      FREE_SLOTS: '/api/lessons/free-slots',
     },
     // §5 Examens
     EXAMS: {

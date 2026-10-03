@@ -175,6 +175,18 @@ export interface ApproveLessonData {
   force?: boolean;
 }
 
+/**
+ * Créneau libre (L10, 15.7, D-60) : l'élève l'envoie tel quel en L2 — `requestedDate = start`,
+ * `preferredInstructorId = instructorId` — et la demande reste à approuver.
+ */
+export interface FreeSlot {
+  start: string;
+  end: string;
+  instructorId: string;
+  instructorFirstName: string;
+  instructorLastName: string;
+}
+
 /** Leçon en conflit renvoyée avec 409 `SCHEDULE_CONFLICT` par L4 / L5 (15.2, D-58). */
 export interface ScheduleConflict {
   lessonId: string;
