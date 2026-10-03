@@ -55,3 +55,26 @@ ON CONFLICT DO NOTHING;
 INSERT INTO school_codes (school_id, code, role, max_uses, expires_at, is_active)
 VALUES ('11111111-1111-4111-8111-111111111111', 'INST-SEED', 'instructor', NULL, NULL, TRUE)
 ON CONFLICT DO NOTHING;
+
+-- Codes gérant (D-57, 14.5). En production un code gérant ne sert qu'une fois ; ici il est
+-- illimité pour que la campagne se relance sans purger la base (chaque passage inscrit un
+-- nouveau gérant de l'école de démo).
+INSERT INTO school_codes (school_id, code, role, max_uses, expires_at, is_active)
+VALUES ('11111111-1111-4111-8111-111111111111', 'MGR-SEED', 'manager', NULL, NULL, TRUE)
+ON CONFLICT DO NOTHING;
+
+-- Seconde école, avec son propre code gérant : un gérant ne touche pas l'école d'un autre (D-20)
+INSERT INTO schools (id, name, address, phone, email, currency)
+VALUES (
+    '44444444-4444-4444-8444-444444444444',
+    'Seed Other School',
+    '2 rue du Test, Sfax',
+    '+21600000009',
+    'contact@other.seed.io',
+    'TND'
+)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO school_codes (school_id, code, role, max_uses, expires_at, is_active)
+VALUES ('44444444-4444-4444-8444-444444444444', 'MGR-OTHER', 'manager', NULL, NULL, TRUE)
+ON CONFLICT DO NOTHING;

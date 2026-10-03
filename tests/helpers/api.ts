@@ -7,6 +7,10 @@ export const SEED = {
   schoolId: '11111111-1111-4111-8111-111111111111',
   schoolName: 'Seed Driving School',
   schoolCode: 'INST-SEED',
+  /** Code gérant de l'école de démo (D-57), illimité dans le seed pour relancer la campagne. */
+  managerCode: 'MGR-SEED',
+  /** Seconde école, pour le cloisonnement entre gérants (D-20). */
+  otherSchool: { id: '44444444-4444-4444-8444-444444444444', managerCode: 'MGR-OTHER' },
   instructor: {
     userId: '22222222-2222-4222-8222-222222222222',
     instructorId: '33333333-3333-4333-8333-333333333333',

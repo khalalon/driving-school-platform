@@ -1108,7 +1108,7 @@ cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
 ```
 **Hors périmètre** : écrans des phases suivantes.
 
-### - [ ] 14.5 — Bout en bout : gérant et moniteur
+### - [x] 14.5 — Bout en bout : gérant et moniteur
 **Objectif** : e2e « gérant » : inscription avec un code gérant → `/me` renvoie `isManager: true` ; un moniteur reçoit 403 `FORBIDDEN_MANAGER` sur S7 ; le gérant modifie sa fiche (200) ; un gérant d'une autre école reçoit 403 `FORBIDDEN_SCHOOL`. Seed e2e : un code gérant `MGR-SEED`.
 **Fichiers** : `tests/e2e/manager.e2e.test.ts` (nouveau), `tests/fixtures/seed.sql`.
 **Critère de validation** :
