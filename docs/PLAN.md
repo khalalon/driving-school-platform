@@ -1212,7 +1212,7 @@ cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
 ```
 **Hors périmètre** : —
 
-### - [ ] 15.10 — Bout en bout : créneaux libres
+### - [x] 15.10 — Bout en bout : créneaux libres
 **Objectif** : e2e « créneaux libres » : un instructeur publie une plage, l'élève voit les créneaux, une leçon planifiée sur l'un d'eux le fait disparaître, un élève non inscrit reçoit 403 `NOT_ENROLLED`.
 **Fichiers** : `tests/e2e/free-slots.e2e.test.ts` (nouveau).
 **Critère de validation** :
