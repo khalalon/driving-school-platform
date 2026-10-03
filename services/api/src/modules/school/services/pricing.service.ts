@@ -6,8 +6,9 @@ import { IPricingRepository } from '../repositories/pricing.repository';
 import { Pricing, SetPricingDTO } from '../types/school.types';
 
 /**
- * La grille tarifaire appartient à l'école : son instructeur la tient à jour depuis
- * l'application (D-51), l'admin passe partout (D-20). La lecture reste publique (S4).
+ * La grille tarifaire appartient à l'école : son **gérant** la tient à jour depuis l'application
+ * (D-51, puis D-56 : un simple moniteur reçoit 403 FORBIDDEN_MANAGER), l'admin passe partout
+ * (D-20). La lecture reste publique (S4).
  */
 export class PricingService {
   constructor(
@@ -17,7 +18,7 @@ export class PricingService {
 
   /** Upsert (école × type) ; les bornes (> 0) sont garanties par le validateur Joi. */
   async setPricing(caller: AuthUser, schoolId: string, dto: SetPricingDTO): Promise<Pricing> {
-    await this.schoolGuard.assertSameSchool(caller, schoolId);
+    await this.schoolGuard.assertManager(caller, schoolId);
     return this.pricingRepository.setPricing(schoolId, dto);
   }
 
@@ -36,7 +37,7 @@ export class PricingService {
     if (!pricing) {
       throw new HttpError(404, 'NOT_FOUND', 'Tarif introuvable');
     }
-    await this.schoolGuard.assertSameSchool(caller, pricing.schoolId);
+    await this.schoolGuard.assertManager(caller, pricing.schoolId);
     await this.pricingRepository.delete(id);
   }
 }

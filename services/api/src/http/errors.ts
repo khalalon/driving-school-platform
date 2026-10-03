@@ -9,6 +9,7 @@ export type ErrorCode =
   | 'UNAUTHORIZED'
   | 'FORBIDDEN'
   | 'FORBIDDEN_SCHOOL'
+  | 'FORBIDDEN_MANAGER'
   | 'NOT_FOUND'
   | 'CONFLICT'
   | 'NOT_ENROLLED'

@@ -114,6 +114,25 @@ describe('SchoolService', () => {
     expect(repository.delete).toHaveBeenCalledWith('school-1');
   });
 
+  it('updateSchool : un simple moniteur de l’école reçoit 403 FORBIDDEN_MANAGER (D-56)', async () => {
+    repository.findById.mockResolvedValue(school);
+    await expect(
+      service.updateSchool(instructor, 'school-1', { name: 'Nouvelle' })
+    ).rejects.toMatchObject({ status: 403, code: 'FORBIDDEN_MANAGER' });
+    expect(repository.update).not.toHaveBeenCalled();
+
+    // Le gérant de l'école passe
+    instructorLookup.findByUserId.mockResolvedValue({
+      id: 'instr-1',
+      schoolId: 'school-1',
+      isManager: true,
+    });
+    repository.update.mockResolvedValue({ ...school, name: 'Nouvelle' });
+    await expect(
+      service.updateSchool(instructor, 'school-1', { name: 'Nouvelle' })
+    ).resolves.toMatchObject({ name: 'Nouvelle' });
+  });
+
   it('updateSchool : un instructeur d’une autre école est refusé (D-51, D-20)', async () => {
     repository.findById.mockResolvedValue(school);
     // `instructorLookup` rattache l'instructeur de test à `school-1` : une autre école → 403
@@ -214,6 +233,7 @@ describe('PricingService', () => {
     };
     guard = {
       assertSameSchool: jest.fn(),
+      assertManager: jest.fn(),
       requireSchool: jest.fn(),
     } as unknown as jest.Mocked<SchoolGuard>;
     service = new PricingService(repository, guard);
@@ -238,7 +258,7 @@ describe('PricingService', () => {
     expect(repository.delete).toHaveBeenCalledWith('pricing-1');
   });
 
-  it('setPricing : cloisonné à l’école de l’instructeur (D-51, D-20)', async () => {
+  it('setPricing : réservé au gérant de l’école (D-56)', async () => {
     await service
       .setPricing(instructor, 'school-1', {
         lessonType: LessonType.PARC,
@@ -247,7 +267,8 @@ describe('PricingService', () => {
       })
       .catch(() => undefined);
 
-    expect(guard.assertSameSchool).toHaveBeenCalledWith(instructor, 'school-1');
+    expect(guard.assertManager).toHaveBeenCalledWith(instructor, 'school-1');
+    expect(guard.assertSameSchool).not.toHaveBeenCalled();
   });
 
   it('deletePricing : le tarif désigne son école, contrôlée avant la suppression', async () => {
@@ -255,7 +276,7 @@ describe('PricingService', () => {
 
     await service.deletePricing(instructor, 'pricing-1');
 
-    expect(guard.assertSameSchool).toHaveBeenCalledWith(instructor, 'school-2');
+    expect(guard.assertManager).toHaveBeenCalledWith(instructor, 'school-2');
     expect(repository.delete).toHaveBeenCalledWith('pricing-1');
   });
 

@@ -1088,7 +1088,7 @@ Tous les instructeurs d'une école ont aujourd'hui les mêmes droits. Avant d'aj
 ```
 **Hors périmètre** : écran d'administration.
 
-### - [ ] 14.3 — Garde « gérant » côté serveur
+### - [x] 14.3 — Garde « gérant » côté serveur
 **Objectif** : `SchoolGuard.assertManager(user, schoolId)` dans `src/http/authz.ts` : instructeur de l'école **et** `is_manager`, sinon 403 `FORBIDDEN_MANAGER` ; l'admin passe. Appliquée aux routes existantes que D-56 réserve au gérant (S7, S8, S9 compris). Les routes des phases suivantes l'utilisent dès leur création. Contrat : S7–S9 et nouveau code d'erreur.
 **Dépend de** : D-56.
 **Fichiers** : `services/api/src/http/authz.ts`, `services/api/src/modules/school/`, tests, `docs/API_CONTRACT.md`.

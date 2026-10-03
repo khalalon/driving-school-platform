@@ -40,11 +40,12 @@ export class SchoolService {
   }
 
   /**
-   * S7 (D-51) : l'école est créée par l'administrateur, mais son instructeur peut corriger la
-   * fiche depuis l'application. Cloisonné comme le reste (D-20) : 403 sur une autre école.
+   * S7 (D-51, puis D-56) : l'école est créée par l'administrateur ; son **gérant** corrige la
+   * fiche depuis l'application. 403 FORBIDDEN_SCHOOL sur une autre école (D-20),
+   * 403 FORBIDDEN_MANAGER pour un simple moniteur (14.3).
    */
   async updateSchool(caller: AuthUser, id: string, dto: UpdateSchoolDTO): Promise<School> {
-    await this.schoolGuard.assertSameSchool(caller, id);
+    await this.schoolGuard.assertManager(caller, id);
     await this.getSchoolById(id);
     return this.schoolRepository.update(id, dto);
   }

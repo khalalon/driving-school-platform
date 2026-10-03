@@ -37,4 +37,38 @@ describe('SchoolGuard (cloisonnement par école, D-20)', () => {
     await expect(guard.requireSchool(student)).rejects.toMatchObject({ status: 403 });
     await expect(guard.requireSchool(admin)).rejects.toMatchObject({ status: 403 });
   });
+
+  it('assertManager (D-56) : gérant de cette école seulement ; l’admin passe', async () => {
+    lookup.findByUserId.mockResolvedValue({ id: 'instr-1', schoolId: 'school-1', isManager: true });
+    await expect(guard.assertManager(instructor, 'school-1')).resolves.toBeUndefined();
+
+    // Le gérant d'une autre école est d'abord hors de son école
+    await expect(guard.assertManager(instructor, 'school-2')).rejects.toMatchObject({
+      status: 403,
+      code: 'FORBIDDEN_SCHOOL',
+    });
+
+    // Simple moniteur de l'école (drapeau absent ou faux)
+    lookup.findByUserId.mockResolvedValue({ id: 'instr-1', schoolId: 'school-1' });
+    await expect(guard.assertManager(instructor, 'school-1')).rejects.toMatchObject({
+      status: 403,
+      code: 'FORBIDDEN_MANAGER',
+    });
+    lookup.findByUserId.mockResolvedValue({
+      id: 'instr-1',
+      schoolId: 'school-1',
+      isManager: false,
+    });
+    await expect(guard.assertManager(instructor, 'school-1')).rejects.toMatchObject({
+      code: 'FORBIDDEN_MANAGER',
+    });
+
+    lookup.findByUserId.mockClear();
+    await expect(guard.assertManager(admin, 'school-2')).resolves.toBeUndefined();
+    expect(lookup.findByUserId).not.toHaveBeenCalled();
+    await expect(guard.assertManager(student, 'school-1')).rejects.toMatchObject({
+      status: 403,
+      code: 'FORBIDDEN_SCHOOL',
+    });
+  });
 });

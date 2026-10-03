@@ -104,14 +104,15 @@ describe('inscription détaillée (D-50, D-51)', () => {
     expect(String(body.dateOfBirth).slice(0, 10)).toBe(DETAILS.dateOfBirth);
   });
 
-  test('S7 — l’instructeur corrige la fiche de son école : 200', async () => {
+  test('S7 — un simple moniteur ne corrige plus la fiche de son école : 403 FORBIDDEN_MANAGER (D-56)', async () => {
+    // L'instructeur de démo n'est pas gérant ; le gérant qui corrige sa fiche : manager.e2e (14.5)
     const res = await api()
       .put(`/api/schools/${SEED.schoolId}`)
       .set(bearer(instructorToken))
       .send({ phone: '+21600000000' });
 
-    expectStatus(res, 200, 'S7 mise à jour de son école');
-    expect((res.body as { phone: string }).phone).toBe('+21600000000');
+    expectStatus(res, 403, 'S7 moniteur non gérant');
+    expect((res.body as { error: string }).error).toBe('FORBIDDEN_MANAGER');
   });
 
   test('S7 — une autre école lui est refusée : 403 FORBIDDEN_SCHOOL', async () => {
