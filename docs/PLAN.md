@@ -1172,7 +1172,7 @@ test -f tests/e2e/agenda.e2e.test.ts && docker compose up -d --build --force-rec
 ```
 **Hors périmètre** : —
 
-### - [ ] 15.6 — Disponibilités des instructeurs
+### - [x] 15.6 — Disponibilités des instructeurs
 **Objectif** : migration `0NN_instructor_availability.sql` : `instructor_availability (id, instructor_id → instructors, weekday 0–6, start_time TIME, end_time TIME, CHECK (end_time > start_time))`. Routes `GET /api/instructors/me/availability` et `PUT /api/instructors/me/availability` (l'instructeur remplace **sa semaine type** en une fois ; plages d'un même jour sans chevauchement, 400 sinon). Nouvelle section du contrat.
 **Dépend de** : D-60.
 **Fichiers** : `migrations/0NN_instructor_availability.sql`, `services/api/src/modules/lesson/` (ou module `schedule` si la tâche le juge plus clair), tests, `docs/API_CONTRACT.md`.

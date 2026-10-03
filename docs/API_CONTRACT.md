@@ -124,6 +124,15 @@ Deux familles montées par le module `student` de `services/api` : `/api/profile
 | P10 | GET | `/api/student-profiles/me/schools/:schoolId/exams` | `MyExamsPaymentTab` | — | `ExamHistory[]` | **EXISTE** | Idem P3 (5.0). |
 | P11 | GET | `/api/student-profiles/me/schools/:schoolId/financial` | `MyProgressTab` | — | `FinancialSummary` | **EXISTE** | Idem P4 (5.0). |
 
+## 6b. Disponibilités des instructeurs (D-60)
+
+Semaine type de chaque instructeur (15.6), dont l'élève tire des créneaux libres (L10, 15.7) — la demande reste à approuver (D-01). Plage = `{ weekday, startTime, endTime }` : `weekday` 0 = dimanche … 6 = samedi (convention JavaScript / Postgres), heures `HH:MM` **de l'école** (Africa/Tunis, sans fuseau). Table `instructor_availability` (migration 016).
+
+| # | Méthode | Chemin | Appelé par | Payload (cible) | Réponse (cible) | Statut | Écart / notes |
+|---|---|---|---|---|---|---|---|
+| I1 | GET | `/api/instructors/me/availability` | `MyAvailabilityScreen` (15.8) | — (instructeur ; 403 pour un autre rôle, 403 `FORBIDDEN_SCHOOL` sans fiche d'école) | `AvailabilitySlot[]` triées par jour puis heure de début | **EXISTE** | 15.6 : sa propre semaine type seulement. |
+| I2 | PUT | `/api/instructors/me/availability` | `MyAvailabilityScreen` (15.8) | `{ slots: AvailabilitySlot[] }` (≤ 50 ; chaque plage finit après son début ; plages d'un même jour sans chevauchement — se toucher est permis ; liste vide = tout effacer ; 400 `VALIDATION_ERROR` sinon) | `AvailabilitySlot[]` enregistrées, triées | **EXISTE** | 15.6 : remplace **toute** la semaine type d'un bloc, dans une transaction. |
+
 ## 7. Notifications
 
 **Hors v1 (D-35).** Aucune route, aucune table, aucun code mobile. Le module `services/notification` n'est pas porté dans `services/api` ; son code reste dans l'historique git. L'état d'une demande (inscription, leçon, examen) est visible sur le tableau de bord de chaque rôle via E3, L1 et X1.
