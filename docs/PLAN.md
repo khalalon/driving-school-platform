@@ -1123,7 +1123,7 @@ test -f tests/e2e/manager.e2e.test.ts && docker compose up -d --build --force-re
 
 L'instructeur planifie aujourd'hui sans voir son planning, et rien n'empêche deux leçons à la même heure. Cette phase donne un agenda, contrôle les chevauchements, puis (D-60) laisse l'élève choisir parmi de vrais créneaux libres.
 
-### - [ ] 15.1 — Route agenda
+### - [x] 15.1 — Route agenda
 **Objectif** : `GET /api/lessons/agenda?from=&to=&instructorId=` (instructeur de l'école / admin) : leçons `scheduled` et `completed` dont `scheduledDate` ∈ [`from`, `to`[ (plage ≤ 31 jours, 400 `VALIDATION_ERROR` sinon), triées par date, au format `Lesson`. Portée : toute l'école, `instructorId` filtre (D-59). Contrat §4, ligne L9.
 **Dépend de** : D-59.
 **Fichiers** : `services/api/src/modules/lesson/{routes,controllers,services,repositories,validators}`, tests, `docs/API_CONTRACT.md`.

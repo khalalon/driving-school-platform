@@ -1,6 +1,7 @@
 import { Pool } from 'pg';
 import { Queryable } from '../../../db/transaction';
 import {
+  AgendaFilter,
   Lesson,
   LessonApproval,
   LessonFilters,
@@ -15,6 +16,11 @@ export interface ILessonRepository {
   createRequest(data: NewLessonRequest): Promise<Lesson>;
   findById(id: string, executor?: Queryable): Promise<Lesson | null>;
   findAll(scope: LessonScope, filters: LessonFilters): Promise<Lesson[]>;
+  /**
+   * L9 : leçons `scheduled` et `completed` dont `scheduled_date` ∈ [from, to[, triées par date ;
+   * limitées à une école et / ou à un instructeur quand ils sont donnés.
+   */
+  findAgenda(filter: AgendaFilter): Promise<Lesson[]>;
   /**
    * L5 : `pending` → `scheduled`, avec le règlement par l'avoir (D-40) ; `null` si la leçon
    * n'est plus `pending` (course entre instructeurs). `executor` : transaction du règlement.
@@ -150,6 +156,30 @@ export class LessonRepository implements ILessonRepository {
     const result = await this.db.query<Lesson>(
       `SELECT ${LESSON_COLUMNS} ${LESSON_FROM} ${where}
        ORDER BY COALESCE(l.scheduled_date, l.requested_date) ASC, l.created_at ASC`,
+      values
+    );
+    return result.rows;
+  }
+
+  async findAgenda(filter: AgendaFilter): Promise<Lesson[]> {
+    const values: unknown[] = [filter.from, filter.to];
+    const conditions = [
+      `l.status IN ('scheduled', 'completed')`,
+      `l.scheduled_date >= $1`,
+      `l.scheduled_date < $2`,
+    ];
+    if (filter.schoolId) {
+      values.push(filter.schoolId);
+      conditions.push(`l.school_id = $${values.length}`);
+    }
+    if (filter.instructorId) {
+      values.push(filter.instructorId);
+      conditions.push(`l.instructor_id = $${values.length}`);
+    }
+    const result = await this.db.query<Lesson>(
+      `SELECT ${LESSON_COLUMNS} ${LESSON_FROM}
+       WHERE ${conditions.join(' AND ')}
+       ORDER BY l.scheduled_date ASC, l.created_at ASC`,
       values
     );
     return result.rows;

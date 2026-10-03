@@ -1,6 +1,7 @@
 import Joi, { CustomHelpers } from 'joi';
 import { LESSON_TYPES } from '../../../types/domain';
 import {
+  AgendaQuery,
   ApproveLessonDTO,
   BookForStudentDTO,
   CancelLessonDTO,
@@ -84,3 +85,21 @@ export const lessonFiltersSchema = Joi.object<LessonFilters>({
     .pattern(/^\d{4}-\d{2}-\d{2}$/)
     .optional(),
 });
+
+/** Plage maximale de l'agenda (L9) : un mois. */
+export const AGENDA_MAX_DAYS = 31;
+
+/** L9 (15.1) : `from` < `to`, plage ≤ 31 jours ; `instructorId` facultatif (D-59). */
+export const agendaQuerySchema = Joi.object<AgendaQuery>({
+  from: Joi.date().iso().required(),
+  to: Joi.date().iso().greater(Joi.ref('from')).required(),
+  instructorId: uuid.optional(),
+}).custom((value: AgendaQuery, helpers: CustomHelpers) => {
+  const days = (value.to.getTime() - value.from.getTime()) / 86_400_000;
+  if (days > AGENDA_MAX_DAYS) {
+    return helpers.message({
+      custom: `La plage de l'agenda ne peut pas dépasser ${AGENDA_MAX_DAYS} jours`,
+    }) as never;
+  }
+  return value;
+}, 'plage de l’agenda');

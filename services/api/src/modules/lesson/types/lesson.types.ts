@@ -159,6 +159,18 @@ export interface LessonFilters {
   date?: string;
 }
 
+/** L9 (15.1) : fenêtre de l'agenda, `to` exclu ; `instructorId` filtre (D-59). */
+export interface AgendaQuery {
+  from: Date;
+  to: Date;
+  instructorId?: string;
+}
+
+/** Agenda résolu par le service : l'école de l'appelant (`undefined` pour l'admin). */
+export interface AgendaFilter extends AgendaQuery {
+  schoolId?: string;
+}
+
 /** Portée résolue par le service à partir de l'appelant, appliquée par le repository. */
 export type LessonScope =
   | { kind: 'student'; studentRowId: string }

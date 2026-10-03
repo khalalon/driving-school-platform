@@ -249,4 +249,30 @@ describe('LessonRepository (schéma 007, objet Lesson du contrat)', () => {
 
     await expect(repo.findById(UUID.booking)).resolves.toBeNull();
   });
+
+  it('findAgenda (L9) : scheduled et completed sur [from, to[, école et instructeur facultatifs', async () => {
+    const { pool, query } = fakePool([row]);
+    const repo = new LessonRepository(pool);
+    const from = new Date('2026-10-05T00:00:00Z');
+    const to = new Date('2026-10-12T00:00:00Z');
+
+    await expect(
+      repo.findAgenda({ from, to, schoolId: UUID.school, instructorId: UUID.instructor })
+    ).resolves.toEqual([row]);
+    const [sql, params] = query.mock.calls[0] as [string, unknown[]];
+    expect(sql).toMatch(/l\.status IN \('scheduled', 'completed'\)/);
+    expect(sql).toMatch(/l\.scheduled_date >= \$1/);
+    expect(sql).toMatch(/l\.scheduled_date < \$2/);
+    expect(sql).toMatch(/l\.school_id = \$3/);
+    expect(sql).toMatch(/l\.instructor_id = \$4/);
+    expect(sql).toMatch(/ORDER BY l\.scheduled_date ASC/);
+    expect(params).toEqual([from, to, UUID.school, UUID.instructor]);
+
+    // Admin sans filtre : ni école ni instructeur
+    query.mockClear();
+    await repo.findAgenda({ from, to });
+    const [adminSql, adminParams] = query.mock.calls[0] as [string, unknown[]];
+    expect(adminSql).not.toMatch(/school_id = /);
+    expect(adminParams).toEqual([from, to]);
+  });
 });

@@ -5,6 +5,7 @@ import {
   bookForStudentSchema,
   cancelLessonSchema,
   lessonFiltersSchema,
+  agendaQuerySchema,
   rejectLessonSchema,
   requestLessonSchema,
 } from '../lesson.validator';
@@ -75,5 +76,32 @@ describe('Validateurs du module lesson (contrat L1–L7, schéma 007)', () => {
 
     expect(validate(lessonFiltersSchema, { scope: 'all' }).ok).toBe(false);
     expect(validate(lessonFiltersSchema, { date: '01/10/2026' }).ok).toBe(false);
+  });
+
+  it('L9 agendaQuerySchema : from < to, plage ≤ 31 jours, instructorId facultatif (15.1)', () => {
+    const week = validate(agendaQuerySchema, {
+      from: '2026-10-05T00:00:00.000Z',
+      to: '2026-10-12T00:00:00.000Z',
+    });
+    expect(week.ok && week.value.from).toEqual(new Date('2026-10-05T00:00:00.000Z'));
+
+    expect(
+      validate(agendaQuerySchema, {
+        from: '2026-10-01T00:00:00.000Z',
+        to: '2026-11-01T00:00:00.000Z',
+      }).ok
+    ).toBe(true);
+    const tooLong = validate(agendaQuerySchema, {
+      from: '2026-10-01T00:00:00.000Z',
+      to: '2026-11-02T00:00:00.000Z',
+    });
+    expect(tooLong.ok).toBe(false);
+    expect(!tooLong.ok && tooLong.detail).toMatch(/31 jours/);
+
+    expect(validate(agendaQuerySchema, { from: '2026-10-12', to: '2026-10-05' }).ok).toBe(false);
+    expect(validate(agendaQuerySchema, { from: '2026-10-05' }).ok).toBe(false);
+    expect(
+      validate(agendaQuerySchema, { from: '2026-10-05', to: '2026-10-06', instructorId: 'x' }).ok
+    ).toBe(false);
   });
 });

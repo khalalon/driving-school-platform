@@ -4,6 +4,7 @@ import { uuidParam, validate } from '../../../http/validation';
 import { AuthRequest, getAuthUser } from '../../../middleware/auth.middleware';
 import { LessonService } from '../services/lesson.service';
 import {
+  agendaQuerySchema,
   approveLessonSchema,
   bookForStudentSchema,
   cancelLessonSchema,
@@ -39,6 +40,20 @@ export class LessonController {
     }
     try {
       res.json(await this.lessonService.listLessons(getAuthUser(req), parsed.value));
+    } catch (err) {
+      sendCaughtError(res, err);
+    }
+  };
+
+  /** L9 */
+  getAgenda = async (req: AuthRequest, res: Response): Promise<void> => {
+    const parsed = validate(agendaQuerySchema, req.query);
+    if (!parsed.ok) {
+      sendValidationError(res, parsed.detail);
+      return;
+    }
+    try {
+      res.json(await this.lessonService.getAgenda(getAuthUser(req), parsed.value));
     } catch (err) {
       sendCaughtError(res, err);
     }

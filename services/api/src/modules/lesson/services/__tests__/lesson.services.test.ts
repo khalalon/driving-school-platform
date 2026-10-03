@@ -69,6 +69,7 @@ describe('LessonService (D-21 / D-32 : demande L2, liste L1, lecture scoped)', (
       cancel: jest.fn(),
       createScheduled: jest.fn(),
       markAttendance: jest.fn(),
+      findAgenda: jest.fn(),
     };
     pricing = { getPricingByType: jest.fn() };
     stats = { incrementLessonCount: jest.fn() };
@@ -553,6 +554,53 @@ describe('LessonService (D-21 / D-32 : demande L2, liste L1, lecture scoped)', (
       repository.createRequest.mockResolvedValue(lesson);
       await service.requestLesson(student, { type: LessonType.CODE, requestedDate: future });
       expect(instructors.findById).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getAgenda (L9, D-59)', () => {
+    const from = new Date('2026-10-05T00:00:00Z');
+    const to = new Date('2026-10-12T00:00:00Z');
+    beforeEach(() => repository.findAgenda.mockResolvedValue([lesson]));
+
+    it('instructeur : toute son école ; instructorId de son école pour filtrer', async () => {
+      await expect(service.getAgenda(instructor, { from, to })).resolves.toEqual([lesson]);
+      expect(repository.findAgenda).toHaveBeenLastCalledWith({ from, to, schoolId: 'school-1' });
+
+      await service.getAgenda(instructor, { from, to, instructorId: 'instr-2' });
+      expect(instructors.findById).toHaveBeenCalledWith('instr-2');
+      expect(repository.findAgenda).toHaveBeenLastCalledWith({
+        from,
+        to,
+        instructorId: 'instr-2',
+        schoolId: 'school-1',
+      });
+    });
+
+    it('instructorId d’une autre école ou inconnu : 403 FORBIDDEN_SCHOOL, rien n’est lu', async () => {
+      instructors.findById.mockResolvedValue({ id: 'instr-9', schoolId: 'school-9' });
+      await expect(
+        service.getAgenda(instructor, { from, to, instructorId: 'instr-9' })
+      ).rejects.toMatchObject({ status: 403, code: 'FORBIDDEN_SCHOOL' });
+      instructors.findById.mockResolvedValue(null);
+      await expect(
+        service.getAgenda(instructor, { from, to, instructorId: 'ghost' })
+      ).rejects.toMatchObject({ status: 403, code: 'FORBIDDEN_SCHOOL' });
+      expect(repository.findAgenda).not.toHaveBeenCalled();
+    });
+
+    it('instructeur sans fiche : 403 ; admin : toutes les écoles', async () => {
+      instructors.findByUserId.mockResolvedValue(null);
+      await expect(service.getAgenda(instructor, { from, to })).rejects.toMatchObject({
+        status: 403,
+      });
+
+      await service.getAgenda(admin, { from, to, instructorId: 'instr-1' });
+      expect(repository.findAgenda).toHaveBeenLastCalledWith({
+        from,
+        to,
+        instructorId: 'instr-1',
+        schoolId: undefined,
+      });
     });
   });
 

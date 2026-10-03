@@ -5,6 +5,7 @@ import { AuthUser, UserRole } from '../../../types/auth';
 import { LessonType } from '../../../types/domain';
 import { ILessonRepository } from '../repositories/lesson.repository';
 import {
+  AgendaQuery,
   ApproveLessonDTO,
   BookForStudentDTO,
   CancelLessonDTO,
@@ -106,6 +107,27 @@ export class LessonService {
   /** L1 : les leçons de l'appelant (élève : les siennes ; instructeur : selon `scope`). */
   async listLessons(caller: AuthUser, filters: LessonFilters): Promise<Lesson[]> {
     return this.lessonRepository.findAll(await this.resolveScope(caller, filters.scope), filters);
+  }
+
+  /**
+   * L9 (15.1, D-59) : l'agenda de **toute l'école** de l'instructeur, `instructorId` pour n'en
+   * garder qu'un — qui doit être de cette école (403 FORBIDDEN_SCHOOL sinon). L'admin voit
+   * toutes les écoles.
+   */
+  async getAgenda(caller: AuthUser, query: AgendaQuery): Promise<Lesson[]> {
+    const schoolId =
+      caller.role === UserRole.ADMIN ? undefined : await this.schoolGuard.requireSchool(caller);
+    if (query.instructorId && schoolId) {
+      const filtered = await this.instructors.findById(query.instructorId);
+      if (!filtered || filtered.schoolId !== schoolId) {
+        throw new HttpError(
+          403,
+          'FORBIDDEN_SCHOOL',
+          "Cet instructeur n'appartient pas à votre école"
+        );
+      }
+    }
+    return this.lessonRepository.findAgenda({ ...query, schoolId });
   }
 
   /** `GET /:id` : sa propre leçon pour un élève, celles de son école pour un instructeur. */

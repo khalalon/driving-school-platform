@@ -3,7 +3,7 @@ import { authorize } from '../../../middleware/auth.middleware';
 import { UserRole } from '../../../types/auth';
 import { LessonController } from '../controllers/lesson.controller';
 
-/** L1–L7 du contrat (§4) ; `GET /:id` conservé (§8). Cloisonnement dans le service (D-20). */
+/** L1–L7 et L9 du contrat (§4) ; `GET /:id` conservé (§8). Cloisonnement dans le service (D-20). */
 export function createLessonRouter(
   controller: LessonController,
   requireAuth: RequestHandler
@@ -21,6 +21,8 @@ export function createLessonRouter(
     authorize(UserRole.INSTRUCTOR),
     controller.bookForStudent
   );
+  // L9 (15.1) : agenda de l'école ; déclarée avant `/:id`.
+  router.get('/agenda', ...schoolStaff, controller.getAgenda);
   router.get('/:id', requireAuth, controller.getLesson);
   // L5 : un instructeur seulement — il devient l'instructeur de la leçon (D-32).
   router.put('/:id/approve', requireAuth, authorize(UserRole.INSTRUCTOR), controller.approveLesson);

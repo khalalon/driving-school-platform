@@ -16,6 +16,7 @@ describe('Routes /api/lessons (L1, L2, GET /:id)', () => {
     cancelLesson: jest.fn(),
     bookForStudent: jest.fn(),
     markAttendance: jest.fn(),
+    getAgenda: jest.fn(),
   };
   const app = createApp({
     auth: createLessonRouter(
@@ -276,5 +277,35 @@ describe('Routes /api/lessons (L1, L2, GET /:id)', () => {
       .delete(`${base}/${lessonId}`)
       .set('Authorization', bearerFor('admin'))
       .expect(404);
+  });
+
+  it('L9 GET /agenda : école seulement (403 élève) ; requête validée ; ne tombe pas sur /:id', async () => {
+    const query = '?from=2026-10-05T00:00:00.000Z&to=2026-10-12T00:00:00.000Z';
+    await request(app).get(`${base}/agenda${query}`).expect(401);
+    await request(app)
+      .get(`${base}/agenda${query}`)
+      .set('Authorization', bearerFor('student'))
+      .expect(403);
+
+    lessonService.getAgenda.mockResolvedValue([]);
+    await request(app)
+      .get(`${base}/agenda${query}&instructorId=${UUID.instructor}`)
+      .set('Authorization', bearerFor('instructor'))
+      .expect(200, []);
+    expect(lessonService.getAgenda).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: TEST_USERS.instructor.userId }),
+      {
+        from: new Date('2026-10-05T00:00:00.000Z'),
+        to: new Date('2026-10-12T00:00:00.000Z'),
+        instructorId: UUID.instructor,
+      }
+    );
+    expect(lessonService.getLesson).not.toHaveBeenCalled();
+
+    const tooLong = await request(app)
+      .get(`${base}/agenda?from=2026-10-01T00:00:00.000Z&to=2026-12-01T00:00:00.000Z`)
+      .set('Authorization', bearerFor('instructor'));
+    expect(tooLong.status).toBe(400);
+    expect((tooLong.body as { error: string }).error).toBe('VALIDATION_ERROR');
   });
 });
