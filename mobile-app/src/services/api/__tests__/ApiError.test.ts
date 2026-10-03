@@ -50,6 +50,7 @@ describe('getApiErrorMessage — traduction par code', () => {
       'UNAUTHORIZED',
       'FORBIDDEN',
       'FORBIDDEN_SCHOOL',
+      'FORBIDDEN_MANAGER',
       'NOT_FOUND',
       'CONFLICT',
       'NOT_ENROLLED',
@@ -60,6 +61,11 @@ describe('getApiErrorMessage — traduction par code', () => {
     ]) {
       expect(translateApiErrorCode(code)).toBeTruthy();
     }
+    // Gérant (14.4) : traduit dans les deux langues
+    expect(translateApiErrorCode('FORBIDDEN_MANAGER')).toBe('Cette action est réservée au gérant de l’école.');
+    applyLanguage('ar');
+    expect(translateApiErrorCode('FORBIDDEN_MANAGER')).toBe('هذا الإجراء مخصّص لمدير المدرسة.');
+    applyLanguage('fr');
     expect(translateApiErrorCode('PAS_UN_CODE')).toBeUndefined();
     expect(translateApiErrorCode(undefined)).toBeUndefined();
   });

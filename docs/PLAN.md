@@ -1098,7 +1098,7 @@ cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPat
 ```
 **Hors périmètre** : routes des phases suivantes.
 
-### - [ ] 14.4 — Mobile : le moniteur ne voit plus les actions du gérant
+### - [x] 14.4 — Mobile : le moniteur ne voit plus les actions du gérant
 **Objectif** : `isManager` dans le modèle `User` et l'`AuthContext` (lu depuis `/me`) ; « Mon école » en lecture seule pour un moniteur (boutons Modifier et tarifs masqués), `FORBIDDEN_MANAGER` traduit FR / AR. Un hook `useIsManager()` sert aux phases suivantes.
 **Dépend de** : D-56.
 **Fichiers** : `mobile-app/src/models/User.ts`, `mobile-app/src/context/AuthContext.tsx`, `mobile-app/src/screens/instructor/MySchoolScreen.tsx`, `mobile-app/src/i18n/{fr,ar}.ts`, tests.

@@ -54,8 +54,18 @@ jest.mock('../../../services/api/StudentProfileService', () => ({
   },
 }));
 jest.mock('../../../hooks/useSchoolCurrency', () => ({ useSchoolCurrency: () => 'TND' }));
+// Gérant par défaut (tous les boutons de « Mon école » rendus) ; un test bascule en moniteur
+let mockIsManager = true;
 jest.mock('../../../context/AuthContext', () => ({
-  useAuth: () => ({ user: { firstName: 'Karim', lastName: 'Ben Salah', schoolId: 'school-1' } }),
+  useAuth: () => ({
+    user: {
+      firstName: 'Karim',
+      lastName: 'Ben Salah',
+      role: 'instructor',
+      schoolId: 'school-1',
+      isManager: mockIsManager,
+    },
+  }),
 }));
 jest.mock('../../../context/LanguageContext', () => {
   const i18n = jest.requireActual('../../../i18n');
@@ -213,6 +223,38 @@ describe.each(CASES)('%s', (_, element, keyText) => {
     expect(renderedText(tree).join(' ')).toContain(keyText());
     expect(smallTouchTargets(tree)).toEqual([]);
     expect(unlabelledPressables(tree)).toEqual([]);
+    unmountInTheme(tree);
+  });
+});
+
+describe('Mon école : réservée au gérant (14.4, D-56)', () => {
+  afterEach(() => {
+    mockIsManager = true;
+  });
+
+  const labels = (tree: ReturnType<typeof renderScreen>) => renderedText(tree).join(' | ');
+
+  it('le gérant voit « Modifier », « Ajouter un tarif » et « Retirer »', async () => {
+    const tree = renderScreen(<MySchoolScreen navigation={navigation} />, 'dark');
+    await settle();
+    const text = labels(tree);
+    expect(text).toContain(t('mySchool.edit'));
+    expect(text).toContain(t('mySchool.addPricing'));
+    expect(text).not.toContain(t('mySchool.managerOnly'));
+    unmountInTheme(tree);
+  });
+
+  it('un simple moniteur voit l’école en lecture seule', async () => {
+    mockIsManager = false;
+    const tree = renderScreen(<MySchoolScreen navigation={navigation} />, 'dark');
+    await settle();
+    const text = labels(tree);
+    expect(text).toContain('Auto-école El Amel');
+    expect(text).toContain(t('mySchool.managerOnly'));
+    expect(text).not.toContain(t('mySchool.edit'));
+    expect(text).not.toContain(t('mySchool.addPricing'));
+    expect(text).not.toContain(t('mySchool.removePricing'));
+    expect(tree.root.findAllByProps({ testID: 'my-school-read-only' }).length).toBeGreaterThan(0);
     unmountInTheme(tree);
   });
 });

@@ -4,6 +4,8 @@
  * L'école reste **créée par l'administrateur** (D-51) : cet écran ne crée ni ne supprime une
  * école, il corrige la fiche et tient les tarifs. Tout est cloisonné côté serveur à l'école de
  * l'instructeur (403 `FORBIDDEN_SCHOOL` sinon, D-20) ; `schoolId` vient de A3.
+ * Depuis 14.4 (D-56), seul le **gérant** modifie la fiche et les tarifs : un simple moniteur voit
+ * l'école en lecture seule (boutons masqués, mention « réservé au gérant »).
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
@@ -13,6 +15,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useI18n } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
+import { useIsManager } from '../../hooks/useIsManager';
 import {
   AppBar,
   Badge,
@@ -45,6 +48,8 @@ export const MySchoolScreen = ({ navigation }: any) => {
   const styles = useMemo(() => createStyles(theme, language), [theme, language]);
   const { showToast } = useToast();
   const schoolId = user?.schoolId ?? null;
+  // Fiche et tarifs : réservés au gérant (D-56) ; un moniteur voit l'école en lecture seule
+  const canManage = useIsManager();
 
   const [school, setSchool] = useState<School | null>(null);
   const [pricing, setPricing] = useState<SchoolPricing[]>([]);
@@ -206,9 +211,16 @@ export const MySchoolScreen = ({ navigation }: any) => {
         title={t('mySchool.details')}
         icon="business-outline"
         action={
-          editing ? undefined : { label: t('mySchool.edit'), onPress: () => startEditing(current) }
+          editing || !canManage
+            ? undefined
+            : { label: t('mySchool.edit'), onPress: () => startEditing(current) }
         }
       />
+      {canManage ? null : (
+        <Text style={styles.readOnly} testID="my-school-read-only">
+          {t('mySchool.managerOnly')}
+        </Text>
+      )}
 
       {editing ? (
         <>
@@ -278,7 +290,7 @@ export const MySchoolScreen = ({ navigation }: any) => {
           subtitle={t('mySchool.pricingHint')}
           icon="pricetags-outline"
           action={
-            addingPricing
+            addingPricing || !canManage
               ? undefined
               : { label: t('mySchool.addPricing'), onPress: () => setAddingPricing(true) }
           }
@@ -354,12 +366,14 @@ export const MySchoolScreen = ({ navigation }: any) => {
             trailing={
               <View style={styles.pricingTrailing}>
                 <Badge label={formatAmount(item.price, current.currency)} tone="success" />
-                <Button
-                  title={t('mySchool.removePricing')}
-                  onPress={() => removePricing(item)}
-                  variant="ghost"
-                  size="sm"
-                />
+                {canManage ? (
+                  <Button
+                    title={t('mySchool.removePricing')}
+                    onPress={() => removePricing(item)}
+                    variant="ghost"
+                    size="sm"
+                  />
+                ) : null}
               </View>
             }
           />
@@ -464,6 +478,7 @@ const createStyles = (theme: Theme, language: Language) =>
     },
     types: { flexDirection: 'row', gap: theme.spacing.sm, flexWrap: 'wrap' },
     warning: { ...textStyle('caption', language), color: theme.colors.warningText },
+    readOnly: { ...textStyle('caption', language), color: theme.colors.textMuted },
     row: {
       paddingHorizontal: theme.spacing.base,
       borderBottomWidth: StyleSheet.hairlineWidth,

@@ -8,7 +8,10 @@ export enum UserRole {
   ADMIN = 'admin',
 }
 
-/** Réponse de A3 (`/api/auth/me`) : `schoolId` et `instructorId` seulement pour un instructeur (D-19). */
+/**
+ * Réponse de A3 (`/api/auth/me`) : `schoolId`, `instructorId` (D-19) et `isManager` (D-54)
+ * seulement pour un instructeur.
+ */
 export interface User {
   id: string;
   email: string;
@@ -18,6 +21,8 @@ export interface User {
   createdAt?: string;
   schoolId?: string;
   instructorId?: string;
+  /** Gérant de son école (D-54) : droits réservés par D-56. */
+  isManager?: boolean;
 }
 
 export interface LoginRequest {

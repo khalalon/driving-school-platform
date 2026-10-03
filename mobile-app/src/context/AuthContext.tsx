@@ -4,7 +4,7 @@
  * Provides: user, login, logout, register functions
  *
  * Session (D-12, D-19) : A1 / A2 donnent la paire de jetons, A3 (`/api/auth/me`) donne
- * l'identité — noms, rôle, et `schoolId` / `instructorId` pour un instructeur — stockée en
+ * l'identité — noms, rôle, et `schoolId` / `instructorId` / `isManager` pour un instructeur — stockée en
  * local et rafraîchie au démarrage. `logout` révoque la session côté serveur (A5) puis efface
  * le stockage local.
  */
@@ -34,6 +34,7 @@ const toStoredUser = (me: User): User => ({
   role: me.role,
   schoolId: me.schoolId,
   instructorId: me.instructorId,
+  isManager: me.isManager,
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
