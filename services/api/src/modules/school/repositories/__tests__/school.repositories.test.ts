@@ -77,7 +77,7 @@ describe('InstructorRepository', () => {
     expect(created).toMatchObject({ firstName: 'Seed', lastName: 'Instructor' });
     const [insertSql, params] = query.mock.calls[0] as [string, unknown[]];
     expect(insertSql).toMatch(/INSERT INTO instructors/);
-    expect(params).toEqual([UUID.school, 'user-1', null, '+216', 'LIC-1', ['Parc']]);
+    expect(params).toEqual([UUID.school, 'user-1', null, '+216', 'LIC-1', ['Parc'], false]);
     const [selectSql] = query.mock.calls[1] as [string, unknown[]];
     expect(selectSql).toMatch(/LEFT JOIN users u ON i\.user_id = u\.id/);
     expect(selectSql).toMatch(/COALESCE\(u\.first_name, ''\) AS "firstName"/);
@@ -111,6 +111,37 @@ describe('InstructorRepository', () => {
     await expect(
       repo.create(UUID.school, { userId: 'u', phone: '+216', licenseNumber: 'L', specialties: [] })
     ).rejects.toThrow(/introuvable après écriture/);
+  });
+
+  it('gérant (D-54) : create écrit is_manager ; seule la fiche de l’appelant le lit', async () => {
+    const { pool, query } = fakePool([{ id: UUID.instructor, isManager: true }]);
+    const repo = new InstructorRepository(pool);
+
+    await repo.create(UUID.school, {
+      userId: 'u',
+      phone: '+216',
+      licenseNumber: 'L',
+      specialties: [],
+      isManager: true,
+    });
+    expect((query.mock.calls[0] as [string, unknown[]])[1]).toEqual([
+      UUID.school,
+      'u',
+      null,
+      '+216',
+      'L',
+      [],
+      true,
+    ]);
+
+    query.mockClear();
+    await expect(repo.findByUserId('u')).resolves.toMatchObject({ isManager: true });
+    expect((query.mock.calls[0] as [string, unknown[]])[0]).toMatch(/i\.is_manager AS "isManager"/);
+
+    // S3 est public : la liste de l'école ne dit pas qui est gérant
+    query.mockClear();
+    await repo.findBySchoolId(UUID.school);
+    expect((query.mock.calls[0] as [string, unknown[]])[0]).not.toMatch(/is_manager/);
   });
 
   it('update partiel, lectures, suppression', async () => {

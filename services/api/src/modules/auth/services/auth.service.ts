@@ -49,6 +49,8 @@ export class AuthService {
    * A2 (D-17). Sans `schoolCode` : compte `student`. Avec : le code est consommé, le compte prend
    * son rôle et un instructeur reçoit sa fiche `instructors`, le tout dans une transaction — un
    * code inconnu, inactif, expiré ou épuisé laisse tout intact (400 INVALID_SCHOOL_CODE).
+   * Un code `manager` crée un instructeur gérant (D-54, D-57) : compte `instructor`, fiche
+   * `is_manager = true`.
    */
   async register(dto: RegisterDTO): Promise<AuthTokens> {
     const existingUser = await this.userRepository.findByEmail(dto.email);
@@ -81,18 +83,20 @@ export class AuthService {
           "Code d'école inconnu, inactif, expiré ou épuisé"
         );
       }
+      const manager = code.role === 'manager';
+      const role: UserRole = code.role === 'manager' ? UserRole.INSTRUCTOR : code.role;
       const created = await this.userRepository.create(
         {
           email: dto.email,
           passwordHash,
-          role: code.role,
+          role,
           firstName: dto.firstName,
           lastName: dto.lastName,
           contact,
         },
         tx
       );
-      if (code.role === UserRole.INSTRUCTOR) {
+      if (role === UserRole.INSTRUCTOR) {
         // `phone` et `licenseNumber` sont garantis par le validateur quand `schoolCode` est présent.
         await this.instructors.create(
           code.schoolId,
@@ -101,6 +105,7 @@ export class AuthService {
             phone: dto.phone ?? '',
             licenseNumber: dto.licenseNumber ?? '',
             specialties: [],
+            isManager: manager,
           },
           tx
         );
@@ -166,7 +171,10 @@ export class AuthService {
     }
   }
 
-  /** A3 : pour un instructeur, `schoolId` et `instructorId` par jointure `instructors` (D-19). */
+  /**
+   * A3 : pour un instructeur, `schoolId`, `instructorId` (D-19) et `isManager` (D-54) par la
+   * fiche `instructors`.
+   */
   async getCurrentUser(userId: string): Promise<CurrentUser> {
     const user = await this.userRepository.findById(userId);
     if (!user) {
@@ -185,6 +193,7 @@ export class AuthService {
       if (instructor) {
         current.schoolId = instructor.schoolId;
         current.instructorId = instructor.id;
+        current.isManager = instructor.isManager === true;
       }
     }
     return current;

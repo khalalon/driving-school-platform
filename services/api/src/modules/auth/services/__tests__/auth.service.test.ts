@@ -160,7 +160,37 @@ describe('AuthService', () => {
         );
         expect(instructors.create).toHaveBeenCalledWith(
           'school-1',
-          { userId: user.id, phone: '+21600000009', licenseNumber: 'LIC-9', specialties: [] },
+          {
+            userId: user.id,
+            phone: '+21600000009',
+            licenseNumber: 'LIC-9',
+            specialties: [],
+            isManager: false,
+          },
+          tx
+        );
+        expect(tokenService.generateTokens).toHaveBeenCalledWith(
+          { userId: user.id, email: user.email, role: UserRole.INSTRUCTOR },
+          undefined
+        );
+      });
+
+      it('code gérant (D-54, D-57) : compte instructor, fiche instructors avec isManager', async () => {
+        schoolCodes.consume.mockResolvedValue({ schoolId: 'school-1', role: 'manager' });
+        userRepository.create.mockResolvedValue({ ...user, role: UserRole.INSTRUCTOR });
+
+        await expect(
+          authService.register({ ...withCode, schoolCode: 'MGR-SEED' })
+        ).resolves.toEqual(tokens);
+
+        // Pas de rôle « manager » dans users.role : le gérant est un instructeur (D-54)
+        expect(userRepository.create).toHaveBeenCalledWith(
+          expect.objectContaining({ role: UserRole.INSTRUCTOR }),
+          tx
+        );
+        expect(instructors.create).toHaveBeenCalledWith(
+          'school-1',
+          expect.objectContaining({ userId: user.id, isManager: true }),
           tx
         );
         expect(tokenService.generateTokens).toHaveBeenCalledWith(
@@ -390,11 +420,21 @@ describe('AuthService', () => {
         role: UserRole.INSTRUCTOR,
         schoolId: 'school-1',
         instructorId: 'instr-1',
+        isManager: false,
       });
+
+      // Gérant (D-54) : isManager vient de la fiche instructors
+      instructors.findByUserId.mockResolvedValue({
+        id: 'instr-1',
+        schoolId: 'school-1',
+        isManager: true,
+      });
+      await expect(authService.getCurrentUser(user.id)).resolves.toMatchObject({ isManager: true });
 
       instructors.findByUserId.mockResolvedValue(null);
       const orphan = await authService.getCurrentUser(user.id);
       expect(orphan).not.toHaveProperty('schoolId');
+      expect(orphan).not.toHaveProperty('isManager');
     });
 
     it('répond 404 NOT_FOUND pour un identifiant inconnu', async () => {

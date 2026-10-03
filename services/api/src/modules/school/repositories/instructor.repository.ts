@@ -31,10 +31,18 @@ export class InstructorRepository implements IInstructorRepository {
     executor: Queryable = this.db
   ): Promise<Instructor> {
     const result = await executor.query<{ id: string }>(
-      `INSERT INTO instructors (school_id, user_id, name, phone, license_number, specialties)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO instructors (school_id, user_id, name, phone, license_number, specialties, is_manager)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id`,
-      [schoolId, data.userId, data.name ?? null, data.phone, data.licenseNumber, data.specialties]
+      [
+        schoolId,
+        data.userId,
+        data.name ?? null,
+        data.phone,
+        data.licenseNumber,
+        data.specialties,
+        data.isManager ?? false,
+      ]
     );
     return this.requireById(result.rows[0].id, executor);
   }
@@ -48,8 +56,10 @@ export class InstructorRepository implements IInstructorRepository {
   }
 
   async findByUserId(userId: string): Promise<Instructor | null> {
+    // `isManager` seulement ici : c'est la fiche de l'appelant (A3, gardes), jamais une liste publique
     const result = await this.db.query<Instructor>(
-      `SELECT ${INSTRUCTOR_COLUMNS} ${INSTRUCTOR_FROM} WHERE i.user_id = $1 ORDER BY i.created_at LIMIT 1`,
+      `SELECT ${INSTRUCTOR_COLUMNS}, i.is_manager AS "isManager"
+       ${INSTRUCTOR_FROM} WHERE i.user_id = $1 ORDER BY i.created_at LIMIT 1`,
       [userId]
     );
     return result.rows[0] ?? null;

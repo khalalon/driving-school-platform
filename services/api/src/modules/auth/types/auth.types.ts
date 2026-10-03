@@ -27,6 +27,8 @@ export interface CurrentUser {
   createdAt: Date;
   schoolId?: string;
   instructorId?: string;
+  /** Instructeur gérant de son école (D-54) ; présent avec `schoolId`. */
+  isManager?: boolean;
 }
 
 /** Contenu signé dans les jetons = identité posée sur req.user par le middleware. */
@@ -80,17 +82,25 @@ export interface SchoolCodeConsumer {
   consume(
     code: string,
     executor?: Queryable
-  ): Promise<{ schoolId: string; role: UserRole.INSTRUCTOR | UserRole.STUDENT } | null>;
+  ): Promise<{ schoolId: string; role: UserRole.INSTRUCTOR | UserRole.STUDENT | 'manager' } | null>;
 }
 
 /** Ce que le module auth attend du module school : créer et retrouver la fiche instructeur. */
 export interface InstructorAccess {
   create(
     schoolId: string,
-    data: { userId: string; phone: string; licenseNumber: string; specialties: string[] },
+    data: {
+      userId: string;
+      phone: string;
+      licenseNumber: string;
+      specialties: string[];
+      isManager?: boolean;
+    },
     executor?: Queryable
   ): Promise<unknown>;
-  findByUserId(userId: string): Promise<{ id: string; schoolId: string } | null>;
+  findByUserId(
+    userId: string
+  ): Promise<{ id: string; schoolId: string; isManager?: boolean } | null>;
 }
 
 export interface LoginDTO {

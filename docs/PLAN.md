@@ -1068,7 +1068,7 @@ cd mobile-app && npx expo-doctor && npx tsc --noEmit && npx jest --silent && npx
 
 Tous les instructeurs d'une école ont aujourd'hui les mêmes droits. Avant d'ajouter de l'argent (caisse, forfaits) et du pilotage (tableau de bord), il faut pouvoir réserver certaines actions au **gérant**. Tâches écrites pour D-54 (Q-25 (b)) : un drapeau sur l'instructeur, pas un nouveau rôle.
 
-### - [ ] 14.1 — Drapeau gérant et code d'inscription gérant
+### - [x] 14.1 — Drapeau gérant et code d'inscription gérant
 **Objectif** : migration `0NN_school_manager.sql` (idempotente) : `instructors.is_manager BOOLEAN NOT NULL DEFAULT false` ; la contrainte `CHECK` de `school_codes.role` accepte `manager` (contrainte recréée dans la nouvelle migration, 002 n'est pas modifiée). A2 avec un code `manager` crée un instructeur (`users.role = 'instructor'`) avec `is_manager = true`, dans la même transaction que la consommation du code. A3 (`/me`) renvoie `isManager` pour un instructeur. Contrat §1 (A2, A3) mis à jour.
 **Dépend de** : D-54, D-57.
 **Fichiers** : `migrations/0NN_school_manager.sql`, `services/api/src/modules/auth/`, `services/api/src/modules/school/repositories/`, tests, `docs/API_CONTRACT.md`.

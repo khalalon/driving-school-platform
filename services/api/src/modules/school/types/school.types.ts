@@ -49,6 +49,11 @@ export interface Instructor {
   phone: string;
   licenseNumber: string;
   specialties: string[];
+  /**
+   * Gérant de l'école (D-54). Lu seulement pour la fiche de l'appelant (`findByUserId`, A3 et
+   * gardes) : S3 est public et n'expose pas qui est gérant.
+   */
+  isManager?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -60,6 +65,8 @@ export interface CreateInstructorDTO {
   phone: string;
   licenseNumber: string;
   specialties: string[];
+  /** Inscription avec un code `manager` (D-57) ; `false` par défaut. */
+  isManager?: boolean;
 }
 
 export interface UpdateInstructorDTO {
@@ -96,12 +103,18 @@ export interface SchoolStudent {
   completedLessons: number;
 }
 
-/** Code d'inscription d'une école (D-17) : `role` du compte créé, quota et expiration facultatifs. */
+/**
+ * Rôle porté par un code d'inscription : celui du compte créé, ou `manager` — un instructeur
+ * gérant de l'école (D-54, D-57 : compte `instructor` avec `is_manager = true`).
+ */
+export type SchoolCodeRole = UserRole.INSTRUCTOR | UserRole.STUDENT | 'manager';
+
+/** Code d'inscription d'une école (D-17) : rôle du compte créé, quota et expiration facultatifs. */
 export interface SchoolCode {
   id: string;
   schoolId: string;
   code: string;
-  role: UserRole.INSTRUCTOR | UserRole.STUDENT;
+  role: SchoolCodeRole;
   maxUses: number | null;
   usesCount: number;
   expiresAt: Date | null;
