@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
-# Onboarding d'une école (D-17) : insère l'école, sa grille tarifaire (CODE / Manœuvre / Parc)
-# et un code d'inscription instructeur INST-<SLUG>-<4 car.>, puis affiche ce code sur stdout.
+# Onboarding d'une école (D-17) : insère l'école, sa grille tarifaire (CODE / Manœuvre / Parc),
+# un code d'inscription instructeur INST-<SLUG>-<4 car.> et un code gérant MGR-<SLUG>-<4 car.>
+# à une seule utilisation (D-57 : le compte créé est un instructeur gérant, D-54), puis affiche
+# les deux codes sur stdout, un par ligne, le code d'abord, suivi de son étiquette :
+#   INST-NORD-7K2Q    instructeurs
+#   MGR-NORD-P4XA     gérant (une utilisation)
 #
 # Usage : scripts/onboard-school.sh <nom> <adresse> <téléphone> <email>
 # Le conteneur Postgres doit tourner : docker compose up -d postgres
@@ -8,14 +12,15 @@
 # Options (variables d'environnement) :
 #   PRICE_CODE, PRICE_MANOEUVRE, PRICE_PARC   montants de la grille (défaut 20 / 35 / 40)
 #   DURATION_MINUTES                          durée d'une leçon dans la grille (défaut 60)
-#   CODE_MAX_USES                             quota du code (défaut : illimité)
-#   CODE_EXPIRES_AT                           expiration du code, ex. 2026-12-31 (défaut : jamais)
+#   CODE_MAX_USES                             quota du code instructeur (défaut : illimité)
+#   CODE_EXPIRES_AT                           expiration des deux codes, ex. 2026-12-31 (défaut : jamais)
 #   CURRENCY                                  devise de l'école, code ISO 4217 (défaut TND, D-43)
 #   DB_CONTAINER, DB_USER, DB_NAME            défauts = docker-compose.yml
 #
 # Idempotent sur l'email de l'école : relancer le script ne crée ni doublon d'école, ni
-# doublon de tarif (les tarifs existants sont conservés), ni second code — le code
-# instructeur actif existant est réaffiché.
+# doublon de tarif (les tarifs existants sont conservés), ni second code — les codes actifs
+# existants sont réaffichés. Une école qui a déjà un gérant n'obtient pas de nouveau code
+# gérant (ligne « gérant déjà inscrit ») : en désigner un autre passe par set-manager.sh.
 set -euo pipefail
 
 if [ "$#" -ne 4 ]; then
@@ -63,6 +68,11 @@ for _ in 1 2 3 4; do
   SUFFIX+="${ALPHABET:RANDOM%36:1}"
 done
 NEW_CODE="INST-${SLUG:-ECOLE}-${SUFFIX}"
+MGR_SUFFIX=''
+for _ in 1 2 3 4; do
+  MGR_SUFFIX+="${ALPHABET:RANDOM%36:1}"
+done
+NEW_MGR_CODE="MGR-${SLUG:-ECOLE}-${MGR_SUFFIX}"
 
 # NULL ou littéral SQL, substitués tels quels (:var) ; les textes passent par :'var' (échappés par psql).
 MAX_USES_SQL="${CODE_MAX_USES:-NULL}"
@@ -80,6 +90,7 @@ docker exec -i "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP
   -v name="$NAME" -v address="$ADDRESS" -v phone="$PHONE" -v email="$EMAIL" \
   -v price_code="$PRICE_CODE" -v price_manoeuvre="$PRICE_MANOEUVRE" -v price_parc="$PRICE_PARC" \
   -v duration="$DURATION_MINUTES" -v new_code="$NEW_CODE" -v currency="$CURRENCY" \
+  -v new_mgr_code="$NEW_MGR_CODE" \
   -v max_uses="$MAX_USES_SQL" -v expires_at="$EXPIRES_AT_SQL" -f - <<'SQL'
 BEGIN;
 
@@ -113,8 +124,32 @@ SELECT (SELECT code FROM school_codes
   \warn Code instructeur créé.
 \endif
 
+-- Code gérant (D-57) : une seule utilisation ; jamais un second gérant par ce chemin.
+SELECT EXISTS (SELECT 1 FROM instructors
+               WHERE school_id = :'school_id' AND is_manager) AS has_manager \gset
+SELECT (SELECT code FROM school_codes
+        WHERE school_id = :'school_id' AND role = 'manager' AND is_active = TRUE
+          AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
+          AND (max_uses IS NULL OR uses_count < max_uses)
+        ORDER BY created_at LIMIT 1) AS mgr_code \gset
+\if :has_manager
+  \warn Gérant déjà inscrit : pas de nouveau code gérant.
+\elif :{?mgr_code}
+  \warn Code gérant actif existant réaffiché.
+\else
+  INSERT INTO school_codes (school_id, code, role, max_uses, expires_at, is_active)
+  VALUES (:'school_id', :'new_mgr_code', 'manager', 1, :expires_at, TRUE)
+  RETURNING code AS mgr_code \gset
+  \warn Code gérant créé.
+\endif
+
 COMMIT;
 
--- Seule sortie standard du script : le code instructeur (à transmettre à l'école).
-\echo :code
+-- Seule sortie standard du script : les codes à transmettre à l'école, un par ligne.
+\echo :code '   instructeurs'
+\if :has_manager
+  \echo 'gérant déjà inscrit'
+\else
+  \echo :mgr_code '   gérant (une utilisation)'
+\endif
 SQL

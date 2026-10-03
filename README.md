@@ -36,14 +36,24 @@ Toutes les autres commandes (API seule, typecheck, lint, tests, tests de bout en
 
 ## Onboarding d'une école
 
-Pas d'écran ni de route d'administration en v1 (D-17) : chaque école est créée par script, avec sa grille tarifaire et un code d'inscription instructeur à lui transmettre. Un instructeur s'inscrit ensuite dans l'app avec ce code (`schoolCode` de `POST /api/auth/register`).
+Pas d'écran ni de route d'administration en v1 (D-17) : chaque école est créée par script, avec sa grille tarifaire, un code d'inscription **instructeur** et un code **gérant** à une seule utilisation (D-57) à lui transmettre. Un instructeur s'inscrit ensuite dans l'app avec son code (`schoolCode` de `POST /api/auth/register`) ; le code gérant crée un instructeur qui est aussi le gérant de l'école (D-54 : il donne des leçons et a en plus les droits de D-56).
 
 ```bash
 ./scripts/onboard-school.sh "Auto-École Nord" "5 av. Habib Bourguiba, Sfax" "+21674000000" "contact@nord.tn"
-# → affiche le code, ex. INST-AUTOECOL-7K2Q
+# → INST-AUTOECOL-7K2Q    instructeurs
+#   MGR-AUTOECOL-P4XA     gérant (une utilisation)
 ```
 
-Options par variables d'environnement : `PRICE_CODE`, `PRICE_MANOEUVRE`, `PRICE_PARC` (défaut 20 / 35 / 40), `DURATION_MINUTES` (60), `CURRENCY` (code ISO 4217, défaut `TND` — D-43), `CODE_MAX_USES` (illimité), `CODE_EXPIRES_AT` (jamais), ex. `CODE_MAX_USES=5 CODE_EXPIRES_AT=2026-12-31 ./scripts/onboard-school.sh …`. Relancer le script avec le même email ne crée ni doublon ni second code : il réaffiche le code actif.
+Options par variables d'environnement : `PRICE_CODE`, `PRICE_MANOEUVRE`, `PRICE_PARC` (défaut 20 / 35 / 40), `DURATION_MINUTES` (60), `CURRENCY` (code ISO 4217, défaut `TND` — D-43), `CODE_MAX_USES` (quota du code instructeur, illimité par défaut), `CODE_EXPIRES_AT` (expiration des deux codes, jamais par défaut), ex. `CODE_MAX_USES=5 CODE_EXPIRES_AT=2026-12-31 ./scripts/onboard-school.sh …`. Relancer le script avec le même email ne crée ni doublon ni second code : il réaffiche les codes actifs ; une école qui a déjà un gérant n'obtient pas de nouveau code gérant.
+
+**Écoles déjà inscrites** (écoles pilotes) : l'administrateur désigne le gérant parmi les instructeurs existants, ou lui retire ce rôle :
+
+```bash
+./scripts/set-manager.sh moniteur@nord.tn        # on par défaut
+./scripts/set-manager.sh moniteur@nord.tn off
+```
+
+Le script refuse un compte inconnu, un compte qui n'est pas instructeur et un instructeur sans fiche d'école.
 
 ## Documentation
 
@@ -62,7 +72,8 @@ Options par variables d'environnement : `PRICE_CODE`, `PRICE_MANOEUVRE`, `PRICE_
 services/api/       l'application (src/modules/{auth,school,student,lesson,exam,payment},
                     routes → controllers → services → repositories)
 migrations/         SQL numéroté, appliqué dans l'ordre, jamais modifié après commit
-scripts/            migrate.sh (migrations en attente), onboard-school.sh (école + tarifs + code)
+scripts/            migrate.sh (migrations en attente), onboard-school.sh (école + tarifs + codes),
+                    set-manager.sh (désigner le gérant d'une école existante)
 nginx/              passerelle (:80 → api:3000)
 mobile-app/         Expo (src/screens, src/services/api, src/config/api.config.ts)
 web-frontend/       gelé

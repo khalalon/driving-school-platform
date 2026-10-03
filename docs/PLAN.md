@@ -1078,7 +1078,7 @@ Tous les instructeurs d'une école ont aujourd'hui les mêmes droits. Avant d'aj
 ```
 **Hors périmètre** : garde sur les routes (14.3), écran de gestion des codes.
 
-### - [ ] 14.2 — Scripts : code gérant à l'onboarding, désignation d'un gérant existant
+### - [x] 14.2 — Scripts : code gérant à l'onboarding, désignation d'un gérant existant
 **Objectif** : `scripts/onboard-school.sh` émet, en plus du code instructeur, un **code gérant** à une utilisation (`MGR-<SLUG>-<4 car.>`) ; sortie : les deux codes, un par ligne, étiquetés. Nouveau `scripts/set-manager.sh <email> [on|off]` : bascule `is_manager` d'un instructeur existant (écoles pilotes), refuse un compte qui n'est pas instructeur. README « Onboarding d'une école » mis à jour.
 **Dépend de** : D-57.
 **Fichiers** : `scripts/onboard-school.sh`, `scripts/set-manager.sh` (nouveau), `README.md`.
