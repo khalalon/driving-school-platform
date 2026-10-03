@@ -48,6 +48,8 @@ interface ButtonProps {
   /** Vibration à l'appui : `success` pour une confirmation, `selection` pour un choix. */
   haptic?: 'success' | 'selection';
   style?: StyleProp<ViewStyle>;
+  /** Libellé lu par les lecteurs d'écran quand le titre seul est ambigu (« Retirer » quoi ?). */
+  accessibilityLabel?: string;
   testID?: string;
 }
 
@@ -106,6 +108,7 @@ export const Button = ({
   fullWidth = false,
   haptic,
   style,
+  accessibilityLabel,
   testID,
 }: ButtonProps) => {
   const theme = useTheme();
@@ -137,7 +140,7 @@ export const Button = ({
       disabled={inactive}
       accessibilityRole="button"
       accessibilityState={{ disabled: inactive, busy: loading }}
-      accessibilityLabel={title}
+      accessibilityLabel={accessibilityLabel ?? title}
       testID={testID}
       style={[
         styles.base,

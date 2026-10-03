@@ -132,7 +132,7 @@ Semaine type de chaque instructeur (15.6), dont l'élève tire des créneaux lib
 | # | Méthode | Chemin | Appelé par | Payload (cible) | Réponse (cible) | Statut | Écart / notes |
 |---|---|---|---|---|---|---|---|
 | I1 | GET | `/api/instructors/me/availability` | `MyAvailabilityScreen` (15.8) | — (instructeur ; 403 pour un autre rôle, 403 `FORBIDDEN_SCHOOL` sans fiche d'école) | `AvailabilitySlot[]` triées par jour puis heure de début | **EXISTE** | 15.6 : sa propre semaine type seulement. |
-| I2 | PUT | `/api/instructors/me/availability` | `MyAvailabilityScreen` (15.8) | `{ slots: AvailabilitySlot[] }` (≤ 50 ; chaque plage finit après son début ; plages d'un même jour sans chevauchement — se toucher est permis ; liste vide = tout effacer ; 400 `VALIDATION_ERROR` sinon) | `AvailabilitySlot[]` enregistrées, triées | **EXISTE** | 15.6 : remplace **toute** la semaine type d'un bloc, dans une transaction. |
+| I2 | PUT | `/api/instructors/me/availability` | `MyAvailabilityScreen` (15.8) | `{ slots: AvailabilitySlot[] }` (≤ 50 ; chaque plage finit après son début ; plages d'un même jour sans chevauchement — se toucher est permis ; liste vide = tout effacer ; 400 `VALIDATION_ERROR` sinon) | `AvailabilitySlot[]` enregistrées, triées | **EXISTE** | 15.6 : remplace **toute** la semaine type d'un bloc, dans une transaction. Mobile (15.8) : `AvailabilityService.getMine` / `replaceMine`, écran « Mes disponibilités » ouvert depuis l'Agenda ; mêmes règles contrôlées avant l'envoi (`findAvailabilityProblem`). |
 
 ## 7. Notifications
 

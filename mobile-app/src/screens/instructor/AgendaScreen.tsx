@@ -206,6 +206,12 @@ export const AgendaScreen = ({ navigation }: any) => {
         contentContainerStyle={styles.filters}
         style={styles.filtersRow}
       >
+        <Chip
+          label={t('agenda.myAvailability')}
+          icon="time-outline"
+          onPress={() => navigation.navigate('MyAvailability')}
+          testID="agenda-my-availability"
+        />
         {isCurrentWeek ? null : (
           <Chip
             label={t('agenda.backToToday')}

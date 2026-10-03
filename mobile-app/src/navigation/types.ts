@@ -56,6 +56,8 @@ export type InstructorStackParamList = {
   StudentProfile: { studentId: string; schoolId: string; studentName: string };
   /** S2, S7–S9 : l'école vient de A3, l'écran n'a pas de paramètre (D-51). */
   MySchool: undefined;
+  /** I1–I2 : la semaine type de l'instructeur connecté (15.8). */
+  MyAvailability: undefined;
   /** Langue, thème, déconnexion (13.3) : commun aux deux rôles. */
   Settings: undefined;
 };

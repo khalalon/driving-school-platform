@@ -56,6 +56,7 @@ import { MyProfileScreen } from '../screens/student/my-profile/MyProfileScreen';
 // Instructor Screens
 import { InstructorDashboard } from '../screens/instructor/InstructorDashboard';
 import { AgendaScreen } from '../screens/instructor/AgendaScreen';
+import { MyAvailabilityScreen } from '../screens/instructor/MyAvailabilityScreen';
 import { TodayLessonsScreen } from '../screens/instructor/TodayLessonsScreen';
 import { LessonRequestsScreen } from '../screens/instructor/LessonRequestsScreen';
 import { BookForStudentScreen } from '../screens/instructor/BookForStudentScreen';
@@ -210,6 +211,7 @@ export const AppNavigator = () => {
                 <Stack.Screen name="EnrollmentRequests" component={EnrollmentRequestsScreen} />
                 <Stack.Screen name="StudentProfile" component={StudentProfileScreen} />
                 <Stack.Screen name="MySchool" component={MySchoolScreen} />
+                <Stack.Screen name="MyAvailability" component={MyAvailabilityScreen} />
                 <Stack.Screen name="Settings" component={SettingsScreen} />
               </>
             ) : null}

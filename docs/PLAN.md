@@ -1192,7 +1192,7 @@ cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPat
 ```
 **Hors périmètre** : réservation sans approbation (Q-30 (c) non retenue).
 
-### - [ ] 15.8 — Écran « Mes disponibilités »
+### - [x] 15.8 — Écran « Mes disponibilités »
 **Objectif** : l'instructeur saisit sa semaine type (plages par jour, ajout / retrait), enregistrée d'un bloc (PUT). Service + test.
 **Dépend de** : D-60.
 **Fichiers** : `mobile-app/src/screens/instructor/MyAvailabilityScreen.tsx` (nouveau), service, `api.config.ts`, navigation, i18n, tests.

@@ -149,6 +149,16 @@ describe('AgendaScreen', () => {
     unmountInTheme(tree);
   });
 
+  it('« Mes disponibilités » ouvre l’écran de la semaine type (15.8)', async () => {
+    const tree = renderScreen(<AgendaScreen navigation={navigation} />, 'dark');
+    await settle();
+    act(() => {
+      tree.root.findByProps({ testID: 'agenda-my-availability' }).props.onPress();
+    });
+    expect(navigation.navigate).toHaveBeenCalledWith('MyAvailability');
+    unmountInTheme(tree);
+  });
+
   it('semaine vide : le dit, jours affichés quand même', async () => {
     (lessonService.getAgenda as jest.Mock).mockResolvedValue([]);
     const tree = renderScreen(<AgendaScreen navigation={navigation} />, 'light');

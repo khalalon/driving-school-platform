@@ -50,6 +50,10 @@ export const API_CONFIG = {
       // S9 : `:id` est l'identifiant du tarif, pas celui de l'école
       PRICING_ITEM: '/api/schools/pricing/:id',
     },
+    // §6b Disponibilités de l'instructeur connecté (I1, I2)
+    INSTRUCTORS: {
+      MY_AVAILABILITY: '/api/instructors/me/availability',
+    },
     // §3 Inscriptions
     ENROLLMENT: {
       // Élève
