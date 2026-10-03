@@ -5,6 +5,7 @@ import { SchoolGuard } from '../../http/authz';
 import { LessonController } from './controllers/lesson.controller';
 import { LessonRepository } from './repositories/lesson.repository';
 import { createLessonRouter } from './routes/lesson.routes';
+import { ScheduleConflictChecker } from './services/schedule-conflict.checker';
 import {
   CreditLedger,
   InstructorLookup,
@@ -45,8 +46,9 @@ export function buildLessonModule({
   schoolGuard,
   cancelWindowHours,
 }: LessonModuleDeps): LessonModule {
+  const lessonRepository = new LessonRepository(db);
   const lessonService = new LessonService(
-    new LessonRepository(db),
+    lessonRepository,
     students,
     instructors,
     pricing,
@@ -54,7 +56,8 @@ export function buildLessonModule({
     new PgTransactionRunner(db),
     schoolGuard,
     cancelWindowHours,
-    students
+    students,
+    new ScheduleConflictChecker(lessonRepository)
   );
   return {
     router: createLessonRouter(new LessonController(lessonService), requireAuth),

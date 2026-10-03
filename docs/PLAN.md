@@ -1133,7 +1133,7 @@ cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPat
 ```
 **Hors périmètre** : examens dans l'agenda (pas d'instructeur attitré, D-33).
 
-### - [ ] 15.2 — Chevauchements refusés ou signalés à la planification
+### - [x] 15.2 — Chevauchements refusés ou signalés à la planification
 **Objectif** : L4 et L5 vérifient qu'aucune leçon `scheduled` **du même instructeur ou du même élève** ne chevauche [`scheduledDate`, `scheduledDate + durationMinutes`[. Conflit → 409 `SCHEDULE_CONFLICT` avec `conflict: { lessonId, scheduledDate, durationMinutes, instructorId, studentId }` dans le corps d'erreur ; `force: true` dans le payload passe outre (D-58). Vérification et écriture dans la **même transaction**, sous verrou (`pg_advisory_xact_lock` sur l'instructeur) pour que deux approbations simultanées ne passent pas toutes les deux. Un `ScheduleConflictChecker` injecté, réutilisé en 23.3 pour les véhicules. Contrat L4, L5, code d'erreur.
 **Dépend de** : D-58.
 **Fichiers** : `services/api/src/modules/lesson/services/`, `services/api/src/modules/lesson/repositories/`, tests, `docs/API_CONTRACT.md`.

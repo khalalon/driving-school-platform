@@ -10,9 +10,12 @@ import {
   MarkAttendanceDTO,
   NewLessonRequest,
   NewScheduledLesson,
+  ScheduleConflict,
+  ScheduleSlot,
 } from '../types/lesson.types';
+import { ScheduleConflictSource } from '../services/schedule-conflict.checker';
 
-export interface ILessonRepository {
+export interface ILessonRepository extends ScheduleConflictSource {
   createRequest(data: NewLessonRequest): Promise<Lesson>;
   findById(id: string, executor?: Queryable): Promise<Lesson | null>;
   findAll(scope: LessonScope, filters: LessonFilters): Promise<Lesson[]>;
@@ -183,6 +186,40 @@ export class LessonRepository implements ILessonRepository {
       values
     );
     return result.rows;
+  }
+
+  /**
+   * Un verrou transactionnel par clé (identifiants d'instructeur et d'élève), posé dans un ordre
+   * fixe : deux planifications qui partagent une clé s'attendent au lieu de se croiser.
+   */
+  async lockSchedule(keys: string[], executor: Queryable): Promise<void> {
+    for (const key of [...new Set(keys)].sort()) {
+      await executor.query(`SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, [key]);
+    }
+  }
+
+  /**
+   * 15.2 (D-58) : une leçon `scheduled` du même instructeur ou du même élève (une fiche
+   * `students` par compte, D-22) qui recouvre [start, start + durée[ ; la plus proche d'abord.
+   */
+  async findOverlap(slot: ScheduleSlot, executor: Queryable): Promise<ScheduleConflict | null> {
+    const end = new Date(slot.start.getTime() + slot.durationMinutes * 60_000);
+    const result = await executor.query<ScheduleConflict>(
+      `SELECT l.id AS "lessonId", l.scheduled_date AS "scheduledDate",
+              l.duration_minutes AS "durationMinutes", l.instructor_id AS "instructorId",
+              s.user_id AS "studentId"
+       FROM lessons l
+       JOIN students s ON s.id = l.student_id
+       WHERE l.status = 'scheduled'
+         AND (l.instructor_id = $1 OR s.user_id = $2)
+         AND l.scheduled_date < $4
+         AND l.scheduled_date + make_interval(mins => COALESCE(l.duration_minutes, 60)) > $3
+         AND ($5::uuid IS NULL OR l.id <> $5::uuid)
+       ORDER BY l.scheduled_date ASC
+       LIMIT 1`,
+      [slot.instructorId, slot.studentUserId, slot.start, end, slot.excludeLessonId ?? null]
+    );
+    return result.rows[0] ?? null;
   }
 
   async approve(

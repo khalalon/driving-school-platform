@@ -55,4 +55,25 @@ describe('http/errors', () => {
       message: 'Données invalides : "email" must be a valid email',
     });
   });
+
+  it('une HttpError avec détails les ajoute au corps, sans écraser error ni message (15.2)', () => {
+    const { res, status, json } = mockResponse();
+    const conflict = { lessonId: 'lesson-2' };
+
+    sendCaughtError(
+      res,
+      new HttpError(409, 'SCHEDULE_CONFLICT', 'Créneau pris', {
+        conflict,
+        error: 'ignoré',
+        message: 'ignoré',
+      })
+    );
+
+    expect(status).toHaveBeenCalledWith(409);
+    expect(json).toHaveBeenCalledWith({
+      error: 'SCHEDULE_CONFLICT',
+      message: 'Créneau pris',
+      conflict,
+    });
+  });
 });

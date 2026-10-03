@@ -72,6 +72,33 @@ export async function ensureStudent(): Promise<{ student: StudentAccount; token:
   return { student, token };
 }
 
+/**
+ * Un instructeur **propre à la campagne**, inscrit avec le code de l'école de démo (D-17), mis en
+ * cache comme les autres prérequis. Pour les fichiers qui laissent des leçons planifiées à
+ * heures fixes : depuis 15.2 (D-58), les leçons `scheduled` laissées par les campagnes
+ * précédentes à l'instructeur de démo provoqueraient un 409 `SCHEDULE_CONFLICT`.
+ */
+let campaignInstructorToken: string | undefined;
+
+export async function ensureCampaignInstructorToken(): Promise<string> {
+  if (!campaignInstructorToken) {
+    const res = await api()
+      .post('/api/auth/register')
+      .send({
+        email: uniqueEmail('e2e-instructor'),
+        password: 'Instructor1234!',
+        firstName: 'Campagne',
+        lastName: 'Instructeur',
+        phone: '+216 98 111 222',
+        licenseNumber: `LIC-E2E-${Date.now()}`,
+        schoolCode: SEED.schoolCode,
+      });
+    expectStatus(res, 201, 'prérequis A2 register instructeur de campagne');
+    campaignInstructorToken = (res.body as { accessToken: string }).accessToken;
+  }
+  return campaignInstructorToken;
+}
+
 export async function ensureInstructorToken(): Promise<string> {
   if (!cache.instructorToken) {
     const tokens = await login(SEED.instructor.email, SEED.instructor.password);

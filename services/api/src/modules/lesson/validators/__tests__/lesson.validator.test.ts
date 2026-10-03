@@ -104,4 +104,25 @@ describe('Validateurs du module lesson (contrat L1–L7, schéma 007)', () => {
       validate(agendaQuerySchema, { from: '2026-10-05', to: '2026-10-06', instructorId: 'x' }).ok
     ).toBe(false);
   });
+
+  it('L4 / L5 acceptent force (booléen) pour passer outre un chevauchement (15.2, D-58)', () => {
+    const future = new Date(Date.now() + 86_400_000).toISOString();
+    const approve = validate(approveLessonSchema, {
+      scheduledDate: future,
+      durationMinutes: 60,
+      force: true,
+    });
+    expect(approve.ok && approve.value.force).toBe(true);
+    expect(
+      validate(approveLessonSchema, { scheduledDate: future, durationMinutes: 60, force: 'oui' }).ok
+    ).toBe(false);
+    const book = validate(bookForStudentSchema, {
+      studentId: '11111111-1111-4111-8111-111111111111',
+      type: 'CODE',
+      scheduledDate: future,
+      durationMinutes: 60,
+      force: false,
+    });
+    expect(book.ok && book.value.force).toBe(false);
+  });
 });

@@ -5,6 +5,8 @@ import { LessonType } from '../../../../types/domain';
 import { ILessonRepository } from '../../repositories/lesson.repository';
 import { Lesson, LessonStatus } from '../../types/lesson.types';
 import { LessonService } from '../lesson.service';
+import { ScheduleConflictChecker } from '../schedule-conflict.checker';
+import { HttpError } from '../../../../http/errors';
 
 const future = new Date(Date.now() + 7 * 24 * 3600 * 1000);
 const past = new Date(Date.now() - 24 * 3600 * 1000);
@@ -55,6 +57,7 @@ describe('LessonService (D-21 / D-32 : demande L2, liste L1, lecture scoped)', (
   let pricing: { getPricingByType: jest.Mock };
   let stats: { incrementLessonCount: jest.Mock };
   let credits: { getCreditForUpdate: jest.Mock; addCredit: jest.Mock };
+  let conflicts: { assertFree: jest.Mock };
   let service: LessonService;
   // Client de transaction factice (L7 : leçon + compteur dans une même transaction).
   const tx: Queryable = { query: jest.fn() };
@@ -70,7 +73,10 @@ describe('LessonService (D-21 / D-32 : demande L2, liste L1, lecture scoped)', (
       createScheduled: jest.fn(),
       markAttendance: jest.fn(),
       findAgenda: jest.fn(),
+      lockSchedule: jest.fn(),
+      findOverlap: jest.fn(),
     };
+    conflicts = { assertFree: jest.fn() };
     pricing = { getPricingByType: jest.fn() };
     stats = { incrementLessonCount: jest.fn() };
     credits = { getCreditForUpdate: jest.fn().mockResolvedValue(0), addCredit: jest.fn() };
@@ -94,7 +100,8 @@ describe('LessonService (D-21 / D-32 : demande L2, liste L1, lecture scoped)', (
       transactions,
       new SchoolGuard(instructors),
       24,
-      credits
+      credits,
+      conflicts as unknown as ScheduleConflictChecker
     );
   });
 
@@ -554,6 +561,72 @@ describe('LessonService (D-21 / D-32 : demande L2, liste L1, lecture scoped)', (
       repository.createRequest.mockResolvedValue(lesson);
       await service.requestLesson(student, { type: LessonType.CODE, requestedDate: future });
       expect(instructors.findById).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('chevauchements à la planification (15.2, D-58)', () => {
+    const conflictError = new HttpError(409, 'SCHEDULE_CONFLICT', 'Créneau pris', {
+      conflict: { lessonId: 'lesson-2' },
+    });
+
+    it('L5 : contrôle dans la transaction, leçon exclue ; un conflit n’écrit rien', async () => {
+      repository.findById.mockResolvedValue(lesson);
+      pricing.getPricingByType.mockResolvedValue({ price: 40 });
+      conflicts.assertFree.mockRejectedValue(conflictError);
+
+      await expect(
+        service.approveLesson(instructor, 'lesson-1', {
+          scheduledDate: future,
+          durationMinutes: 60,
+        })
+      ).rejects.toBe(conflictError);
+      expect(conflicts.assertFree).toHaveBeenCalledWith(
+        {
+          start: future,
+          durationMinutes: 60,
+          instructorId: 'instr-1',
+          studentUserId: 'user-1',
+          excludeLessonId: 'lesson-1',
+        },
+        false,
+        tx
+      );
+      expect(credits.getCreditForUpdate).not.toHaveBeenCalled();
+      expect(repository.approve).not.toHaveBeenCalled();
+    });
+
+    it('L5 avec force : le contrôle reçoit force = true et la leçon est planifiée', async () => {
+      repository.findById.mockResolvedValue(lesson);
+      pricing.getPricingByType.mockResolvedValue({ price: 40 });
+      repository.approve.mockResolvedValue({ ...lesson, status: LessonStatus.SCHEDULED });
+
+      await service.approveLesson(instructor, 'lesson-1', {
+        scheduledDate: future,
+        durationMinutes: 60,
+        force: true,
+      });
+      expect(conflicts.assertFree).toHaveBeenCalledWith(expect.anything(), true, tx);
+      expect(repository.approve).toHaveBeenCalled();
+    });
+
+    it('L4 : même contrôle pour l’élève choisi, sans leçon exclue', async () => {
+      pricing.getPricingByType.mockResolvedValue({ price: 20 });
+      conflicts.assertFree.mockRejectedValue(conflictError);
+
+      await expect(
+        service.bookForStudent(instructor, {
+          studentId: 'user-1',
+          type: LessonType.CODE,
+          scheduledDate: future,
+          durationMinutes: 45,
+        })
+      ).rejects.toBe(conflictError);
+      expect(conflicts.assertFree).toHaveBeenCalledWith(
+        { start: future, durationMinutes: 45, instructorId: 'instr-1', studentUserId: 'user-1' },
+        false,
+        tx
+      );
+      expect(repository.createScheduled).not.toHaveBeenCalled();
     });
   });
 

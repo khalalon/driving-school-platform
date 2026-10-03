@@ -4,6 +4,7 @@ import { HttpError } from '../../../http/errors';
 import { AuthUser, UserRole } from '../../../types/auth';
 import { LessonType } from '../../../types/domain';
 import { ILessonRepository } from '../repositories/lesson.repository';
+import { ScheduleConflictChecker } from './schedule-conflict.checker';
 import {
   AgendaQuery,
   ApproveLessonDTO,
@@ -74,7 +75,9 @@ export class LessonService {
     /** Fenêtre d'annulation par l'élève d'une leçon planifiée, en heures (D-24). */
     private readonly cancelWindowHours: number,
     /** Avoir de l'élève (D-40). */
-    private readonly credits: CreditLedger
+    private readonly credits: CreditLedger,
+    /** Chevauchements à la planification, L4 et L5 (15.2, D-58). */
+    private readonly conflicts: ScheduleConflictChecker
   ) {}
 
   /** L2 : école résolue depuis l'inscription approuvée de l'élève ; 403 NOT_ENROLLED sinon. */
@@ -144,7 +147,8 @@ export class LessonService {
   /**
    * L5 : tout instructeur de l'école ; il devient l'instructeur de la leçon (D-32). Prix figé
    * (D-30) : la grille de l'école prime, sinon le prix saisi, sinon 400 PRICE_REQUIRED. L'avoir
-   * de l'élève est imputé dans la même transaction (D-40).
+   * de l'élève est imputé dans la même transaction (D-40). Chevauchement d'un même instructeur
+   * ou élève → 409 SCHEDULE_CONFLICT, sauf `force` (D-58).
    */
   async approveLesson(caller: AuthUser, id: string, dto: ApproveLessonDTO): Promise<Lesson> {
     const lesson = await this.requireLesson(id);
@@ -156,6 +160,18 @@ export class LessonService {
     const price = await this.resolvePrice(lesson.schoolId, lesson.type, dto.price);
 
     return this.transactions.run(async (tx) => {
+      // Verrou puis contrôle dans la transaction d'écriture (D-58) : 409 SCHEDULE_CONFLICT
+      await this.conflicts.assertFree(
+        {
+          start: dto.scheduledDate,
+          durationMinutes: dto.durationMinutes,
+          instructorId: instructor.id,
+          studentUserId: lesson.studentId,
+          excludeLessonId: lesson.id,
+        },
+        dto.force === true,
+        tx
+      );
       const settlement = await this.settleWithCredit(lesson.studentId, price, tx);
       const approved = await this.lessonRepository.approve(
         id,
@@ -232,7 +248,8 @@ export class LessonService {
 
   /**
    * L4 : l'instructeur planifie directement une leçon pour un élève inscrit et approuvé dans son
-   * école (403 NOT_ENROLLED sinon) ; prix figé comme en L5 (D-30), avoir imputé comme en L5 (D-40).
+   * école (403 NOT_ENROLLED sinon) ; prix figé comme en L5 (D-30), avoir imputé comme en L5 (D-40),
+   * chevauchements contrôlés comme en L5 (D-58).
    */
   async bookForStudent(caller: AuthUser, dto: BookForStudentDTO): Promise<Lesson> {
     const instructor = await this.requireInstructor(caller);
@@ -246,6 +263,16 @@ export class LessonService {
     }
     const price = await this.resolvePrice(instructor.schoolId, dto.type, dto.price);
     return this.transactions.run(async (tx) => {
+      await this.conflicts.assertFree(
+        {
+          start: dto.scheduledDate,
+          durationMinutes: dto.durationMinutes,
+          instructorId: instructor.id,
+          studentUserId: dto.studentId,
+        },
+        dto.force === true,
+        tx
+      );
       const settlement = await this.settleWithCredit(dto.studentId, price, tx);
       return this.lessonRepository.createScheduled(
         {

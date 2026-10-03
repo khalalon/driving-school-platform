@@ -16,11 +16,17 @@ export type ErrorCode =
   | 'CANCEL_WINDOW_CLOSED'
   | 'PRICE_REQUIRED'
   | 'INVALID_SCHOOL_CODE'
+  | 'SCHEDULE_CONFLICT'
   | 'INTERNAL_ERROR';
 
+/**
+ * Corps d'erreur (D-27). Certains codes portent des détails à côté (15.2 : `conflict` pour
+ * `SCHEDULE_CONFLICT`) ; `error` et `message` restent toujours présents.
+ */
 export interface ErrorBody {
   error: ErrorCode;
   message: string;
+  [detail: string]: unknown;
 }
 
 /** Erreur métier portant son statut HTTP : levée par les services, traduite par les controllers. */
@@ -28,15 +34,23 @@ export class HttpError extends Error {
   constructor(
     public readonly status: number,
     public readonly code: ErrorCode,
-    message: string
+    message: string,
+    /** Champs ajoutés au corps de la réponse, à côté de `error` et `message`. */
+    public readonly details?: Record<string, unknown>
   ) {
     super(message);
     this.name = 'HttpError';
   }
 }
 
-export function sendError(res: Response, status: number, code: ErrorCode, message: string): void {
-  const body: ErrorBody = { error: code, message };
+export function sendError(
+  res: Response,
+  status: number,
+  code: ErrorCode,
+  message: string,
+  details?: Record<string, unknown>
+): void {
+  const body: ErrorBody = { ...details, error: code, message };
   res.status(status).json(body);
 }
 
@@ -46,7 +60,7 @@ export function sendError(res: Response, status: number, code: ErrorCode, messag
  */
 export function sendCaughtError(res: Response, err: unknown): void {
   if (err instanceof HttpError) {
-    sendError(res, err.status, err.code, err.message);
+    sendError(res, err.status, err.code, err.message, err.details);
     return;
   }
   console.error('Erreur non gérée :', err);

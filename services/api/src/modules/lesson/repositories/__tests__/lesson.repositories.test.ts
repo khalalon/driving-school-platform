@@ -275,4 +275,59 @@ describe('LessonRepository (schéma 007, objet Lesson du contrat)', () => {
     expect(adminSql).not.toMatch(/school_id = /);
     expect(adminParams).toEqual([from, to]);
   });
+
+  it('lockSchedule (15.2) : un verrou transactionnel par clé distincte, dans un ordre fixe', async () => {
+    const query = jest.fn().mockResolvedValue({ rows: [] });
+    const repo = new LessonRepository({ query } as unknown as Pool);
+
+    await repo.lockSchedule(['user-1', 'instr-1', 'user-1'], { query });
+    expect(query).toHaveBeenCalledTimes(2);
+    expect(query.mock.calls.map((call) => (call as [string, unknown[]])[1][0])).toEqual([
+      'instr-1',
+      'user-1',
+    ]);
+    expect((query.mock.calls[0] as [string])[0]).toMatch(/pg_advisory_xact_lock\(hashtextextended/);
+  });
+
+  it('findOverlap (15.2, D-58) : même instructeur ou même élève, recouvrement [début, fin[', async () => {
+    const conflict = { lessonId: UUID.booking, instructorId: UUID.instructor };
+    const query = jest.fn().mockResolvedValue({ rows: [conflict] });
+    const repo = new LessonRepository({ query } as unknown as Pool);
+    const start = new Date('2026-10-05T09:00:00Z');
+
+    await expect(
+      repo.findOverlap(
+        {
+          start,
+          durationMinutes: 90,
+          instructorId: UUID.instructor,
+          studentUserId: UUID.student,
+          excludeLessonId: UUID.booking,
+        },
+        { query }
+      )
+    ).resolves.toEqual(conflict);
+    const [sql, params] = query.mock.calls[0] as [string, unknown[]];
+    expect(sql).toMatch(/l\.status = 'scheduled'/);
+    expect(sql).toMatch(/l\.instructor_id = \$1 OR s\.user_id = \$2/);
+    expect(sql).toMatch(/l\.scheduled_date < \$4/);
+    expect(sql).toMatch(/make_interval\(mins => COALESCE\(l\.duration_minutes, 60\)\) > \$3/);
+    expect(sql).toMatch(/l\.id <> \$5::uuid/);
+    expect(params).toEqual([
+      UUID.instructor,
+      UUID.student,
+      start,
+      new Date('2026-10-05T10:30:00Z'),
+      UUID.booking,
+    ]);
+
+    query.mockResolvedValue({ rows: [] });
+    await expect(
+      repo.findOverlap(
+        { start, durationMinutes: 60, instructorId: UUID.instructor, studentUserId: UUID.student },
+        { query }
+      )
+    ).resolves.toBeNull();
+    expect((query.mock.calls[1] as [string, unknown[]])[1][4]).toBeNull();
+  });
 });

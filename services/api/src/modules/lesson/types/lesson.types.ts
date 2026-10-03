@@ -99,6 +99,8 @@ export interface ApproveLessonDTO {
   durationMinutes: number;
   price?: number;
   adminNotes?: string;
+  /** Planifier malgré un chevauchement signalé (15.2, D-58). */
+  force?: boolean;
 }
 
 /** L6 (5.3), motif 10–500 caractères (D-29). */
@@ -119,6 +121,27 @@ export interface BookForStudentDTO {
   durationMinutes: number;
   price?: number;
   notes?: string;
+  /** Planifier malgré un chevauchement signalé (15.2, D-58). */
+  force?: boolean;
+}
+
+/** Créneau à planifier (15.2) : début, durée, instructeur et élève (users.id), leçon exclue. */
+export interface ScheduleSlot {
+  start: Date;
+  durationMinutes: number;
+  instructorId: string;
+  studentUserId: string;
+  /** La leçon qu'on planifie (L5) ne se chevauche pas elle-même. */
+  excludeLessonId?: string;
+}
+
+/** Leçon en conflit renvoyée avec 409 SCHEDULE_CONFLICT (15.2, D-58). `studentId` = users.id. */
+export interface ScheduleConflict {
+  lessonId: string;
+  scheduledDate: Date;
+  durationMinutes: number;
+  instructorId: string;
+  studentId: string;
 }
 
 /** Ce que le repository écrit à l'approbation (L5) : instructeur = l'appelant (D-32), prix figé (D-30), avoir imputé (D-40). */

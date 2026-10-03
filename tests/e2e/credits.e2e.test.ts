@@ -6,7 +6,7 @@
  * `-t 'absence'` rejouent leur propre mise en place.
  */
 import { api, bearer, expectStatus, futureDate, SEED, step, uniqueEmail } from '../helpers/api';
-import { ensureInstructorToken } from '../helpers/flow';
+import { ensureCampaignInstructorToken } from '../helpers/flow';
 
 interface Lesson {
   id: string;
@@ -28,7 +28,7 @@ interface FinancialSummary {
 
 /** Un élève inscrit et approuvé dans l'école du seed, avec ses jetons. */
 async function enrolledStudent(): Promise<{ userId: string; token: string }> {
-  const instructorToken = await ensureInstructorToken();
+  const instructorToken = await ensureCampaignInstructorToken();
   const registered = await api().post('/api/auth/register').send({
     email: uniqueEmail('e2e-credit'),
     password: 'Student1234!',
@@ -88,7 +88,7 @@ describe('Avoir de l’élève (D-40)', () => {
   let creditLesson: Lesson;
 
   beforeAll(async () => {
-    instructorToken = await ensureInstructorToken();
+    instructorToken = await ensureCampaignInstructorToken();
     ({ userId, token: studentToken } = await enrolledStudent());
   });
 
@@ -236,7 +236,7 @@ describe('Absence non facturée (D-41)', () => {
   };
 
   beforeAll(async () => {
-    instructorToken = await ensureInstructorToken();
+    instructorToken = await ensureCampaignInstructorToken();
     ({ userId } = await enrolledStudent());
   });
 

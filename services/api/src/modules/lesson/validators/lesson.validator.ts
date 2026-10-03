@@ -33,6 +33,7 @@ export const approveLessonSchema = Joi.object<ApproveLessonDTO>({
   durationMinutes: durationMinutes.required(),
   price: price.optional(),
   adminNotes: Joi.string().max(1000).optional(),
+  force: Joi.boolean().optional(),
 });
 
 /** L6 (5.3), D-29. */
@@ -53,6 +54,7 @@ export const bookForStudentSchema = Joi.object<BookForStudentDTO>({
   durationMinutes: durationMinutes.required(),
   price: price.optional(),
   notes: Joi.string().max(1000).optional(),
+  force: Joi.boolean().optional(),
 });
 
 /** L7. */
