@@ -1163,7 +1163,7 @@ cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
 ```
 **Hors périmètre** : suggestion automatique d'un autre horaire.
 
-### - [ ] 15.5 — Bout en bout : agenda et conflit
+### - [x] 15.5 — Bout en bout : agenda et conflit
 **Objectif** : e2e « agenda » : deux leçons qui se chevauchent pour le même instructeur → 409 `SCHEDULE_CONFLICT`, puis 200 avec `force: true` ; même contrôle pour un même élève ; L9 renvoie les leçons de la semaine ; un instructeur d'une autre école → 403 `FORBIDDEN_SCHOOL`.
 **Fichiers** : `tests/e2e/agenda.e2e.test.ts` (nouveau).
 **Critère de validation** :
