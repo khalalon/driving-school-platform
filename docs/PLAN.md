@@ -3,7 +3,7 @@
 Règles de lecture (voir `CLAUDE.md`, règles d'or 3 et 5) :
 - On travaille dans l'ordre, sur la première tâche non cochée. Une tâche = un commit (message Conventional Commits, scope = domaine ou `infra` / `mobile` / `docs` / `e2e`), poussé sur `origin/main` aussitôt. Les tâches d'une même phase s'enchaînent sans validation intermédiaire ; arrêt obligatoire en fin de phase, sur question ouverte non tranchée, sur échec de critère non réparable dans la tâche, ou sur choix produit non tranché (D-36, 18/09/2026).
 - Une tâche est cochée **seulement** quand sa commande « Critère de validation » a été exécutée et que sa sortie a été montrée. Pas d'exception.
-- Si une tâche indique « Dépend de : Q-xx » et que la question n'est pas tranchée dans `DECISIONS.md`, on **s'arrête** et on demande. Phases 0 à 12 : Q-17 à Q-24 → D-40 à D-51. **Au 26/09/2026, Q-25 à Q-53 sont ouvertes** (feuille de route v1.1, phases 14 à 23) : aucune tâche de ces phases ne commence avant la réponse de l'humain. Le 03/10/2026 : Q-25 → D-54, Q-53 → D-55 (tâches 23.x réécrites) ; les autres restent ouvertes. La Phase 13 applique D-52, la Phase 13b applique D-53 ; aucune des deux ne dépend d'une question.
+- Si une tâche indique « Dépend de : Q-xx » et que la question n'est pas tranchée dans `DECISIONS.md`, on **s'arrête** et on demande. Phases 0 à 12 : Q-17 à Q-24 → D-40 à D-51. **Au 26/09/2026, Q-25 à Q-53 sont ouvertes** (feuille de route v1.1, phases 14 à 23) : aucune tâche de ces phases ne commence avant la réponse de l'humain. Le 03/10/2026 : Q-25 → D-54, Q-26 → D-56, Q-27 → D-57, Q-53 → D-55 (tâches 23.x réécrites) ; **la Phase 14 peut commencer**, les autres questions restent ouvertes. La Phase 13 applique D-52, la Phase 13b applique D-53 ; aucune des deux ne dépend d'une question.
 - Chaque tâche livrée ajoute une ligne dans `CHANGELOG.md` et, si elle touche une route, met à jour `docs/API_CONTRACT.md` dans le même commit.
 - Les commandes sont écrites pour Git Bash (Windows) ou un shell POSIX, depuis la racine du dépôt sauf `cd` explicite.
 
@@ -774,7 +774,7 @@ Demande de l'auteur après la recette : des améliorations **métier**, précéd
 |---|---|---|
 | 13 | Rénovation UI/UX « Circuit » : jetons, typo, thème sombre, composants, navigation, 3D, tous les écrans | D-52 (tranchée) |
 | 13b | Voiture réaliste, feu tricolore, voiture au doigt et gyroscope, parcours suivi par la caméra | D-53 (tranchée) |
-| 14 | Gérant de l'école : des droits distincts de ceux des moniteurs | D-54 (Q-25) ; Q-26, Q-27 |
+| 14 | Gérant de l'école : des droits distincts de ceux des moniteurs | D-54, D-56, D-57 (tranchées) |
 | 15 | Agenda de l'instructeur, conflits d'horaire, créneaux libres pour l'élève | Q-28 à Q-30 |
 | 16 | Dossier administratif de l'élève (pièces reçues / manquantes) | Q-31, Q-32 |
 | 17 | Notifications push, rappels de leçon, centre de notifications | Q-33 à Q-37 |
@@ -1064,13 +1064,13 @@ cd mobile-app && npx expo-doctor && npx tsc --noEmit && npx jest --silent && npx
 
 ---
 
-## Phase 14 — Gérant de l'école (D-54, Q-26, Q-27)
+## Phase 14 — Gérant de l'école (D-54, D-56, D-57)
 
 Tous les instructeurs d'une école ont aujourd'hui les mêmes droits. Avant d'ajouter de l'argent (caisse, forfaits) et du pilotage (tableau de bord), il faut pouvoir réserver certaines actions au **gérant**. Tâches écrites pour D-54 (Q-25 (b)) : un drapeau sur l'instructeur, pas un nouveau rôle.
 
 ### - [ ] 14.1 — Drapeau gérant et code d'inscription gérant
 **Objectif** : migration `0NN_school_manager.sql` (idempotente) : `instructors.is_manager BOOLEAN NOT NULL DEFAULT false` ; la contrainte `CHECK` de `school_codes.role` accepte `manager` (contrainte recréée dans la nouvelle migration, 002 n'est pas modifiée). A2 avec un code `manager` crée un instructeur (`users.role = 'instructor'`) avec `is_manager = true`, dans la même transaction que la consommation du code. A3 (`/me`) renvoie `isManager` pour un instructeur. Contrat §1 (A2, A3) mis à jour.
-**Dépend de** : D-54, Q-27.
+**Dépend de** : D-54, D-57.
 **Fichiers** : `migrations/0NN_school_manager.sql`, `services/api/src/modules/auth/`, `services/api/src/modules/school/repositories/`, tests, `docs/API_CONTRACT.md`.
 **Critère de validation** :
 ```bash
@@ -1080,7 +1080,7 @@ Tous les instructeurs d'une école ont aujourd'hui les mêmes droits. Avant d'aj
 
 ### - [ ] 14.2 — Scripts : code gérant à l'onboarding, désignation d'un gérant existant
 **Objectif** : `scripts/onboard-school.sh` émet, en plus du code instructeur, un **code gérant** à une utilisation (`MGR-<SLUG>-<4 car.>`) ; sortie : les deux codes, un par ligne, étiquetés. Nouveau `scripts/set-manager.sh <email> [on|off]` : bascule `is_manager` d'un instructeur existant (écoles pilotes), refuse un compte qui n'est pas instructeur. README « Onboarding d'une école » mis à jour.
-**Dépend de** : Q-27.
+**Dépend de** : D-57.
 **Fichiers** : `scripts/onboard-school.sh`, `scripts/set-manager.sh` (nouveau), `README.md`.
 **Critère de validation** :
 ```bash
@@ -1089,8 +1089,8 @@ Tous les instructeurs d'une école ont aujourd'hui les mêmes droits. Avant d'aj
 **Hors périmètre** : écran d'administration.
 
 ### - [ ] 14.3 — Garde « gérant » côté serveur
-**Objectif** : `SchoolGuard.assertManager(user, schoolId)` dans `src/http/authz.ts` : instructeur de l'école **et** `is_manager`, sinon 403 `FORBIDDEN_MANAGER` ; l'admin passe. Appliquée aux routes existantes que Q-26 réserve au gérant (S7, S8, S9 si (a) est retenu). Les routes des phases suivantes l'utilisent dès leur création. Contrat : S7–S9 et nouveau code d'erreur.
-**Dépend de** : Q-26.
+**Objectif** : `SchoolGuard.assertManager(user, schoolId)` dans `src/http/authz.ts` : instructeur de l'école **et** `is_manager`, sinon 403 `FORBIDDEN_MANAGER` ; l'admin passe. Appliquée aux routes existantes que D-56 réserve au gérant (S7, S8, S9 compris). Les routes des phases suivantes l'utilisent dès leur création. Contrat : S7–S9 et nouveau code d'erreur.
+**Dépend de** : D-56.
 **Fichiers** : `services/api/src/http/authz.ts`, `services/api/src/modules/school/`, tests, `docs/API_CONTRACT.md`.
 **Critère de validation** :
 ```bash
@@ -1100,7 +1100,7 @@ cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPat
 
 ### - [ ] 14.4 — Mobile : le moniteur ne voit plus les actions du gérant
 **Objectif** : `isManager` dans le modèle `User` et l'`AuthContext` (lu depuis `/me`) ; « Mon école » en lecture seule pour un moniteur (boutons Modifier et tarifs masqués), `FORBIDDEN_MANAGER` traduit FR / AR. Un hook `useIsManager()` sert aux phases suivantes.
-**Dépend de** : Q-26.
+**Dépend de** : D-56.
 **Fichiers** : `mobile-app/src/models/User.ts`, `mobile-app/src/context/AuthContext.tsx`, `mobile-app/src/screens/instructor/MySchoolScreen.tsx`, `mobile-app/src/i18n/{fr,ar}.ts`, tests.
 **Critère de validation** :
 ```bash
@@ -1239,7 +1239,7 @@ Pour présenter un élève à l'examen, l'école doit réunir des pièces (CIN, 
 
 ### - [ ] 16.2 — Routes du dossier
 **Objectif** : liste des pièces de l'école : lecture (instructeur de l'école), ajout / renommage / désactivation (gérant, `assertManager`). Dossier d'un élève : lecture (instructeur de l'école, et l'élève pour le sien), « reçue » / « pas reçue » sur une pièce (instructeur de l'école). Réponse `StudentFile` : `{ complete, documents: [{ documentTypeId, label, received, receivedAt?, note? }] }`. Nouvelle section du contrat.
-**Dépend de** : Q-26, Q-31.
+**Dépend de** : D-56, Q-31.
 **Fichiers** : `services/api/src/modules/student/` (ou module `document`), tests, `docs/API_CONTRACT.md`.
 **Critère de validation** :
 ```bash
@@ -1259,7 +1259,7 @@ cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPat
 
 ### - [ ] 16.4 — Mobile : dossier côté instructeur
 **Objectif** : onglet « Dossier » de la fiche élève (cocher une pièce reçue, note facultative) ; gestion de la liste des pièces dans « Mon école » (gérant seulement) ; badge « dossier incomplet » sur les demandes d'examen (`ExamRequestsScreen`).
-**Dépend de** : Q-26, Q-31.
+**Dépend de** : D-56, Q-31.
 **Fichiers** : `mobile-app/src/screens/instructor/student-profile/tabs/StudentFileTab.tsx` (nouveau), `MySchoolScreen.tsx`, `ExamRequestsScreen.tsx`, service, `src/models/`, i18n, tests.
 **Critère de validation** :
 ```bash
@@ -1388,8 +1388,8 @@ Aujourd'hui une leçon est payée ou non, d'un bloc. En réalité l'élève vers
 **Hors périmètre** : routes (18.2).
 
 ### - [ ] 18.2 — Encaisser un versement
-**Objectif** : `POST /api/profiles/:studentId/payments` `{ amount, paymentMethod, note? }` (instructeur de l'école, ou gérant seulement si Q-26 (h)) : imputé dans une transaction sur le dû **du plus ancien au plus récent** (leçons `scheduled` et `completed` présentes, examens avec un prix) ; reste → `students.credit`. Chaque ligne expose `amountPaid` et `remaining` ; `paid` devient `remaining = 0`. P6 / P7 deviennent « solder cette ligne » (un versement du reste de la ligne). P2–P4, P9–P11 exposent les nouveaux champs ; D-40 et D-41 restent vrais (absence hors dû, avoir imputé). Contrat §6.
-**Dépend de** : Q-26, Q-38.
+**Objectif** : `POST /api/profiles/:studentId/payments` `{ amount, paymentMethod, note? }` (tout instructeur de l'école : D-56 laisse l'encaissement ouvert) : imputé dans une transaction sur le dû **du plus ancien au plus récent** (leçons `scheduled` et `completed` présentes, examens avec un prix) ; reste → `students.credit`. Chaque ligne expose `amountPaid` et `remaining` ; `paid` devient `remaining = 0`. P6 / P7 deviennent « solder cette ligne » (un versement du reste de la ligne). P2–P4, P9–P11 exposent les nouveaux champs ; D-40 et D-41 restent vrais (absence hors dû, avoir imputé). Contrat §6.
+**Dépend de** : D-56, Q-38.
 **Fichiers** : `services/api/src/modules/student/` (services et repositories financiers), tests, `docs/API_CONTRACT.md`.
 **Critère de validation** :
 ```bash
@@ -1409,7 +1409,7 @@ cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPat
 
 ### - [ ] 18.4 — Caisse de l'école
 **Objectif** : `GET /api/schools/:id/cash?from=&to=` (gérant) : total encaissé, total par mode de paiement, total par jour, liste des versements (non annulés) avec élève et moniteur qui a encaissé. Contrat §2.
-**Dépend de** : Q-26.
+**Dépend de** : D-56.
 **Fichiers** : `services/api/src/modules/school/` (ou `student`), tests, `docs/API_CONTRACT.md`.
 **Critère de validation** :
 ```bash
@@ -1439,7 +1439,7 @@ cd mobile-app && npx tsc --noEmit && npx jest --silent && npx expo-doctor && ech
 
 ### - [ ] 18.7 — Mobile : écran Caisse du gérant
 **Objectif** : écran « Caisse » (gérant) : aujourd'hui / cette semaine / ce mois, total et répartition par mode, liste des versements, tap → reçu.
-**Dépend de** : Q-26.
+**Dépend de** : D-56.
 **Fichiers** : `mobile-app/src/screens/instructor/CashScreen.tsx` (nouveau), service, navigation, i18n, tests.
 **Critère de validation** :
 ```bash
@@ -1474,7 +1474,7 @@ Les écoles vendent des packs d'heures (« 20 h de conduite ») plutôt que des 
 
 ### - [ ] 19.2 — Catalogue de l'école (routes)
 **Objectif** : `GET /api/schools/:id/packs` (public, forfaits actifs) ; création, modification et désactivation par le gérant (`assertManager`). Contrat §2.
-**Dépend de** : Q-26, Q-41.
+**Dépend de** : D-56, Q-41.
 **Fichiers** : `services/api/src/modules/school/` (ou module `pack`), tests, `docs/API_CONTRACT.md`.
 **Critère de validation** :
 ```bash
@@ -1504,7 +1504,7 @@ cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPat
 
 ### - [ ] 19.5 — Mobile : catalogue
 **Objectif** : « Mon école » : gestion des forfaits (gérant) ; fiche école publique (`SchoolDetailScreen`) : les forfaits à côté des tarifs.
-**Dépend de** : Q-26.
+**Dépend de** : D-56.
 **Fichiers** : `MySchoolScreen.tsx`, `SchoolDetailScreen.tsx`, `mobile-app/src/services/api/SchoolService.ts`, `src/models/`, i18n, tests.
 **Critère de validation** :
 ```bash
@@ -1623,7 +1623,7 @@ cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPat
 
 ### - [ ] 21.3 — Grille de prix des examens
 **Objectif** : migration `0NN_exam_pricing.sql` : `exam_pricing (id, school_id, exam_type ∈ theory|practical, price > 0, UNIQUE (school_id, exam_type))` ; routes de lecture (publique) et d'upsert / suppression (gérant) ; X3 et X6 copient le prix sur l'examen (`exams.price`), qui entre dans le dû (imputable, Phase 18). Sans tarif, le prix est saisi à la planification (même règle que D-30, 400 `PRICE_REQUIRED` sinon). Contrat §2 et §5.
-**Dépend de** : Q-26, Q-49.
+**Dépend de** : D-56, Q-49.
 **Fichiers** : `migrations/0NN_exam_pricing.sql`, `services/api/src/modules/{school,exam}/`, tests, `docs/API_CONTRACT.md`.
 **Critère de validation** :
 ```bash
@@ -1668,7 +1668,7 @@ Le gérant n'a aujourd'hui aucune vue d'ensemble. Cette phase agrège ce que les
 
 ### - [ ] 22.1 — Indicateurs de l'école
 **Objectif** : `GET /api/schools/:id/dashboard?month=YYYY-MM` (gérant) : les indicateurs retenus en Q-50, pour le mois demandé et le précédent — encaissé et répartition par mode, reste à encaisser, heures par instructeur, taux de réussite théorie / pratique (première tentative et global), taux d'absence, demandes en attente. Requêtes d'agrégat dans un repository dédié, testées sur `Pool` factice. Contrat §2.
-**Dépend de** : Q-26, Q-50.
+**Dépend de** : D-56, Q-50.
 **Fichiers** : `services/api/src/modules/school/` (ou module `dashboard`), tests, `docs/API_CONTRACT.md`.
 **Critère de validation** :
 ```bash
@@ -1722,8 +1722,8 @@ Les leçons de Manœuvre et de Parc mobilisent une voiture : rien n'empêche de 
 **Hors périmètre** : relevé du compteur pendant les leçons (D-55 : saisie à la main sur la fiche).
 
 ### - [ ] 23.2 — Routes de la flotte
-**Objectif** : lecture des véhicules de l'école (instructeur de l'école) ; création, modification (dont l'intervalle de vidange, 10 000 km par défaut), désactivation et **« vidange faite »** (`last_oil_change_km` ← kilométrage du moment) réservées à la gestion de la flotte (Q-26 (g)) ; **mise à jour du kilométrage** ouverte à **tout instructeur de l'école** (`mileage_updated_at` posé à chaque relevé) — D-55. À la création, le kilométrage est obligatoire et le kilométrage de la dernière vidange vaut le kilométrage saisi s'il n'est pas fourni. Chaque véhicule renvoyé porte `nextOilChangeKm` (dernière vidange + intervalle) et `kmBeforeOilChange` (négatif une fois dépassée). Nouvelle section du contrat.
-**Dépend de** : Q-26, D-55.
+**Objectif** : lecture des véhicules de l'école (instructeur de l'école) ; création, modification (dont l'intervalle de vidange, 10 000 km par défaut), désactivation et **« vidange faite »** (`last_oil_change_km` ← kilométrage du moment) réservées au gérant (D-56 (g)) ; **mise à jour du kilométrage** ouverte à **tout instructeur de l'école** (`mileage_updated_at` posé à chaque relevé) — D-55. À la création, le kilométrage est obligatoire et le kilométrage de la dernière vidange vaut le kilométrage saisi s'il n'est pas fourni. Chaque véhicule renvoyé porte `nextOilChangeKm` (dernière vidange + intervalle) et `kmBeforeOilChange` (négatif une fois dépassée). Nouvelle section du contrat.
+**Dépend de** : D-56, D-55.
 **Fichiers** : `services/api/src/modules/vehicle/` (nouveau module, `buildVehicle()`), `services/api/src/app.ts`, tests, `docs/API_CONTRACT.md`.
 **Critère de validation** :
 ```bash
