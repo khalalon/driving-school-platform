@@ -1,5 +1,7 @@
 import { LessonType } from '../../../../types/domain';
 import { fakePool, UUID } from '../../../../test-utils/http';
+import { DEFAULT_DOCUMENT_TYPES } from '../../types/school.types';
+import { DocumentTypeRepository } from '../document-type.repository';
 import { InstructorRepository } from '../instructor.repository';
 import { PricingRepository } from '../pricing.repository';
 import { SchoolRepository } from '../school.repository';
@@ -54,6 +56,31 @@ describe('SchoolRepository', () => {
     await repo.delete(UUID.school);
     expect((query.mock.calls[2] as [string, unknown[]])[0]).toMatch(/DELETE FROM schools/);
     await expect(new SchoolRepository(fakePool([]).pool).findById('x')).resolves.toBeNull();
+  });
+});
+
+describe('DocumentTypeRepository (16.1, D-61)', () => {
+  it('insertDefaults : la liste par défaut, dans l’ordre, sans doublon si elle est déjà posée', async () => {
+    const { pool, query } = fakePool([{ id: UUID.school, label: 'Copie de la CIN', position: 1 }]);
+
+    const rows = await new DocumentTypeRepository(pool).insertDefaults(UUID.school);
+
+    expect(rows).toEqual([{ id: UUID.school, label: 'Copie de la CIN', position: 1 }]);
+    const [sql, params] = query.mock.calls[0] as [string, unknown[]];
+    expect(sql).toMatch(/UNNEST\(\$2::text\[\]\) WITH ORDINALITY/);
+    expect(sql).toMatch(/ON CONFLICT \(school_id, label\) DO NOTHING/);
+    expect(params).toEqual([UUID.school, DEFAULT_DOCUMENT_TYPES]);
+    expect(DEFAULT_DOCUMENT_TYPES[0]).toBe('Copie de la CIN');
+    expect(DEFAULT_DOCUMENT_TYPES).toHaveLength(5);
+  });
+
+  it('insertDefaults : l’exécuteur fourni (transaction) remplace le pool', async () => {
+    const { pool } = fakePool([]);
+    const tx = { query: jest.fn().mockResolvedValue({ rows: [] }) };
+
+    await new DocumentTypeRepository(pool).insertDefaults(UUID.school, tx);
+
+    expect(tx.query).toHaveBeenCalledTimes(1);
   });
 });
 

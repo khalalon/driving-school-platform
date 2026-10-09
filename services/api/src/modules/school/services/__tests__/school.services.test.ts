@@ -1,3 +1,4 @@
+import { ITransactionRunner, Queryable } from '../../../../db/transaction';
 import { SchoolGuard } from '../../../../http/authz';
 import { AuthUser, UserRole } from '../../../../types/auth';
 import { LessonType } from '../../../../types/domain';
@@ -47,6 +48,12 @@ describe('SchoolService', () => {
   let repository: jest.Mocked<ISchoolRepository>;
   let service: SchoolService;
   const roster = { listSchoolRoster: jest.fn() };
+  const documentTypes = { insertDefaults: jest.fn() };
+  // Transaction factice : le `tx` passé aux repositories est reconnaissable dans les appels.
+  // Le générique de `run` ne se mocke pas directement (voir enrollment.service.test.ts).
+  const tx: Queryable = { query: jest.fn() };
+  const run = jest.fn((work: (client: Queryable) => Promise<unknown>) => work(tx));
+  const transactions = { run } as unknown as jest.Mocked<ITransactionRunner>;
   const instructorLookup = { findByUserId: jest.fn() };
   const instructor: AuthUser = { userId: 'user-instr', email: 'i@x.io', role: UserRole.INSTRUCTOR };
   const admin: AuthUser = { userId: 'user-admin', email: 'a@x.io', role: UserRole.ADMIN };
@@ -60,9 +67,18 @@ describe('SchoolService', () => {
       delete: jest.fn(),
     };
     roster.listSchoolRoster.mockReset();
+    documentTypes.insertDefaults.mockReset();
+    documentTypes.insertDefaults.mockResolvedValue([]);
+    run.mockClear();
     instructorLookup.findByUserId.mockReset();
     instructorLookup.findByUserId.mockResolvedValue({ id: 'instr-1', schoolId: 'school-1' });
-    service = new SchoolService(repository, roster, new SchoolGuard(instructorLookup));
+    service = new SchoolService(
+      repository,
+      roster,
+      new SchoolGuard(instructorLookup),
+      documentTypes,
+      transactions
+    );
   });
 
   it('S6 getSchoolStudents : élèves autorisés de l’école pour son instructeur ou un admin (D-25)', async () => {
@@ -155,6 +171,38 @@ describe('SchoolService', () => {
       })
     ).resolves.toEqual(school);
     await expect(service.getAllSchools()).resolves.toEqual([school]);
+  });
+
+  it('createSchool : l’école et la liste par défaut des pièces naissent dans la même transaction (16.1, D-61)', async () => {
+    repository.create.mockResolvedValue(school);
+
+    await service.createSchool({
+      name: school.name,
+      address: school.address,
+      phone: school.phone,
+      email: school.email,
+    });
+
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(repository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ name: school.name }),
+      tx
+    );
+    expect(documentTypes.insertDefaults).toHaveBeenCalledWith(school.id, tx);
+  });
+
+  it('createSchool : la liste refusée fait échouer la création (transaction annulée)', async () => {
+    repository.create.mockResolvedValue(school);
+    documentTypes.insertDefaults.mockRejectedValue(new Error('document_types absente'));
+
+    await expect(
+      service.createSchool({
+        name: school.name,
+        address: school.address,
+        phone: school.phone,
+        email: school.email,
+      })
+    ).rejects.toThrow('document_types absente');
   });
 });
 

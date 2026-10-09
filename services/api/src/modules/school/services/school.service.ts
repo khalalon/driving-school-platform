@@ -1,6 +1,8 @@
+import { ITransactionRunner } from '../../../db/transaction';
 import { SchoolGuard } from '../../../http/authz';
 import { HttpError } from '../../../http/errors';
 import { AuthUser } from '../../../types/auth';
+import { IDocumentTypeRepository } from '../repositories/document-type.repository';
 import { ISchoolRepository } from '../repositories/school.repository';
 import { CreateSchoolDTO, School, SchoolStudent, UpdateSchoolDTO } from '../types/school.types';
 
@@ -13,7 +15,9 @@ export class SchoolService {
   constructor(
     private readonly schoolRepository: ISchoolRepository,
     private readonly roster: SchoolRosterSource,
-    private readonly schoolGuard: SchoolGuard
+    private readonly schoolGuard: SchoolGuard,
+    private readonly documentTypes: IDocumentTypeRepository,
+    private readonly transactions: ITransactionRunner
   ) {}
 
   /** S6 : instructeur de cette école ou admin (D-20, D-25). */
@@ -23,8 +27,16 @@ export class SchoolService {
     return this.roster.listSchoolRoster(schoolId);
   }
 
+  /**
+   * L'école naît avec la liste par défaut des pièces de son dossier (D-61), dans la même
+   * transaction : pas d'école sans dossier à remplir, et son gérant corrige la liste ensuite.
+   */
   createSchool(dto: CreateSchoolDTO): Promise<School> {
-    return this.schoolRepository.create(dto);
+    return this.transactions.run(async (tx) => {
+      const school = await this.schoolRepository.create(dto, tx);
+      await this.documentTypes.insertDefaults(school.id, tx);
+      return school;
+    });
   }
 
   async getSchoolById(id: string): Promise<School> {

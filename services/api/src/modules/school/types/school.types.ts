@@ -4,6 +4,33 @@ import { LessonType } from '../../../types/domain';
 /** Devise d'une école à la création quand rien n'est fourni (D-43 : écoles pilotes tunisiennes). */
 export const DEFAULT_CURRENCY = 'TND';
 
+/**
+ * Liste par défaut des pièces du dossier administratif (D-61), posée à la création d'une école.
+ * Chaque école la modifie ensuite pour elle seule (son gérant, D-56 (b)). La même liste est
+ * répétée dans `migrations/017_student_documents.sql` pour les écoles déjà en base : garder
+ * les deux identiques.
+ */
+export const DEFAULT_DOCUMENT_TYPES = [
+  'Copie de la CIN',
+  "Photos d'identité",
+  'Certificat médical',
+  'Extrait de naissance',
+  'Timbre fiscal',
+];
+
+/**
+ * Pièce attendue au dossier d'un élève de cette école (D-61). `position` donne l'ordre
+ * d'affichage ; une pièce qu'on ne demande plus est désactivée (`active = false`), jamais
+ * supprimée — les dossiers déjà cochés gardent leur sens.
+ */
+export interface DocumentType {
+  id: string;
+  schoolId: string;
+  label: string;
+  position: number;
+  active: boolean;
+}
+
 /** `currency` : code ISO 4217 (D-43) ; tous les montants de l'école sont dans cette devise. */
 export interface School {
   id: string;

@@ -1,7 +1,9 @@
 import { RequestHandler, Router } from 'express';
 import { Pool } from 'pg';
+import { PgTransactionRunner } from '../../db/transaction';
 import { SchoolGuard } from '../../http/authz';
 import { SchoolController } from './controllers/school.controller';
+import { DocumentTypeRepository } from './repositories/document-type.repository';
 import { InstructorRepository } from './repositories/instructor.repository';
 import { PricingRepository } from './repositories/pricing.repository';
 import { SchoolRepository } from './repositories/school.repository';
@@ -35,7 +37,13 @@ export function buildSchoolModule({
   roster,
   schoolGuard,
 }: SchoolModuleDeps): SchoolModule {
-  const schoolService = new SchoolService(new SchoolRepository(db), roster, schoolGuard);
+  const schoolService = new SchoolService(
+    new SchoolRepository(db),
+    roster,
+    schoolGuard,
+    new DocumentTypeRepository(db),
+    new PgTransactionRunner(db)
+  );
   const instructorService = new InstructorService(instructorRepository);
   const pricingService = new PricingService(new PricingRepository(db), schoolGuard);
   const controller = new SchoolController(schoolService, instructorService, pricingService);

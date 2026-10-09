@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Onboarding d'une école (D-17) : insère l'école, sa grille tarifaire (CODE / Manœuvre / Parc),
+# la liste par défaut des pièces du dossier administratif (D-61),
 # un code d'inscription instructeur INST-<SLUG>-<4 car.> et un code gérant MGR-<SLUG>-<4 car.>
 # à une seule utilisation (D-57 : le compte créé est un instructeur gérant, D-54), puis affiche
 # les deux codes sur stdout, un par ligne, le code d'abord, suivi de son étiquette :
@@ -18,7 +19,7 @@
 #   DB_CONTAINER, DB_USER, DB_NAME            défauts = docker-compose.yml
 #
 # Idempotent sur l'email de l'école : relancer le script ne crée ni doublon d'école, ni
-# doublon de tarif (les tarifs existants sont conservés), ni second code — les codes actifs
+# doublon de tarif (les tarifs existants sont conservés), ni doublon de pièce, ni second code — les codes actifs
 # existants sont réaffichés. Une école qui a déjà un gérant n'obtient pas de nouveau code
 # gérant (ligne « gérant déjà inscrit ») : en désigner un autre passe par set-manager.sh.
 set -euo pipefail
@@ -109,6 +110,16 @@ VALUES (:'school_id', 'CODE', :price_code, :duration),
        (:'school_id', 'Manœuvre', :price_manoeuvre, :duration),
        (:'school_id', 'Parc', :price_parc, :duration)
 ON CONFLICT (school_id, lesson_type) DO NOTHING;
+
+-- Liste par défaut des pièces du dossier (D-61) ; le gérant la corrige ensuite pour son école.
+-- Même liste que migrations/017_student_documents.sql et DEFAULT_DOCUMENT_TYPES (school.types.ts).
+INSERT INTO document_types (school_id, label, position)
+VALUES (:'school_id', 'Copie de la CIN', 1),
+       (:'school_id', 'Photos d''identité', 2),
+       (:'school_id', 'Certificat médical', 3),
+       (:'school_id', 'Extrait de naissance', 4),
+       (:'school_id', 'Timbre fiscal', 5)
+ON CONFLICT (school_id, label) DO NOTHING;
 
 SELECT (SELECT code FROM school_codes
         WHERE school_id = :'school_id' AND role = 'instructor' AND is_active = TRUE

@@ -142,32 +142,20 @@ Deux sections. « Décisions prises » fait autorité : on ne la rediscute pas d
 | **D-60** | Q-30 : l'élève choisit-il parmi des créneaux libres ? | **Oui, sous approbation** (option b) : chaque instructeur publie sa **semaine type de disponibilités** ; l'élève choisit un créneau libre ; **la demande reste à approuver** par l'école (D-01 inchangé). | Réponse de l'auteur (03/10/2026), option recommandée : on garde le contrôle de l'école en supprimant la négociation de date. | Tâches 15.6 à 15.10 telles qu'écrites. |
 
 
+### Décisions du 09/10/2026 (Phase 16, dossier administratif)
+
+| ID | Ex-question | Décision | Justification | Note d'application |
+|---|---|---|---|---|
+| **D-61** | Q-31 : la liste des pièces du dossier est-elle fixe ou propre à chaque école ? | **Liste par école, modifiable par son gérant** (option b), initialisée avec la liste par défaut suivante, dans cet ordre : **copie de la CIN, photos d'identité, certificat médical, extrait de naissance, timbre fiscal**. L'élève ne coche rien lui-même (pas d'envoi de fichier, D-49) : l'instructeur note qu'une pièce a été **reçue au bureau**, l'élève voit ce qui lui manque. | Réponse de l'auteur (09/10/2026), option recommandée et liste par défaut acceptée telle quelle : une école qui exige une pièce de plus ne doit pas attendre une mise à jour de l'application. | Tâches 16.1 à 16.6 telles qu'écrites. La liste par défaut vit en trois endroits qui doivent rester identiques : `migrations/017_student_documents.sql` (écoles déjà en base), `DEFAULT_DOCUMENT_TYPES` dans `services/api/src/modules/school/types/school.types.ts` (création par l'API) et `scripts/onboard-school.sh`. Une pièce qu'on ne demande plus est **désactivée** (`active = false`), jamais supprimée : les dossiers déjà cochés gardent leur sens. Gérer la liste est réservé au gérant (D-56 (b)). |
+| **D-62** | Q-32 : que se passe-t-il si le dossier est incomplet ? | **Rien de bloquant** (option a) : l'élève voit les pièces manquantes, l'instructeur voit un badge « dossier incomplet » sur la demande d'examen et décide. X2 inchangée. | Réponse de l'auteur (09/10/2026), option recommandée : cohérent avec D-26 (pas de seuil de leçons imposé — l'instructeur juge, l'application informe). | Tâche 16.3 telle qu'écrite : `fileComplete` et `missingDocuments` sont purement informatifs sur X1, P1 et P8. Aucun nouveau code d'erreur (`FILE_INCOMPLETE` des options (b) / (c) n'existe pas). |
+
 ## Questions ouvertes
 
-Historique : Q-17 → D-40, Q-18 → D-41, Q-19 → D-42, Q-20 → D-43, Q-21 → D-44, Q-22 → D-49, Q-23 → D-50, Q-24 → D-51, Q-25 → D-54, Q-26 → D-56, Q-27 → D-57, Q-28 → D-58, Q-29 → D-59, Q-30 → D-60, Q-53 → D-55 ; D-45 (design accepté), D-46 (SDK Expo), D-47 (français et arabe) et D-48 (design system et thèmes) prises sans question. **À vérifier sur le terrain** : le rattachement type → procédure d'examen (D-44) et les termes arabes du métier (D-47).
+Historique : Q-17 → D-40, Q-18 → D-41, Q-19 → D-42, Q-20 → D-43, Q-21 → D-44, Q-22 → D-49, Q-23 → D-50, Q-24 → D-51, Q-25 → D-54, Q-26 → D-56, Q-27 → D-57, Q-28 → D-58, Q-29 → D-59, Q-30 → D-60, Q-31 → D-61, Q-32 → D-62, Q-53 → D-55 ; D-45 (design accepté), D-46 (SDK Expo), D-47 (français et arabe) et D-48 (design system et thèmes) prises sans question. **À vérifier sur le terrain** : le rattachement type → procédure d'examen (D-44) et les termes arabes du métier (D-47).
 
 ### Feuille de route v1.1 (26/09/2026) — Q-25 à Q-53
 
 Après la recette sur téléphone (aucun bug), l'auteur a demandé des améliorations métier. Elles sont découpées en phases 14 à 23 dans `docs/PLAN.md` ; chaque phase dépend des questions ci-dessous. **Répondre par lettre.** La « recommandation » est une proposition de Claude, pas une décision : une réponse du type « toutes les recommandations sauf Q-xx → (b) » suffit. Une fois tranchées, les questions deviennent des décisions D-54 et suivantes (D-53 a été prise entre-temps pour la 3D réaliste), et les tâches écrites pour une autre option que celle retenue sont réécrites **avant** de commencer la phase.
-
-#### Phase 16 — Dossier administratif de l'élève
-
-### Q-31 — Liste des pièces du dossier
-L'élève ne coche rien lui-même : il n'y a pas d'envoi de fichier en v1 (D-49). C'est l'instructeur qui note qu'une pièce a été **reçue au bureau**, l'élève voit ce qui manque.
-- **(a)** Liste **fixe**, la même pour toutes les écoles, codée dans l'app.
-- **(b)** Liste **par école**, modifiable par le gérant, initialisée avec une liste par défaut.
-
-Liste par défaut proposée, **à corriger par l'auteur** : copie de la CIN, photos d'identité, certificat médical, extrait de naissance, timbre fiscal.
-**Recommandation** : (b), avec la liste par défaut que l'auteur aura corrigée.
-Bloque : 16.1 à 16.4.
-
-### Q-32 — Que se passe-t-il si le dossier est incomplet ?
-- **(a)** Rien de bloquant : l'élève voit les pièces manquantes, l'instructeur voit un badge « dossier incomplet » sur la demande d'examen et décide (comme D-26 pour les leçons effectuées).
-- **(b)** La demande d'examen **pratique** (X2) est refusée (403 `FILE_INCOMPLETE`) tant que le dossier n'est pas complet.
-- **(c)** Les demandes d'examen **théorique et pratique** sont refusées tant que le dossier n'est pas complet.
-
-**Recommandation** : (a). Cohérent avec D-26 (l'instructeur juge, l'app informe).
-Bloque : 16.3.
 
 #### Phase 17 — Notifications
 

@@ -1,8 +1,10 @@
 import { Pool } from 'pg';
+import { Queryable } from '../../../db/transaction';
 import { CreateSchoolDTO, DEFAULT_CURRENCY, School, UpdateSchoolDTO } from '../types/school.types';
 
 export interface ISchoolRepository {
-  create(data: CreateSchoolDTO): Promise<School>;
+  /** `executor` : l'école et la liste de pièces de son dossier naissent ensemble (16.1). */
+  create(data: CreateSchoolDTO, executor?: Queryable): Promise<School>;
   findById(id: string): Promise<School | null>;
   findAll(): Promise<School[]>;
   update(id: string, data: UpdateSchoolDTO): Promise<School>;
@@ -15,8 +17,8 @@ const SCHOOL_COLUMNS = `id, name, address, phone, email, logo_url AS "logoUrl", 
 export class SchoolRepository implements ISchoolRepository {
   constructor(private readonly db: Pool) {}
 
-  async create(data: CreateSchoolDTO): Promise<School> {
-    const result = await this.db.query<School>(
+  async create(data: CreateSchoolDTO, executor: Queryable = this.db): Promise<School> {
+    const result = await executor.query<School>(
       `INSERT INTO schools (name, address, phone, email, logo_url, currency)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING ${SCHOOL_COLUMNS}`,

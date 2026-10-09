@@ -1223,14 +1223,14 @@ test -f tests/e2e/free-slots.e2e.test.ts && docker compose up -d --build --force
 
 ---
 
-## Phase 16 — Dossier administratif de l'élève (Q-31, Q-32)
+## Phase 16 — Dossier administratif de l'élève (D-61, D-62)
 
 Pour présenter un élève à l'examen, l'école doit réunir des pièces (CIN, photos, certificat médical…). Aujourd'hui elle ne peut que répondre « File not ready » (D-42). Ici : une liste de pièces par école, cochée par l'instructeur à la réception au bureau, visible par l'élève. Pas d'envoi de fichier (D-49).
 
-### - [ ] 16.1 — Tables des pièces et du dossier
-**Objectif** : migration `0NN_student_documents.sql` : `document_types (id, school_id, label, position, active)` initialisée avec la liste par défaut de Q-31 pour **chaque école existante** ; `student_documents (id, student_id → students, document_type_id, received_at, received_by → users, note, UNIQUE (student_id, document_type_id))`. La création d'une école (route admin, script d'onboarding) insère la liste par défaut.
-**Dépend de** : Q-31.
-**Fichiers** : `migrations/0NN_student_documents.sql`, `services/api/src/modules/school/repositories/`, `scripts/onboard-school.sh`, tests.
+### - [x] 16.1 — Tables des pièces et du dossier
+**Objectif** : migration `017_student_documents.sql` : `document_types (id, school_id, label, position, active)` initialisée avec la liste par défaut de D-61 pour **chaque école existante** ; `student_documents (id, student_id → students, document_type_id, received_at, received_by → users, note, UNIQUE (student_id, document_type_id))`. La création d'une école (route admin, script d'onboarding) insère la liste par défaut.
+**Dépend de** : D-61.
+**Fichiers** : `migrations/017_student_documents.sql`, `services/api/src/modules/school/repositories/`, `scripts/onboard-school.sh`, tests.
 **Critère de validation** :
 ```bash
 ./scripts/migrate.sh && ./scripts/migrate.sh && docker exec driving-school-postgres psql -U admin -d driving_school -tAc "SELECT count(*) > 0 FROM document_types" | grep -x t && cd services/api && npx tsc --noEmit && npm run lint && npm test && echo OK
@@ -1239,7 +1239,7 @@ Pour présenter un élève à l'examen, l'école doit réunir des pièces (CIN, 
 
 ### - [ ] 16.2 — Routes du dossier
 **Objectif** : liste des pièces de l'école : lecture (instructeur de l'école), ajout / renommage / désactivation (gérant, `assertManager`). Dossier d'un élève : lecture (instructeur de l'école, et l'élève pour le sien), « reçue » / « pas reçue » sur une pièce (instructeur de l'école). Réponse `StudentFile` : `{ complete, documents: [{ documentTypeId, label, received, receivedAt?, note? }] }`. Nouvelle section du contrat.
-**Dépend de** : D-56, Q-31.
+**Dépend de** : D-56, D-61.
 **Fichiers** : `services/api/src/modules/student/` (ou module `document`), tests, `docs/API_CONTRACT.md`.
 **Critère de validation** :
 ```bash
@@ -1248,18 +1248,18 @@ cd services/api && npx tsc --noEmit && npm run lint && npm test && echo OK
 **Hors périmètre** : —
 
 ### - [ ] 16.3 — Dossier visible au moment de l'examen
-**Objectif** : l'objet `Exam` (X1) et la fiche élève (P1, P8) portent `fileComplete` et `missingDocuments: string[]`. Q-32 (a) : purement informatif, X2 inchangé. Contrat X1, P1, P8.
-**Dépend de** : Q-32.
+**Objectif** : l'objet `Exam` (X1) et la fiche élève (P1, P8) portent `fileComplete` et `missingDocuments: string[]`. D-62 : purement informatif, X2 inchangé. Contrat X1, P1, P8.
+**Dépend de** : D-62.
 **Fichiers** : `services/api/src/modules/exam/`, `services/api/src/modules/student/`, tests, `docs/API_CONTRACT.md`.
 **Critère de validation** :
 ```bash
 cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPattern='exam|profile' && echo OK
 ```
-**Hors périmètre** : blocage de la demande d'examen (Q-32 (b) / (c) non retenues).
+**Hors périmètre** : blocage de la demande d'examen (options (b) / (c) de Q-32 non retenues).
 
 ### - [ ] 16.4 — Mobile : dossier côté instructeur
 **Objectif** : onglet « Dossier » de la fiche élève (cocher une pièce reçue, note facultative) ; gestion de la liste des pièces dans « Mon école » (gérant seulement) ; badge « dossier incomplet » sur les demandes d'examen (`ExamRequestsScreen`).
-**Dépend de** : D-56, Q-31.
+**Dépend de** : D-56, D-61.
 **Fichiers** : `mobile-app/src/screens/instructor/student-profile/tabs/StudentFileTab.tsx` (nouveau), `MySchoolScreen.tsx`, `ExamRequestsScreen.tsx`, service, `src/models/`, i18n, tests.
 **Critère de validation** :
 ```bash
@@ -1269,7 +1269,7 @@ cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
 
 ### - [ ] 16.5 — Mobile : « Mon dossier » côté élève
 **Objectif** : carte « Mon dossier » sur l'accueil élève : pièces manquantes à apporter au bureau, ou « Dossier complet » ; détail depuis « Mon profil ».
-**Dépend de** : Q-31.
+**Dépend de** : D-61.
 **Fichiers** : `mobile-app/src/screens/student/StudentDashboard.tsx`, `mobile-app/src/screens/student/my-profile/`, service, i18n, tests.
 **Critère de validation** :
 ```bash
