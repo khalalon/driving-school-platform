@@ -1,5 +1,5 @@
 /**
- * Mon profil (11.3) — trois onglets : progression, leçons, examens.
+ * Mon profil (11.3, 16.5) — quatre onglets : progression, leçons, examens et dossier (F6).
  *
  * Onglet « Profil » depuis 8.4 : ouvert sans paramètre, l'écran retrouve lui-même l'école de
  * l'inscription approuvée (E3, une seule inscription active — D-22) ; ouvert avec `schoolId`
@@ -14,6 +14,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { MyProgressTab } from './tabs/MyProgressTab';
 import { MyLessonsPaymentTab } from './tabs/MyLessonsPaymentTab';
 import { MyExamsPaymentTab } from './tabs/MyExamsPaymentTab';
+import { MyFileTab } from './tabs/MyFileTab';
 import { useAuth } from '../../../context/AuthContext';
 import { useI18n } from '../../../context/LanguageContext';
 import { useTheme } from '../../../context/ThemeContext';
@@ -122,6 +123,12 @@ export const MyProfileScreen = ({ route, navigation }: any) => {
           component={MyExamsPaymentTab}
           initialParams={{ schoolId }}
           options={{ title: t('profile.tab.exams') }}
+        />
+        <Tab.Screen
+          name="File"
+          component={MyFileTab}
+          initialParams={{ schoolId }}
+          options={{ title: t('profile.tab.file') }}
         />
       </Tab.Navigator>
     );

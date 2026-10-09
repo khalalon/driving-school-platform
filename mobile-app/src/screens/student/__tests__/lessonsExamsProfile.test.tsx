@@ -13,10 +13,12 @@ import { MyProfileScreen } from '../my-profile/MyProfileScreen';
 import { MyProgressTab } from '../my-profile/tabs/MyProgressTab';
 import { MyLessonsPaymentTab } from '../my-profile/tabs/MyLessonsPaymentTab';
 import { MyExamsPaymentTab } from '../my-profile/tabs/MyExamsPaymentTab';
+import { MyFileTab } from '../my-profile/tabs/MyFileTab';
 import { lessonService } from '../../../services/api/LessonService';
 import { examService } from '../../../services/api/ExamService';
 import { enrollmentService } from '../../../services/api/EnrollmentService';
 import { studentSelfProfileService } from '../../../services/api/StudentSelfProfileService';
+import { studentFileService } from '../../../services/api/StudentFileService';
 import { LessonStatus, LessonType } from '../../../models/Lesson';
 import { ExamResult, ExamStatus, ExamType } from '../../../models/Exam';
 import { applyLanguage, t } from '../../../i18n';
@@ -51,6 +53,9 @@ jest.mock('../../../services/api/StudentSelfProfileService', () => ({
     getMyLessons: jest.fn(),
     getMyExams: jest.fn(),
   },
+}));
+jest.mock('../../../services/api/StudentFileService', () => ({
+  studentFileService: { getMyFile: jest.fn() },
 }));
 jest.mock('../../../hooks/useSchoolCurrency', () => ({ useSchoolCurrency: () => 'TND' }));
 jest.mock('../../../context/AuthContext', () => ({
@@ -203,9 +208,30 @@ beforeEach(() => {
   (studentSelfProfileService.getMyFinancialSummary as jest.Mock).mockResolvedValue(FINANCIAL);
   (studentSelfProfileService.getMyLessons as jest.Mock).mockResolvedValue([HISTORY_LESSON]);
   (studentSelfProfileService.getMyExams as jest.Mock).mockResolvedValue([HISTORY_EXAM]);
+  (studentFileService.getMyFile as jest.Mock).mockResolvedValue(STUDENT_FILE);
 });
 
 afterEach(() => applyLanguage('fr'));
+
+const STUDENT_FILE = {
+  complete: false,
+  documents: [
+    {
+      documentTypeId: 'doc-1',
+      label: 'Copie de la CIN',
+      received: true,
+      receivedAt: '2026-10-01T09:00:00.000Z',
+      note: null,
+    },
+    {
+      documentTypeId: 'doc-2',
+      label: 'Certificat médical',
+      received: false,
+      receivedAt: null,
+      note: null,
+    },
+  ],
+};
 
 const CASES: [string, () => React.ReactElement, () => string][] = [
   ['demande de leçon', () => <BookLessonScreen navigation={navigation} route={school} />, () => t('book.title')],
@@ -215,6 +241,7 @@ const CASES: [string, () => React.ReactElement, () => string][] = [
   ['profil : progression', () => <MyProgressTab navigation={navigation} route={school} />, () => t('profile.personalInfo')],
   ['profil : leçons', () => <MyLessonsPaymentTab navigation={navigation} route={school} />, () => 'Karim Ben Salah'],
   ['profil : examens', () => <MyExamsPaymentTab navigation={navigation} route={school} />, () => 'Centre ATTT Tunis'],
+  ['profil : dossier', () => <MyFileTab navigation={navigation} route={school} />, () => 'Certificat médical'],
 ];
 
 describe.each(CASES)('%s', (_, element, keyText) => {

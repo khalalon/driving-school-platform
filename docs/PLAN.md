@@ -1267,7 +1267,7 @@ cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
 ```
 **Hors périmètre** : —
 
-### - [ ] 16.5 — Mobile : « Mon dossier » côté élève
+### - [x] 16.5 — Mobile : « Mon dossier » côté élève
 **Objectif** : carte « Mon dossier » sur l'accueil élève : pièces manquantes à apporter au bureau, ou « Dossier complet » ; détail depuis « Mon profil ».
 **Dépend de** : D-61.
 **Fichiers** : `mobile-app/src/screens/student/StudentDashboard.tsx`, `mobile-app/src/screens/student/my-profile/`, service, i18n, tests.

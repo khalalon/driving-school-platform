@@ -33,6 +33,7 @@ import { enrollmentService } from '../../services/api/EnrollmentService';
 import { lessonService } from '../../services/api/LessonService';
 import { examService } from '../../services/api/ExamService';
 import { studentSelfProfileService } from '../../services/api/StudentSelfProfileService';
+import { studentFileService } from '../../services/api/StudentFileService';
 import { getApiErrorCode, getApiErrorMessage } from '../../services/api/ApiError';
 import { EnrollmentRequest, EnrollmentStatus } from '../../models/Enrollment';
 import {
@@ -45,6 +46,7 @@ import {
 } from '../../models/Lesson';
 import { Exam } from '../../models/Exam';
 import { FinancialSummary, MyProfile } from '../../models/Profile';
+import { missingDocuments, StudentFile } from '../../models/StudentFile';
 import { JourneyStep, JourneyStepKey, buildJourney } from '../../models/Journey';
 import { useSchoolCurrency } from '../../hooks/useSchoolCurrency';
 import {
@@ -78,6 +80,8 @@ interface HomeData {
   exams: Exam[];
   profile: MyProfile | null;
   financial: FinancialSummary | null;
+  /** Dossier administratif (16.5, F6) : `null` si la lecture a échoué — l'accueil reste lisible. */
+  file: StudentFile | null;
 }
 
 /** La prochaine leçon planifiée : la première dont la fin n'est pas passée. */
@@ -122,15 +126,16 @@ export const StudentDashboard = ({ navigation }: any) => {
         setData(null);
         return;
       }
-      const [lessons, exams, profile, financial] = await Promise.all([
+      const [lessons, exams, profile, financial, file] = await Promise.all([
         lessonService.getMyLessons({
           status: [LessonStatus.PENDING, LessonStatus.SCHEDULED],
         }),
         examService.getMyExams(),
         studentSelfProfileService.getMyProfile(approved.schoolId).catch(() => null),
         studentSelfProfileService.getMyFinancialSummary(approved.schoolId).catch(() => null),
+        studentFileService.getMyFile(approved.schoolId).catch(() => null),
       ]);
-      setData({ lessons, exams, profile, financial });
+      setData({ lessons, exams, profile, financial, file });
     } catch (err) {
       setError(getApiErrorMessage(err, t('home.loadFailed')));
     } finally {
@@ -374,6 +379,35 @@ export const StudentDashboard = ({ navigation }: any) => {
     </View>
   );
 
+  /**
+   * Carte « Mon dossier » (16.5, D-61) : ce qu'il reste à apporter **au bureau**, nommé. Rien
+   * n'est bloqué par un dossier incomplet (D-62) ; la carte ouvre le détail dans Mon profil.
+   */
+  const renderFile = (file: StudentFile | null) => {
+    if (!file || file.documents.length === 0) {
+      return null;
+    }
+    const missing = missingDocuments(file);
+    return (
+      <Card onPress={openMyProfile} accessibilityLabel={t('home.fileTitle')} testID="home-file">
+        <SectionHeader
+          title={t('home.fileTitle')}
+          icon={missing.length === 0 ? 'checkmark-circle-outline' : 'document-text-outline'}
+        />
+        <Badge
+          label={missing.length === 0 ? t('home.fileComplete') : t('studentFile.incomplete')}
+          tone={missing.length === 0 ? 'success' : 'warning'}
+          dot
+        />
+        {missing.length > 0 ? (
+          <Text style={styles.fileMissing}>
+            {t('home.fileMissing', { documents: missing.join(', ') })}
+          </Text>
+        ) : null}
+      </Card>
+    );
+  };
+
   const renderActions = () => (
     <View style={styles.actionsRow}>
       <Button
@@ -473,6 +507,7 @@ export const StudentDashboard = ({ navigation }: any) => {
         {renderNextLesson(data.lessons)}
         {renderJourney(steps)}
         {renderActions()}
+        {renderFile(data.file)}
         {renderMoney(data.financial)}
         {renderLinks()}
       </>
@@ -598,6 +633,7 @@ const createStyles = (theme: Theme, language: Language) =>
     action: { flex: 1 },
     linksRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
 
+    fileMissing: { ...textStyle('caption', language), color: theme.colors.textSecondary },
     errorBanner: {
       ...textStyle('body', language),
       color: theme.colors.dangerText,

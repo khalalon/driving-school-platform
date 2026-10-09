@@ -7,6 +7,7 @@ import React from 'react';
 import { act } from 'react-test-renderer';
 import { StudentDashboard } from '../StudentDashboard';
 import { enrollmentService } from '../../../services/api/EnrollmentService';
+import { studentFileService } from '../../../services/api/StudentFileService';
 import { lessonService } from '../../../services/api/LessonService';
 import { examService } from '../../../services/api/ExamService';
 import { studentSelfProfileService } from '../../../services/api/StudentSelfProfileService';
@@ -36,6 +37,9 @@ jest.mock('../../../services/api/ExamService', () => ({
 jest.mock('../../../services/api/StudentSelfProfileService', () => ({
   studentSelfProfileService: { getMyProfile: jest.fn(), getMyFinancialSummary: jest.fn() },
 }));
+jest.mock('../../../services/api/StudentFileService', () => ({
+  studentFileService: { getMyFile: jest.fn() },
+}));
 jest.mock('../../../hooks/useSchoolCurrency', () => ({ useSchoolCurrency: () => 'TND' }));
 jest.mock('../../../context/AuthContext', () => ({
   useAuth: () => ({ user: { firstName: 'Yasmine', lastName: 'Amri' } }),
@@ -54,6 +58,26 @@ jest.mock('@react-navigation/native', () => {
 
 const navigation = { navigate: jest.fn(), goBack: jest.fn() };
 const inTwoDays = new Date(Date.now() + 2 * 24 * 3600 * 1000).toISOString();
+
+const STUDENT_FILE = {
+  complete: false,
+  documents: [
+    {
+      documentTypeId: 'doc-1',
+      label: 'Copie de la CIN',
+      received: true,
+      receivedAt: '2026-10-01T09:00:00.000Z',
+      note: null,
+    },
+    {
+      documentTypeId: 'doc-2',
+      label: 'Certificat médical',
+      received: false,
+      receivedAt: null,
+      note: null,
+    },
+  ],
+};
 
 const APPROVED = {
   id: 'req-1',
@@ -89,6 +113,7 @@ const enrolled = () => {
     totalDue: 0,
     credit: 0,
   });
+  (studentFileService.getMyFile as jest.Mock).mockResolvedValue(STUDENT_FILE);
 };
 
 const settle = async () => {
@@ -157,6 +182,49 @@ describe('autres états', () => {
     const texts = renderedText(tree);
     expect(texts).toContain(t('home.loadFailed'));
     expect(texts).toContain(t('common.retry'));
+    unmountInTheme(tree);
+  });
+});
+
+describe('carte « Mon dossier » (16.5, D-61)', () => {
+  it('nomme les pièces à apporter au bureau, et ouvre Mon profil', async () => {
+    enrolled();
+    const tree = renderScreen(<StudentDashboard navigation={navigation} />, 'dark');
+    await settle();
+
+    const text = renderedText(tree).join(' | ');
+    expect(text).toContain(t('home.fileTitle'));
+    expect(text).toContain(t('home.fileMissing', { documents: 'Certificat médical' }));
+    expect(text).not.toContain(t('home.fileComplete'));
+
+    const [card] = tree.root.findAllByProps({ testID: 'home-file' });
+    expect(card).toBeTruthy();
+    unmountInTheme(tree);
+  });
+
+  it('dossier complet : la carte le dit sans lister de pièce', async () => {
+    enrolled();
+    (studentFileService.getMyFile as jest.Mock).mockResolvedValue({
+      complete: true,
+      documents: [{ ...STUDENT_FILE.documents[0] }],
+    });
+    const tree = renderScreen(<StudentDashboard navigation={navigation} />, 'light');
+    await settle();
+
+    const text = renderedText(tree).join(' | ');
+    expect(text).toContain(t('home.fileComplete'));
+    expect(text).not.toContain('Certificat médical');
+    unmountInTheme(tree);
+  });
+
+  it('dossier illisible ou école sans pièce : aucune carte, l’accueil reste entier', async () => {
+    enrolled();
+    (studentFileService.getMyFile as jest.Mock).mockRejectedValue(new Error('hors ligne'));
+    const tree = renderScreen(<StudentDashboard navigation={navigation} />, 'dark');
+    await settle();
+
+    expect(tree.root.findAllByProps({ testID: 'home-file' })).toEqual([]);
+    expect(renderedText(tree)).toContain(t('home.dashboard'));
     unmountInTheme(tree);
   });
 });
