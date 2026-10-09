@@ -1,11 +1,13 @@
 /**
- * Mon école (12.5) — S2 en lecture, S7 pour la fiche, S8 et S9 pour la grille tarifaire.
+ * Mon école (12.5, 16.4) — S2 en lecture, S7 pour la fiche, S8 / S9 pour la grille tarifaire,
+ * F1–F4 pour les pièces du dossier administratif.
  *
  * L'école reste **créée par l'administrateur** (D-51) : cet écran ne crée ni ne supprime une
  * école, il corrige la fiche et tient les tarifs. Tout est cloisonné côté serveur à l'école de
  * l'instructeur (403 `FORBIDDEN_SCHOOL` sinon, D-20) ; `schoolId` vient de A3.
  * Depuis 14.4 (D-56), seul le **gérant** modifie la fiche et les tarifs : un simple moniteur voit
- * l'école en lecture seule (boutons masqués, mention « réservé au gérant »).
+ * l'école en lecture seule (boutons masqués, mention « réservé au gérant »). Les pièces du
+ * dossier suivent la même règle (D-56 (b)) : tout instructeur les lit, le gérant seul les tient.
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
@@ -30,13 +32,17 @@ import {
   SkeletonCard,
 } from '../../components/ui';
 import { schoolService } from '../../services/api/SchoolService';
+import { studentFileService } from '../../services/api/StudentFileService';
 import { getApiErrorMessage } from '../../services/api/ApiError';
 import { School, SchoolPricing } from '../../models/School';
+import { DocumentType } from '../../models/StudentFile';
 import { lessonTypeLabel, LESSON_TYPES, LessonType } from '../../models/Lesson';
 import { formatAmount } from '../../utils/format';
 import { Theme, textStyle } from '../../theme';
 import type { Language } from '../../i18n';
 
+/** Libellé d'une pièce : au moins deux caractères, comme le backend l'exige (F2, F3). */
+const MIN_DOCUMENT_LABEL = 2;
 /** Devise : trois lettres, comme le backend l'exige (D-43). */
 const CURRENCY_PATTERN = /^[A-Za-z]{3}$/;
 const DEFAULT_DURATION_MINUTES = 60;
@@ -65,6 +71,12 @@ export const MySchoolScreen = ({ navigation }: any) => {
   const [email, setEmail] = useState('');
   const [currency, setCurrency] = useState('');
 
+  // Pièces du dossier (F1–F4) : ajout, ou renommage de la pièce dont l'identifiant est retenu
+  const [documents, setDocuments] = useState<DocumentType[]>([]);
+  const [documentFormOpen, setDocumentFormOpen] = useState(false);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [documentLabel, setDocumentLabel] = useState('');
+
   // Ajout d'un tarif
   const [addingPricing, setAddingPricing] = useState(false);
   const [lessonType, setLessonType] = useState<LessonType>(LessonType.CODE);
@@ -77,12 +89,15 @@ export const MySchoolScreen = ({ navigation }: any) => {
       return;
     }
     try {
-      const [schoolData, pricingData] = await Promise.all([
+      const [schoolData, pricingData, documentData] = await Promise.all([
         schoolService.getSchoolById(schoolId),
         schoolService.getSchoolPricing(schoolId).catch(() => []),
+        // Une liste de pièces indisponible ne doit pas masquer la fiche de l'école
+        studentFileService.getDocumentTypes(schoolId).catch(() => [] as DocumentType[]),
       ]);
       setSchool(schoolData);
       setPricing(pricingData);
+      setDocuments(documentData);
     } catch (error) {
       Alert.alert(t('common.error'), getApiErrorMessage(error, t('mySchool.loadFailed')));
     } finally {
@@ -201,6 +216,70 @@ export const MySchoolScreen = ({ navigation }: any) => {
         },
       },
     ]);
+  };
+
+  /**
+   * F2 / F3 : le même formulaire ajoute une pièce ou renomme celle qu'on a choisie. Un libellé
+   * déjà retiré revient actif côté serveur — c'est voulu (D-61), pas un doublon.
+   */
+  const saveDocument = async () => {
+    if (!schoolId) return;
+    const label = documentLabel.trim();
+    if (label.length < MIN_DOCUMENT_LABEL) {
+      Alert.alert(t('common.error'), t('mySchool.documentInvalid'));
+      return;
+    }
+
+    try {
+      setSaving(true);
+      if (renamingId) {
+        await studentFileService.renameDocumentType(renamingId, label);
+      } else {
+        await studentFileService.addDocumentType(schoolId, label);
+      }
+      setDocuments(await studentFileService.getDocumentTypes(schoolId));
+      closeDocumentForm();
+      showToast(t('mySchool.documentSaved'));
+    } catch (error) {
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('mySchool.documentSaveFailed')));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /** F4 : la pièce est désactivée, pas supprimée — les dossiers déjà cochés gardent leur trace. */
+  const removeDocument = (item: DocumentType) => {
+    Alert.alert(t('mySchool.removeDocumentTitle'), t('mySchool.removeDocumentConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('mySchool.removeDocument'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await studentFileService.removeDocumentType(item.id);
+            setDocuments((current) => current.filter((document) => document.id !== item.id));
+            showToast(t('mySchool.documentRemoved'));
+          } catch (error) {
+            Alert.alert(
+              t('common.error'),
+              getApiErrorMessage(error, t('mySchool.documentRemoveFailed'))
+            );
+          }
+        },
+      },
+    ]);
+  };
+
+  const openDocumentForm = (item?: DocumentType) => {
+    setRenamingId(item?.id ?? null);
+    setDocumentLabel(item?.label ?? '');
+    setDocumentFormOpen(true);
+  };
+
+  const closeDocumentForm = () => {
+    setDocumentFormOpen(false);
+    setRenamingId(null);
+    setDocumentLabel('');
   };
 
   const alreadyPriced = pricing.some((item) => item.lessonType === lessonType);
@@ -382,6 +461,91 @@ export const MySchoolScreen = ({ navigation }: any) => {
     </Card>
   );
 
+  /** F1–F4 : la liste que l'instructeur cochera dans la fiche élève (16.4). */
+  const renderDocuments = () => (
+    <Card style={styles.card} padded={false}>
+      <View style={styles.pricingHeader}>
+        <SectionHeader
+          title={t('mySchool.documents')}
+          subtitle={t('mySchool.documentsHint')}
+          icon="document-text-outline"
+          action={
+            documentFormOpen || !canManage
+              ? undefined
+              : { label: t('mySchool.addDocument'), onPress: () => openDocumentForm() }
+          }
+        />
+      </View>
+
+      {documentFormOpen ? (
+        <View style={styles.pricingForm}>
+          <Field
+            label={t('mySchool.documentLabel')}
+            value={documentLabel}
+            onChangeText={setDocumentLabel}
+            placeholder={t('mySchool.documentPlaceholder')}
+            icon="document-text-outline"
+          />
+          <View style={styles.actions}>
+            <Button
+              title={t('common.cancel')}
+              onPress={closeDocumentForm}
+              variant="secondary"
+              style={styles.action}
+            />
+            <Button
+              title={t('common.save')}
+              onPress={saveDocument}
+              loading={saving}
+              style={styles.action}
+            />
+          </View>
+        </View>
+      ) : null}
+
+      {documents.length === 0 && !documentFormOpen ? (
+        <EmptyState
+          icon="document-text-outline"
+          title={t('mySchool.noDocuments')}
+          tone="neutral"
+          action={
+            canManage
+              ? { label: t('mySchool.addDocument'), onPress: () => openDocumentForm() }
+              : undefined
+          }
+        />
+      ) : (
+        documents.map((item, index) => (
+          <ListRow
+            key={item.id}
+            title={item.label}
+            icon="document-text"
+            tone="accent"
+            style={index === documents.length - 1 ? styles.rowLast : styles.row}
+            trailing={
+              canManage ? (
+                <View style={styles.pricingTrailing}>
+                  <Button
+                    title={t('mySchool.renameDocument')}
+                    onPress={() => openDocumentForm(item)}
+                    variant="ghost"
+                    size="sm"
+                  />
+                  <Button
+                    title={t('mySchool.removeDocument')}
+                    onPress={() => removeDocument(item)}
+                    variant="ghost"
+                    size="sm"
+                  />
+                </View>
+              ) : undefined
+            }
+          />
+        ))
+      )}
+    </Card>
+  );
+
   const renderBody = () => {
     if (loading) {
       return (
@@ -406,6 +570,7 @@ export const MySchoolScreen = ({ navigation }: any) => {
       <>
         {renderDetails(school)}
         {renderPricing(school)}
+        {renderDocuments()}
       </>
     );
   };

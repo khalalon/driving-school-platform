@@ -142,6 +142,13 @@ export interface Exam {
   paid: boolean;
   amount: number | null;
   paymentDate: string | null;
+  /**
+   * Dossier administratif de l'élève (16.3, D-61) : **informatif** (D-62). Une demande n'est
+   * jamais refusée pour un dossier incomplet — l'écran le signale, l'instructeur décide.
+   */
+  fileComplete: boolean;
+  /** Pièces encore attendues, dans l'ordre d'affichage de l'école. */
+  missingDocuments: string[];
   createdAt: string;
   updatedAt: string;
 }

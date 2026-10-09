@@ -1,5 +1,6 @@
 /**
- * Fiche élève côté instructeur (11.4) — trois onglets : informations, leçons, examens (P1–P7).
+ * Fiche élève côté instructeur (11.4, 16.4) — quatre onglets : informations, leçons, examens
+ * (P1–P7) et dossier administratif (F5, F7).
  * L'écran est ouvert avec `{ studentId (users.id), schoolId, studentName }` (D-28).
  */
 
@@ -9,6 +10,7 @@ import { createMaterialTopTabNavigator } from '@react-navigation/material-top-ta
 import { StudentInfoTab } from './tabs/StudentInfoTab';
 import { StudentLessonsTab } from './tabs/StudentLessonsTab';
 import { StudentExamsTab } from './tabs/StudentExamsTab';
+import { StudentFileTab } from './tabs/StudentFileTab';
 import { useI18n } from '../../../context/LanguageContext';
 import { useTheme } from '../../../context/ThemeContext';
 import { AppBar } from '../../../components/ui';
@@ -59,6 +61,12 @@ export const StudentProfileScreen = ({ route, navigation }: any) => {
           component={StudentExamsTab}
           initialParams={{ studentId, schoolId }}
           options={{ title: t('studentProfile.tab.exams') }}
+        />
+        <Tab.Screen
+          name="File"
+          component={StudentFileTab}
+          initialParams={{ studentId, schoolId }}
+          options={{ title: t('studentProfile.tab.file') }}
         />
       </Tab.Navigator>
     </View>

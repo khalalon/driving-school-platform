@@ -49,6 +49,9 @@ export const API_CONFIG = {
       STUDENTS: '/api/schools/:id/students',
       // S9 : `:id` est l'identifiant du tarif, pas celui de l'école
       PRICING_ITEM: '/api/schools/pricing/:id',
+      // §6c Pièces du dossier (F1, F2) ; F3 et F4 : `:id` est l'identifiant de la pièce
+      DOCUMENT_TYPES: '/api/schools/:schoolId/document-types',
+      DOCUMENT_TYPE_ITEM: '/api/schools/document-types/:id',
     },
     // §6b Disponibilités de l'instructeur connecté (I1, I2)
     INSTRUCTORS: {
@@ -94,6 +97,9 @@ export const API_CONFIG = {
       UPDATE_NOTES: '/api/profiles/:studentId/notes',
       MARK_LESSON_PAID: '/api/profiles/lessons/:lessonId/mark-paid',
       MARK_EXAM_PAID: '/api/profiles/exams/:examId/mark-paid',
+      // §6c Dossier administratif vu par l'école (F5, F7)
+      FILE: '/api/profiles/:studentId/schools/:schoolId/file',
+      DOCUMENT: '/api/profiles/:studentId/schools/:schoolId/documents/:documentTypeId',
     },
     // §6 Fiche élève, vue élève
     STUDENT_PROFILES: {
@@ -101,6 +107,8 @@ export const API_CONFIG = {
       MY_LESSONS: '/api/student-profiles/me/schools/:schoolId/lessons',
       MY_EXAMS: '/api/student-profiles/me/schools/:schoolId/exams',
       MY_FINANCIAL: '/api/student-profiles/me/schools/:schoolId/financial',
+      // §6c Dossier administratif vu par l'élève (F6)
+      MY_FILE: '/api/student-profiles/me/schools/:schoolId/file',
     },
   },
 };

@@ -64,6 +64,8 @@ const exam = (type: ExamType, status: ExamStatus, extra: Partial<Exam> = {}): Ex
   paymentDate: null,
   createdAt: '2026-09-19T00:00:00.000Z',
   updatedAt: '2026-09-19T00:00:00.000Z',
+  fileComplete: true,
+  missingDocuments: [],
   ...extra,
 });
 

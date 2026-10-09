@@ -254,6 +254,19 @@ export const ExamRequestsScreen = ({ navigation }: any) => {
                 {t('examRequests.lessonsCompleted', { count: item.studentCompletedLessons })}
               </Text>
             </View>
+            {item.fileComplete ? null : (
+              // Informatif (D-62) : l'instructeur décide, rien n'est bloqué
+              <View style={styles.metaRow} testID={`exam-file-incomplete-${item.id}`}>
+                <Ionicons name="document-text-outline" size={15} color={theme.colors.warningText} />
+                <Text style={styles.meta}>
+                  {item.missingDocuments.length > 0
+                    ? t('examRequests.fileMissing', {
+                        documents: item.missingDocuments.join(', '),
+                      })
+                    : t('examRequests.fileIncomplete')}
+                </Text>
+              </View>
+            )}
             <View style={styles.metaRow}>
               <Ionicons name="calendar-outline" size={15} color={theme.colors.textMuted} />
               <Text style={styles.meta}>

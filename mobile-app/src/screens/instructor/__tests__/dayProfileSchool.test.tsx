@@ -11,10 +11,12 @@ import { MySchoolScreen } from '../MySchoolScreen';
 import { StudentInfoTab } from '../student-profile/tabs/StudentInfoTab';
 import { StudentLessonsTab } from '../student-profile/tabs/StudentLessonsTab';
 import { StudentExamsTab } from '../student-profile/tabs/StudentExamsTab';
+import { StudentFileTab } from '../student-profile/tabs/StudentFileTab';
 import { lessonService } from '../../../services/api/LessonService';
 import { examService } from '../../../services/api/ExamService';
 import { schoolService } from '../../../services/api/SchoolService';
 import { studentProfileService } from '../../../services/api/StudentProfileService';
+import { studentFileService } from '../../../services/api/StudentFileService';
 import { LessonStatus, LessonType } from '../../../models/Lesson';
 import { ExamResult, ExamStatus, ExamType } from '../../../models/Exam';
 import { applyLanguage, t } from '../../../i18n';
@@ -51,6 +53,16 @@ jest.mock('../../../services/api/StudentProfileService', () => ({
     getStudentExams: jest.fn(),
     markLessonPaid: jest.fn(),
     markExamPaid: jest.fn(),
+  },
+}));
+jest.mock('../../../services/api/StudentFileService', () => ({
+  studentFileService: {
+    getDocumentTypes: jest.fn(),
+    addDocumentType: jest.fn(),
+    renameDocumentType: jest.fn(),
+    removeDocumentType: jest.fn(),
+    getStudentFile: jest.fn(),
+    setDocumentReceived: jest.fn(),
   },
 }));
 jest.mock('../../../hooks/useSchoolCurrency', () => ({ useSchoolCurrency: () => 'TND' }));
@@ -155,6 +167,29 @@ beforeEach(() => {
     totalExams: 1,
     passedExams: 1,
   });
+  (studentFileService.getDocumentTypes as jest.Mock).mockResolvedValue([
+    { id: 'doc-1', schoolId: 'school-1', label: 'Copie de la CIN', position: 1, active: true },
+    { id: 'doc-2', schoolId: 'school-1', label: 'Certificat médical', position: 2, active: true },
+  ]);
+  (studentFileService.getStudentFile as jest.Mock).mockResolvedValue({
+    complete: false,
+    documents: [
+      {
+        documentTypeId: 'doc-1',
+        label: 'Copie de la CIN',
+        received: true,
+        receivedAt: '2026-10-01T09:00:00.000Z',
+        note: null,
+      },
+      {
+        documentTypeId: 'doc-2',
+        label: 'Certificat médical',
+        received: false,
+        receivedAt: null,
+        note: null,
+      },
+    ],
+  });
   (studentProfileService.getFinancialSummary as jest.Mock).mockResolvedValue({
     totalRevenue: 520,
     totalPending: 45,
@@ -214,6 +249,7 @@ const CASES: [string, () => React.ReactElement, () => string][] = [
   ['fiche élève : infos', () => <StudentInfoTab navigation={navigation} route={profileRoute} />, () => 'Progresse vite en créneau.'],
   ['fiche élève : leçons', () => <StudentLessonsTab navigation={navigation} route={profileRoute} />, () => t('studentLessons.markPaid')],
   ['fiche élève : examens', () => <StudentExamsTab navigation={navigation} route={profileRoute} />, () => 'Centre ATTT Tunis'],
+  ['fiche élève : dossier', () => <StudentFileTab navigation={navigation} route={profileRoute} />, () => 'Certificat médical'],
 ];
 
 describe.each(CASES)('%s', (_, element, keyText) => {
@@ -256,5 +292,78 @@ describe('Mon école : réservée au gérant (14.4, D-56)', () => {
     expect(text).not.toContain(t('mySchool.removePricing'));
     expect(tree.root.findAllByProps({ testID: 'my-school-read-only' }).length).toBeGreaterThan(0);
     unmountInTheme(tree);
+  });
+});
+
+describe('dossier administratif (16.4, D-61, D-62)', () => {
+  const press = async (tree: ReturnType<typeof renderScreen>, label: string) => {
+    const [button] = tree.root.findAll(
+      (node) =>
+        node.props?.accessibilityLabel === label && typeof node.props?.onPress === 'function'
+    );
+    await act(async () => {
+      await button.props.onPress();
+    });
+  };
+
+  it('fiche élève : l’en-tête dit ce qui manque, sans rien bloquer', async () => {
+    const tree = renderScreen(<StudentFileTab navigation={navigation} route={profileRoute} />, 'dark');
+    await settle();
+
+    const text = renderedText(tree).join(' | ');
+    expect(text).toContain(t('studentFile.incomplete'));
+    expect(text).toContain(t('studentFile.missingCount', { count: 1 }));
+    expect(text).toContain(t('studentFile.markReceived'));
+    expect(text).toContain(t('studentFile.markNotReceived'));
+    unmountInTheme(tree);
+  });
+
+  it('décocher une pièce part sans note ; cocher passe par la fenêtre et en envoie une (F7)', async () => {
+    (studentFileService.setDocumentReceived as jest.Mock).mockResolvedValue({
+      complete: true,
+      documents: [],
+    });
+    const tree = renderScreen(<StudentFileTab navigation={navigation} route={profileRoute} />, 'light');
+    await settle();
+
+    // La pièce reçue : « Annuler la réception » écrit tout de suite, sans note
+    await press(tree, t('studentFile.markNotReceived'));
+    expect(studentFileService.setDocumentReceived).toHaveBeenCalledWith(
+      'u1',
+      'school-1',
+      'doc-1',
+      false,
+      undefined
+    );
+    unmountInTheme(tree);
+  });
+
+  it('Mon école : le gérant tient la liste des pièces, le moniteur la lit (F2–F4, D-56)', async () => {
+    (studentFileService.addDocumentType as jest.Mock).mockResolvedValue({
+      id: 'doc-3',
+      schoolId: 'school-1',
+      label: 'Timbre fiscal',
+      position: 3,
+      active: true,
+    });
+
+    const tree = renderScreen(<MySchoolScreen navigation={navigation} />, 'dark');
+    await settle();
+    const text = renderedText(tree).join(' | ');
+    expect(text).toContain(t('mySchool.documents'));
+    expect(text).toContain('Certificat médical');
+    expect(text).toContain(t('mySchool.addDocument'));
+    expect(text).toContain(t('mySchool.renameDocument'));
+    unmountInTheme(tree);
+
+    mockIsManager = false;
+    const readOnly = renderScreen(<MySchoolScreen navigation={navigation} />, 'dark');
+    await settle();
+    const readOnlyText = renderedText(readOnly).join(' | ');
+    expect(readOnlyText).toContain('Certificat médical');
+    expect(readOnlyText).not.toContain(t('mySchool.addDocument'));
+    expect(readOnlyText).not.toContain(t('mySchool.removeDocument'));
+    unmountInTheme(readOnly);
+    mockIsManager = true;
   });
 });

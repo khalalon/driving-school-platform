@@ -17,7 +17,7 @@ import { examService } from '../../../services/api/ExamService';
 import { enrollmentService } from '../../../services/api/EnrollmentService';
 import { schoolService } from '../../../services/api/SchoolService';
 import { LessonStatus, LessonType } from '../../../models/Lesson';
-import { ExamResult, ExamStatus, ExamType } from '../../../models/Exam';
+import { examProcedure, ExamResult, ExamStatus, ExamType } from '../../../models/Exam';
 import { EnrollmentStatus } from '../../../models/Enrollment';
 import { applyLanguage, t } from '../../../i18n';
 import {
@@ -109,6 +109,9 @@ beforeEach(() => {
       studentFirstName: 'Yasmine',
       studentLastName: 'Amri',
       studentCompletedLessons: 14,
+      // Dossier administratif (16.3) : incomplet ici, pour le badge informatif de 16.4
+      fileComplete: false,
+      missingDocuments: ['Certificat médical', 'Timbre fiscal'],
       createdAt: '2026-09-20T10:00:00.000Z',
     },
   ]);
@@ -284,6 +287,22 @@ describe('conflit d’horaire à la planification (15.4, D-58)', () => {
     expect(message).toBe(t('error.CONFLICT'));
     expect(buttons).toBeUndefined();
     alert.mockRestore();
+    unmountInTheme(tree);
+  });
+});
+
+describe('demandes d’examen : dossier incomplet (16.4, D-62)', () => {
+  it('les pièces manquantes sont nommées, et rien n’est bloqué', async () => {
+    const tree = renderScreen(<ExamRequestsScreen navigation={navigation} />, 'dark');
+    await settle();
+
+    const text = renderedText(tree).join(' | ');
+    expect(text).toContain('Certificat médical, Timbre fiscal');
+    expect(tree.root.findAllByProps({ testID: 'exam-file-incomplete-x1' }).length).toBeGreaterThan(
+      0
+    );
+    // Informatif : la planification reste proposée malgré le dossier incomplet (D-62)
+    expect(text).toContain(examProcedure(ExamType.PRACTICAL).scheduleAction);
     unmountInTheme(tree);
   });
 });

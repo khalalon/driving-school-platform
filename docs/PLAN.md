@@ -1257,7 +1257,7 @@ cd services/api && npx tsc --noEmit && npm run lint && npx jest --coverage=false
 ```
 **Hors périmètre** : blocage de la demande d'examen (options (b) / (c) de Q-32 non retenues).
 
-### - [ ] 16.4 — Mobile : dossier côté instructeur
+### - [x] 16.4 — Mobile : dossier côté instructeur
 **Objectif** : onglet « Dossier » de la fiche élève (cocher une pièce reçue, note facultative) ; gestion de la liste des pièces dans « Mon école » (gérant seulement) ; badge « dossier incomplet » sur les demandes d'examen (`ExamRequestsScreen`).
 **Dépend de** : D-56, D-61.
 **Fichiers** : `mobile-app/src/screens/instructor/student-profile/tabs/StudentFileTab.tsx` (nouveau), `MySchoolScreen.tsx`, `ExamRequestsScreen.tsx`, service, `src/models/`, i18n, tests.
