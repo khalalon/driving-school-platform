@@ -1277,7 +1277,7 @@ cd mobile-app && npx tsc --noEmit && npx jest --silent && echo OK
 ```
 **Hors périmètre** : envoi de photo d'une pièce (D-49).
 
-### - [ ] 16.6 — Bout en bout : dossier
+### - [x] 16.6 — Bout en bout : dossier
 **Objectif** : e2e « dossier » : une école a sa liste par défaut ; l'instructeur coche toutes les pièces → `complete: true` ; l'élève lit son dossier ; un moniteur ne peut pas modifier la liste (403 `FORBIDDEN_MANAGER`) ; X1 renvoie `fileComplete`.
 **Fichiers** : `tests/e2e/student-file.e2e.test.ts` (nouveau).
 **Critère de validation** :

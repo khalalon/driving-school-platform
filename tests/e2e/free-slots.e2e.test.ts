@@ -42,15 +42,22 @@ describe('créneaux libres (D-60)', () => {
   let studentToken = '';
   let studentId = '';
 
-  const freeSlots = async (token: string) =>
-    api()
+  /**
+   * Fenêtre de 14 jours **pile** : les deux bornes se calculent sur le même instant. Avec deux
+   * appels à `Date.now()`, `to - from` dépassait la limite de quelques millisecondes et L10
+   * répondait 400 une exécution sur deux (constaté en 16.6).
+   */
+  const freeSlots = async (token: string) => {
+    const now = Date.now();
+    return api()
       .get('/api/lessons/free-slots')
       .query({
         type: 'Parc',
-        from: new Date().toISOString(),
-        to: new Date(Date.now() + 14 * 86_400_000).toISOString(),
+        from: new Date(now).toISOString(),
+        to: new Date(now + 14 * 86_400_000).toISOString(),
       })
       .set(bearer(token));
+  };
 
   /** Les créneaux de cet instructeur le jour cible (la fenêtre de 14 jours en contient deux). */
   const mine = (slots: FreeSlot[]) =>
