@@ -1,6 +1,7 @@
 import { SchoolGuard } from '../../../../http/authz';
 import { AuthUser, UserRole } from '../../../../types/auth';
 import { IProfileRepository } from '../../repositories/profile.repository';
+import { IStudentFileRepository } from '../../repositories/student-file.repository';
 import { StudentProfile } from '../../types/student.types';
 import { ProfileService } from '../profile.service';
 
@@ -23,9 +24,13 @@ describe('ProfileService', () => {
     completedLessonsByType: { CODE: 1, Manœuvre: 1, Parc: 0 },
     totalExams: 1,
     passedExams: 0,
+    // 16.3 : dossier complet par défaut dans les cas existants.
+    fileComplete: true,
+    missingDocuments: [],
   };
   let repository: jest.Mocked<IProfileRepository>;
   let service: ProfileService;
+  const files = { missingDocumentsByUser: jest.fn() };
   // Cloisonnement (D-20) : instructeur de school-1 ; un admin passe partout.
   const instructor: AuthUser = { userId: 'user-instr', email: 'i@x.io', role: UserRole.INSTRUCTOR };
   const admin: AuthUser = { userId: 'user-admin', email: 'a@x.io', role: UserRole.ADMIN };
@@ -45,7 +50,13 @@ describe('ProfileService', () => {
       markExamPaid: jest.fn(),
     };
     instructorLookup.findByUserId.mockResolvedValue({ id: 'instr-1', schoolId: 'school-1' });
-    service = new ProfileService(repository, new SchoolGuard(instructorLookup));
+    files.missingDocumentsByUser.mockReset();
+    files.missingDocumentsByUser.mockResolvedValue(new Map<string, string[]>());
+    service = new ProfileService(
+      repository,
+      new SchoolGuard(instructorLookup),
+      files as unknown as IStudentFileRepository
+    );
   });
 
   it('getCompleteProfile : renvoie la fiche, notes comprises (vue instructeur)', async () => {
@@ -199,5 +210,26 @@ describe('ProfileService', () => {
     repository.markLessonPaid.mockResolvedValue(true);
     await service.markLessonPaid(admin, 'lesson-1', 40, 'cash');
     expect(repository.markLessonPaid).toHaveBeenCalledWith('lesson-1', 40, 'cash');
+  });
+
+  it('P1 / P8 : la fiche porte l’état du dossier administratif (16.3, D-62)', async () => {
+    const { fileComplete, missingDocuments, ...row } = profile;
+    repository.getStudentProfile.mockResolvedValue(row);
+    files.missingDocumentsByUser.mockResolvedValue(new Map([['user-1', ['Timbre fiscal']]]));
+
+    await expect(service.getCompleteProfile(instructor, 'user-1', 'school-1')).resolves.toEqual({
+      ...row,
+      fileComplete: false,
+      missingDocuments: ['Timbre fiscal'],
+    });
+    expect(files.missingDocumentsByUser).toHaveBeenCalledWith(['user-1']);
+
+    const own = await service.getOwnProfile('user-1', 'school-1');
+    expect(own).toMatchObject({ fileComplete: false, missingDocuments: ['Timbre fiscal'] });
+    expect(own).not.toHaveProperty('notes');
+    expect({ fileComplete, missingDocuments }).toEqual({
+      fileComplete: true,
+      missingDocuments: [],
+    });
   });
 });

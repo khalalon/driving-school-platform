@@ -52,7 +52,18 @@ export interface Exam {
   paymentMethod: string | null;
   createdAt: Date;
   updatedAt: Date;
+  /**
+   * Dossier administratif de l'élève (16.3, D-61) : **informatif** (D-62). Une demande
+   * d'examen n'est jamais refusée pour un dossier incomplet — l'instructeur décide, comme
+   * pour les leçons effectuées (D-26).
+   */
+  fileComplete: boolean;
+  /** Pièces encore attendues, dans l'ordre d'affichage de l'école (vide si le dossier est complet). */
+  missingDocuments: string[];
 }
+
+/** Ce que lit `ExamRepository` : l'examen sans l'état du dossier, composé en service (16.3). */
+export type ExamRow = Omit<Exam, 'fileComplete' | 'missingDocuments'>;
 
 /** X2 : demande de l'élève, adressée à l'école. */
 export interface RequestExamDTO {

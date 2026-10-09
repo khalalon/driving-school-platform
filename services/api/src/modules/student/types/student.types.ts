@@ -107,7 +107,14 @@ export interface StudentProfile {
   completedLessonsByType: CompletedLessonsByType;
   totalExams: number;
   passedExams: number;
+  /** Dossier administratif (16.3, D-62) : informatif, aucune action n'en dépend. */
+  fileComplete: boolean;
+  /** Libellés des pièces encore attendues, dans l'ordre d'affichage de l'école. */
+  missingDocuments: string[];
 }
+
+/** Ce que lit `ProfileRepository` : la fiche sans l'état du dossier, composé en service (16.3). */
+export type StudentProfileBase = Omit<StudentProfile, 'fileComplete' | 'missingDocuments'>;
 
 /** P2 / P9 : une ligne par leçon (`lessons`, 007), planifiée, passée ou annulée. */
 export interface LessonHistory {

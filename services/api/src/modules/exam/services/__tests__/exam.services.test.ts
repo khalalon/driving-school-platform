@@ -34,12 +34,16 @@ const exam: Exam = {
   paymentMethod: null,
   createdAt: past,
   updatedAt: past,
+  // 16.3 : dossier complet par défaut dans les cas existants (aucune pièce manquante).
+  fileComplete: true,
+  missingDocuments: [],
 };
 
 describe('ExamService (D-01 / D-33 : demande X2, liste X1, lecture scoped)', () => {
   let repository: jest.Mocked<IExamRepository>;
   let students: { findByUserId: jest.Mock };
   let instructors: { findByUserId: jest.Mock };
+  let files: { missingDocumentsByUser: jest.Mock };
   let service: ExamService;
 
   beforeEach(() => {
@@ -53,13 +57,21 @@ describe('ExamService (D-01 / D-33 : demande X2, liste X1, lecture scoped)', () 
     };
     students = { findByUserId: jest.fn() };
     instructors = { findByUserId: jest.fn() };
+    // Dossier administratif (16.3) : aucune pièce manquante, sauf test contraire.
+    files = { missingDocumentsByUser: jest.fn().mockResolvedValue(new Map<string, string[]>()) };
     students.findByUserId.mockResolvedValue({
       id: 'student-row-1',
       schoolId: 'school-1',
       authorized: true,
     });
     instructors.findByUserId.mockResolvedValue({ id: 'instr-1', schoolId: 'school-1' });
-    service = new ExamService(repository, students, instructors, new SchoolGuard(instructors));
+    service = new ExamService(
+      repository,
+      students,
+      instructors,
+      new SchoolGuard(instructors),
+      files
+    );
   });
 
   describe('requestExam (X2)', () => {
@@ -231,6 +243,40 @@ describe('ExamService (D-01 / D-33 : demande X2, liste X1, lecture scoped)', () 
       await expect(service.getExam(admin, 'exam-1')).resolves.toMatchObject({
         schoolId: 'school-2',
       });
+    });
+  });
+
+  describe('dossier administratif joint aux examens (16.3, D-62)', () => {
+    it('X1 : fileComplete et missingDocuments par élève, en une seule requête', async () => {
+      const other = { ...exam, id: 'exam-2', studentId: 'user-2' };
+      repository.findAll.mockResolvedValue([exam, other]);
+      files.missingDocumentsByUser.mockResolvedValue(
+        new Map([['user-1', ['Certificat médical', 'Timbre fiscal']]])
+      );
+
+      const listed = await service.listExams(instructor, {});
+
+      expect(listed).toEqual([
+        { ...exam, fileComplete: false, missingDocuments: ['Certificat médical', 'Timbre fiscal'] },
+        { ...other, fileComplete: true, missingDocuments: [] },
+      ]);
+      expect(files.missingDocumentsByUser).toHaveBeenCalledTimes(1);
+      expect(files.missingDocumentsByUser).toHaveBeenCalledWith(['user-1', 'user-2']);
+    });
+
+    it('un dossier incomplet ne bloque ni la demande (X2) ni la planification (X3) — D-62', async () => {
+      files.missingDocumentsByUser.mockResolvedValue(new Map([['user-1', ['Timbre fiscal']]]));
+      repository.createRequest.mockResolvedValue(exam);
+      repository.findById.mockResolvedValue(exam);
+      repository.schedule.mockResolvedValue({ ...exam, status: ExamStatus.SCHEDULED });
+
+      await expect(
+        service.requestExam(student, { examType: ExamType.THEORY, preferredDate: future })
+      ).resolves.toMatchObject({ fileComplete: false, missingDocuments: ['Timbre fiscal'] });
+
+      await expect(
+        service.scheduleExam(instructor, 'exam-1', { dateTime: future, location: 'ATTT Tunis' })
+      ).resolves.toMatchObject({ status: ExamStatus.SCHEDULED, fileComplete: false });
     });
   });
 });

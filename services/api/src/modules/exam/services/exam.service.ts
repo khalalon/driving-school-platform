@@ -5,6 +5,7 @@ import { IExamRepository } from '../repositories/exam.repository';
 import {
   Exam,
   ExamFilters,
+  ExamRow,
   ExamScope,
   ExamStatus,
   RecordResultDTO,
@@ -18,6 +19,14 @@ export interface StudentLookup {
   findByUserId(
     userId: string
   ): Promise<{ id: string; schoolId: string; authorized: boolean } | null>;
+}
+
+/**
+ * Ce que le module attend du module student pour le dossier administratif (16.3) : les pièces
+ * encore attendues, par compte, en une requête quel que soit le nombre d'examens listés.
+ */
+export interface StudentFileLookup {
+  missingDocumentsByUser(userIds: string[]): Promise<Map<string, string[]>>;
 }
 
 /** Ce que le module attend du module school : l'école d'un instructeur. */
@@ -34,7 +43,8 @@ export class ExamService {
     private readonly examRepository: IExamRepository,
     private readonly students: StudentLookup,
     private readonly instructors: InstructorLookup,
-    private readonly schoolGuard: SchoolGuard
+    private readonly schoolGuard: SchoolGuard,
+    private readonly files: StudentFileLookup
   ) {}
 
   /** X2 : école résolue depuis l'inscription approuvée de l'élève ; 403 NOT_ENROLLED sinon. */
@@ -47,16 +57,19 @@ export class ExamService {
         'Vous devez être inscrit et approuvé dans une école pour demander un examen'
       );
     }
-    return this.examRepository.createRequest({
-      ...dto,
-      studentRowId: student.id,
-      schoolId: student.schoolId,
-    });
+    return this.withFile(
+      await this.examRepository.createRequest({
+        ...dto,
+        studentRowId: student.id,
+        schoolId: student.schoolId,
+      })
+    );
   }
 
   /** X1 : les examens de l'appelant (élève : les siens ; instructeur : tous ceux de son école). */
   async listExams(caller: AuthUser, filters: ExamFilters): Promise<Exam[]> {
-    return this.examRepository.findAll(await this.resolveScope(caller), filters);
+    const exams = await this.examRepository.findAll(await this.resolveScope(caller), filters);
+    return this.withFiles(exams);
   }
 
   /** `GET /:id` : son propre examen pour un élève, ceux de son école pour un instructeur. */
@@ -66,10 +79,10 @@ export class ExamService {
       if (exam.studentId !== caller.userId) {
         throw new HttpError(403, 'FORBIDDEN', "Cet examen n'est pas le vôtre");
       }
-      return exam;
+      return this.withFile(exam);
     }
     await this.schoolGuard.assertSameSchool(caller, exam.schoolId);
-    return exam;
+    return this.withFile(exam);
   }
 
   /** X3 : instructeur de l'école (ou admin) ; `pending` → `scheduled`. Libellé écran : Q-19. */
@@ -80,7 +93,7 @@ export class ExamService {
     if (!scheduled) {
       throw new HttpError(409, 'CONFLICT', 'Cette demande vient d’être traitée par un collègue');
     }
-    return scheduled;
+    return this.withFile(scheduled);
   }
 
   /** X4 : instructeur de l'école (ou admin) ; `pending` → `rejected` (D-33). */
@@ -91,7 +104,7 @@ export class ExamService {
     if (!rejected) {
       throw new HttpError(409, 'CONFLICT', 'Cette demande vient d’être traitée par un collègue');
     }
-    return rejected;
+    return this.withFile(rejected);
   }
 
   /** X5 : instructeur de l'école (D-20) ; `scheduled` → `completed`, score facultatif (D-33). */
@@ -106,23 +119,39 @@ export class ExamService {
     if (!completed) {
       throw new HttpError(409, 'CONFLICT', 'Le statut de cet examen vient de changer');
     }
-    return completed;
+    return this.withFile(completed);
+  }
+
+  /**
+   * État du dossier administratif joint aux examens (16.3, D-62) : informatif, aucune décision
+   * n'en dépend. Une seule requête pour toute la liste, et aucune pour une liste vide.
+   */
+  private async withFiles(exams: ExamRow[]): Promise<Exam[]> {
+    const missing = await this.files.missingDocumentsByUser(exams.map((exam) => exam.studentId));
+    return exams.map((exam) => {
+      const missingDocuments = missing.get(exam.studentId) ?? [];
+      return { ...exam, fileComplete: missingDocuments.length === 0, missingDocuments };
+    });
+  }
+
+  private async withFile(exam: ExamRow): Promise<Exam> {
+    return (await this.withFiles([exam]))[0];
   }
 
   /** L'examen existe et appartient à l'école de l'appelant (D-20). */
-  private async requireSchoolExam(caller: AuthUser, id: string): Promise<Exam> {
+  private async requireSchoolExam(caller: AuthUser, id: string): Promise<ExamRow> {
     const exam = await this.requireExam(id);
     await this.schoolGuard.assertSameSchool(caller, exam.schoolId);
     return exam;
   }
 
-  private assertStatus(exam: Exam, expected: ExamStatus, message: string): void {
+  private assertStatus(exam: ExamRow, expected: ExamStatus, message: string): void {
     if (exam.status !== expected) {
       throw new HttpError(409, 'CONFLICT', message);
     }
   }
 
-  private async requireExam(id: string): Promise<Exam> {
+  private async requireExam(id: string): Promise<ExamRow> {
     const exam = await this.examRepository.findById(id);
     if (!exam) {
       throw new HttpError(404, 'NOT_FOUND', 'Examen introuvable');

@@ -1247,13 +1247,13 @@ cd services/api && npx tsc --noEmit && npm run lint && npm test && echo OK
 ```
 **Hors périmètre** : —
 
-### - [ ] 16.3 — Dossier visible au moment de l'examen
+### - [x] 16.3 — Dossier visible au moment de l'examen
 **Objectif** : l'objet `Exam` (X1) et la fiche élève (P1, P8) portent `fileComplete` et `missingDocuments: string[]`. D-62 : purement informatif, X2 inchangé. Contrat X1, P1, P8.
 **Dépend de** : D-62.
 **Fichiers** : `services/api/src/modules/exam/`, `services/api/src/modules/student/`, tests, `docs/API_CONTRACT.md`.
-**Critère de validation** :
+**Critère de validation** (corrigé en 16.3 : `npm test` mesure la couverture **globale**, qu'un `--testPathPattern` fait tomber à 22 % — les suites ciblées se lancent donc sans couverture, puis la suite complète la vérifie) :
 ```bash
-cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPattern='exam|profile' && echo OK
+cd services/api && npx tsc --noEmit && npm run lint && npx jest --coverage=false --testPathPattern='exam|profile' && npm test && echo OK
 ```
 **Hors périmètre** : blocage de la demande d'examen (options (b) / (c) de Q-32 non retenues).
 

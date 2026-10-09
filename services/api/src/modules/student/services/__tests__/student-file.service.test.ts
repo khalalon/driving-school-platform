@@ -40,6 +40,7 @@ describe('StudentFileService (16.2)', () => {
       documentTypeExists: jest.fn().mockResolvedValue(true),
       markReceived: jest.fn(),
       markNotReceived: jest.fn(),
+      missingDocumentsByUser: jest.fn(),
     };
     instructorLookup.findByUserId.mockReset();
     instructorLookup.findByUserId.mockResolvedValue({ id: 'instr-1', schoolId });

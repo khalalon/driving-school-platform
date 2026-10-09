@@ -21,6 +21,13 @@ export interface IStudentFileRepository {
     note: string | null
   ): Promise<void>;
   markNotReceived(studentId: string, documentTypeId: string): Promise<void>;
+  /**
+   * Pièces encore attendues, pour plusieurs comptes d'un coup (16.3) : `users.id` → libellés,
+   * dans l'ordre d'affichage de leur école. Une seule requête, quel que soit le nombre
+   * d'examens listés par X1. Un compte sans fiche élève, ou dont l'école ne demande rien,
+   * n'apparaît pas dans la carte : son dossier est complet, il n'y a rien à apporter.
+   */
+  missingDocumentsByUser(userIds: string[]): Promise<Map<string, string[]>>;
 }
 
 export class StudentFileRepository implements IStudentFileRepository {
@@ -83,5 +90,37 @@ export class StudentFileRepository implements IStudentFileRepository {
       `DELETE FROM student_documents WHERE student_id = $1 AND document_type_id = $2`,
       [studentId, documentTypeId]
     );
+  }
+
+  /**
+   * L'école vient de la fiche élève (une seule par compte, D-22) : `users.id` suffit en entrée.
+   * Les pièces reçues sont écartées par `sd.id IS NULL` après la jointure gauche.
+   */
+  async missingDocumentsByUser(userIds: string[]): Promise<Map<string, string[]>> {
+    const missing = new Map<string, string[]>();
+    if (userIds.length === 0) {
+      return missing;
+    }
+
+    const result = await this.db.query<{ userId: string; label: string }>(
+      `SELECT s.user_id AS "userId", dt.label
+       FROM students s
+       JOIN document_types dt ON dt.school_id = s.school_id AND dt.active
+       LEFT JOIN student_documents sd
+              ON sd.document_type_id = dt.id AND sd.student_id = s.id
+       WHERE s.user_id = ANY($1::uuid[]) AND sd.id IS NULL
+       ORDER BY dt.position, dt.label`,
+      [[...new Set(userIds)]]
+    );
+
+    for (const row of result.rows) {
+      const labels = missing.get(row.userId);
+      if (labels) {
+        labels.push(row.label);
+      } else {
+        missing.set(row.userId, [row.label]);
+      }
+    }
+    return missing;
   }
 }

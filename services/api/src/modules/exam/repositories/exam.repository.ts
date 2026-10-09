@@ -1,7 +1,7 @@
 import { Pool } from 'pg';
 import {
-  Exam,
   ExamFilters,
+  ExamRow,
   ExamScope,
   NewExamRequest,
   RecordResultDTO,
@@ -9,15 +9,15 @@ import {
 } from '../types/exam.types';
 
 export interface IExamRepository {
-  createRequest(data: NewExamRequest): Promise<Exam>;
-  findById(id: string): Promise<Exam | null>;
-  findAll(scope: ExamScope, filters: ExamFilters): Promise<Exam[]>;
+  createRequest(data: NewExamRequest): Promise<ExamRow>;
+  findById(id: string): Promise<ExamRow | null>;
+  findAll(scope: ExamScope, filters: ExamFilters): Promise<ExamRow[]>;
   /** X3 : `pending` → `scheduled` ; `null` si l'examen n'est plus `pending`. */
-  schedule(id: string, dto: ScheduleExamDTO): Promise<Exam | null>;
+  schedule(id: string, dto: ScheduleExamDTO): Promise<ExamRow | null>;
   /** X4 : `pending` → `rejected` ; `null` si l'examen n'est plus `pending`. */
-  reject(id: string, reason: string): Promise<Exam | null>;
+  reject(id: string, reason: string): Promise<ExamRow | null>;
   /** X5 : `scheduled` → `completed` avec résultat ; `null` si l'examen n'est plus `scheduled`. */
-  recordResult(id: string, dto: RecordResultDTO): Promise<Exam | null>;
+  recordResult(id: string, dto: RecordResultDTO): Promise<ExamRow | null>;
 }
 
 /**
@@ -41,7 +41,7 @@ export class ExamRepository implements IExamRepository {
   constructor(private readonly db: Pool) {}
 
   /** X2 : demande `pending`, sans date de session ni instructeur (D-33). */
-  async createRequest(data: NewExamRequest): Promise<Exam> {
+  async createRequest(data: NewExamRequest): Promise<ExamRow> {
     const inserted = await this.db.query<{ id: string }>(
       `INSERT INTO exams (school_id, student_id, type, status, preferred_date, message,
          created_at, updated_at)
@@ -52,8 +52,8 @@ export class ExamRepository implements IExamRepository {
     return this.requireById(inserted.rows[0].id);
   }
 
-  async findById(id: string): Promise<Exam | null> {
-    const result = await this.db.query<Exam>(
+  async findById(id: string): Promise<ExamRow | null> {
+    const result = await this.db.query<ExamRow>(
       `SELECT ${EXAM_COLUMNS} ${EXAM_FROM} WHERE e.id = $1`,
       [id]
     );
@@ -61,7 +61,7 @@ export class ExamRepository implements IExamRepository {
   }
 
   /** X1 : les examens de l'élève, ou tous ceux d'une école (pas d'instructeur attitré), ou tout. */
-  async findAll(scope: ExamScope, filters: ExamFilters): Promise<Exam[]> {
+  async findAll(scope: ExamScope, filters: ExamFilters): Promise<ExamRow[]> {
     const conditions: string[] = [];
     const values: unknown[] = [];
     const param = (value: unknown): string => {
@@ -76,7 +76,7 @@ export class ExamRepository implements IExamRepository {
     }
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-    const result = await this.db.query<Exam>(
+    const result = await this.db.query<ExamRow>(
       `SELECT ${EXAM_COLUMNS} ${EXAM_FROM} ${where}
        ORDER BY COALESCE(e.date_time, e.preferred_date) ASC, e.created_at ASC`,
       values
@@ -84,7 +84,7 @@ export class ExamRepository implements IExamRepository {
     return result.rows;
   }
 
-  async schedule(id: string, dto: ScheduleExamDTO): Promise<Exam | null> {
+  async schedule(id: string, dto: ScheduleExamDTO): Promise<ExamRow | null> {
     const result = await this.db.query<{ id: string }>(
       `UPDATE exams
        SET status = 'scheduled', date_time = $2, location = $3, updated_at = CURRENT_TIMESTAMP
@@ -95,7 +95,7 @@ export class ExamRepository implements IExamRepository {
     return result.rows[0] ? this.requireById(id) : null;
   }
 
-  async reject(id: string, reason: string): Promise<Exam | null> {
+  async reject(id: string, reason: string): Promise<ExamRow | null> {
     const result = await this.db.query<{ id: string }>(
       `UPDATE exams
        SET status = 'rejected', rejection_reason = $2, updated_at = CURRENT_TIMESTAMP
@@ -106,7 +106,7 @@ export class ExamRepository implements IExamRepository {
     return result.rows[0] ? this.requireById(id) : null;
   }
 
-  async recordResult(id: string, dto: RecordResultDTO): Promise<Exam | null> {
+  async recordResult(id: string, dto: RecordResultDTO): Promise<ExamRow | null> {
     const result = await this.db.query<{ id: string }>(
       `UPDATE exams
        SET status = 'completed', result = $2, score = $3, notes = $4, updated_at = CURRENT_TIMESTAMP
@@ -118,7 +118,7 @@ export class ExamRepository implements IExamRepository {
   }
 
   /** Relecture avec les jointures après une écriture (RETURNING ne peut pas joindre). */
-  protected async requireById(id: string): Promise<Exam> {
+  protected async requireById(id: string): Promise<ExamRow> {
     const exam = await this.findById(id);
     if (!exam) {
       throw new Error(`Examen ${id} introuvable après écriture`);

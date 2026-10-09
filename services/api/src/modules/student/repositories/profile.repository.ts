@@ -4,18 +4,18 @@ import {
   ExamHistory,
   FinancialSummary,
   LessonHistory,
-  StudentProfile,
+  StudentProfileBase,
 } from '../types/student.types';
 
 /** Ligne de P1 / P8 : les compteurs par type arrivent à plat, puis sont regroupés (D-45). */
-type StudentProfileRow = Omit<StudentProfile, 'completedLessonsByType'> & {
+type StudentProfileRow = Omit<StudentProfileBase, 'completedLessonsByType'> & {
   completedCode: number;
   completedManoeuvre: number;
   completedParc: number;
 };
 
 export interface IProfileRepository {
-  getStudentProfile(userId: string, schoolId: string): Promise<StudentProfile | null>;
+  getStudentProfile(userId: string, schoolId: string): Promise<StudentProfileBase | null>;
   getStudentLessons(userId: string, schoolId: string): Promise<LessonHistory[]>;
   getStudentExams(userId: string, schoolId: string): Promise<ExamHistory[]>;
   getFinancialSummary(userId: string, schoolId: string): Promise<FinancialSummary>;
@@ -51,7 +51,7 @@ export class ProfileRepository implements IProfileRepository {
    * Compteurs par type (D-45) : leçons `completed` avec présence, comme `completed_lessons`
    * (L7 n'incrémente que si `attended = true`, D-33), mais comptées dans `lessons`.
    */
-  async getStudentProfile(userId: string, schoolId: string): Promise<StudentProfile | null> {
+  async getStudentProfile(userId: string, schoolId: string): Promise<StudentProfileBase | null> {
     const result = await this.db.query<StudentProfileRow>(
       `SELECT u.id, u.first_name AS "firstName", u.last_name AS "lastName", u.email,
               s.phone, s.address, s.date_of_birth AS "dateOfBirth",

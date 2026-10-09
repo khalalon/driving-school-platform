@@ -2,6 +2,7 @@ import { SchoolGuard } from '../../../http/authz';
 import { HttpError } from '../../../http/errors';
 import { AuthUser } from '../../../types/auth';
 import { IProfileRepository } from '../repositories/profile.repository';
+import { IStudentFileRepository } from '../repositories/student-file.repository';
 import {
   ExamHistory,
   FinancialSummary,
@@ -17,7 +18,9 @@ import {
 export class ProfileService {
   constructor(
     private readonly profileRepository: IProfileRepository,
-    private readonly schoolGuard: SchoolGuard
+    private readonly schoolGuard: SchoolGuard,
+    /** Dossier administratif joint à la fiche (16.3, D-62) : informatif. */
+    private readonly files: IStudentFileRepository
   ) {}
 
   // --- Vue école (P1–P7) ---
@@ -125,11 +128,16 @@ export class ProfileService {
     return this.profileRepository.getFinancialSummary(userId, schoolId);
   }
 
+  /**
+   * La fiche porte l'état du dossier administratif (16.3) : purement informatif (D-62), rien
+   * ne s'y bloque. Une école qui ne demande aucune pièce donne un dossier complet.
+   */
   private async requireProfile(userId: string, schoolId: string): Promise<StudentProfile> {
     const profile = await this.profileRepository.getStudentProfile(userId, schoolId);
     if (!profile) {
       throw new HttpError(404, 'NOT_FOUND', 'Fiche élève introuvable pour cette école');
     }
-    return profile;
+    const missingDocuments = (await this.files.missingDocumentsByUser([userId])).get(userId) ?? [];
+    return { ...profile, fileComplete: missingDocuments.length === 0, missingDocuments };
   }
 }

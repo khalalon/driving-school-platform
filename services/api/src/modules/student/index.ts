@@ -30,6 +30,8 @@ export interface StudentModule {
   /** Réutilisés par lesson / exam : inscription approuvée (NOT_ENROLLED) et compteurs de leçons. */
   studentRepository: StudentRepository;
   statsRepository: StatsRepository;
+  /** Réutilisé par exam : état du dossier administratif joint aux examens (16.3). */
+  studentFileRepository: StudentFileRepository;
 }
 
 export function buildStudentModule({
@@ -41,6 +43,7 @@ export function buildStudentModule({
   const studentRepository = new StudentRepository(db);
   const statsRepository = new StatsRepository(db);
   const profileRepository = new ProfileRepository(db);
+  const studentFileRepository = new StudentFileRepository(db);
 
   const enrollmentService = new EnrollmentService(
     enrollmentRepository,
@@ -48,8 +51,8 @@ export function buildStudentModule({
     new PgTransactionRunner(db),
     schoolGuard
   );
-  const profileService = new ProfileService(profileRepository, schoolGuard);
-  const studentFileService = new StudentFileService(new StudentFileRepository(db), schoolGuard);
+  const profileService = new ProfileService(profileRepository, schoolGuard, studentFileRepository);
+  const studentFileService = new StudentFileService(studentFileRepository, schoolGuard);
 
   const profileController = new ProfileController(profileService);
   const studentFileController = new StudentFileController(studentFileService);
@@ -68,5 +71,6 @@ export function buildStudentModule({
     enrollmentService,
     studentRepository,
     statsRepository,
+    studentFileRepository,
   };
 }

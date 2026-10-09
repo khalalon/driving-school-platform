@@ -47,6 +47,7 @@ async function bootstrap(): Promise<void> {
     students: student.studentRepository,
     instructors: instructorRepository,
     schoolGuard,
+    files: student.studentFileRepository,
   });
 
   const app = createApp({
