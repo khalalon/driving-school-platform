@@ -2,12 +2,14 @@ import { Request, Response } from 'express';
 import { sendCaughtError, sendValidationError } from '../../../http/errors';
 import { uuidParam, validate } from '../../../http/validation';
 import { AuthRequest, getAuthUser } from '../../../middleware/auth.middleware';
+import { DocumentTypeService } from '../services/document-type.service';
 import { InstructorService } from '../services/instructor.service';
 import { PricingService } from '../services/pricing.service';
 import { SchoolService } from '../services/school.service';
 import {
   createInstructorSchema,
   createSchoolSchema,
+  documentTypeSchema,
   setPricingSchema,
   updateInstructorSchema,
   updateSchoolSchema,
@@ -17,7 +19,8 @@ export class SchoolController {
   constructor(
     private readonly schoolService: SchoolService,
     private readonly instructorService: InstructorService,
-    private readonly pricingService: PricingService
+    private readonly pricingService: PricingService,
+    private readonly documentTypeService: DocumentTypeService
   ) {}
 
   // --- Écoles ---
@@ -177,6 +180,61 @@ export class SchoolController {
     try {
       const id = uuidParam(req.params.id, 'Tarif');
       await this.pricingService.deletePricing(getAuthUser(req), id);
+      res.status(204).send();
+    } catch (err) {
+      sendCaughtError(res, err);
+    }
+  };
+
+  // --- Pièces du dossier administratif (F1–F4, D-61) ---
+
+  /** F1 : tout instructeur de l'école lit la liste qu'il devra cocher. */
+  listDocumentTypes = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const schoolId = uuidParam(req.params.schoolId, 'École');
+      res.json(await this.documentTypeService.listBySchool(getAuthUser(req), schoolId));
+    } catch (err) {
+      sendCaughtError(res, err);
+    }
+  };
+
+  /** F2 (gérant) */
+  addDocumentType = async (req: AuthRequest, res: Response): Promise<void> => {
+    const parsed = validate(documentTypeSchema, req.body);
+    if (!parsed.ok) {
+      sendValidationError(res, parsed.detail);
+      return;
+    }
+    try {
+      const schoolId = uuidParam(req.params.schoolId, 'École');
+      res
+        .status(201)
+        .json(await this.documentTypeService.add(getAuthUser(req), schoolId, parsed.value.label));
+    } catch (err) {
+      sendCaughtError(res, err);
+    }
+  };
+
+  /** F3 (gérant) */
+  renameDocumentType = async (req: AuthRequest, res: Response): Promise<void> => {
+    const parsed = validate(documentTypeSchema, req.body);
+    if (!parsed.ok) {
+      sendValidationError(res, parsed.detail);
+      return;
+    }
+    try {
+      const id = uuidParam(req.params.id, 'Pièce');
+      res.json(await this.documentTypeService.rename(getAuthUser(req), id, parsed.value.label));
+    } catch (err) {
+      sendCaughtError(res, err);
+    }
+  };
+
+  /** F4 (gérant) : désactivation, pas de suppression. */
+  removeDocumentType = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const id = uuidParam(req.params.id, 'Pièce');
+      await this.documentTypeService.remove(getAuthUser(req), id);
       res.status(204).send();
     } catch (err) {
       sendCaughtError(res, err);

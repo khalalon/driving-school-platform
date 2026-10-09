@@ -8,6 +8,7 @@ import { InstructorRepository } from './repositories/instructor.repository';
 import { PricingRepository } from './repositories/pricing.repository';
 import { SchoolRepository } from './repositories/school.repository';
 import { createSchoolRouter } from './routes/school.routes';
+import { DocumentTypeService } from './services/document-type.service';
 import { InstructorService } from './services/instructor.service';
 import { PricingService } from './services/pricing.service';
 import { SchoolRosterSource, SchoolService } from './services/school.service';
@@ -37,16 +38,28 @@ export function buildSchoolModule({
   roster,
   schoolGuard,
 }: SchoolModuleDeps): SchoolModule {
+  const schoolRepository = new SchoolRepository(db);
+  const documentTypeRepository = new DocumentTypeRepository(db);
   const schoolService = new SchoolService(
-    new SchoolRepository(db),
+    schoolRepository,
     roster,
     schoolGuard,
-    new DocumentTypeRepository(db),
+    documentTypeRepository,
     new PgTransactionRunner(db)
   );
   const instructorService = new InstructorService(instructorRepository);
   const pricingService = new PricingService(new PricingRepository(db), schoolGuard);
-  const controller = new SchoolController(schoolService, instructorService, pricingService);
+  const documentTypeService = new DocumentTypeService(
+    documentTypeRepository,
+    schoolRepository,
+    schoolGuard
+  );
+  const controller = new SchoolController(
+    schoolService,
+    instructorService,
+    pricingService,
+    documentTypeService
+  );
 
   return {
     router: createSchoolRouter(controller, requireAuth),

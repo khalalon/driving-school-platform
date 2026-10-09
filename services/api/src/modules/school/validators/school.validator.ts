@@ -56,3 +56,11 @@ export const setPricingSchema = Joi.object<SetPricingDTO>({
   price: Joi.number().positive().required(),
   duration: Joi.number().integer().positive().required(),
 });
+
+/**
+ * Pièce du dossier (F2, F3) : un libellé lisible, à la longueur de la colonne (120). `trim`
+ * évite deux pièces que seul un espace distingue — l'unicité se joue sur le libellé exact.
+ */
+export const documentTypeSchema = Joi.object<{ label: string }>({
+  label: Joi.string().trim().min(2).max(120).required(),
+});

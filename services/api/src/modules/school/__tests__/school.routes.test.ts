@@ -3,6 +3,7 @@ import { createApp } from '../../../app';
 import { bearerFor, TEST_USERS, testRequireAuth, UUID } from '../../../test-utils/http';
 import { SchoolController } from '../controllers/school.controller';
 import { createSchoolRouter } from '../routes/school.routes';
+import { DocumentTypeService } from '../services/document-type.service';
 import { InstructorService } from '../services/instructor.service';
 import { PricingService } from '../services/pricing.service';
 import { SchoolService } from '../services/school.service';
@@ -29,12 +30,19 @@ describe('Routes /api/schools (S1–S4 + administration)', () => {
     getPricingByType: jest.fn(),
     deletePricing: jest.fn(),
   };
+  const documentTypeService = {
+    listBySchool: jest.fn(),
+    add: jest.fn(),
+    rename: jest.fn(),
+    remove: jest.fn(),
+  };
   const app = createApp({
     auth: createSchoolRouter(
       new SchoolController(
         schoolService as unknown as SchoolService,
         instructorService as unknown as InstructorService,
-        pricingService as unknown as PricingService
+        pricingService as unknown as PricingService,
+        documentTypeService as unknown as DocumentTypeService
       ),
       testRequireAuth
     ),
@@ -279,5 +287,68 @@ describe('Routes /api/schools (S1–S4 + administration)', () => {
       .delete(`${base}/pricing/${UUID.instructor}`)
       .set('Authorization', auth)
       .expect(204);
+  });
+
+  it('F1–F4 : pièces du dossier — lecture par l’instructeur, écriture passée au service (gérant)', async () => {
+    const piece = { id: UUID.school, label: 'Copie de la CIN', position: 1, active: true };
+    documentTypeService.listBySchool.mockResolvedValue([piece]);
+    documentTypeService.add.mockResolvedValue(piece);
+    documentTypeService.rename.mockResolvedValue(piece);
+
+    await request(app)
+      .get(`${base}/${UUID.school}/document-types`)
+      .set('Authorization', bearerFor('instructor'))
+      .expect(200, [piece]);
+    expect(documentTypeService.listBySchool).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: TEST_USERS.instructor.userId }),
+      UUID.school
+    );
+
+    await request(app)
+      .post(`${base}/${UUID.school}/document-types`)
+      .set('Authorization', bearerFor('instructor'))
+      .send({ label: 'Timbre fiscal' })
+      .expect(201, piece);
+    expect(documentTypeService.add).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: TEST_USERS.instructor.userId }),
+      UUID.school,
+      'Timbre fiscal'
+    );
+
+    await request(app)
+      .put(`${base}/document-types/${UUID.school}`)
+      .set('Authorization', bearerFor('instructor'))
+      .send({ label: 'Copie de la CIN (recto-verso)' })
+      .expect(200, piece);
+
+    await request(app)
+      .delete(`${base}/document-types/${UUID.school}`)
+      .set('Authorization', bearerFor('instructor'))
+      .expect(204);
+    expect(documentTypeService.remove).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: TEST_USERS.instructor.userId }),
+      UUID.school
+    );
+  });
+
+  it('F1–F2 : un élève n’approche pas la liste ; un libellé vide est refusé ; pièce mal formée → 404', async () => {
+    await request(app)
+      .get(`${base}/${UUID.school}/document-types`)
+      .set('Authorization', bearerFor('student'))
+      .expect(403);
+
+    const empty = await request(app)
+      .post(`${base}/${UUID.school}/document-types`)
+      .set('Authorization', bearerFor('instructor'))
+      .send({ label: ' ' });
+    expect(empty.status).toBe(400);
+    expect((empty.body as { error: string }).error).toBe('VALIDATION_ERROR');
+    expect(documentTypeService.add).not.toHaveBeenCalled();
+
+    const bad = await request(app)
+      .delete(`${base}/document-types/nope`)
+      .set('Authorization', bearerFor('instructor'));
+    expect(bad.status).toBe(404);
+    expect(documentTypeService.remove).not.toHaveBeenCalled();
   });
 });

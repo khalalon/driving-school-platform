@@ -4,14 +4,17 @@ import { PgTransactionRunner } from '../../db/transaction';
 import { SchoolGuard } from '../../http/authz';
 import { EnrollmentController } from './controllers/enrollment.controller';
 import { ProfileController } from './controllers/profile.controller';
+import { StudentFileController } from './controllers/student-file.controller';
 import { EnrollmentRepository } from './repositories/enrollment.repository';
 import { ProfileRepository } from './repositories/profile.repository';
 import { StatsRepository } from './repositories/stats.repository';
+import { StudentFileRepository } from './repositories/student-file.repository';
 import { StudentRepository } from './repositories/student.repository';
 import { createEnrollmentRouter } from './routes/enrollment.routes';
 import { createProfileRouter, createStudentProfileRouter } from './routes/profile.routes';
 import { EnrollmentService } from './services/enrollment.service';
 import { ProfileService } from './services/profile.service';
+import { StudentFileService } from './services/student-file.service';
 
 export interface StudentModuleDeps {
   db: Pool;
@@ -46,16 +49,22 @@ export function buildStudentModule({
     schoolGuard
   );
   const profileService = new ProfileService(profileRepository, schoolGuard);
+  const studentFileService = new StudentFileService(new StudentFileRepository(db), schoolGuard);
 
   const profileController = new ProfileController(profileService);
+  const studentFileController = new StudentFileController(studentFileService);
 
   return {
     enrollmentRouter: createEnrollmentRouter(
       new EnrollmentController(enrollmentService),
       requireAuth
     ),
-    profileRouter: createProfileRouter(profileController, requireAuth),
-    studentProfileRouter: createStudentProfileRouter(profileController, requireAuth),
+    profileRouter: createProfileRouter(profileController, studentFileController, requireAuth),
+    studentProfileRouter: createStudentProfileRouter(
+      profileController,
+      studentFileController,
+      requireAuth
+    ),
     enrollmentService,
     studentRepository,
     statsRepository,

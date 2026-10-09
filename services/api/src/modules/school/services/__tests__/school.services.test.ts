@@ -48,7 +48,15 @@ describe('SchoolService', () => {
   let repository: jest.Mocked<ISchoolRepository>;
   let service: SchoolService;
   const roster = { listSchoolRoster: jest.fn() };
-  const documentTypes = { insertDefaults: jest.fn() };
+  // Seule `insertDefaults` concerne `SchoolService` (16.1) ; le reste de la liste vit en F1–F4.
+  const documentTypes = {
+    insertDefaults: jest.fn(),
+    findBySchoolId: jest.fn(),
+    findById: jest.fn(),
+    insert: jest.fn(),
+    rename: jest.fn(),
+    deactivate: jest.fn(),
+  };
   // Transaction factice : le `tx` passé aux repositories est reconnaissable dans les appels.
   // Le générique de `run` ne se mocke pas directement (voir enrollment.service.test.ts).
   const tx: Queryable = { query: jest.fn() };

@@ -1237,7 +1237,7 @@ Pour présenter un élève à l'examen, l'école doit réunir des pièces (CIN, 
 ```
 **Hors périmètre** : date d'expiration d'une pièce.
 
-### - [ ] 16.2 — Routes du dossier
+### - [x] 16.2 — Routes du dossier
 **Objectif** : liste des pièces de l'école : lecture (instructeur de l'école), ajout / renommage / désactivation (gérant, `assertManager`). Dossier d'un élève : lecture (instructeur de l'école, et l'élève pour le sien), « reçue » / « pas reçue » sur une pièce (instructeur de l'école). Réponse `StudentFile` : `{ complete, documents: [{ documentTypeId, label, received, receivedAt?, note? }] }`. Nouvelle section du contrat.
 **Dépend de** : D-56, D-61.
 **Fichiers** : `services/api/src/modules/student/` (ou module `document`), tests, `docs/API_CONTRACT.md`.

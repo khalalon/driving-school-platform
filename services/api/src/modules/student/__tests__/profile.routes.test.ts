@@ -3,8 +3,10 @@ import { createApp } from '../../../app';
 import { HttpError } from '../../../http/errors';
 import { bearerFor, TEST_USERS, testRequireAuth, UUID } from '../../../test-utils/http';
 import { ProfileController } from '../controllers/profile.controller';
+import { StudentFileController } from '../controllers/student-file.controller';
 import { createProfileRouter, createStudentProfileRouter } from '../routes/profile.routes';
 import { ProfileService } from '../services/profile.service';
+import { StudentFileService } from '../services/student-file.service';
 
 describe('Routes /api/profiles, /api/student-profiles', () => {
   const profileService = {
@@ -20,10 +22,18 @@ describe('Routes /api/profiles, /api/student-profiles', () => {
     markLessonPaid: jest.fn(),
     markExamPaid: jest.fn(),
   };
+  const studentFileService = {
+    getStudentFile: jest.fn(),
+    getOwnFile: jest.fn(),
+    setDocumentReceived: jest.fn(),
+  };
   const profileController = new ProfileController(profileService as unknown as ProfileService);
+  const fileController = new StudentFileController(
+    studentFileService as unknown as StudentFileService
+  );
   const app = createApp({
-    auth: createProfileRouter(profileController, testRequireAuth),
-    profiles: createStudentProfileRouter(profileController, testRequireAuth),
+    auth: createProfileRouter(profileController, fileController, testRequireAuth),
+    profiles: createStudentProfileRouter(profileController, fileController, testRequireAuth),
   });
   const staff = '/api/auth';
   const self = '/api/profiles';
@@ -176,5 +186,77 @@ describe('Routes /api/profiles, /api/student-profiles', () => {
       .post(`/api/verification/students/${UUID.student}/lesson-completed`)
       .send({ schoolId: UUID.school, lessonType: 'Parc', attended: true })
       .expect(404);
+  });
+
+  it('F5 / F7 : dossier lu puis pièce cochée par l’instructeur ; un élève n’y touche pas', async () => {
+    const file = {
+      complete: false,
+      documents: [{ documentTypeId: UUID.booking, received: false }],
+    };
+    studentFileService.getStudentFile.mockResolvedValue(file);
+    studentFileService.setDocumentReceived.mockResolvedValue({ ...file, complete: true });
+
+    await request(app)
+      .get(`${staff}/${UUID.student}/schools/${UUID.school}/file`)
+      .set('Authorization', bearerFor('instructor'))
+      .expect(200, file);
+    expect(studentFileService.getStudentFile).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: TEST_USERS.instructor.userId }),
+      UUID.student,
+      UUID.school
+    );
+
+    await request(app)
+      .put(`${staff}/${UUID.student}/schools/${UUID.school}/documents/${UUID.booking}`)
+      .set('Authorization', bearerFor('instructor'))
+      .send({ received: true, note: 'Reçue au bureau' })
+      .expect(200);
+    expect(studentFileService.setDocumentReceived).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: TEST_USERS.instructor.userId }),
+      UUID.student,
+      UUID.school,
+      UUID.booking,
+      true,
+      'Reçue au bureau'
+    );
+
+    await request(app)
+      .get(`${staff}/${UUID.student}/schools/${UUID.school}/file`)
+      .set('Authorization', bearerFor('student'))
+      .expect(403);
+  });
+
+  it('F7 : `received` manquant → 400 ; pièce mal formée → 404', async () => {
+    const invalid = await request(app)
+      .put(`${staff}/${UUID.student}/schools/${UUID.school}/documents/${UUID.booking}`)
+      .set('Authorization', bearerFor('instructor'))
+      .send({ note: 'sans received' });
+    expect(invalid.status).toBe(400);
+    expect((invalid.body as { error: string }).error).toBe('VALIDATION_ERROR');
+
+    const bad = await request(app)
+      .put(`${staff}/${UUID.student}/schools/${UUID.school}/documents/nope`)
+      .set('Authorization', bearerFor('instructor'))
+      .send({ received: true });
+    expect(bad.status).toBe(404);
+    expect(studentFileService.setDocumentReceived).not.toHaveBeenCalled();
+  });
+
+  it('F6 : l’élève lit son dossier, l’identifiant vient du jeton ; un instructeur → 403', async () => {
+    studentFileService.getOwnFile.mockResolvedValue({ complete: true, documents: [] });
+
+    await request(app)
+      .get(`${self}/me/schools/${UUID.school}/file`)
+      .set('Authorization', bearerFor('student'))
+      .expect(200, { complete: true, documents: [] });
+    expect(studentFileService.getOwnFile).toHaveBeenCalledWith(
+      TEST_USERS.student.userId,
+      UUID.school
+    );
+
+    await request(app)
+      .get(`${self}/me/schools/${UUID.school}/file`)
+      .set('Authorization', bearerFor('instructor'))
+      .expect(403);
   });
 });

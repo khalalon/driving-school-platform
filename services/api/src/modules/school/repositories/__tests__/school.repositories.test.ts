@@ -84,6 +84,47 @@ describe('DocumentTypeRepository (16.1, D-61)', () => {
   });
 });
 
+describe('DocumentTypeRepository : gestion de la liste (16.2, D-61)', () => {
+  it('findBySchoolId : seules les pièces actives, dans l’ordre d’affichage', async () => {
+    const { pool, query } = fakePool([{ id: 'doc-1', label: 'Copie de la CIN' }]);
+
+    await new DocumentTypeRepository(pool).findBySchoolId(UUID.school);
+
+    const [sql, params] = query.mock.calls[0] as [string, unknown[]];
+    expect(sql).toMatch(/WHERE school_id = \$1 AND active/);
+    expect(sql).toMatch(/ORDER BY position, label/);
+    expect(params).toEqual([UUID.school]);
+  });
+
+  it('insert : position après la dernière pièce ; un libellé désactivé est réactivé', async () => {
+    const { pool, query } = fakePool([{ id: 'doc-9', label: 'Timbre fiscal', position: 6 }]);
+
+    await new DocumentTypeRepository(pool).insert(UUID.school, 'Timbre fiscal');
+
+    const [sql, params] = query.mock.calls[0] as [string, unknown[]];
+    expect(sql).toMatch(/MAX\(position\)/);
+    expect(sql).toMatch(/ON CONFLICT \(school_id, label\) DO UPDATE SET active = TRUE/);
+    expect(params).toEqual([UUID.school, 'Timbre fiscal']);
+  });
+
+  it('findById / rename / deactivate : une pièce ne se supprime jamais', async () => {
+    const { pool, query } = fakePool([{ id: 'doc-1' }]);
+    const repo = new DocumentTypeRepository(pool);
+
+    await expect(repo.findById('doc-1')).resolves.toEqual({ id: 'doc-1' });
+    await repo.rename('doc-1', 'CIN (recto-verso)');
+    await repo.deactivate('doc-1');
+
+    expect((query.mock.calls[1] as [string, unknown[]])[0]).toMatch(
+      /UPDATE document_types SET label/
+    );
+    const [sql] = query.mock.calls[2] as [string, unknown[]];
+    expect(sql).toMatch(/SET active = FALSE/);
+    expect(sql).not.toMatch(/DELETE/);
+    await expect(new DocumentTypeRepository(fakePool([]).pool).findById('x')).resolves.toBeNull();
+  });
+});
+
 describe('InstructorRepository', () => {
   it('create : name facultatif (null) ; relecture jointe à users pour firstName / lastName', async () => {
     const query = jest

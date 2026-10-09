@@ -168,3 +168,27 @@ export interface MarkPaidDTO {
   amount: number;
   paymentMethod: string;
 }
+
+/**
+ * Une pièce du dossier administratif, vue depuis le dossier d'un élève (F5–F7, D-61).
+ * `receivedAt` et `note` ne valent quelque chose que sur une pièce reçue ; `null` sinon.
+ */
+export interface StudentFileDocument {
+  documentTypeId: string;
+  label: string;
+  received: boolean;
+  receivedAt: Date | null;
+  note: string | null;
+}
+
+/** `complete` : toutes les pièces demandées par l'école sont reçues. Informatif (D-62). */
+export interface StudentFile {
+  complete: boolean;
+  documents: StudentFileDocument[];
+}
+
+export interface SetDocumentReceivedDTO {
+  received: boolean;
+  /** Précision de l'instructeur (« photos à refaire »…), gardée sur une pièce reçue. */
+  note?: string;
+}
