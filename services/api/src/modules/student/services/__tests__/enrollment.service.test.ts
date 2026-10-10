@@ -14,6 +14,12 @@ describe('EnrollmentService (D-09)', () => {
   let enrollmentRepository: jest.Mocked<IEnrollmentRepository>;
   let studentRepository: jest.Mocked<IStudentRepository>;
   let transactions: jest.Mocked<ITransactionRunner>;
+  // Notifications (17.4) : `notify` et `notifySchool` ne doivent jamais faire échouer l'action.
+  const notifier = {
+    notify: jest.fn().mockResolvedValue(undefined),
+    notifySchool: jest.fn().mockResolvedValue(undefined),
+  };
+
   let service: EnrollmentService;
   // Client de transaction factice : le service doit le transmettre aux deux repositories.
   const tx: Queryable = { query: jest.fn() };
@@ -77,11 +83,14 @@ describe('EnrollmentService (D-09)', () => {
     const run = jest.fn((work: (client: Queryable) => Promise<unknown>) => work(tx));
     transactions = { run } as unknown as jest.Mocked<ITransactionRunner>;
     instructorLookup.findByUserId.mockResolvedValue({ id: 'instr-1', schoolId });
+    notifier.notify.mockClear();
+    notifier.notifySchool.mockClear();
     service = new EnrollmentService(
       enrollmentRepository,
       studentRepository,
       transactions,
-      schoolGuard
+      schoolGuard,
+      notifier
     );
   });
 
@@ -218,7 +227,8 @@ describe('EnrollmentService (D-09)', () => {
         new EnrollmentRepository(pool),
         new StudentRepository(pool),
         new PgTransactionRunner(pool),
-        schoolGuard
+        schoolGuard,
+        notifier
       );
 
       await expect(realService.approveRequest(instructor, 'req-1')).rejects.toBe(insertFailure);
@@ -337,6 +347,52 @@ describe('EnrollmentService (D-09)', () => {
     await expect(service.getSchoolRequests(instructor, 'school-2')).rejects.toMatchObject({
       status: 403,
       code: 'FORBIDDEN_SCHOOL',
+    });
+  });
+
+  describe('notifications des inscriptions (17.4, D-63)', () => {
+    it('E2 : toute l’école est prévenue, avec le nom de l’élève relu après l’écriture', async () => {
+      studentRepository.findByUserId.mockResolvedValue(null);
+      enrollmentRepository.findActiveByStudent.mockResolvedValue(null);
+      enrollmentRepository.create.mockResolvedValue(pending);
+      enrollmentRepository.findById.mockResolvedValue({
+        ...pending,
+        studentFirstName: 'Nour',
+        studentLastName: 'Cherif',
+      });
+
+      await service.createEnrollmentRequest(userId, schoolId, 'Bonjour');
+
+      expect(notifier.notifySchool).toHaveBeenCalledWith(schoolId, {
+        type: 'enrollment_requested',
+        params: { student: 'Nour Cherif' },
+        target: { screen: 'EnrollmentRequests', id: 'req-1' },
+      });
+    });
+
+    it('E5 et E6 : l’élève est prévenu, avec le nom de l’école et le motif', async () => {
+      enrollmentRepository.findById.mockResolvedValue({
+        ...pending,
+        schoolName: 'Auto-école El Amel',
+      });
+      enrollmentRepository.updateStatus.mockResolvedValue({ ...pending, status: 'approved' });
+      studentRepository.create.mockResolvedValue(student);
+
+      await service.approveRequest(instructor, 'req-1');
+      expect(notifier.notify).toHaveBeenLastCalledWith([userId], {
+        type: 'enrollment_approved',
+        params: { school: 'Auto-école El Amel' },
+        target: { screen: 'MyEnrollmentRequests', id: 'req-1' },
+      });
+
+      enrollmentRepository.updateStatus.mockResolvedValue({ ...pending, status: 'rejected' });
+      await service.rejectRequest(instructor, 'req-1', 'Dossier incomplet pour le moment');
+      const [, payload] = notifier.notify.mock.calls.at(-1) as [
+        string[],
+        { type: string; params: Record<string, string> },
+      ];
+      expect(payload.type).toBe('enrollment_rejected');
+      expect(payload.params.reason).toBe('Dossier incomplet pour le moment');
     });
   });
 });

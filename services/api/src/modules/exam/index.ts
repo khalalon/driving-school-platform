@@ -1,6 +1,7 @@
 import { RequestHandler, Router } from 'express';
 import { Pool } from 'pg';
 import { SchoolGuard } from '../../http/authz';
+import { SchoolNotifier } from '../notification/types/notification.types';
 import { ExamController } from './controllers/exam.controller';
 import { ExamRepository } from './repositories/exam.repository';
 import { createExamRouter } from './routes/exam.routes';
@@ -21,6 +22,8 @@ export interface ExamModuleDeps {
   /** `StudentFileRepository` du module student : dossier administratif joint aux examens (16.3). */
   files: StudentFileLookup;
   schoolGuard: SchoolGuard;
+  /** Notifications des examens (17.4, D-63) : X2 vers l'école, X3 / X4 / X5 vers l'élève. */
+  notifier: SchoolNotifier;
 }
 
 export interface ExamModule {
@@ -35,13 +38,15 @@ export function buildExamModule({
   instructors,
   schoolGuard,
   files,
+  notifier,
 }: ExamModuleDeps): ExamModule {
   const examService = new ExamService(
     new ExamRepository(db),
     students,
     instructors,
     schoolGuard,
-    files
+    files,
+    notifier
   );
   return { router: createExamRouter(new ExamController(examService), requireAuth), examService };
 }

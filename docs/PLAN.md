@@ -1324,7 +1324,7 @@ cd services/api && npx tsc --noEmit && npm run lint && npx jest --coverage=false
 ```
 **Hors périmètre** : e-mail, SMS.
 
-### - [ ] 17.4 — Événements branchés
+### - [x] 17.4 — Événements branchés
 **Objectif** : un `Notifier` injecté dans les services `enrollment`, `lesson`, `exam` envoie les événements de D-63 aux destinataires de D-64 (demande neuve : l'instructeur préféré s'il existe, sinon tous les instructeurs de l'école). L'envoi est fait **après** la réussite de l'action et **n'échoue jamais la requête** (erreur journalisée). Tests : chaque événement produit le bon message au bon destinataire, et un envoi en échec laisse la requête en 200.
 **Dépend de** : D-63, D-64.
 **Fichiers** : `services/api/src/modules/{student,lesson,exam}/services/`, `services/api/src/modules/*/index.ts`, tests.

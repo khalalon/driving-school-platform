@@ -1,5 +1,6 @@
 import { ITransactionRunner } from '../../../db/transaction';
 import { SchoolGuard } from '../../../http/authz';
+import { NotificationType, SchoolNotifier } from '../../notification/types/notification.types';
 import { HttpError } from '../../../http/errors';
 import { AuthUser } from '../../../types/auth';
 import { EnrollmentRequestStatus } from '../../../types/domain';
@@ -17,12 +18,18 @@ import { EnrollmentRequest, EnrollmentStatus } from '../types/student.types';
 const isUniqueViolation = (err: unknown): boolean =>
   typeof err === 'object' && err !== null && (err as { code?: unknown }).code === '23505';
 
+/** Nom affiché dans un message adressé à l'école ; vide si l'identité n'a pas été jointe. */
+const studentName = (request: EnrollmentRequest): string =>
+  `${request.studentFirstName ?? ''} ${request.studentLastName ?? ''}`.trim();
+
 export class EnrollmentService {
   constructor(
     private readonly enrollmentRepository: IEnrollmentRepository,
     private readonly studentRepository: IStudentRepository,
     private readonly transactions: ITransactionRunner,
-    private readonly schoolGuard: SchoolGuard
+    private readonly schoolGuard: SchoolGuard,
+    /** Notifications (17.4, D-63) : envoyées **après** l'écriture, sans jamais la faire échouer. */
+    private readonly notifier: SchoolNotifier
   ) {}
 
   async createEnrollmentRequest(
@@ -57,7 +64,15 @@ export class EnrollmentService {
     }
 
     try {
-      return await this.enrollmentRepository.create(studentId, schoolId, message);
+      const created = await this.enrollmentRepository.create(studentId, schoolId, message);
+      // Relecture : `create` ne renvoie pas l'identité de l'élève, que le message nomme.
+      const named = await this.enrollmentRepository.findById(created.id);
+      await this.notifier.notifySchool(schoolId, {
+        type: NotificationType.ENROLLMENT_REQUESTED,
+        params: { student: studentName(named ?? created) },
+        target: { screen: 'EnrollmentRequests', id: created.id },
+      });
+      return created;
     } catch (err) {
       // Deux demandes simultanées : l'index unique partiel de 009 tranche, on répond 409.
       if (isUniqueViolation(err)) {
@@ -88,7 +103,7 @@ export class EnrollmentService {
     const processedBy = caller.userId;
 
     // Si l'INSERT échoue, le ROLLBACK laisse la demande en pending.
-    return this.transactions.run(async (tx) => {
+    const approved = await this.transactions.run(async (tx) => {
       const updatedRequest = await this.enrollmentRepository.updateStatus(
         requestId,
         'approved',
@@ -107,6 +122,13 @@ export class EnrollmentService {
       );
       return updatedRequest;
     });
+
+    await this.notifier.notify([request.studentId], {
+      type: NotificationType.ENROLLMENT_APPROVED,
+      params: { school: request.schoolName ?? '' },
+      target: { screen: 'MyEnrollmentRequests', id: requestId },
+    });
+    return approved;
   }
 
   /** E6 : instructeur de l'école de la demande ou admin (D-20). */
@@ -117,7 +139,19 @@ export class EnrollmentService {
   ): Promise<EnrollmentRequest> {
     const request = await this.getPendingRequest(requestId);
     await this.schoolGuard.assertSameSchool(caller, request.schoolId);
-    return this.enrollmentRepository.updateStatus(requestId, 'rejected', caller.userId, reason);
+    const rejected = await this.enrollmentRepository.updateStatus(
+      requestId,
+      'rejected',
+      caller.userId,
+      reason
+    );
+
+    await this.notifier.notify([request.studentId], {
+      type: NotificationType.ENROLLMENT_REJECTED,
+      params: { school: request.schoolName ?? '', reason },
+      target: { screen: 'MyEnrollmentRequests', id: requestId },
+    });
+    return rejected;
   }
 
   async getEnrollmentStatus(studentId: string, schoolId: string): Promise<EnrollmentStatus> {

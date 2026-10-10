@@ -66,11 +66,19 @@ export interface NotificationTarget {
   id?: string;
 }
 
+/**
+ * Valeur insérée dans un message. Une **chaîne** vaut pour les deux langues (un nom, une date
+ * numérique) ; un **couple fr / ar** pour le vocabulaire métier (type d'examen, résultat), qui
+ * se traduit — sans quoi un message arabe dirait « Votre examen practical ».
+ */
+export type MessageParam = string | Record<NotificationLanguage, string>;
+export type MessageParams = Record<string, MessageParam>;
+
 /** Ce qu'un service métier demande d'envoyer : l'événement, ses valeurs, sa destination. */
 export interface NotificationPayload {
   type: NotificationType;
   /** Valeurs insérées dans le message (`{{date}}`, `{{student}}`…), déjà mises en forme. */
-  params?: Record<string, string>;
+  params?: MessageParams;
   target?: NotificationTarget;
 }
 
@@ -106,4 +114,17 @@ export interface StoredNotification {
  */
 export interface Notifier {
   notify(userIds: string[], payload: NotificationPayload): Promise<void>;
+}
+
+/**
+ * Ce que les services métier reçoivent en 17.4 : les deux manières d'adresser une notification.
+ * `notifySchool` applique D-64 — l'instructeur préféré s'il y en a un, sinon tous les
+ * instructeurs de l'école — pour qu'aucun service n'ait à la réimplémenter.
+ */
+export interface SchoolNotifier extends Notifier {
+  notifySchool(
+    schoolId: string,
+    payload: NotificationPayload,
+    preferredInstructorId?: string | null
+  ): Promise<void>;
 }

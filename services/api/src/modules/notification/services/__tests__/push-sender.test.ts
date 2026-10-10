@@ -106,3 +106,27 @@ describe('ExpoPushSender (17.3)', () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 });
+
+describe('journaux par défaut (17.3)', () => {
+  it('LogPushSender sans journal fourni écrit sur la console', async () => {
+    const info = jest.spyOn(console, 'info').mockImplementation(() => undefined);
+
+    await new LogPushSender().send([message(['t1'])]);
+
+    expect(info).toHaveBeenCalledTimes(1);
+    info.mockRestore();
+  });
+
+  it('ExpoPushSender sans journal fourni avertit sur la console', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const fetchSpy = jest.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('réseau coupé'));
+
+    await expect(new ExpoPushSender().send([message(['t1'])])).resolves.toEqual({
+      invalidTokens: [],
+    });
+
+    expect(warn).toHaveBeenCalled();
+    fetchSpy.mockRestore();
+    warn.mockRestore();
+  });
+});

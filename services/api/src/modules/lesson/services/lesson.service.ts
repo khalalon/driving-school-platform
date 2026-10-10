@@ -1,5 +1,7 @@
 import { ITransactionRunner, Queryable } from '../../../db/transaction';
 import { SchoolGuard } from '../../../http/authz';
+import { lessonTypeTerm, schoolDateTime } from '../../notification/services/terms';
+import { NotificationType, SchoolNotifier } from '../../notification/types/notification.types';
 import { HttpError } from '../../../http/errors';
 import { AuthUser, UserRole } from '../../../types/auth';
 import { LessonType } from '../../../types/domain';
@@ -66,6 +68,10 @@ export interface LessonStatsSink {
  * Leçons selon D-01 / D-21 / D-32 : l'élève demande (L2), l'école voit la file partagée et
  * l'instructeur qui approuve devient l'instructeur de la leçon (L5). Cloisonnement D-20.
  */
+/** Nom affiché dans un message adressé à l'école. */
+const personName = (person: { firstName: string; lastName: string } | null): string =>
+  person ? `${person.firstName} ${person.lastName}`.trim() : '';
+
 export class LessonService {
   constructor(
     private readonly lessonRepository: ILessonRepository,
@@ -80,7 +86,9 @@ export class LessonService {
     /** Avoir de l'élève (D-40). */
     private readonly credits: CreditLedger,
     /** Chevauchements à la planification, L4 et L5 (15.2, D-58). */
-    private readonly conflicts: ScheduleConflictChecker
+    private readonly conflicts: ScheduleConflictChecker,
+    /** Notifications (17.4, D-63) : envoyées **après** l'écriture, sans jamais la faire échouer. */
+    private readonly notifier: SchoolNotifier
   ) {}
 
   /** L2 : école résolue depuis l'inscription approuvée de l'élève ; 403 NOT_ENROLLED sinon. */
@@ -103,10 +111,38 @@ export class LessonService {
         );
       }
     }
-    return this.lessonRepository.createRequest({
+    const created = await this.lessonRepository.createRequest({
       ...dto,
       studentRowId: student.id,
       schoolId: student.schoolId,
+    });
+
+    // D-64 : l'instructeur choisi s'il y en a un, sinon toute l'école.
+    await this.notifier.notifySchool(
+      student.schoolId,
+      {
+        type: NotificationType.LESSON_REQUESTED,
+        params: {
+          student: personName(created.student),
+          type: lessonTypeTerm(created.type),
+          date: schoolDateTime(created.requestedDate),
+        },
+        target: { screen: 'LessonRequests', id: created.id },
+      },
+      dto.preferredInstructorId
+    );
+    return created;
+  }
+
+  /** L4 et L5 préviennent l'élève de la même façon : sa leçon a une date. */
+  private notifyStudentScheduled(lesson: Lesson): Promise<void> {
+    return this.notifier.notify([lesson.studentId], {
+      type: NotificationType.LESSON_SCHEDULED,
+      params: {
+        type: lessonTypeTerm(lesson.type),
+        date: schoolDateTime(lesson.scheduledDate),
+      },
+      target: { screen: 'MyLessons', id: lesson.id },
     });
   }
 
@@ -162,7 +198,7 @@ export class LessonService {
     this.assertPending(lesson, 'approuvée');
     const price = await this.resolvePrice(lesson.schoolId, lesson.type, dto.price);
 
-    return this.transactions.run(async (tx) => {
+    const scheduled = await this.transactions.run(async (tx) => {
       // Verrou puis contrôle dans la transaction d'écriture (D-58) : 409 SCHEDULE_CONFLICT
       await this.conflicts.assertFree(
         {
@@ -194,6 +230,9 @@ export class LessonService {
       }
       return approved;
     });
+
+    await this.notifyStudentScheduled(scheduled);
+    return scheduled;
   }
 
   /** L6 : instructeur de l'école ou admin ; motif 10–500 caractères (D-29, validé par Joi). */
@@ -206,6 +245,12 @@ export class LessonService {
     if (!rejected) {
       throw new HttpError(409, 'CONFLICT', 'Cette demande vient d’être traitée par un collègue');
     }
+
+    await this.notifier.notify([rejected.studentId], {
+      type: NotificationType.LESSON_REJECTED,
+      params: { type: lessonTypeTerm(rejected.type), reason: dto.reason },
+      target: { screen: 'MyLessons', id: rejected.id },
+    });
     return rejected;
   }
 
@@ -234,19 +279,31 @@ export class LessonService {
       await this.schoolGuard.assertSameSchool(caller, lesson.schoolId);
     }
 
-    return this.transactions.run(async (tx) => {
-      const cancelled = await this.lessonRepository.cancel(id, caller.userId, dto.reason, tx);
-      if (!cancelled) {
+    const cancelled = await this.transactions.run(async (tx) => {
+      const result = await this.lessonRepository.cancel(id, caller.userId, dto.reason, tx);
+      if (!result) {
         throw new HttpError(409, 'CONFLICT', 'Le statut de cette leçon vient de changer');
       }
-      await this.refundToCredit(
-        lesson.studentId,
-        cancelled.paidAmount,
-        cancelled.creditApplied,
-        tx
-      );
-      return cancelled.lesson;
+      await this.refundToCredit(lesson.studentId, result.paidAmount, result.creditApplied, tx);
+      return result.lesson;
     });
+
+    // D-63 : l'élève est prévenu quand l'école annule, l'école quand l'élève annule.
+    const date = schoolDateTime(cancelled.scheduledDate ?? cancelled.requestedDate);
+    if (caller.role === UserRole.STUDENT) {
+      await this.notifier.notifySchool(cancelled.schoolId, {
+        type: NotificationType.LESSON_CANCELLED_BY_STUDENT,
+        params: { student: personName(cancelled.student), date },
+        target: { screen: 'Agenda', id: cancelled.id },
+      });
+    } else {
+      await this.notifier.notify([cancelled.studentId], {
+        type: NotificationType.LESSON_CANCELLED_BY_SCHOOL,
+        params: { date, reason: dto.reason ?? '' },
+        target: { screen: 'MyLessons', id: cancelled.id },
+      });
+    }
+    return cancelled;
   }
 
   /**
@@ -265,7 +322,7 @@ export class LessonService {
       );
     }
     const price = await this.resolvePrice(instructor.schoolId, dto.type, dto.price);
-    return this.transactions.run(async (tx) => {
+    const booked = await this.transactions.run(async (tx) => {
       await this.conflicts.assertFree(
         {
           start: dto.scheduledDate,
@@ -292,6 +349,9 @@ export class LessonService {
         tx
       );
     });
+
+    await this.notifyStudentScheduled(booked);
+    return booked;
   }
 
   /**

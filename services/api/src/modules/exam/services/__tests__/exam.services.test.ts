@@ -2,6 +2,7 @@ import { SchoolGuard } from '../../../../http/authz';
 import { AuthUser, UserRole } from '../../../../types/auth';
 import { IExamRepository } from '../../repositories/exam.repository';
 import { Exam, ExamResult, ExamStatus, ExamType } from '../../types/exam.types';
+import { EventNotifier } from '../../../notification/services/event-notifier';
 import { ExamService } from '../exam.service';
 
 const future = new Date(Date.now() + 14 * 24 * 3600 * 1000);
@@ -44,6 +45,12 @@ describe('ExamService (D-01 / D-33 : demande X2, liste X1, lecture scoped)', () 
   let students: { findByUserId: jest.Mock };
   let instructors: { findByUserId: jest.Mock };
   let files: { missingDocumentsByUser: jest.Mock };
+  // Notifications (17.4) : envoyées après l'écriture, sans jamais la faire échouer.
+  const notifier = {
+    notify: jest.fn().mockResolvedValue(undefined),
+    notifySchool: jest.fn().mockResolvedValue(undefined),
+  };
+
   let service: ExamService;
 
   beforeEach(() => {
@@ -65,12 +72,15 @@ describe('ExamService (D-01 / D-33 : demande X2, liste X1, lecture scoped)', () 
       authorized: true,
     });
     instructors.findByUserId.mockResolvedValue({ id: 'instr-1', schoolId: 'school-1' });
+    notifier.notify.mockClear();
+    notifier.notifySchool.mockClear();
     service = new ExamService(
       repository,
       students,
       instructors,
       new SchoolGuard(instructors),
-      files
+      files,
+      notifier
     );
   });
 
@@ -277,6 +287,97 @@ describe('ExamService (D-01 / D-33 : demande X2, liste X1, lecture scoped)', () 
       await expect(
         service.scheduleExam(instructor, 'exam-1', { dateTime: future, location: 'ATTT Tunis' })
       ).resolves.toMatchObject({ status: ExamStatus.SCHEDULED, fileComplete: false });
+    });
+  });
+
+  describe('notifications des examens (17.4, D-63)', () => {
+    // Le harnais du fichier est réutilisé : `service`, `repository`, `notifier` sont réinitialisés
+    // par le `beforeEach` du describe racine.
+    it('X2 prévient toute l’école (une demande d’examen n’a pas d’instructeur préféré)', async () => {
+      repository.createRequest.mockResolvedValue(exam);
+
+      await service.requestExam(student, { examType: ExamType.THEORY, preferredDate: future });
+
+      expect(notifier.notifySchool).toHaveBeenCalledTimes(1);
+      const [schoolId, payload, preferred] = notifier.notifySchool.mock.calls[0] as [
+        string,
+        { type: string; params: Record<string, unknown>; target: { screen: string } },
+        unknown,
+      ];
+      expect(schoolId).toBe('school-1');
+      expect(payload.type).toBe('exam_requested');
+      expect(payload.params.student).toBe('Élève Test');
+      // Le type d'examen se traduit (D-47) : un couple fr / ar, pas « theory »
+      expect(payload.params.type).toEqual({ fr: 'Code', ar: 'قانون السير' });
+      expect(payload.target.screen).toBe('ExamRequests');
+      expect(preferred).toBeUndefined();
+    });
+
+    it('X3 / X4 / X5 préviennent l’élève, avec le bon écran', async () => {
+      repository.findById.mockResolvedValue(exam);
+      repository.schedule.mockResolvedValue({
+        ...exam,
+        status: ExamStatus.SCHEDULED,
+        dateTime: future,
+        location: 'ATTT Tunis',
+      });
+      await service.scheduleExam(instructor, 'exam-1', {
+        dateTime: future,
+        location: 'ATTT Tunis',
+      });
+      expect(notifier.notify).toHaveBeenLastCalledWith(
+        ['user-1'],
+        expect.objectContaining({
+          type: 'exam_scheduled',
+          target: { screen: 'MyExams', id: 'exam-1' },
+        })
+      );
+
+      repository.reject.mockResolvedValue({ ...exam, status: ExamStatus.REJECTED });
+      await service.rejectExam(instructor, 'exam-1', {
+        reason: 'Dossier incomplet pour la session',
+      });
+      expect(notifier.notify).toHaveBeenLastCalledWith(
+        ['user-1'],
+        expect.objectContaining({ type: 'exam_rejected' })
+      );
+
+      repository.findById.mockResolvedValue({ ...exam, status: ExamStatus.SCHEDULED });
+      repository.recordResult.mockResolvedValue({
+        ...exam,
+        status: ExamStatus.COMPLETED,
+        result: ExamResult.PASSED,
+      });
+      await service.recordResult(instructor, 'exam-1', { result: ExamResult.PASSED });
+      const [, resultPayload] = notifier.notify.mock.calls.at(-1) as [
+        string[],
+        { params: Record<string, unknown> },
+      ];
+      expect(resultPayload.params.result).toEqual({ fr: 'Réussi', ar: 'ناجح' });
+    });
+
+    it('un envoi en échec laisse l’action réussie (D-63) — chemin réel, EventNotifier compris', async () => {
+      repository.findById.mockResolvedValue(exam);
+      repository.schedule.mockResolvedValue({ ...exam, status: ExamStatus.SCHEDULED });
+
+      // Le vrai EventNotifier au-dessus d'un répartiteur cassé : c'est lui qui garantit le 200
+      const casse = new EventNotifier(
+        { notify: jest.fn().mockRejectedValue(new Error('push tombé')) },
+        { findBySchoolId: jest.fn(), findById: jest.fn() },
+        () => undefined
+      );
+      const serviceReel = new ExamService(
+        repository,
+        students,
+        instructors,
+        new SchoolGuard(instructors),
+        files,
+        casse
+      );
+
+      await expect(
+        serviceReel.scheduleExam(instructor, 'exam-1', { dateTime: future, location: 'ATTT' })
+      ).resolves.toMatchObject({ status: ExamStatus.SCHEDULED });
     });
   });
 });

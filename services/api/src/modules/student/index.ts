@@ -2,6 +2,7 @@ import { RequestHandler, Router } from 'express';
 import { Pool } from 'pg';
 import { PgTransactionRunner } from '../../db/transaction';
 import { SchoolGuard } from '../../http/authz';
+import { SchoolNotifier } from '../notification/types/notification.types';
 import { EnrollmentController } from './controllers/enrollment.controller';
 import { ProfileController } from './controllers/profile.controller';
 import { StudentFileController } from './controllers/student-file.controller';
@@ -20,6 +21,8 @@ export interface StudentModuleDeps {
   db: Pool;
   requireAuth: RequestHandler;
   schoolGuard: SchoolGuard;
+  /** Notifications des inscriptions (17.4, D-63) : E2 vers l'école, E5 / E6 vers l'élève. */
+  notifier: SchoolNotifier;
 }
 
 export interface StudentModule {
@@ -38,6 +41,7 @@ export function buildStudentModule({
   db,
   requireAuth,
   schoolGuard,
+  notifier,
 }: StudentModuleDeps): StudentModule {
   const enrollmentRepository = new EnrollmentRepository(db);
   const studentRepository = new StudentRepository(db);
@@ -49,7 +53,8 @@ export function buildStudentModule({
     enrollmentRepository,
     studentRepository,
     new PgTransactionRunner(db),
-    schoolGuard
+    schoolGuard,
+    notifier
   );
   const profileService = new ProfileService(profileRepository, schoolGuard, studentFileRepository);
   const studentFileService = new StudentFileService(studentFileRepository, schoolGuard);

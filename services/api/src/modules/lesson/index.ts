@@ -2,6 +2,7 @@ import { RequestHandler, Router } from 'express';
 import { Pool } from 'pg';
 import { PgTransactionRunner } from '../../db/transaction';
 import { SchoolGuard } from '../../http/authz';
+import { SchoolNotifier } from '../notification/types/notification.types';
 import { AvailabilityController } from './controllers/availability.controller';
 import { FreeSlotsController } from './controllers/free-slots.controller';
 import { LessonController } from './controllers/lesson.controller';
@@ -33,6 +34,8 @@ export interface LessonModuleDeps {
   /** `StatsRepository` du module student : compteurs de leçons effectuées (L7, D-33). */
   stats: LessonStatsSink;
   schoolGuard: SchoolGuard;
+  /** Notifications des leçons (17.4, D-63) : L2 et L3 vers l'école, L4 / L5 / L6 vers l'élève. */
+  notifier: SchoolNotifier;
   /** `LESSON_CANCEL_HOURS` (D-24). */
   cancelWindowHours: number;
 }
@@ -52,6 +55,7 @@ export function buildLessonModule({
   pricing,
   stats,
   schoolGuard,
+  notifier,
   cancelWindowHours,
 }: LessonModuleDeps): LessonModule {
   const lessonRepository = new LessonRepository(db);
@@ -66,7 +70,8 @@ export function buildLessonModule({
     schoolGuard,
     cancelWindowHours,
     students,
-    new ScheduleConflictChecker(lessonRepository)
+    new ScheduleConflictChecker(lessonRepository),
+    notifier
   );
   const availabilityRepository = new AvailabilityRepository(db, transactions);
   const availabilityService = new AvailabilityService(availabilityRepository, instructors);

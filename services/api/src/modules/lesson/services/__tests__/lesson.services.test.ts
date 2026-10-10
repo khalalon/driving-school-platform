@@ -59,6 +59,12 @@ describe('LessonService (D-21 / D-32 : demande L2, liste L1, lecture scoped)', (
   let credits: { getCreditForUpdate: jest.Mock; addCredit: jest.Mock };
   let conflicts: { assertFree: jest.Mock };
   let service: LessonService;
+  // Notifications (17.4) : envoyées après l'écriture, sans jamais la faire échouer.
+  const notifier = {
+    notify: jest.fn().mockResolvedValue(undefined),
+    notifySchool: jest.fn().mockResolvedValue(undefined),
+  };
+
   // Client de transaction factice (L7 : leçon + compteur dans une même transaction).
   const tx: Queryable = { query: jest.fn() };
 
@@ -91,6 +97,8 @@ describe('LessonService (D-21 / D-32 : demande L2, liste L1, lecture scoped)', (
     });
     instructors.findById.mockResolvedValue({ id: 'instr-1', schoolId: 'school-1' });
     instructors.findByUserId.mockResolvedValue({ id: 'instr-1', schoolId: 'school-1' });
+    notifier.notify.mockClear();
+    notifier.notifySchool.mockClear();
     service = new LessonService(
       repository,
       students,
@@ -101,7 +109,8 @@ describe('LessonService (D-21 / D-32 : demande L2, liste L1, lecture scoped)', (
       new SchoolGuard(instructors),
       24,
       credits,
-      conflicts as unknown as ScheduleConflictChecker
+      conflicts as unknown as ScheduleConflictChecker,
+      notifier
     );
   });
 
@@ -746,6 +755,101 @@ describe('LessonService (D-21 / D-32 : demande L2, liste L1, lecture scoped)', (
       await expect(service.getLesson(admin, 'lesson-1')).resolves.toMatchObject({
         schoolId: 'school-2',
       });
+    });
+  });
+
+  describe('notifications des leçons (17.4, D-63, D-64)', () => {
+    it('L2 : la demande part à l’instructeur préféré, avec le type traduit', async () => {
+      students.findByUserId.mockResolvedValue({
+        id: 'student-1',
+        schoolId: 'school-1',
+        authorized: true,
+      });
+      instructors.findById.mockResolvedValue({ id: 'instr-1', schoolId: 'school-1' });
+      repository.createRequest.mockResolvedValue(lesson);
+
+      await service.requestLesson(student, {
+        type: LessonType.PARC,
+        requestedDate: future,
+        preferredInstructorId: 'instr-1',
+      });
+
+      const [schoolId, payload, preferred] = notifier.notifySchool.mock.calls[0] as [
+        string,
+        { type: string; params: Record<string, unknown>; target: { screen: string } },
+        unknown,
+      ];
+      expect(schoolId).toBe('school-1');
+      expect(payload.type).toBe('lesson_requested');
+      expect(payload.params.student).toBe('Élève Test');
+      expect(payload.params.type).toEqual({ fr: 'Parc', ar: 'الحلبة' });
+      expect(payload.target.screen).toBe('LessonRequests');
+      // D-64 : l'instructeur choisi est transmis, le notifier décide
+      expect(preferred).toBe('instr-1');
+    });
+
+    it('L5 et L4 préviennent l’élève que sa leçon a une date', async () => {
+      const scheduled = { ...lesson, status: LessonStatus.SCHEDULED, scheduledDate: future };
+      repository.findById.mockResolvedValue(lesson);
+      instructors.findByUserId.mockResolvedValue({ id: 'instr-1', schoolId: 'school-1' });
+      pricing.getPricingByType.mockResolvedValue({ price: 40, duration: 60 });
+      credits.getCreditForUpdate.mockResolvedValue(0);
+      repository.approve.mockResolvedValue(scheduled);
+
+      await service.approveLesson(instructor, 'lesson-1', {
+        scheduledDate: future,
+        durationMinutes: 60,
+      });
+
+      expect(notifier.notify).toHaveBeenLastCalledWith(
+        ['user-1'],
+        expect.objectContaining({
+          type: 'lesson_scheduled',
+          target: { screen: 'MyLessons', id: 'lesson-1' },
+        })
+      );
+    });
+
+    it('L6 : le refus et son motif partent à l’élève', async () => {
+      repository.findById.mockResolvedValue(lesson);
+      repository.reject.mockResolvedValue({ ...lesson, status: LessonStatus.REJECTED });
+      instructors.findByUserId.mockResolvedValue({ id: 'instr-1', schoolId: 'school-1' });
+
+      await service.rejectLesson(instructor, 'lesson-1', { reason: 'Aucun créneau cette semaine' });
+
+      const [recipients, payload] = notifier.notify.mock.calls.at(-1) as [
+        string[],
+        { type: string; params: Record<string, unknown> },
+      ];
+      expect(recipients).toEqual(['user-1']);
+      expect(payload.type).toBe('lesson_rejected');
+      expect(payload.params.reason).toBe('Aucun créneau cette semaine');
+    });
+
+    it('L3 : l’élève annule → l’école est prévenue ; l’école annule → l’élève l’est (D-63)', async () => {
+      const scheduled = { ...lesson, status: LessonStatus.SCHEDULED, scheduledDate: future };
+      repository.findById.mockResolvedValue(scheduled);
+      repository.cancel.mockResolvedValue({
+        lesson: { ...scheduled, status: LessonStatus.CANCELLED },
+        paidAmount: 0,
+        creditApplied: 0,
+      });
+
+      await service.cancelLesson(student, 'lesson-1', { reason: 'Empêchement' });
+      expect(notifier.notifySchool).toHaveBeenLastCalledWith(
+        'school-1',
+        expect.objectContaining({ type: 'lesson_cancelled_by_student' })
+      );
+
+      instructors.findByUserId.mockResolvedValue({ id: 'instr-1', schoolId: 'school-1' });
+      await service.cancelLesson(instructor, 'lesson-1', { reason: 'Voiture immobilisée' });
+      const [recipients, payload] = notifier.notify.mock.calls.at(-1) as [
+        string[],
+        { type: string; params: Record<string, string> },
+      ];
+      expect(recipients).toEqual(['user-1']);
+      expect(payload.type).toBe('lesson_cancelled_by_school');
+      expect(payload.params.reason).toBe('Voiture immobilisée');
     });
   });
 });

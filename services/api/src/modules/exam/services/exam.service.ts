@@ -1,4 +1,6 @@
 import { SchoolGuard } from '../../../http/authz';
+import { examResultTerm, examTypeTerm, schoolDateTime } from '../../notification/services/terms';
+import { NotificationType, SchoolNotifier } from '../../notification/types/notification.types';
 import { HttpError } from '../../../http/errors';
 import { AuthUser, UserRole } from '../../../types/auth';
 import { IExamRepository } from '../repositories/exam.repository';
@@ -44,7 +46,9 @@ export class ExamService {
     private readonly students: StudentLookup,
     private readonly instructors: InstructorLookup,
     private readonly schoolGuard: SchoolGuard,
-    private readonly files: StudentFileLookup
+    private readonly files: StudentFileLookup,
+    /** Notifications (17.4, D-63) : envoyées **après** l'écriture, sans jamais la faire échouer. */
+    private readonly notifier: SchoolNotifier
   ) {}
 
   /** X2 : école résolue depuis l'inscription approuvée de l'élève ; 403 NOT_ENROLLED sinon. */
@@ -57,13 +61,25 @@ export class ExamService {
         'Vous devez être inscrit et approuvé dans une école pour demander un examen'
       );
     }
-    return this.withFile(
+    const created = await this.withFile(
       await this.examRepository.createRequest({
         ...dto,
         studentRowId: student.id,
         schoolId: student.schoolId,
       })
     );
+
+    // Une demande d'examen n'a pas d'instructeur préféré : toute l'école est prévenue (D-64).
+    await this.notifier.notifySchool(student.schoolId, {
+      type: NotificationType.EXAM_REQUESTED,
+      params: {
+        student: `${created.studentFirstName} ${created.studentLastName}`.trim(),
+        type: examTypeTerm(created.type),
+        date: schoolDateTime(created.preferredDate),
+      },
+      target: { screen: 'ExamRequests', id: created.id },
+    });
+    return created;
   }
 
   /** X1 : les examens de l'appelant (élève : les siens ; instructeur : tous ceux de son école). */
@@ -93,6 +109,16 @@ export class ExamService {
     if (!scheduled) {
       throw new HttpError(409, 'CONFLICT', 'Cette demande vient d’être traitée par un collègue');
     }
+
+    await this.notifier.notify([scheduled.studentId], {
+      type: NotificationType.EXAM_SCHEDULED,
+      params: {
+        type: examTypeTerm(scheduled.type),
+        date: schoolDateTime(scheduled.dateTime),
+        location: scheduled.location ?? '',
+      },
+      target: { screen: 'MyExams', id: scheduled.id },
+    });
     return this.withFile(scheduled);
   }
 
@@ -104,6 +130,12 @@ export class ExamService {
     if (!rejected) {
       throw new HttpError(409, 'CONFLICT', 'Cette demande vient d’être traitée par un collègue');
     }
+
+    await this.notifier.notify([rejected.studentId], {
+      type: NotificationType.EXAM_REJECTED,
+      params: { type: examTypeTerm(rejected.type), reason: dto.reason },
+      target: { screen: 'MyExams', id: rejected.id },
+    });
     return this.withFile(rejected);
   }
 
@@ -119,6 +151,12 @@ export class ExamService {
     if (!completed) {
       throw new HttpError(409, 'CONFLICT', 'Le statut de cet examen vient de changer');
     }
+
+    await this.notifier.notify([completed.studentId], {
+      type: NotificationType.EXAM_RESULT,
+      params: { type: examTypeTerm(completed.type), result: examResultTerm(completed.result) },
+      target: { screen: 'MyExams', id: completed.id },
+    });
     return this.withFile(completed);
   }
 

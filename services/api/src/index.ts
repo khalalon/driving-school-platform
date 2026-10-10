@@ -24,7 +24,19 @@ async function bootstrap(): Promise<void> {
   const schoolGuard = new SchoolGuard(instructorRepository);
 
   const auth = buildAuthModule({ db, redis, env, instructors: instructorRepository });
-  const student = buildStudentModule({ db, requireAuth: auth.requireAuth, schoolGuard });
+  // Avant student / lesson / exam : ils reçoivent le notifier (17.4, D-63).
+  const notification = buildNotificationModule({
+    db,
+    requireAuth: auth.requireAuth,
+    driver: env.NOTIFICATIONS_DRIVER,
+    instructors: instructorRepository,
+  });
+  const student = buildStudentModule({
+    db,
+    requireAuth: auth.requireAuth,
+    schoolGuard,
+    notifier: notification.notifier,
+  });
   const school = buildSchoolModule({
     db,
     requireAuth: auth.requireAuth,
@@ -40,6 +52,7 @@ async function bootstrap(): Promise<void> {
     pricing: school.pricingService,
     stats: student.statsRepository,
     schoolGuard,
+    notifier: notification.notifier,
     cancelWindowHours: env.LESSON_CANCEL_HOURS,
   });
   const exam = buildExamModule({
@@ -49,12 +62,7 @@ async function bootstrap(): Promise<void> {
     instructors: instructorRepository,
     schoolGuard,
     files: student.studentFileRepository,
-  });
-
-  const notification = buildNotificationModule({
-    db,
-    requireAuth: auth.requireAuth,
-    driver: env.NOTIFICATIONS_DRIVER,
+    notifier: notification.notifier,
   });
 
   const app = createApp({

@@ -9,6 +9,8 @@
  */
 
 import {
+  MessageParam,
+  MessageParams,
   NotificationLanguage,
   NotificationType,
   RenderedMessage,
@@ -94,17 +96,27 @@ const CATALOGUE: Catalogue = {
   },
 };
 
+/** Une valeur traduisible donne le mot de la langue rendue ; une chaîne vaut pour les deux. */
+const valueOf = (param: MessageParam, language: NotificationLanguage): string =>
+  typeof param === 'string' ? param : param[language];
+
 /** `{{clé}}` → valeur ; une valeur absente laisse une chaîne vide plutôt que le gabarit brut. */
-const fill = (template: string, params: Record<string, string>): string =>
-  template.replace(/\{\{(\w+)\}\}/g, (_match, key: string) => params[key] ?? '');
+const fill = (template: string, params: MessageParams, language: NotificationLanguage): string =>
+  template.replace(/\{\{(\w+)\}\}/g, (_match, key: string) => {
+    const param = params[key];
+    return param === undefined ? '' : valueOf(param, language);
+  });
 
 export function renderMessage(
   type: NotificationType,
   language: NotificationLanguage,
-  params: Record<string, string> = {}
+  params: MessageParams = {}
 ): RenderedMessage {
   const entry = CATALOGUE[type][language];
-  return { title: fill(entry.title, params), body: fill(entry.body, params) };
+  return {
+    title: fill(entry.title, params, language),
+    body: fill(entry.body, params, language),
+  };
 }
 
 /** Exposé pour les tests : chaque événement doit avoir ses deux langues. */
