@@ -1364,7 +1364,7 @@ cd mobile-app && npx tsc --noEmit && npx jest --silent && npx expo-doctor && ech
 ```
 **Hors périmètre** : —
 
-### - [ ] 17.8 — Bout en bout : notifications
+### - [x] 17.8 — Bout en bout : notifications
 **Objectif** : e2e « notifications » (`NOTIFICATIONS_DRIVER=log`) : enregistrement d'un jeton ; une approbation de leçon crée une notification pour l'élève (lue par la route de 17.6) ; une nouvelle demande notifie l'école ; marquer lu. La recette réelle sur téléphone (APK de 17.1) est faite par l'humain.
 **Fichiers** : `tests/e2e/notifications.e2e.test.ts` (nouveau), `docker-compose.yml` si la variable doit être passée.
 **Critère de validation** :
