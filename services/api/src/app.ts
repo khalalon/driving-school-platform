@@ -15,6 +15,8 @@ export interface AppRouters {
   /** Disponibilités des instructeurs (15.6). */
   instructors?: Router;
   exams?: Router;
+  /** Jetons push et centre de notifications (17.2, D-63). */
+  notifications?: Router;
 }
 
 /**

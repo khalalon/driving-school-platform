@@ -1292,6 +1292,8 @@ test -f tests/e2e/student-file.e2e.test.ts && docker compose up -d --build --for
 
 D-35 avait écarté les notifications de la v1 : l'élève doit ouvrir l'app pour savoir si sa leçon est acceptée. Cette phase les ajoute. **Expo Go ne reçoit plus les push sur Android depuis le SDK 53** : il faut une version installable (build de développement EAS), qui demande une action de l'humain.
 
+Critères de cette phase : `npm test` mesure la couverture **globale**, qu'un `--testPathPattern` fait tomber sous les seuils (le critère échouait toujours — corrigé en 17.2, comme en 16.3). Les suites ciblées se lancent donc en `npx jest --coverage=false`, suivies de `npm test` entier.
+
 ### - [ ] 17.1 — Build de développement Android (EAS)
 **Objectif** : `expo-dev-client` et `expo-notifications` installés (`npx expo install`), plugin déclaré dans `app.json`, `eas.json` avec un profil `development` (APK interne Android). **Action humaine** : `npx eas login`, `npx eas init` (écrit `extra.eas.projectId`), puis `npx eas build --profile development --platform android` et installation de l'APK sur le téléphone. Le README gagne une section « Version installable ». Expo Go reste utilisable pour tout ce qui n'est pas une notification.
 **Dépend de** : D-67.
@@ -1302,13 +1304,13 @@ cd mobile-app && npx expo-doctor && npx expo config --json | grep -q '"projectId
 ```
 **Hors périmètre** : iOS (option (b) de Q-37 non retenue, D-67), publication sur le Play Store.
 
-### - [ ] 17.2 — Jetons push côté serveur
-**Objectif** : migration `0NN_push_tokens.sql` : `push_tokens (id, user_id → users, token UNIQUE, platform, language ∈ fr|ar, updated_at)`. Routes `PUT /api/notifications/push-token` (`{ token, platform, language }`, upsert, tout utilisateur connecté) et `DELETE /api/notifications/push-token` (`{ token }`, au logout). La langue suit le choix fait dans l'app (D-47). Contrat §7 réécrit ; D-35 est remplacée par D-63.
+### - [x] 17.2 — Jetons push côté serveur
+**Objectif** : migration `018_push_tokens.sql` : `push_tokens (id, user_id → users, token UNIQUE, platform, language ∈ fr|ar, updated_at)`. Routes `PUT /api/notifications/push-token` (`{ token, platform, language }`, upsert, tout utilisateur connecté) et `DELETE /api/notifications/push-token` (`{ token }`, au logout). La langue suit le choix fait dans l'app (D-47). Contrat §7 réécrit ; D-35 est remplacée par D-63.
 **Dépend de** : D-63.
-**Fichiers** : `migrations/0NN_push_tokens.sql`, `services/api/src/modules/notification/` (nouveau module, `buildNotification()`), `services/api/src/app.ts`, tests, `docs/API_CONTRACT.md`.
+**Fichiers** : `migrations/018_push_tokens.sql`, `services/api/src/modules/notification/` (nouveau module, `buildNotification()`), `services/api/src/app.ts`, tests, `docs/API_CONTRACT.md`.
 **Critère de validation** :
 ```bash
-./scripts/migrate.sh && ./scripts/migrate.sh && docker exec driving-school-postgres psql -U admin -d driving_school -c "\d push_tokens" | grep language && cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPattern=notification && echo OK
+./scripts/migrate.sh && ./scripts/migrate.sh && docker exec driving-school-postgres psql -U admin -d driving_school -c "\d push_tokens" | grep language && cd services/api && npx tsc --noEmit && npm run lint && npx jest --coverage=false --testPathPattern=notification && npm test && echo OK
 ```
 **Hors périmètre** : envoi (17.3).
 
@@ -1318,7 +1320,7 @@ cd mobile-app && npx expo-doctor && npx expo config --json | grep -q '"projectId
 **Fichiers** : `services/api/src/modules/notification/`, `services/api/src/config/env.ts`, `.env.example`, tests.
 **Critère de validation** :
 ```bash
-cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPattern=notification && echo OK
+cd services/api && npx tsc --noEmit && npm run lint && npx jest --coverage=false --testPathPattern=notification && npm test && echo OK
 ```
 **Hors périmètre** : e-mail, SMS.
 
@@ -1338,7 +1340,7 @@ cd services/api && npx tsc --noEmit && npm run lint && npm test && echo OK
 **Fichiers** : `migrations/0NN_lesson_reminder.sql`, `services/api/src/modules/notification/jobs/`, `services/api/src/index.ts`, tests (horloge injectée).
 **Critère de validation** :
 ```bash
-./scripts/migrate.sh && cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPattern='notification|reminder' && echo OK
+./scripts/migrate.sh && cd services/api && npx tsc --noEmit && npm run lint && npx jest --coverage=false --testPathPattern='notification|reminder' && npm test && echo OK
 ```
 **Hors périmètre** : rappel d'examen.
 
@@ -1348,7 +1350,7 @@ cd services/api && npx tsc --noEmit && npm run lint && npm test && echo OK
 **Fichiers** : `services/api/src/modules/notification/`, tests, `docs/API_CONTRACT.md`.
 **Critère de validation** :
 ```bash
-cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPattern=notification && echo OK
+cd services/api && npx tsc --noEmit && npm run lint && npx jest --coverage=false --testPathPattern=notification && npm test && echo OK
 ```
 **Hors périmètre** : suppression de notifications.
 

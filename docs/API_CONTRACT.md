@@ -152,9 +152,20 @@ La liste des pièces est **propre à chaque école** (D-61), initialisée à sa 
 | F6 | GET | `/api/student-profiles/me/schools/:schoolId/file` | `StudentDashboard`, `MyProfile` (16.5) | — (`student`) | `StudentFile` | **EXISTE** | 16.2 : identifiant pris dans le jeton ; 404 si l'élève n'a pas de fiche dans cette école. L'élève **lit** son dossier et ne coche rien (D-49). |
 | F7 | PUT | `/api/profiles/:studentId/schools/:schoolId/documents/:documentTypeId` | `StudentFileTab` (16.4) | `{ received, note? }` — `note` ≤ 500 caractères, gardée sur une pièce reçue (instructeur de cette école / `admin`) | `StudentFile` à jour | **EXISTE** | 16.2 : `received: true` enregistre la réception (auteur = l'appelant) — **cocher une pièce déjà reçue ne refait pas sa date**, seules la note et l'auteur changent ; `received: false` efface la réception. 404 si la pièce n'est pas une pièce active de cette école, ou sans fiche élève ; 403 `FORBIDDEN_SCHOOL`. Le dossier entier est renvoyé pour éviter un second appel. |
 
-## 7. Notifications
+## 7. Notifications (D-63 à D-66)
 
-**Hors v1 (D-35).** Aucune route, aucune table, aucun code mobile. Le module `services/notification` n'est pas porté dans `services/api` ; son code reste dans l'historique git. L'état d'une demande (inscription, leçon, examen) est visible sur le tableau de bord de chaque rôle via E3, L1 et X1.
+**D-35 ne vaut plus** : les notifications entrent dans la v1 (D-63). Les événements notifiés, leurs destinataires et le rappel de leçon sont fixés par D-63, D-64 et D-65 ; chaque envoi est aussi conservé dans la table `notifications` (migration 001) pour l'historique de D-66.
+
+Transport : **API push d'Expo**. Un jeton push identifie un **appareil**, pas un compte (table `push_tokens`, migration 018) : il est unique et change de `userId` si le téléphone change de main. Sa `language` (`fr` ou `ar`) est celle de l'application **sur cet appareil** (D-47), renvoyée à chaque changement de langue — le message part dans la langue de l'appareil qui le reçoit, pas dans celle du compte. **Android seulement** pour l'instant (D-67) : Expo Go ne reçoit plus les push sur Android depuis le SDK 53, il faut la version installable de 17.1.
+
+`PushToken` = `{ id, userId, token, platform ∈ android\|ios, language ∈ fr\|ar, updatedAt }`.
+
+| # | Méthode | Chemin | Appelé par | Payload (cible) | Réponse (cible) | Statut | Écart / notes |
+|---|---|---|---|---|---|---|---|
+| N1 | PUT | `/api/notifications/push-token` | `src/services/push.ts` (17.7) | `{ token, platform ∈ android\|ios, language ∈ fr\|ar }` (**tout utilisateur connecté** : élève, instructeur, admin) | `PushToken` | **EXISTE** | 17.2 : **upsert sur le jeton** — réenvoyer le même jeton depuis un autre compte le transfère, ce qui évite qu'un téléphone revendu reçoive les messages de son ancien porteur. Rejouée à chaque connexion et à chaque changement de langue. Aucun cloisonnement par école : un jeton n'appartient qu'à son porteur. 400 `VALIDATION_ERROR` sur une plateforme ou une langue inconnue (la migration 018 les contraint aussi en base). |
+| N2 | DELETE | `/api/notifications/push-token` | `AuthContext` au logout (17.7) | `{ token }` (**tout utilisateur connecté**) | 204 | **EXISTE** | 17.2 : ne retire que les jetons **de l'appelant**, et répond 204 même si le jeton n'était plus là — au logout, l'appareil n'a pas à savoir ce que le serveur avait encore. |
+
+Les routes de l'historique (liste, marquer lu, tout marquer lu) arrivent en 17.6.
 
 ## 8. Routes backend hors contrat mobile
 

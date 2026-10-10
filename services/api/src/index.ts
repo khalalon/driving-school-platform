@@ -6,6 +6,7 @@ import { createRedisClient } from './config/redis';
 import { buildAuthModule } from './modules/auth';
 import { buildExamModule } from './modules/exam';
 import { buildLessonModule } from './modules/lesson';
+import { buildNotificationModule } from './modules/notification';
 import { buildSchoolModule } from './modules/school';
 import { buildStudentModule } from './modules/student';
 import { SchoolGuard } from './http/authz';
@@ -50,8 +51,11 @@ async function bootstrap(): Promise<void> {
     files: student.studentFileRepository,
   });
 
+  const notification = buildNotificationModule({ db, requireAuth: auth.requireAuth });
+
   const app = createApp({
     auth: auth.router,
+    notifications: notification.router,
     schools: school.router,
     enrollment: student.enrollmentRouter,
     profiles: student.profileRouter,
