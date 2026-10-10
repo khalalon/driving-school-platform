@@ -776,8 +776,8 @@ Demande de l'auteur après la recette : des améliorations **métier**, précéd
 | 13b | Voiture réaliste, feu tricolore, voiture au doigt et gyroscope, parcours suivi par la caméra | D-53 (tranchée) |
 | 14 | Gérant de l'école : des droits distincts de ceux des moniteurs | D-54, D-56, D-57 (tranchées) |
 | 15 | Agenda de l'instructeur, conflits d'horaire, créneaux libres pour l'élève | D-58, D-59, D-60 (tranchées) |
-| 16 | Dossier administratif de l'élève (pièces reçues / manquantes) | Q-31, Q-32 |
-| 17 | Notifications push, rappels de leçon, centre de notifications | Q-33 à Q-37 |
+| 16 | Dossier administratif de l'élève (pièces reçues / manquantes) | D-61, D-62 (tranchées) |
+| 17 | Notifications push, rappels de leçon, centre de notifications | D-63 à D-67 (tranchées) |
 | 18 | Paiements partiels, reçus, caisse de l'école | Q-38 à Q-40 |
 | 19 | Forfaits (heures prépayées) | Q-41 à Q-44 |
 | 20 | Progression pédagogique par compétence | Q-45 à Q-47 |
@@ -1288,23 +1288,23 @@ test -f tests/e2e/student-file.e2e.test.ts && docker compose up -d --build --for
 
 ---
 
-## Phase 17 — Notifications (Q-33 à Q-37)
+## Phase 17 — Notifications (D-63 à D-67)
 
 D-35 avait écarté les notifications de la v1 : l'élève doit ouvrir l'app pour savoir si sa leçon est acceptée. Cette phase les ajoute. **Expo Go ne reçoit plus les push sur Android depuis le SDK 53** : il faut une version installable (build de développement EAS), qui demande une action de l'humain.
 
 ### - [ ] 17.1 — Build de développement Android (EAS)
 **Objectif** : `expo-dev-client` et `expo-notifications` installés (`npx expo install`), plugin déclaré dans `app.json`, `eas.json` avec un profil `development` (APK interne Android). **Action humaine** : `npx eas login`, `npx eas init` (écrit `extra.eas.projectId`), puis `npx eas build --profile development --platform android` et installation de l'APK sur le téléphone. Le README gagne une section « Version installable ». Expo Go reste utilisable pour tout ce qui n'est pas une notification.
-**Dépend de** : Q-37.
+**Dépend de** : D-67.
 **Fichiers** : `mobile-app/package.json`, `mobile-app/app.json`, `mobile-app/eas.json` (nouveau), `README.md`.
 **Critère de validation** :
 ```bash
 cd mobile-app && npx expo-doctor && npx expo config --json | grep -q '"projectId"' && npx tsc --noEmit && npx jest --silent && echo OK
 ```
-**Hors périmètre** : iOS (Q-37 (b) non retenue), publication sur le Play Store.
+**Hors périmètre** : iOS (option (b) de Q-37 non retenue, D-67), publication sur le Play Store.
 
 ### - [ ] 17.2 — Jetons push côté serveur
-**Objectif** : migration `0NN_push_tokens.sql` : `push_tokens (id, user_id → users, token UNIQUE, platform, language ∈ fr|ar, updated_at)`. Routes `PUT /api/notifications/push-token` (`{ token, platform, language }`, upsert, tout utilisateur connecté) et `DELETE /api/notifications/push-token` (`{ token }`, au logout). La langue suit le choix fait dans l'app (D-47). Contrat §7 réécrit ; D-35 est remplacée par la décision issue de Q-33.
-**Dépend de** : Q-33.
+**Objectif** : migration `0NN_push_tokens.sql` : `push_tokens (id, user_id → users, token UNIQUE, platform, language ∈ fr|ar, updated_at)`. Routes `PUT /api/notifications/push-token` (`{ token, platform, language }`, upsert, tout utilisateur connecté) et `DELETE /api/notifications/push-token` (`{ token }`, au logout). La langue suit le choix fait dans l'app (D-47). Contrat §7 réécrit ; D-35 est remplacée par D-63.
+**Dépend de** : D-63.
 **Fichiers** : `migrations/0NN_push_tokens.sql`, `services/api/src/modules/notification/` (nouveau module, `buildNotification()`), `services/api/src/app.ts`, tests, `docs/API_CONTRACT.md`.
 **Critère de validation** :
 ```bash
@@ -1313,8 +1313,8 @@ cd mobile-app && npx expo-doctor && npx expo config --json | grep -q '"projectId
 **Hors périmètre** : envoi (17.3).
 
 ### - [ ] 17.3 — Envoi par l'API push d'Expo
-**Objectif** : interface `IPushSender` ; `ExpoPushSender` (HTTP vers l'API push d'Expo, envois groupés par 100, jeton `DeviceNotRegistered` supprimé de `push_tokens`) ; `LogPushSender` pour le dev et l'e2e (`NOTIFICATIONS_DRIVER=log|expo` dans `loadEnv`, `log` par défaut). Catalogue des messages FR / AR **côté serveur** (titre, corps, `data: { screen, id }` pour ouvrir le bon écran). Chaque notification est aussi écrite dans la table `notifications` (001) pour l'historique (Q-36 (b)).
-**Dépend de** : Q-33, Q-36.
+**Objectif** : interface `IPushSender` ; `ExpoPushSender` (HTTP vers l'API push d'Expo, envois groupés par 100, jeton `DeviceNotRegistered` supprimé de `push_tokens`) ; `LogPushSender` pour le dev et l'e2e (`NOTIFICATIONS_DRIVER=log|expo` dans `loadEnv`, `log` par défaut). Catalogue des messages FR / AR **côté serveur** (titre, corps, `data: { screen, id }` pour ouvrir le bon écran). Chaque notification est aussi écrite dans la table `notifications` (001) pour l'historique (D-66).
+**Dépend de** : D-63, D-66.
 **Fichiers** : `services/api/src/modules/notification/`, `services/api/src/config/env.ts`, `.env.example`, tests.
 **Critère de validation** :
 ```bash
@@ -1323,8 +1323,8 @@ cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPat
 **Hors périmètre** : e-mail, SMS.
 
 ### - [ ] 17.4 — Événements branchés
-**Objectif** : un `Notifier` injecté dans les services `enrollment`, `lesson`, `exam` envoie les événements retenus en Q-33 aux destinataires de Q-34 (demande neuve : l'instructeur préféré s'il existe, sinon tous les instructeurs de l'école). L'envoi est fait **après** la réussite de l'action et **n'échoue jamais la requête** (erreur journalisée). Tests : chaque événement produit le bon message au bon destinataire, et un envoi en échec laisse la requête en 200.
-**Dépend de** : Q-33, Q-34.
+**Objectif** : un `Notifier` injecté dans les services `enrollment`, `lesson`, `exam` envoie les événements de D-63 aux destinataires de D-64 (demande neuve : l'instructeur préféré s'il existe, sinon tous les instructeurs de l'école). L'envoi est fait **après** la réussite de l'action et **n'échoue jamais la requête** (erreur journalisée). Tests : chaque événement produit le bon message au bon destinataire, et un envoi en échec laisse la requête en 200.
+**Dépend de** : D-63, D-64.
 **Fichiers** : `services/api/src/modules/{student,lesson,exam}/services/`, `services/api/src/modules/*/index.ts`, tests.
 **Critère de validation** :
 ```bash
@@ -1333,8 +1333,8 @@ cd services/api && npx tsc --noEmit && npm run lint && npm test && echo OK
 **Hors périmètre** : préférences de notification par utilisateur.
 
 ### - [ ] 17.5 — Rappel de leçon
-**Objectif** : migration : `lessons.reminder_sent_at TIMESTAMP`. Tâche planifiée dans l'API (toutes les 15 min, verrou Redis pour qu'une seule instance l'exécute) : la veille à 18 h (heure de Tunis), rappel à l'élève de chaque leçon `scheduled` du lendemain, puis `reminder_sent_at` renseigné (jamais deux rappels). Q-35 (a).
-**Dépend de** : Q-35.
+**Objectif** : migration : `lessons.reminder_sent_at TIMESTAMP`. Tâche planifiée dans l'API (toutes les 15 min, verrou Redis pour qu'une seule instance l'exécute) : la veille à 18 h (heure de Tunis), rappel à l'élève de chaque leçon `scheduled` du lendemain, puis `reminder_sent_at` renseigné (jamais deux rappels). D-65.
+**Dépend de** : D-65.
 **Fichiers** : `migrations/0NN_lesson_reminder.sql`, `services/api/src/modules/notification/jobs/`, `services/api/src/index.ts`, tests (horloge injectée).
 **Critère de validation** :
 ```bash
@@ -1344,7 +1344,7 @@ cd services/api && npx tsc --noEmit && npm run lint && npm test && echo OK
 
 ### - [ ] 17.6 — Centre de notifications (routes)
 **Objectif** : `GET /api/notifications?unread=` (celles de l'appelant, 50 dernières), `PUT /api/notifications/:id/read`, `PUT /api/notifications/read-all`. Contrat §7.
-**Dépend de** : Q-36.
+**Dépend de** : D-66.
 **Fichiers** : `services/api/src/modules/notification/`, tests, `docs/API_CONTRACT.md`.
 **Critère de validation** :
 ```bash
@@ -1354,7 +1354,7 @@ cd services/api && npx tsc --noEmit && npm run lint && npm test -- --testPathPat
 
 ### - [ ] 17.7 — Mobile : permission, jeton, ouverture du bon écran, historique
 **Objectif** : la permission est demandée **après** la connexion (jamais au premier lancement), le jeton est envoyé avec la langue courante (et renvoyé quand la langue change), supprimé au logout ; toucher une notification ouvre l'écran de `data.screen` ; écran « Notifications » (liste, lu / non lu, tout marquer lu) et badge du nombre de non-lues. `NotificationService` + tests.
-**Dépend de** : Q-36, Q-37.
+**Dépend de** : D-66, D-67.
 **Fichiers** : `mobile-app/src/services/api/NotificationService.ts` (nouveau), `mobile-app/src/services/push.ts` (nouveau), `mobile-app/src/screens/common/NotificationsScreen.tsx` (nouveau), `AuthContext`, navigation, i18n, `jest.setup.js` (mock `expo-notifications`), tests.
 **Critère de validation** :
 ```bash

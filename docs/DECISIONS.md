@@ -149,63 +149,24 @@ Deux sections. « Décisions prises » fait autorité : on ne la rediscute pas d
 | **D-61** | Q-31 : la liste des pièces du dossier est-elle fixe ou propre à chaque école ? | **Liste par école, modifiable par son gérant** (option b), initialisée avec la liste par défaut suivante, dans cet ordre : **copie de la CIN, photos d'identité, certificat médical, extrait de naissance, timbre fiscal**. L'élève ne coche rien lui-même (pas d'envoi de fichier, D-49) : l'instructeur note qu'une pièce a été **reçue au bureau**, l'élève voit ce qui lui manque. | Réponse de l'auteur (09/10/2026), option recommandée et liste par défaut acceptée telle quelle : une école qui exige une pièce de plus ne doit pas attendre une mise à jour de l'application. | Tâches 16.1 à 16.6 telles qu'écrites. La liste par défaut vit en trois endroits qui doivent rester identiques : `migrations/017_student_documents.sql` (écoles déjà en base), `DEFAULT_DOCUMENT_TYPES` dans `services/api/src/modules/school/types/school.types.ts` (création par l'API) et `scripts/onboard-school.sh`. Une pièce qu'on ne demande plus est **désactivée** (`active = false`), jamais supprimée : les dossiers déjà cochés gardent leur sens. Gérer la liste est réservé au gérant (D-56 (b)). |
 | **D-62** | Q-32 : que se passe-t-il si le dossier est incomplet ? | **Rien de bloquant** (option a) : l'élève voit les pièces manquantes, l'instructeur voit un badge « dossier incomplet » sur la demande d'examen et décide. X2 inchangée. | Réponse de l'auteur (09/10/2026), option recommandée : cohérent avec D-26 (pas de seuil de leçons imposé — l'instructeur juge, l'application informe). | Tâche 16.3 telle qu'écrite : `fileComplete` et `missingDocuments` sont purement informatifs sur X1, P1 et P8. Aucun nouveau code d'erreur (`FILE_INCOMPLETE` des options (b) / (c) n'existe pas). |
 
+
+### Décisions du 10/10/2026 (Phase 17, notifications)
+
+| ID | Ex-question | Décision | Justification | Note d'application |
+|---|---|---|---|---|
+| **D-63** | Q-33 : quels événements déclenchent une notification ? | **Tous ceux proposés**, (a) à (g). Côté élève : inscription acceptée ou refusée (E5, E6) ; leçon planifiée, refusée ou annulée par l'école (L4, L5, L6, L3) ; examen planifié, refusé, résultat enregistré (X3, X4, X5) ; rappel avant une leçon (D-65). Côté école : nouvelle demande d'inscription (E2) ; nouvelle demande de leçon ou d'examen (L2, X2) ; leçon annulée par l'élève (L3). | Réponse de l'auteur (10/10/2026), option recommandée. Ce sont exactement les moments où l'attente de l'autre partie est bloquante : sans notification, l'élève ouvre l'app « pour voir ». | Tâches 17.2 à 17.4 telles qu'écrites. **Remplace D-35** (pas de notifications en v1). Pas de préférence par utilisateur en v1 : tout destinataire concerné reçoit tout (hors périmètre de 17.4). L'envoi se fait **après** la réussite de l'action et n'échoue jamais la requête. |
+| **D-64** | Q-34 : côté école, qui reçoit une nouvelle demande ? | **L'instructeur préféré s'il y en a un** (`preferredInstructorId` de L2), **sinon tous les instructeurs de l'école** (option b). | Réponse de l'auteur (10/10/2026), option recommandée : la file reste partagée (D-32), mais une demande qui nomme un instructeur ne réveille pas toute l'école. | Tâche 17.4 telle qu'écrite. Une demande d'inscription (E2) ou d'examen (X2) n'a pas d'instructeur préféré : elle part à tous les instructeurs de l'école. |
+| **D-65** | Q-35 : rappel avant une leçon | **La veille à 18 h**, heure de l'école (Africa/Tunis), un seul message (option a). | Réponse de l'auteur (10/10/2026), option recommandée : l'élève peut encore s'organiser, et un seul envoi évite l'habitude de balayer les rappels. | Tâche 17.5 telle qu'écrite : `lessons.reminder_sent_at` garantit qu'un rappel ne part jamais deux fois, tâche planifiée toutes les 15 min sous verrou Redis. Pas de rappel d'examen (hors périmètre). |
+| **D-66** | Q-36 : un écran « Notifications » dans l'app ? | **Push et historique** (option b) : écran « Notifications » (lu / non lu, tout marquer lu) et badge du nombre de non-lues. | Réponse de l'auteur (10/10/2026), option recommandée : la table `notifications` existe depuis la migration 001, et sans historique une notification balayée par erreur est définitivement perdue. | Tâches 17.3 (chaque envoi est aussi écrit dans `notifications`), 17.6 (routes) et 17.7 (écran) telles qu'écrites. Pas de suppression de notification en v1. |
+| **D-67** | Q-37 : quelles plateformes pour la version installable ? | **Android seulement** pour l'instant (option a) : build de développement EAS, compte Expo gratuit. iOS attendra. | Réponse de l'auteur (10/10/2026), option recommandée : iOS exige un compte Apple Developer à 99 $ par an, que rien n'impose aujourd'hui. Expo Go reste utilisable pour tout ce qui n'est pas une notification (D-46 inchangé). | Tâche 17.1 telle qu'écrite. **Action humaine obligatoire** : `npx eas login`, `npx eas init` (écrit `extra.eas.projectId`), `npx eas build --profile development --platform android`, puis installation de l'APK — Claude ne peut pas se connecter au compte Expo de l'auteur. Tant que `projectId` n'est pas écrit, le critère de 17.1 ne peut pas passer. |
+
 ## Questions ouvertes
 
-Historique : Q-17 → D-40, Q-18 → D-41, Q-19 → D-42, Q-20 → D-43, Q-21 → D-44, Q-22 → D-49, Q-23 → D-50, Q-24 → D-51, Q-25 → D-54, Q-26 → D-56, Q-27 → D-57, Q-28 → D-58, Q-29 → D-59, Q-30 → D-60, Q-31 → D-61, Q-32 → D-62, Q-53 → D-55 ; D-45 (design accepté), D-46 (SDK Expo), D-47 (français et arabe) et D-48 (design system et thèmes) prises sans question. **À vérifier sur le terrain** : le rattachement type → procédure d'examen (D-44) et les termes arabes du métier (D-47).
+Historique : Q-17 → D-40, Q-18 → D-41, Q-19 → D-42, Q-20 → D-43, Q-21 → D-44, Q-22 → D-49, Q-23 → D-50, Q-24 → D-51, Q-25 → D-54, Q-26 → D-56, Q-27 → D-57, Q-28 → D-58, Q-29 → D-59, Q-30 → D-60, Q-31 → D-61, Q-32 → D-62, Q-33 → D-63, Q-34 → D-64, Q-35 → D-65, Q-36 → D-66, Q-37 → D-67, Q-53 → D-55 ; D-45 (design accepté), D-46 (SDK Expo), D-47 (français et arabe) et D-48 (design system et thèmes) prises sans question. **À vérifier sur le terrain** : le rattachement type → procédure d'examen (D-44) et les termes arabes du métier (D-47).
 
 ### Feuille de route v1.1 (26/09/2026) — Q-25 à Q-53
 
 Après la recette sur téléphone (aucun bug), l'auteur a demandé des améliorations métier. Elles sont découpées en phases 14 à 23 dans `docs/PLAN.md` ; chaque phase dépend des questions ci-dessous. **Répondre par lettre.** La « recommandation » est une proposition de Claude, pas une décision : une réponse du type « toutes les recommandations sauf Q-xx → (b) » suffit. Une fois tranchées, les questions deviennent des décisions D-54 et suivantes (D-53 a été prise entre-temps pour la 3D réaliste), et les tâches écrites pour une autre option que celle retenue sont réécrites **avant** de commencer la phase.
-
-#### Phase 17 — Notifications
-
-### Q-33 — Quels événements déclenchent une notification ? (plusieurs choix)
-Côté élève :
-- **(a)** Inscription acceptée ou refusée (E5, E6).
-- **(b)** Leçon planifiée, refusée, ou annulée par l'école (L4, L5, L6, L3).
-- **(c)** Examen planifié, refusé, résultat enregistré (X3, X4, X5).
-- **(d)** Rappel avant une leçon (voir Q-35).
-
-Côté école :
-- **(e)** Nouvelle demande d'inscription (E2).
-- **(f)** Nouvelle demande de leçon ou d'examen (L2, X2).
-- **(g)** Leçon annulée par l'élève (L3).
-
-**Recommandation** : toutes.
-Bloque : 17.4.
-
-### Q-34 — Côté école, qui reçoit une nouvelle demande ?
-- **(a)** Tous les instructeurs de l'école (file partagée, D-32).
-- **(b)** L'instructeur préféré s'il y en a un (`preferredInstructorId`), sinon tous.
-- **(c)** Le gérant seulement.
-
-**Recommandation** : (b).
-Bloque : 17.4.
-
-### Q-35 — Rappel avant une leçon
-- **(a)** La veille à 18 h.
-- **(b)** 24 h avant.
-- **(c)** 2 h avant.
-- **(d)** La veille à 18 h **et** 2 h avant.
-- **(e)** Aucun rappel.
-
-**Recommandation** : (a). Un seul message, au moment où l'élève peut encore s'organiser.
-Bloque : 17.5.
-
-### Q-36 — Un écran « Notifications » dans l'app ?
-- **(a)** Push seulement : une notification manquée est perdue.
-- **(b)** Push **et** un écran historique (lu / non lu, badge sur l'icône).
-
-**Recommandation** : (b). La table `notifications` existe déjà depuis 001 ; sans historique, une notification balayée par erreur est perdue.
-Bloque : 17.6.
-
-### Q-37 — Pour quelles plateformes produire une version installable ?
-Depuis le SDK 53, **Expo Go ne reçoit plus les notifications push sur Android**. Pour les tester, il faut une version installable de l'application (build de développement EAS) : un compte Expo gratuit suffit pour Android, iOS demande un compte Apple Developer (99 $ par an). Expo Go reste utilisable pour tout le reste (D-46 inchangé).
-- **(a)** Android seulement pour l'instant.
-- **(b)** Android et iOS.
-
-**Recommandation** : (a).
-Bloque : 17.1.
 
 #### Phase 18 — Paiements partiels et reçus
 
