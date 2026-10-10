@@ -171,6 +171,8 @@ Transport : **API push d'Expo**. Un jeton push identifie un **appareil**, pas un
 
 Un envoi **n'échoue jamais l'action** qui vient de réussir (D-63) : l'erreur est journalisée côté serveur, la requête reste en 200 / 201. La garantie est structurelle — `EventNotifier` avale toute exception, répartiteur compris.
 
+**Rappel de leçon (17.5, D-65)** : une tâche de l'API passe toutes les 15 min ; **à partir de 18 h, heure de l'école**, elle rappelle à l'élève chaque leçon `scheduled` du lendemain (jour calendaire de Tunis), puis plus rien avant le soir suivant. Un passage tardif rattrape le soir même (API redémarrée à 19 h 30, leçon planifiée à 21 h pour le lendemain) ; passé minuit, ce n'est plus « la veille » et la leçon du jour n'est plus rappelée. **Jamais deux rappels** : la leçon est marquée (`lessons.reminder_sent_at`, migration 020) dans la même instruction qui la sélectionne, avant l'envoi — un push tombé ne refait pas de rappel, et deux instances ne peuvent pas rappeler la même leçon ; un verrou Redis évite en plus qu'elles passent ensemble. Aucune route.
+
 Les routes de l'historique (liste, marquer lu, tout marquer lu) arrivent en 17.6.
 
 ## 8. Routes backend hors contrat mobile

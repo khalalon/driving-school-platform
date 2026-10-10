@@ -1334,10 +1334,10 @@ cd services/api && npx tsc --noEmit && npm run lint && npm test && echo OK
 ```
 **Hors périmètre** : préférences de notification par utilisateur.
 
-### - [ ] 17.5 — Rappel de leçon
-**Objectif** : migration : `lessons.reminder_sent_at TIMESTAMP`. Tâche planifiée dans l'API (toutes les 15 min, verrou Redis pour qu'une seule instance l'exécute) : la veille à 18 h (heure de Tunis), rappel à l'élève de chaque leçon `scheduled` du lendemain, puis `reminder_sent_at` renseigné (jamais deux rappels). D-65.
+### - [x] 17.5 — Rappel de leçon
+**Objectif** : migration `020_lesson_reminder.sql` : `lessons.reminder_sent_at TIMESTAMP`. Tâche planifiée dans l'API (toutes les 15 min, verrou Redis pour qu'une seule instance l'exécute) : la veille à 18 h (heure de Tunis), rappel à l'élève de chaque leçon `scheduled` du lendemain, puis `reminder_sent_at` renseigné (jamais deux rappels). D-65.
 **Dépend de** : D-65.
-**Fichiers** : `migrations/0NN_lesson_reminder.sql`, `services/api/src/modules/notification/jobs/`, `services/api/src/index.ts`, tests (horloge injectée).
+**Fichiers** : `migrations/020_lesson_reminder.sql`, `services/api/src/modules/notification/jobs/`, `services/api/src/index.ts`, tests (horloge injectée).
 **Critère de validation** :
 ```bash
 ./scripts/migrate.sh && cd services/api && npx tsc --noEmit && npm run lint && npx jest --coverage=false --testPathPattern='notification|reminder' && npm test && echo OK

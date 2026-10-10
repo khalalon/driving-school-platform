@@ -7,6 +7,12 @@ import { buildAuthModule } from './modules/auth';
 import { buildExamModule } from './modules/exam';
 import { buildLessonModule } from './modules/lesson';
 import { buildNotificationModule } from './modules/notification';
+import {
+  LessonReminderJob,
+  startLessonReminders,
+} from './modules/notification/jobs/lesson-reminder.job';
+import { RedisJobLock } from './modules/notification/jobs/redis-job-lock';
+import { ReminderRepository } from './modules/lesson/repositories/reminder.repository';
 import { buildSchoolModule } from './modules/school';
 import { buildStudentModule } from './modules/student';
 import { SchoolGuard } from './http/authz';
@@ -80,6 +86,15 @@ async function bootstrap(): Promise<void> {
   app.listen(env.PORT, () => {
     console.info(`API démarrée sur le port ${env.PORT} (${env.NODE_ENV})`);
   });
+
+  // Rappel de la veille à 18 h (17.5, D-65) : toutes les 15 min, une seule instance à la fois.
+  startLessonReminders(
+    new LessonReminderJob(
+      new ReminderRepository(db),
+      notification.notifier,
+      new RedisJobLock(redis)
+    )
+  );
 }
 
 bootstrap().catch((error: unknown) => {
