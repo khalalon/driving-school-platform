@@ -25,3 +25,8 @@ export const registerPushTokenSchema = Joi.object<RegisterPushTokenDTO>({
 export const removePushTokenSchema = Joi.object<RemovePushTokenDTO>({
   token: token.required(),
 });
+
+/** N3 : `?unread=true` pour les seules non lues ; absent ou `false` pour tout l'historique. */
+export const listNotificationsQuerySchema = Joi.object<{ unread: boolean }>({
+  unread: Joi.boolean().truthy('true').falsy('false').default(false),
+});

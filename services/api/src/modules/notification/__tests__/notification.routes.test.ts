@@ -1,5 +1,6 @@
 import request from 'supertest';
 import { createApp } from '../../../app';
+import { HttpError } from '../../../http/errors';
 import { bearerFor, TEST_USERS, testRequireAuth, UUID } from '../../../test-utils/http';
 import { NotificationController } from '../controllers/notification.controller';
 import { createNotificationRouter } from '../routes/notification.routes';
@@ -14,6 +15,9 @@ describe('Routes /api/notifications (N1, N2)', () => {
   const notificationService = {
     registerPushToken: jest.fn(),
     removePushToken: jest.fn(),
+    listMine: jest.fn(),
+    markRead: jest.fn(),
+    markAllRead: jest.fn(),
   };
   const app = createApp({
     auth: createNotificationRouter(
@@ -93,5 +97,79 @@ describe('Routes /api/notifications (N1, N2)', () => {
     await request(app).delete(`${base}/push-token`).send({ token }).expect(401);
     expect(notificationService.registerPushToken).not.toHaveBeenCalled();
     expect(notificationService.removePushToken).not.toHaveBeenCalled();
+  });
+
+  it('N3 : l’historique de l’appelant ; `?unread=true` filtre, une autre valeur → 400', async () => {
+    const item = {
+      id: UUID.request,
+      type: 'lesson_scheduled',
+      title: 'Leçon planifiée',
+      read: false,
+    };
+    notificationService.listMine.mockResolvedValue([item]);
+
+    await request(app).get(base).set('Authorization', bearerFor('student')).expect(200, [item]);
+    expect(notificationService.listMine).toHaveBeenLastCalledWith(
+      expect.objectContaining({ userId: TEST_USERS.student.userId }),
+      false
+    );
+
+    await request(app)
+      .get(`${base}?unread=true`)
+      .set('Authorization', bearerFor('instructor'))
+      .expect(200);
+    expect(notificationService.listMine).toHaveBeenLastCalledWith(
+      expect.objectContaining({ userId: TEST_USERS.instructor.userId }),
+      true
+    );
+
+    const invalid = await request(app)
+      .get(`${base}?unread=peut-etre`)
+      .set('Authorization', bearerFor('student'));
+    expect(invalid.status).toBe(400);
+  });
+
+  it('N4 : marquer lu → 204 ; identifiant mal formé ou notification d’un autre → 404', async () => {
+    notificationService.markRead.mockResolvedValue(undefined);
+
+    await request(app)
+      .put(`${base}/${UUID.request}/read`)
+      .set('Authorization', bearerFor('student'))
+      .expect(204);
+    expect(notificationService.markRead).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: TEST_USERS.student.userId }),
+      UUID.request
+    );
+
+    await request(app)
+      .put(`${base}/pas-un-uuid/read`)
+      .set('Authorization', bearerFor('student'))
+      .expect(404);
+
+    notificationService.markRead.mockRejectedValue(
+      new HttpError(404, 'NOT_FOUND', 'Notification introuvable')
+    );
+    const foreign = await request(app)
+      .put(`${base}/${UUID.school}/read`)
+      .set('Authorization', bearerFor('student'));
+    expect(foreign.status).toBe(404);
+    expect((foreign.body as { error: string }).error).toBe('NOT_FOUND');
+  });
+
+  it('N5 : tout marquer lu → 204 ; `read-all` n’est pas pris pour un identifiant', async () => {
+    notificationService.markAllRead.mockResolvedValue(undefined);
+
+    await request(app)
+      .put(`${base}/read-all`)
+      .set('Authorization', bearerFor('student'))
+      .expect(204);
+    expect(notificationService.markAllRead).toHaveBeenCalledTimes(1);
+    expect(notificationService.markRead).not.toHaveBeenCalled();
+  });
+
+  it('N3–N5 : sans authentification → 401', async () => {
+    await request(app).get(base).expect(401);
+    await request(app).put(`${base}/read-all`).expect(401);
+    await request(app).put(`${base}/${UUID.request}/read`).expect(401);
   });
 });

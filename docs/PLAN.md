@@ -1344,7 +1344,7 @@ cd services/api && npx tsc --noEmit && npm run lint && npm test && echo OK
 ```
 **Hors périmètre** : rappel d'examen.
 
-### - [ ] 17.6 — Centre de notifications (routes)
+### - [x] 17.6 — Centre de notifications (routes)
 **Objectif** : `GET /api/notifications?unread=` (celles de l'appelant, 50 dernières), `PUT /api/notifications/:id/read`, `PUT /api/notifications/read-all`. Contrat §7.
 **Dépend de** : D-66.
 **Fichiers** : `services/api/src/modules/notification/`, tests, `docs/API_CONTRACT.md`.

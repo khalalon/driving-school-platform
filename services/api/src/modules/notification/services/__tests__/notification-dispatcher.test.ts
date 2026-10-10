@@ -42,7 +42,13 @@ describe('NotificationDispatcher (17.3)', () => {
       findByUsers: jest.fn().mockResolvedValue([]),
       removeByToken: jest.fn().mockResolvedValue(undefined),
     };
-    history = { insert: jest.fn().mockResolvedValue(undefined) };
+    history = {
+      insert: jest.fn().mockResolvedValue(undefined),
+      // Lus par les routes de l'historique (17.6), pas par le répartiteur
+      findByUser: jest.fn(),
+      markRead: jest.fn(),
+      markAllRead: jest.fn(),
+    };
     sender = { send: jest.fn().mockResolvedValue({ invalidTokens: [] }) };
     warnings = [];
     dispatcher = new NotificationDispatcher(pushTokens, history, sender, (line) =>

@@ -43,4 +43,41 @@ describe('NotificationRepository (17.3, D-66)', () => {
 
     expect((query.mock.calls[0] as [string, unknown[]])[1][4]).toBeNull();
   });
+
+  it('findByUser : récentes d’abord, bornées, filtre des non lues porté par la requête', async () => {
+    const { pool, query } = fakePool([{ id: 'n1' }]);
+
+    await new NotificationRepository(pool).findByUser(UUID.student, true, 50);
+
+    const [sql, params] = query.mock.calls[0] as [string, unknown[]];
+    expect(sql).toMatch(/WHERE user_id = \$1 AND \(\$2::boolean = FALSE OR read = FALSE\)/);
+    expect(sql).toMatch(/ORDER BY created_at DESC\s+LIMIT \$3/);
+    expect(params).toEqual([UUID.student, true, 50]);
+  });
+
+  it('markRead : le compte fait partie du filtre ; rien trouvé → false', async () => {
+    const found = fakePool([{ id: 'n1' }]);
+    await expect(new NotificationRepository(found.pool).markRead(UUID.student, 'n1')).resolves.toBe(
+      true
+    );
+    const [sql, params] = found.query.mock.calls[0] as [string, unknown[]];
+    expect(sql).toMatch(/WHERE id = \$1 AND user_id = \$2/);
+    expect(params).toEqual(['n1', UUID.student]);
+
+    await expect(
+      new NotificationRepository(fakePool([]).pool).markRead(UUID.student, 'n-autre')
+    ).resolves.toBe(false);
+  });
+
+  it('markAllRead : seules les non lues du compte, et leur nombre', async () => {
+    const { pool, query } = fakePool([]);
+    query.mockResolvedValue({ rows: [], rowCount: 4 });
+
+    await expect(new NotificationRepository(pool).markAllRead(UUID.student)).resolves.toBe(4);
+    const [sql] = query.mock.calls[0] as [string, unknown[]];
+    expect(sql).toMatch(/WHERE user_id = \$1 AND read = FALSE/);
+
+    query.mockResolvedValue({ rows: [], rowCount: null });
+    await expect(new NotificationRepository(pool).markAllRead(UUID.student)).resolves.toBe(0);
+  });
 });

@@ -37,11 +37,12 @@ export function buildNotificationModule({
   instructors,
 }: NotificationModuleDeps): NotificationModule {
   const pushTokenRepository = new PushTokenRepository(db);
-  const notificationService = new NotificationService(pushTokenRepository);
+  const notificationRepository = new NotificationRepository(db);
+  const notificationService = new NotificationService(pushTokenRepository, notificationRepository);
   const sender: IPushSender = driver === 'expo' ? new ExpoPushSender() : new LogPushSender();
   const dispatcher = new NotificationDispatcher(
     pushTokenRepository,
-    new NotificationRepository(db),
+    notificationRepository,
     sender
   );
   const notifier = new EventNotifier(dispatcher, instructors);
