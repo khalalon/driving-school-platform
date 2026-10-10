@@ -40,7 +40,14 @@
       ],
       "expo-font",
       "expo-localization",
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-notifications",
+        {
+          "color": "#FFC21A"
+        }
+      ],
+      "expo-dev-client"
     ]
   }
 }
