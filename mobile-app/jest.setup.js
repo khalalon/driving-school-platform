@@ -80,3 +80,20 @@ jest.mock('expo-sensors', () => {
   };
   return { Accelerometer };
 });
+
+// expo-notifications (17.7) : aucun module natif sous Jest. Permission accordée et jeton fixe par
+// défaut ; chaque test peut surcharger les réponses (`require('expo-notifications')`).
+jest.mock('expo-notifications', () => {
+  const subscription = { remove: jest.fn() };
+  return {
+    setNotificationHandler: jest.fn(),
+    getPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
+    requestPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
+    setNotificationChannelAsync: jest.fn().mockResolvedValue(null),
+    getExpoPushTokenAsync: jest.fn().mockResolvedValue({ data: 'ExponentPushToken[test]' }),
+    getLastNotificationResponseAsync: jest.fn().mockResolvedValue(null),
+    addNotificationResponseReceivedListener: jest.fn(() => subscription),
+    addNotificationReceivedListener: jest.fn(() => subscription),
+    AndroidImportance: { HIGH: 4, DEFAULT: 3 },
+  };
+});

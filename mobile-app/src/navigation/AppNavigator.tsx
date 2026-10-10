@@ -36,6 +36,8 @@ import { Theme } from '../theme';
 import { exitDuration, motion } from '../theme/motion';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { CircuitTabBar } from './CircuitTabBar';
+import { navigationRef, usePushBridge } from './usePushBridge';
+import { NotificationsScreen } from '../screens/common/NotificationsScreen';
 
 // Auth Screens
 import { LoginScreen } from '../screens/auth/LoginScreen';
@@ -174,7 +176,9 @@ const InstructorTabs = () => {
 
 export const AppNavigator = () => {
   const { user, isLoading } = useAuth();
-  const { isRTL } = useI18n();
+  const { isRTL, language } = useI18n();
+  // Notifications (17.7) : jeton après la connexion, appui → bonne destination
+  usePushBridge(user, language);
   const theme = useTheme();
   const reducedMotion = useReducedMotion();
 
@@ -183,7 +187,11 @@ export const AppNavigator = () => {
   }
 
   return (
-    <NavigationContainer theme={navigationTheme(theme)} direction={isRTL ? 'rtl' : 'ltr'}>
+    <NavigationContainer
+      ref={navigationRef}
+      theme={navigationTheme(theme)}
+      direction={isRTL ? 'rtl' : 'ltr'}
+    >
       <Stack.Navigator screenOptions={stackScreenOptions(reducedMotion)}>
         {!user ? (
           <>
@@ -201,6 +209,7 @@ export const AppNavigator = () => {
                 <Stack.Screen name="BookLesson" component={BookLessonScreen} />
                 <Stack.Screen name="RequestExam" component={RequestExamScreen} />
                 <Stack.Screen name="MyEnrollmentRequests" component={MyEnrollmentRequestsScreen} />
+                <Stack.Screen name="Notifications" component={NotificationsScreen} />
                 <Stack.Screen name="Settings" component={SettingsScreen} />
               </>
             ) : user?.role === UserRole.INSTRUCTOR ? (
@@ -212,6 +221,7 @@ export const AppNavigator = () => {
                 <Stack.Screen name="StudentProfile" component={StudentProfileScreen} />
                 <Stack.Screen name="MySchool" component={MySchoolScreen} />
                 <Stack.Screen name="MyAvailability" component={MyAvailabilityScreen} />
+                <Stack.Screen name="Notifications" component={NotificationsScreen} />
                 <Stack.Screen name="Settings" component={SettingsScreen} />
               </>
             ) : null}

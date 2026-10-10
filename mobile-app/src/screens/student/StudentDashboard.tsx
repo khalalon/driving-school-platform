@@ -12,6 +12,7 @@
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
+import { NotificationBell } from '../../components/NotificationBell';
 import { Alert, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -521,6 +522,7 @@ export const StudentDashboard = ({ navigation }: any) => {
         title={`${t('home.hello')} ${user?.firstName || t('home.student')}`}
         subtitle={t('home.dashboard')}
         large
+        right={<NotificationBell onPress={() => navigation.navigate('Notifications')} />}
         avatar={{
           initials: initialsOf(user?.firstName, user?.lastName),
           onPress: () => navigation.navigate('Settings'),

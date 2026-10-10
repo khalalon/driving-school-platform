@@ -13,6 +13,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiClient, TOKEN_KEY, USER_KEY } from '../services/api/ApiClient';
 import { authService } from '../services/api/AuthService';
+import { unregisterPush } from '../services/push';
 import { AuthResponse, RegisterRequest, User } from '../models/User';
 
 interface AuthContextType {
@@ -109,8 +110,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await openSession(response);
   };
 
-  /** A5 (révocation serveur), puis effacement local dans tous les cas. */
+  /**
+   * N2 puis A5 (révocation serveur), puis effacement local dans tous les cas. Le jeton push part
+   * **avant** la révocation : N2 exige un appelant connecté (17.7). Sans quoi ce téléphone
+   * continuerait de recevoir les notifications du compte qu'on vient de quitter.
+   */
   const logout = async () => {
+    await unregisterPush();
     try {
       await authService.logout();
     } catch (error) {

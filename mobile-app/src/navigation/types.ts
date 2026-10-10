@@ -33,6 +33,8 @@ export type StudentStackParamList = {
   BookLesson: { schoolId: string; preferredInstructorId?: string; instructorName?: string };
   RequestExam: undefined;
   MyEnrollmentRequests: undefined;
+  /** Historique des notifications (17.7, N3–N5) : commun aux deux rôles. */
+  Notifications: undefined;
   /** Langue, thème, déconnexion (13.3) : commun aux deux rôles. */
   Settings: undefined;
 };
@@ -58,6 +60,8 @@ export type InstructorStackParamList = {
   MySchool: undefined;
   /** I1–I2 : la semaine type de l'instructeur connecté (15.8). */
   MyAvailability: undefined;
+  /** Historique des notifications (17.7, N3–N5). */
+  Notifications: undefined;
   /** Langue, thème, déconnexion (13.3) : commun aux deux rôles. */
   Settings: undefined;
 };

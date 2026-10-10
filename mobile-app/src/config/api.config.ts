@@ -53,6 +53,13 @@ export const API_CONFIG = {
       DOCUMENT_TYPES: '/api/schools/:schoolId/document-types',
       DOCUMENT_TYPE_ITEM: '/api/schools/document-types/:id',
     },
+    // §7 Notifications (N1–N5, D-63 à D-66)
+    NOTIFICATIONS: {
+      LIST: '/api/notifications',
+      PUSH_TOKEN: '/api/notifications/push-token',
+      READ: '/api/notifications/:id/read',
+      READ_ALL: '/api/notifications/read-all',
+    },
     // §6b Disponibilités de l'instructeur connecté (I1, I2)
     INSTRUCTORS: {
       MY_AVAILABILITY: '/api/instructors/me/availability',

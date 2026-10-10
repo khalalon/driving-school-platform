@@ -12,6 +12,7 @@
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
+import { NotificationBell } from '../../components/NotificationBell';
 import { Alert, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -547,6 +548,7 @@ export const InstructorDashboard = ({ navigation }: any) => {
           day: 'numeric',
         })}
         large
+        right={<NotificationBell onPress={() => navigation.navigate('Notifications')} />}
         avatar={{
           initials: initialsOf(user?.firstName, user?.lastName),
           onPress: () => navigation.navigate('Settings'),

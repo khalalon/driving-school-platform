@@ -1354,7 +1354,7 @@ cd services/api && npx tsc --noEmit && npm run lint && npx jest --coverage=false
 ```
 **Hors périmètre** : suppression de notifications.
 
-### - [ ] 17.7 — Mobile : permission, jeton, ouverture du bon écran, historique
+### - [x] 17.7 — Mobile : permission, jeton, ouverture du bon écran, historique
 **Objectif** : la permission est demandée **après** la connexion (jamais au premier lancement), le jeton est envoyé avec la langue courante (et renvoyé quand la langue change), supprimé au logout ; toucher une notification ouvre l'écran de `data.screen` ; écran « Notifications » (liste, lu / non lu, tout marquer lu) et badge du nombre de non-lues. `NotificationService` + tests.
 **Dépend de** : D-66, D-67.
 **Fichiers** : `mobile-app/src/services/api/NotificationService.ts` (nouveau), `mobile-app/src/services/push.ts` (nouveau), `mobile-app/src/screens/common/NotificationsScreen.tsx` (nouveau), `AuthContext`, navigation, i18n, `jest.setup.js` (mock `expo-notifications`), tests.
