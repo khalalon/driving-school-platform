@@ -51,7 +51,11 @@ async function bootstrap(): Promise<void> {
     files: student.studentFileRepository,
   });
 
-  const notification = buildNotificationModule({ db, requireAuth: auth.requireAuth });
+  const notification = buildNotificationModule({
+    db,
+    requireAuth: auth.requireAuth,
+    driver: env.NOTIFICATIONS_DRIVER,
+  });
 
   const app = createApp({
     auth: auth.router,

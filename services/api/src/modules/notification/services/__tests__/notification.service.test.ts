@@ -9,7 +9,13 @@ describe('NotificationService (17.2)', () => {
   let service: NotificationService;
 
   beforeEach(() => {
-    pushTokens = { upsert: jest.fn(), remove: jest.fn().mockResolvedValue(undefined) };
+    pushTokens = {
+      upsert: jest.fn(),
+      remove: jest.fn().mockResolvedValue(undefined),
+      // Lus par le répartiteur (17.3), pas par ce service
+      findByUsers: jest.fn(),
+      removeByToken: jest.fn(),
+    };
     service = new NotificationService(pushTokens);
   });
 

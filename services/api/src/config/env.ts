@@ -17,6 +17,12 @@ export interface Env {
   BCRYPT_ROUNDS: number;
   /** Fenêtre d'annulation par l'élève d'une leçon planifiée, en heures (D-24). */
   LESSON_CANCEL_HOURS: number;
+  /**
+   * Transport des notifications (D-63) : `log` journalise sans rien envoyer (développement et
+   * tests de bout en bout), `expo` passe par l'API push d'Expo. `log` par défaut — un envoi
+   * réel ne doit jamais partir par accident depuis une machine de développement.
+   */
+  NOTIFICATIONS_DRIVER: 'log' | 'expo';
 }
 
 const envSchema = Joi.object<Env>({
@@ -40,6 +46,7 @@ const envSchema = Joi.object<Env>({
   JWT_REFRESH_EXPIRES_IN: Joi.string().default('30d'),
   BCRYPT_ROUNDS: Joi.number().integer().min(4).max(15).default(12),
   LESSON_CANCEL_HOURS: Joi.number().integer().min(0).max(720).default(24),
+  NOTIFICATIONS_DRIVER: Joi.string().valid('log', 'expo').default('log'),
 }).unknown(true);
 
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {

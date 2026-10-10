@@ -6,6 +6,10 @@ export interface IPushTokenRepository {
   upsert(userId: string, data: RegisterPushTokenDTO): Promise<PushToken>;
   /** N2 : ne retire que les jetons de ce compte (un compte n'en désinscrit pas un autre). */
   remove(userId: string, token: string): Promise<void>;
+  /** Les appareils de plusieurs comptes, en une requête : un envoi groupé (17.3). */
+  findByUsers(userIds: string[]): Promise<PushToken[]>;
+  /** Jeton déclaré mort par Expo (`DeviceNotRegistered`) : retiré sans connaître son porteur. */
+  removeByToken(token: string): Promise<void>;
 }
 
 const PUSH_TOKEN_COLUMNS = `id, user_id AS "userId", token, platform, language,
@@ -34,5 +38,22 @@ export class PushTokenRepository implements IPushTokenRepository {
       userId,
       token,
     ]);
+  }
+
+  async findByUsers(userIds: string[]): Promise<PushToken[]> {
+    if (userIds.length === 0) {
+      return [];
+    }
+    const result = await this.db.query<PushToken>(
+      `SELECT ${PUSH_TOKEN_COLUMNS} FROM push_tokens
+       WHERE user_id = ANY($1::uuid[])
+       ORDER BY updated_at DESC`,
+      [[...new Set(userIds)]]
+    );
+    return result.rows;
+  }
+
+  async removeByToken(token: string): Promise<void> {
+    await this.db.query(`DELETE FROM push_tokens WHERE token = $1`, [token]);
   }
 }

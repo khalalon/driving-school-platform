@@ -34,3 +34,76 @@ export interface RegisterPushTokenDTO {
 export interface RemovePushTokenDTO {
   token: string;
 }
+
+/**
+ * Événements notifiés (D-63), côté élève puis côté école. La valeur est stockée dans
+ * `notifications.type` (001) et sert de clé au catalogue de messages : ne jamais la renommer
+ * sans migration, l'historique déjà écrit la porte.
+ */
+export enum NotificationType {
+  // Côté élève
+  ENROLLMENT_APPROVED = 'enrollment_approved',
+  ENROLLMENT_REJECTED = 'enrollment_rejected',
+  LESSON_SCHEDULED = 'lesson_scheduled',
+  LESSON_REJECTED = 'lesson_rejected',
+  LESSON_CANCELLED_BY_SCHOOL = 'lesson_cancelled_by_school',
+  LESSON_REMINDER = 'lesson_reminder',
+  EXAM_SCHEDULED = 'exam_scheduled',
+  EXAM_REJECTED = 'exam_rejected',
+  EXAM_RESULT = 'exam_result',
+  // Côté école
+  ENROLLMENT_REQUESTED = 'enrollment_requested',
+  LESSON_REQUESTED = 'lesson_requested',
+  EXAM_REQUESTED = 'exam_requested',
+  LESSON_CANCELLED_BY_STUDENT = 'lesson_cancelled_by_student',
+}
+
+export const NOTIFICATION_TYPES: readonly NotificationType[] = Object.values(NotificationType);
+
+/** Écran que l'appui sur la notification ouvre, et objet visé (`data` du push et de l'historique). */
+export interface NotificationTarget {
+  screen: string;
+  id?: string;
+}
+
+/** Ce qu'un service métier demande d'envoyer : l'événement, ses valeurs, sa destination. */
+export interface NotificationPayload {
+  type: NotificationType;
+  /** Valeurs insérées dans le message (`{{date}}`, `{{student}}`…), déjà mises en forme. */
+  params?: Record<string, string>;
+  target?: NotificationTarget;
+}
+
+/** Message rendu dans une langue (D-47). */
+export interface RenderedMessage {
+  title: string;
+  body: string;
+}
+
+/** Un envoi push : plusieurs jetons, un seul texte (donc une seule langue). */
+export interface PushMessage {
+  tokens: string[];
+  title: string;
+  body: string;
+  data: NotificationTarget;
+}
+
+/** Ligne d'historique (table `notifications`, 001 + colonne `data` en 019). */
+export interface StoredNotification {
+  id: string;
+  userId: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  read: boolean;
+  data: NotificationTarget | null;
+  createdAt: Date;
+}
+
+/**
+ * Ce que les services métier utilisent (17.4) : envoyer ne doit **jamais** faire échouer
+ * l'action qui vient de réussir (D-63), donc aucune erreur ne remonte d'ici.
+ */
+export interface Notifier {
+  notify(userIds: string[], payload: NotificationPayload): Promise<void>;
+}

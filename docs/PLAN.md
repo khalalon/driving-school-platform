@@ -1314,10 +1314,10 @@ cd mobile-app && npx expo-doctor && npx expo config --json | grep -q '"projectId
 ```
 **Hors périmètre** : envoi (17.3).
 
-### - [ ] 17.3 — Envoi par l'API push d'Expo
+### - [x] 17.3 — Envoi par l'API push d'Expo
 **Objectif** : interface `IPushSender` ; `ExpoPushSender` (HTTP vers l'API push d'Expo, envois groupés par 100, jeton `DeviceNotRegistered` supprimé de `push_tokens`) ; `LogPushSender` pour le dev et l'e2e (`NOTIFICATIONS_DRIVER=log|expo` dans `loadEnv`, `log` par défaut). Catalogue des messages FR / AR **côté serveur** (titre, corps, `data: { screen, id }` pour ouvrir le bon écran). Chaque notification est aussi écrite dans la table `notifications` (001) pour l'historique (D-66).
 **Dépend de** : D-63, D-66.
-**Fichiers** : `services/api/src/modules/notification/`, `services/api/src/config/env.ts`, `.env.example`, tests.
+**Fichiers** : `services/api/src/modules/notification/`, `services/api/src/config/env.ts`, `.env.example`, `docker-compose.yml`, `migrations/019_notification_data.sql` (destination de la notification, pour que l'historique ouvre le même écran que le push), tests.
 **Critère de validation** :
 ```bash
 cd services/api && npx tsc --noEmit && npm run lint && npx jest --coverage=false --testPathPattern=notification && npm test && echo OK
