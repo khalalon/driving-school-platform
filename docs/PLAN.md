@@ -1294,7 +1294,7 @@ D-35 avait écarté les notifications de la v1 : l'élève doit ouvrir l'app pou
 
 Critères de cette phase : `npm test` mesure la couverture **globale**, qu'un `--testPathPattern` fait tomber sous les seuils (le critère échouait toujours — corrigé en 17.2, comme en 16.3). Les suites ciblées se lancent donc en `npx jest --coverage=false`, suivies de `npm test` entier.
 
-### - [ ] 17.1 — Build de développement Android (EAS)
+### - [x] 17.1 — Build de développement Android (EAS)
 **Objectif** : `expo-dev-client` et `expo-notifications` installés (`npx expo install`), plugin déclaré dans `app.json`, `eas.json` avec un profil `development` (APK interne Android). **Action humaine** : `eas login`, `eas init` (écrit `extra.eas.projectId`), puis `eas build --profile development --platform android` et installation de l'APK sur le téléphone. Le README gagne une section « Version installable ». Expo Go reste utilisable pour tout ce qui n'est pas une notification.
 **Dépend de** : D-67.
 **Fichiers** : `mobile-app/package.json`, `mobile-app/app.json`, `mobile-app/eas.json` (nouveau), `README.md`.

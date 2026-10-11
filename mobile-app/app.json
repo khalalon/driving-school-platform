@@ -21,7 +21,10 @@
       "package": "com.drivingschool.app"
     },
     "extra": {
-      "API_BASE_URL": "http://10.0.2.2:80"
+      "API_BASE_URL": "http://10.0.2.2:80",
+      "eas": {
+        "projectId": "776ddd96-ea77-4df8-b122-df932e60c650"
+      }
     },
     "plugins": [
       "expo-status-bar",
@@ -48,6 +51,7 @@
         }
       ],
       "expo-dev-client"
-    ]
+    ],
+    "owner": "mnejjayessine"
   }
 }

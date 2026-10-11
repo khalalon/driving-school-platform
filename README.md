@@ -61,7 +61,9 @@ eas build --profile development --platform android     # ~15 min sur les serveur
 ```
 
 Le build terminé, Expo affiche un lien et un QR code : ouvrez-le sur le téléphone, installez
-l'APK (autoriser « installer des applications inconnues » pour le navigateur), puis lancez
+l'APK (autoriser « installer des applications inconnues » pour le navigateur). **Google Play
+Protect** affiche alors « App blocked to protect your device » : c'est normal pour une app qui
+ne vient pas du Play Store, choisir **« Install anyway »**. Puis lancez
 `npm start` comme d'habitude — l'application installée remplace Expo Go et se connecte au même
 serveur Metro.
 
