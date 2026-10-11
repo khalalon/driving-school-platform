@@ -45,15 +45,19 @@ Le projet est prêt : `expo-dev-client` et `expo-notifications` sont installés,
 notifications est déclaré dans `app.json`, et `mobile-app/eas.json` porte un profil
 `development` qui produit un **APK** à installer directement (`distribution: internal`).
 
+`npx eas …` échoue (« could not determine executable to run ») : le paquet s'appelle `eas-cli`.
+Sans droit d'installation globale, écrire `npx eas-cli login`, `npx eas-cli init`, etc.
+
 Il reste trois commandes, à lancer **par un humain** : elles demandent un compte Expo (gratuit),
 et `eas init` écrit `extra.eas.projectId` dans `app.json` — l'identifiant du projet chez Expo,
 que personne d'autre ne peut créer à votre place.
 
 ```bash
 cd mobile-app
-npx eas login                                          # compte Expo (gratuit)
-npx eas init                                           # écrit extra.eas.projectId dans app.json
-npx eas build --profile development --platform android # ~15 min sur les serveurs d'Expo
+npm install -g eas-cli                                 # une fois : l'outil s'appelle eas-cli, pas eas
+eas login                                              # compte Expo (gratuit)
+eas init                                               # écrit extra.eas.projectId dans app.json
+eas build --profile development --platform android     # ~15 min sur les serveurs d'Expo
 ```
 
 Le build terminé, Expo affiche un lien et un QR code : ouvrez-le sur le téléphone, installez
