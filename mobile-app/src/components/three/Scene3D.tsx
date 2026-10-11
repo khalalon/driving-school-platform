@@ -33,6 +33,8 @@ import {
 import { Accelerometer } from 'expo-sensors';
 import { NavigationContext } from '@react-navigation/native';
 import { Canvas, useFrame } from '@react-three/fiber/native';
+import type { WebGLRenderer, WebGLRendererParameters } from 'three';
+import { guardPrecisionFormat } from './glCompat';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import {
   OrbitState,
@@ -43,6 +45,26 @@ import {
   setTilt,
   startDrag,
 } from './orbit';
+
+/**
+ * Crée le moteur de rendu après avoir protégé le contexte `expo-gl` (voir `glCompat.ts`) : sur
+ * certains téléphones Android, `getShaderPrecisionFormat` répond vide et three.js plantait dès
+ * sa construction. Même réglages que ceux de `@react-three/fiber` par défaut.
+ */
+/** Ce que la fabrique reçoit de `Canvas` : son faux canevas natif et les réglages par défaut. */
+type RendererDefaults = { canvas: unknown; antialias?: boolean };
+
+const createRenderer = (defaults: RendererDefaults): WebGLRenderer => {
+  const canvas = defaults.canvas as {
+    getContext: (type: string, attributes: { antialias?: boolean }) => unknown;
+  };
+  guardPrecisionFormat(canvas.getContext('webgl2', { antialias: defaults.antialias }));
+  // three n'est chargé qu'ici, à la création réelle de la scène : sous Jest, `Canvas` est simulé
+  // et ce module (ES) ne doit pas être importé.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const three = require('three') as typeof import('three');
+  return new three.WebGLRenderer(defaults as unknown as WebGLRendererParameters);
+};
 
 // `@react-three/fiber` 9.8 crée encore un `THREE.Clock`, que three 0.186 déclare obsolète :
 // l'avertissement vient de la bibliothèque, pas de notre code, et n'a aucun effet sur le rendu.
@@ -268,6 +290,7 @@ export const Scene3D = ({
           <View style={styles.fill} testID="scene-gesture" {...gesture}>
             <Canvas
               style={styles.fill}
+              gl={createRenderer}
               frameloop={focused && appActive ? 'always' : 'never'}
               camera={{ position: [0, 1.6, 5.2], fov: 40 }}
             >
